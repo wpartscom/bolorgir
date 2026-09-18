@@ -1,0 +1,1 @@
+{"type":"array","items":{"type":"integer","enum":[0,-7]},"minItems":1,"maxItems":1}

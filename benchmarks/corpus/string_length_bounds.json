@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Границы длин строк: min==max, короткие и средние",
+  "type": "object",
+  "properties": {
+    "exact5": {"type": "string", "minLength": 5, "maxLength": 5},
+    "short": {"type": "string", "minLength": 0, "maxLength": 1},
+    "mid": {"type": "string", "minLength": 2, "maxLength": 12}
+  },
+  "required": ["exact5", "mid"],
+  "additionalProperties": false
+}

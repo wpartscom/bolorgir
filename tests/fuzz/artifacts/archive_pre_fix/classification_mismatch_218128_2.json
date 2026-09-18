@@ -1,0 +1,6 @@
+{
+ "seed": 192206359327212,
+ "schema": "{\"type\":\"object\",\"properties\":{\"k0\":{\"type\":\"object\",\"properties\":{\"k0\":{\"type\":\"array\",\"items\":{\"type\":\"null\"},\"minItems\":2,\"maxItems\":4},\"k1\":{\"type\":\"number\"},\"k2\":{\"type\":\"integer\"},\"k3\":{\"type\":\"integer\"}},\"required\":[\"k1\"],\"additionalProperties\":false}},\"required\":[\"k0\"],\"additionalProperties\":false}",
+ "kernel": "status_5",
+ "oracle": "ok"
+}

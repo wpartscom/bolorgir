@@ -1,0 +1,1 @@
+{"$defs":{"d0":{"type":"array","items":{"type":"object","properties":{"k0":{"type":"array","items":{"type":"number","enum":[0.5,-3]},"minItems":0,"maxItems":1},"k1":{"type":"integer"},"k2":{"type":"array","items":{"type":"integer"},"minItems":1,"maxItems":2}},"required":[],"additionalProperties":false},"minItems":2,"maxItems":3}},"$ref":"#/$defs/d0"}

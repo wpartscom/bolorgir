@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ОТКАЗ: противоречие minItems > maxItems (UnsatisfiableConstraint)",
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {"type": "integer"},
+      "minItems": 5,
+      "maxItems": 2
+    }
+  },
+  "required": ["items"],
+  "additionalProperties": false
+}

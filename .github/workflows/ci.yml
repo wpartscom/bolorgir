@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  schedule:
+    # Weekly, Monday 04:17 UTC
+    - cron: "17 4 * * 1"
+
+jobs:
+  zig:
+    name: Zig core (${{ matrix.mode }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - mode: Debug
+            args: ""
+          - mode: ReleaseSafe
+            args: "-Drelease=true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Check formatting
+        run: zig fmt --check build.zig src
+
+      - name: Unit tests
+        run: zig build test ${{ matrix.args }} --summary all
+
+      - name: Build C example
+        run: zig build example-c ${{ matrix.args }}
+
+      - name: Run C example
+        run: LD_LIBRARY_PATH=zig-out/lib zig-out/bin/c_client
+
+  python:
+    name: Python ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Build core library (ReleaseSafe)
+        run: zig build -Drelease=true
+
+      - name: Install build/test tooling
+        run: python3 -m pip install --upgrade pip setuptools wheel pytest
+
+      - name: Build Python extension in place
+        working-directory: python
+        run: python3 setup.py build_ext --inplace
+
+      - name: pytest (ctypes backend)
+        run: PYTHONPATH=python ZG_TEST_BACKEND=ctypes python3 -m pytest tests/ python/tests/ -q
+
+      - name: pytest (package backend)
+        run: PYTHONPATH=python ZG_TEST_BACKEND=package python3 -m pytest tests/ python/tests/ -q
+
+      - name: Build wheel
+        working-directory: python
+        run: python3 -m pip wheel . --no-deps -w dist
+
+      - name: Smoke-install wheel in clean venv without torch
+        run: |
+          python3 -m venv /tmp/zg-smoke-venv
+          /tmp/zg-smoke-venv/bin/pip install --no-index --find-links=python/dist zig-constraints
+          /tmp/zg-smoke-venv/bin/python - <<'EOF'
+          from zig_constraints import Engine, TokenizerBundle
+
+          tokens = [bytes([i]) for i in range(256)] + [b"\x00", b""]
+          bundle = TokenizerBundle.from_token_bytes(
+              tokens, eos_ids=[256], special_ids=[257])
+          with Engine(mode="lazy") as engine:
+              constraint = engine.compile_literals(["yes", "no"], tokenizer=bundle)
+              with constraint.create_session() as session:
+                  ids = session.allowed_token_ids()
+                  assert ids, "empty initial mask"
+                  session.accept_token(ids[0])
+          print("wheel smoke OK")
+          EOF

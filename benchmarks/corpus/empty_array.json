@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Пустой массив: единственный документ []",
+  "type": "array",
+  "items": {"type": "string"},
+  "minItems": 0,
+  "maxItems": 0
+}

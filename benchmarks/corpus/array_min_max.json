@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Массивы с minItems/maxItems, в том числе вложенный",
+  "type": "object",
+  "properties": {
+    "tags": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 24},
+      "minItems": 1,
+      "maxItems": 8
+    },
+    "matrix": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": {"type": "number"},
+        "minItems": 3,
+        "maxItems": 3
+      },
+      "minItems": 2,
+      "maxItems": 4
+    }
+  },
+  "required": ["tags", "matrix"],
+  "additionalProperties": false
+}

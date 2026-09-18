@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "$defs/$ref: переиспользуемые узлы, ациклический граф",
+  "$defs": {
+    "money": {"type": "number"},
+    "line_item": {
+      "type": "object",
+      "properties": {
+        "sku": {"type": "string", "minLength": 3, "maxLength": 16},
+        "qty": {"type": "integer"},
+        "price": {"$ref": "#/$defs/money"}
+      },
+      "required": ["sku", "qty", "price"],
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "properties": {
+    "items": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/line_item"},
+      "minItems": 1,
+      "maxItems": 32
+    },
+    "total": {"$ref": "#/$defs/money"},
+    "currency": {"type": "string", "enum": ["RUB", "USD", "EUR"]}
+  },
+  "required": ["items", "total", "currency"],
+  "additionalProperties": false
+}

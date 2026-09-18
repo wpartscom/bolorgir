@@ -1,0 +1,1 @@
+{"type":"array","items":{"enum":[100,9223372036854775807,1]},"minItems":2,"maxItems":3}

@@ -1,0 +1,1 @@
+{"$defs":{"d0":{"type":"string","minLength":0,"maxLength":2},"d1":{"type":"boolean"}},"$ref":"#/$defs/d0"}

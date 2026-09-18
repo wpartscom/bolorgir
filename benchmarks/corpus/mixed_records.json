@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Смешанная схема: объекты, массивы, enum, Unicode, числа, $ref",
+  "$defs": {
+    "tag": {"type": "string", "minLength": 1, "maxLength": 16}
+  },
+  "type": "object",
+  "properties": {
+    "meta": {
+      "type": "object",
+      "properties": {
+        "version": {"type": "integer"},
+        "lang": {"type": "string", "enum": ["ru", "en", "zh"]}
+      },
+      "required": ["version", "lang"],
+      "additionalProperties": false
+    },
+    "records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string", "minLength": 1, "maxLength": 64},
+          "score": {"type": "number"},
+          "flags": {
+            "type": "array",
+            "items": {"$ref": "#/$defs/tag"},
+            "minItems": 0,
+            "maxItems": 4
+          },
+          "verified": {"type": "boolean"}
+        },
+        "required": ["name", "score", "verified"],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "maxItems": 64
+    },
+    "comment": {"type": "string", "maxLength": 256}
+  },
+  "required": ["meta", "records"],
+  "additionalProperties": false
+}

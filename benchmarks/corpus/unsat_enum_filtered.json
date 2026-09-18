@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ОТКАЗ: enum полностью отфильтрован по minLength (UnsatisfiableConstraint)",
+  "type": "object",
+  "properties": {
+    "code": {"type": "string", "minLength": 10, "enum": ["ab", "abc", "abcd"]}
+  },
+  "required": ["code"],
+  "additionalProperties": false
+}

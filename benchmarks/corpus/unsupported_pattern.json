@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ОТКАЗ: pattern вне MVP (UnsupportedFeature)",
+  "type": "object",
+  "properties": {
+    "zip": {"type": "string", "pattern": "^[0-9]{5}$"}
+  },
+  "required": ["zip"],
+  "additionalProperties": false
+}

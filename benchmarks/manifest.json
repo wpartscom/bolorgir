@@ -1,0 +1,173 @@
+{
+  "manifest_version": 1,
+  "created": "2026-09-14",
+  "project": "zig-constraints",
+  "stage": "этап 0: исследование и стенд",
+  "hardware": {
+    "cpu": {
+      "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+      "vendor": "GenuineIntel",
+      "architecture": "x86_64",
+      "sockets": 1,
+      "cores": 12,
+      "threads": 20,
+      "threads_per_core": 2,
+      "cpu_max_mhz": 4900.0,
+      "cpu_min_mhz": 800.0,
+      "l1d_cache": "512 KiB (12 instances)",
+      "l1i_cache": "512 KiB (12 instances)",
+      "l2_cache": "12 MiB (9 instances)",
+      "l3_cache": "25 MiB (1 instance)",
+      "numa_nodes": 1,
+      "source": "lscpu / /proc/cpuinfo, 2026-09-14"
+    },
+    "ram": {
+      "total_bytes": 66739617792,
+      "total_gib": 62.16,
+      "swap_total_bytes": 2046816256,
+      "source": "free -b, 2026-09-14"
+    },
+    "gpu": {
+      "present": true,
+      "model": "NVIDIA GeForce RTX 3060",
+      "vram_mib": 12288,
+      "driver_version": "580.178.04",
+      "cuda_version_driver": "13.0",
+      "pcie_link": "Gen1 x16 (на момент замера; энергосбережение, под нагрузкой поднимается)",
+      "cuda_toolkit": null,
+      "note": "GPU есть и torch.cuda.is_available() == true, однако end-to-end модели 1-3B (B7) на момент фиксации не запускались; GPU-приёмка по ТЗ 10.1 требует закреплённого раннера/протокола и не заявлена.",
+      "source": "nvidia-smi, 2026-09-14"
+    }
+  },
+  "os": {
+    "kernel": "Linux gm-INTEL 6.8.0-138-generic #138~22.04.1-Ubuntu SMP PREEMPT_DYNAMIC Fri Aug  7 13:43:15 UTC x86_64",
+    "distro": "Ubuntu 22.04.5 LTS (Jammy Jellyfish)",
+    "glibc": "2.35 (Ubuntu 22.04)",
+    "source": "uname -a, /usr/lib/os-release"
+  },
+  "toolchain": {
+    "zig": {
+      "version": "0.15.2",
+      "path": "/home/gm/.local/bin/zig",
+      "tarball_path": "/tmp/zig.tar.xz",
+      "tarball_sha256": "02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239"
+    },
+    "python": {"version": "3.10.12", "path": "/usr/bin/python3"},
+    "gcc": {"version": "11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3)"},
+    "pip": {"path": "/home/gm/.local/bin/pip3"}
+  },
+  "python_packages": {
+    "numpy": "2.2.6",
+    "torch": "2.14.0",
+    "transformers": "5.17.0",
+    "tokenizers": "0.23.2",
+    "xgrammar": "0.2.6",
+    "llguidance": "1.8.0",
+    "sentencepiece": "0.2.2 (установлен 2026-09-15; нужен для Llama-family токенизаторов transformers 5.17)",
+    "install_scope": "pip3 install --user; системный numpy 1.21.5 (dist-packages) непригоден (нет libblas.so.3), перекрыт user-установкой numpy 2.2.6",
+    "source": "importlib.metadata, 2026-09-14"
+  },
+  "build": {
+    "optimize_mode": "ReleaseSafe",
+    "debug_also_tested": true,
+    "library": "zig-out/lib/libzig_constraints.so (soname .0.1.0)",
+    "threads": 1,
+    "affinity": "без закрепления (все 20 логических CPU)",
+    "cache_modes": ["lazy", "adaptive", "precompute(=алиас adaptive в MVP)"]
+  },
+  "models_tokenizers": {
+    "compare_tokenizer": {
+      "name": "openai-community/gpt2",
+      "revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+      "family": "byte-level BPE",
+      "vocab_size": 50257,
+      "eos_token_id": 50256,
+      "usage": "токенизатор для compare-раннеров xgrammar/llguidance и (после сборки ядра) эквивалентных прогонов zig-constraints; закреплён 2026-09-14"
+    },
+    "status": "tokenizer и модель закреплены 2026-09-15",
+    "b7_model": {
+      "name": "Qwen/Qwen2.5-1.5B-Instruct",
+      "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
+      "dtype": "float16",
+      "attention_backend": "sdpa (по умолчанию transformers 5.17)",
+      "kv_cache": "по умолчанию (dynamic), compile выключен",
+      "decode": "greedy (do_sample=false), seed 42",
+      "device": "cuda:0 (RTX 3060)"
+    },
+    "second_tokenizer_family": {
+      "name": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
+      "revision": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
+      "family": "SentencePiece/BPE с byte_fallback (Llama)",
+      "shim": "transformers 5.17 грузит медленный LlamaTokenizer без атрибута byte_fallback; флаг выставляется явно в bench_schemas_tokenizers.py, корректность байтов подтверждается попарной конкатенацией против backend.decode (sp_shim_verify в результатах B6)"
+    },
+    "note": "Модель для B7 (1-3B), dtype, attention backend, KV-cache и compile-состояние зафиксированы 2026-09-15 в b7_model. Вторая семья токенизаторов MVP (byte fallback) закреплена в second_tokenizer_family."
+  },
+  "corpus": {
+    "mvp_corpus_path": "benchmarks/corpus/",
+    "mvp_corpus_revision_sha256": "9e7d0c1824ad87698f0681b81e72368e838cbaa0c446445fd1ef3f49ebe2c7ea",
+    "mvp_corpus_revision_method": "sha256 файла benchmarks/corpus/index.json, содержащего sha256 каждого файла корпуса",
+    "mvp_corpus_entries": 23,
+    "external": {
+      "jsonschemabench": {
+        "repo": "https://github.com/guidance-ai/jsonschemabench",
+        "commit": "ba103c73756198dd9b149ddc7db7867da7a077f6",
+        "commit_date": "2026-02-12T16:33:36Z",
+        "path": "benchmarks/external/jsonschemabench/",
+        "schema_files": 9558,
+        "method": "tarball main на 2026-09-14, каталог data/ + README.md"
+      }
+    },
+    "tuning_holdout_split": {
+      "rule": "схемы MVP-корпуса сортируются по имени (порядок index.json не используется); чётные индексы (0-based) -> tuning, нечётные -> holdout. JSB-подмножество B3 (первые 100 файлов sorted(glob)) делится тем же правилом чёт/нечет по позиции.",
+      "fixed_at": "2026-09-15, до подбора/переподбора порогов adaptive (ТЗ 10.3)",
+      "tuning": ["array_min_max", "closed_object_action_amount", "empty_array", "enum_common_prefixes", "literals_empty_string", "long_string", "nested_3_levels", "numbers_integers", "string_length_bounds", "unsat_enum_filtered", "unsupported_anyof", "unsupported_pattern"],
+      "holdout": ["big_enum_64", "defs_ref", "empty_object", "literals_common_prefix", "literals_unicode", "mixed_records", "nested_5_levels", "optional_fields", "unicode_strings", "unsat_min_gt_max", "unsupported_open_object"],
+      "note": "контрольный сценарий Go/No-Go использует только holdout-схему"
+    }
+  },
+  "measurement_protocol": {
+    "seed": 42,
+    "warmup_iterations": 3,
+    "cold_start_repeats_min": 30,
+    "warm_observations_min": 10000,
+    "warm_metric_basis": "p99 требует >= 10k наблюдений на класс нагрузки (ТЗ 10.5)",
+    "timer": "time.perf_counter_ns; RSS через resource.getrusage(RUSAGE_SELF).ru_maxrss",
+    "gpu_sync": "torch.cuda.synchronize вокруг измеряемой операции для микробенчмарков; без лишней синхронизации на каждом токене в end-to-end",
+    "timeouts": {
+      "per_case_seconds": 300,
+      "run_all_seconds": 3600,
+      "rule": "таймауты и ошибки записываются в сырые результаты, молча не исключаются"
+    },
+    "published_metrics": ["p50", "p95", "p99", "max", "mean", "count", "peak_rss_bytes"],
+    "raw_results": "benchmarks/results/<timestamp>/*.json (сырые наблюдения + агрегаты)"
+  },
+  "control_scenario": {
+    "fixed_at": "2026-09-15, до контрольного прогона (ТЗ 10.6: один основной сценарий и одна основная метрика выбираются заранее)",
+    "name": "uniform-mask-p99-big_enum_64",
+    "description": "B2 на одинаковой нагрузке (benchmarks/bench_compare_uniform.py): токенизатор openai-community/gpt2 @607a30d7, holdout-схема big_enum_64, общая трасса = каноническая BPE-токенизация документа {\"symbol\":\"sym_42\",\"weight\":0.5} (приём каждого токена подтверждён accept/consume всех трёх движков), >= 10000 тёплых наблюдений fill_mask на движок, seed 42, прогрев 3 трассы",
+    "primary_engine": "zig_constraints adaptive (сравнивается также lazy)",
+    "primary_metric": "p99 времени построения маски fill_mask на общей трассе",
+    "go_rule": "GO, если p99(fill_mask) zig_adaptive не менее чем на 20% ниже, чем у лучшего по этой метрике из {xgrammar 0.2.6, llguidance 1.8.0}, И одновременно остальные измеренные показатели задержки этого сценария (p50/p95 fill_mask, p50/p95/p99 accept_token, cold compile, первая маска) не хуже более чем на 10% относительно того же конкурента. Иначе NO-GO («корректный прототип, гипотеза производительности не подтверждена», ТЗ 10.6).",
+    "e2e_guard": "B7 (benchmarks/bench_e2e_constrained.py): регрессия output tokens/s и медианного времени запроса zig constrained относительно constrained-baseline xgrammar не более 5% на контрольной конфигурации (Qwen2.5-1.5B-Instruct fp16, RTX 3060, batch 1/8/32, greedy, 3 повтора, сравнение медиан, публикуются все повторы и длины ответов)",
+    "secondary_metrics": ["B1 cold-process (30 независимых процессов, bench_coldproc.py)", "B3/B6 (bench_schemas_tokenizers.py)", "B5/B8 (bench_longrun.py)", "GPU-интервалы маски (bench_gpu_mask_path.py)"],
+    "control_run": "benchmarks/results/20260917T184826_perf-fix2/ (повторный прогон 2026-09-17; REPORT.md + bench_*.json + environment.txt). Первый прогон: benchmarks/results/20260915T024409/.",
+    "verdict": "NO-GO 2026-09-17 (повторный): главная метрика впервые пройдена — p99(fill_mask) zig_adaptive 1.60 µs против 3.20 µs у лучшего конкурента (xgrammar), −49.9% при пороге −20%; e2e-гард пройден (макс. регрессия tok/s 4.4% ≤ 5%). Формально NO-GO из-за допусловий: accept p95/p99 +143%/+126% (структурная разница: работа принимается в accept у zig и в fill у xgrammar) и cold compile +85.9% (2.19 ms против 1.18 ms). Итог по ТЗ 10.6: корректный прототип, гипотеза производительности подтверждена по основной метрике, но не по двум дополнительным условиям."
+  },
+  "participants": {
+    "zig_constraints_lazy": "build из этого репозитория, ReleaseSafe",
+    "zig_constraints_adaptive": "cache 64 MiB по умолчанию",
+    "zig_constraints_precompute": "алиас adaptive в MVP",
+    "xgrammar": "0.2.6",
+    "llguidance": "1.8.0",
+    "python_callback_user": "pending: реальный пользовательский callback не найден; искусственно медленный callback основной базой не считается (ТЗ 10.2)"
+  },
+  "notes": [
+    "GPU end-to-end прогон B7 выполнен 2026-09-15 (Qwen2.5-1.5B-Instruct fp16, RTX 3060, constrained zig vs constrained xgrammar): benchmarks/results/20260915T024409/. GPU-приёмка по §10.6 не заявлена: вердикт NO-GO.",
+    "CUDA toolkit не установлен; используется CUDA из wheel torch 2.14.0 (cu13).",
+    "model/tokenizer revisions закреплены (models_tokenizers.b7_model, second_tokenizer_family).",
+    "PCIe link на момент замера Gen1 x16 (энергосбережение простоя); под нагрузкой ожидается Gen4 x16.",
+    "Разделение корпуса tuning/holdout зафиксировано (corpus.tuning_holdout_split); контрольный сценарий и вердикт — control_scenario.",
+    "Вторая семья токенизаторов (SentencePiece/Llama) отклонена при сертификации байтов: пакет декодирует токены с символами U+00A0-U+00FF веткой byte-level BPE раньше SP-ветки (tokenizers.py); 25/400 расхождений попарной конкатенации против backend.decode. Требуется исправление пакета.",
+    "Системный python3-NumPy сломан окружением; воспроизведение: pip3 install --user --ignore-installed numpy."
+  ]
+}

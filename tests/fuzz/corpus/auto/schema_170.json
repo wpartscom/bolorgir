@@ -1,0 +1,1 @@
+{"type":"array","items":{"type":"object","properties":{"k0":{"type":"object","properties":{"k0":{"enum":[false,false,true,true],"title":"t"},"k1":{"type":"string"},"k2":{"type":"string","const":"\nb~x"}},"required":["k0"],"additionalProperties":false}},"required":[],"additionalProperties":false},"minItems":2,"maxItems":3}

@@ -1,0 +1,1 @@
+{"type":"object","properties":{"k0":{"type":"null","enum":[null]},"k1":{"type":"string"}},"required":["k1"],"additionalProperties":false}

@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Длинная строка с большим maxLength",
+  "type": "object",
+  "properties": {
+    "payload": {"type": "string", "minLength": 1024, "maxLength": 100000},
+    "checksum": {"type": "integer"}
+  },
+  "required": ["payload", "checksum"],
+  "additionalProperties": false
+}

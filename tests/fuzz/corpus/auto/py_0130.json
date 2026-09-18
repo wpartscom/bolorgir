@@ -1,0 +1,1 @@
+{"$defs":{"d0":{"type":"boolean"},"d1":{"type":"object","properties":{"k0":{"type":"string"},"k1":{"type":"string"},"k2":{"type":"integer"}},"required":["k2"],"additionalProperties":false}},"$ref":"#/$defs/d0"}

@@ -1,0 +1,20 @@
+# Zig
+zig-cache/
+.zig-cache/
+zig-out/
+
+# Python
+__pycache__/
+*.egg-info/
+build/
+dist/
+
+# Benchmarks
+benchmarks/results/
+
+# Built core library inside the Python package (see _lib/README_STUB.txt)
+python/zig_constraints/_lib/*.so*
+python/zig_constraints/_core.abi3.so
+
+# Downloaded external corpus (pinned revision, see benchmarks/README.md)
+benchmarks/external/

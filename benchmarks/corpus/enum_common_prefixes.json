@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "enum с общими префиксами и длинными хвостами",
+  "type": "object",
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["buy", "buyback", "buy_limit", "sell", "sell_short", "sell_stop", "hold"]
+    },
+    "quantity": {"type": "integer"}
+  },
+  "required": ["action", "quantity"],
+  "additionalProperties": false
+}

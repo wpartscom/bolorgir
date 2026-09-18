@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Числа и integer, включая числовые enum с нормализацией",
+  "type": "object",
+  "properties": {
+    "int_plain": {"type": "integer"},
+    "num_plain": {"type": "number"},
+    "int_enum": {"type": "integer", "enum": [0, 1, 100, 1e2, -42]},
+    "num_enum": {"type": "number", "enum": [1.50, 0.1e1, -0, 2.5, 1e-3]},
+    "ratio": {"type": "number", "const": 0.25}
+  },
+  "required": ["int_plain", "num_plain", "int_enum", "num_enum", "ratio"],
+  "additionalProperties": false
+}

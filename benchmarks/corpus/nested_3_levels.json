@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Вложенность 3 уровня: сессия/пользователь/адрес",
+  "type": "object",
+  "properties": {
+    "session_id": {"type": "string", "minLength": 8, "maxLength": 64},
+    "user": {
+      "type": "object",
+      "properties": {
+        "name": {"type": "string", "minLength": 1, "maxLength": 128},
+        "address": {
+          "type": "object",
+          "properties": {
+            "city": {"type": "string", "maxLength": 128},
+            "zip": {"type": "string", "minLength": 5, "maxLength": 10}
+          },
+          "required": ["city", "zip"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["name", "address"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["session_id", "user"],
+  "additionalProperties": false
+}

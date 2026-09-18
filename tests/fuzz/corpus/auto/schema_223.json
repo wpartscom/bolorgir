@@ -1,0 +1,1 @@
+{"type":"object","properties":{"k0":{"type":"boolean"},"k1":{"type":"number"},"k2":{"const":false}},"required":["k0","k1"],"additionalProperties":false}

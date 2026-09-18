@@ -1,0 +1,4 @@
+include setup.py
+include zig_constraints/_core.c
+include zig_constraints/py.typed
+include zig_constraints/_lib/libzig_constraints.so*

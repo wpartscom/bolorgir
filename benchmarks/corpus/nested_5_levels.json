@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Вложенность 5 уровней с массивом на дне",
+  "type": "object",
+  "properties": {
+    "l1": {
+      "type": "object",
+      "properties": {
+        "l2": {
+          "type": "object",
+          "properties": {
+            "l3": {
+              "type": "object",
+              "properties": {
+                "l4": {
+                  "type": "object",
+                  "properties": {
+                    "values": {
+                      "type": "array",
+                      "items": {"type": "integer"},
+                      "minItems": 1,
+                      "maxItems": 16
+                    }
+                  },
+                  "required": ["values"],
+                  "additionalProperties": false
+                }
+              },
+              "required": ["l4"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["l3"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["l2"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["l1"],
+  "additionalProperties": false
+}
