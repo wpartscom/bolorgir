@@ -1,14 +1,14 @@
 //! T4 fuzz / fault-injection runner (see TZ §11 T4).
 //!
 //! Campaigns:
-//!   A. compile     — schema and literal-set compiler on random inputs
+//!   A. compile     - schema and literal-set compiler on random inputs
 //!                    (structured + mutations + garbage), leak checking.
-//!   B. injection   — allocator failure injection at every allocation point
+//!   B. injection   - allocator failure injection at every allocation point
 //!                    of compile/tokenizer prepare: clean error, zero leaks.
-//!   C. accept/mask — random sessions through the C ABI: masks, accept,
+//!   C. accept/mask - random sessions through the C ABI: masks, accept,
 //!                    finish, abort, batch, harsh limits; mask invariants and
 //!                    no partial token acceptance.
-//!   D. cache       — lazy/adaptive (large/tiny budget)/precompute parity on
+//!   D. cache       - lazy/adaptive (large/tiny budget)/precompute parity on
 //!                    identical traces; rerun in 4 threads, bitwise checksum
 //!                    comparison.
 //!
@@ -476,9 +476,9 @@ fn campaignCompile(rng: std.Random) !void {
         var diag: schema.Diagnostic = .{};
         var w = work_mod.Work{};
         const res: schema.CompileError!grammar.Grammar = if (use_literals)
-            literals.compileLiterals(fa.allocator(), bytes, 64, &diag, &w)
+            literals.compileLiterals(fa.allocator(), bytes, 64, &diag, &w, false)
         else
-            schema.compile(fa.allocator(), bytes, 64, &diag, &w);
+            schema.compile(fa.allocator(), bytes, 64, &diag, &w, false, .canonical_v1, &.{});
         if (res) |g| {
             var gg = g;
             counters.compile_ok += 1;
@@ -488,9 +488,9 @@ fn campaignCompile(rng: std.Random) !void {
                 var diag2: schema.Diagnostic = .{};
                 var w2 = work_mod.Work{};
                 const res2: schema.CompileError!grammar.Grammar = if (use_literals)
-                    literals.compileLiterals(fa2.allocator(), bytes, 64, &diag2, &w2)
+                    literals.compileLiterals(fa2.allocator(), bytes, 64, &diag2, &w2, false)
                 else
-                    schema.compile(fa2.allocator(), bytes, 64, &diag2, &w2);
+                    schema.compile(fa2.allocator(), bytes, 64, &diag2, &w2, false, .canonical_v1, &.{});
                 if (res2) |g2| {
                     var gg2 = g2;
                     if (gg2.id != gg.id)
@@ -545,9 +545,9 @@ fn campaignInjection(rng: std.Random) !void {
             var diag: schema.Diagnostic = .{};
             var w = work_mod.Work{};
             const res: schema.CompileError!grammar.Grammar = if (use_literals)
-                literals.compileLiterals(fa.allocator(), bytes, 64, &diag, &w)
+                literals.compileLiterals(fa.allocator(), bytes, 64, &diag, &w, false)
             else
-                schema.compile(fa.allocator(), bytes, 64, &diag, &w);
+                schema.compile(fa.allocator(), bytes, 64, &diag, &w, false, .canonical_v1, &.{});
             if (res) |g| {
                 var gg = g;
                 gg.deinit();
@@ -652,7 +652,7 @@ fn checkMaskInvariants(s: *c_api.Session, spec: TokSpec, m: []const u32, schema_
             artifactAndDie("special token {d} allowed by mask", .{sp}, "crash_special_bit.json", schema_bytes);
     }
     var ce = false;
-    const st = c_api.zg_can_end(s, &ce);
+    const st = c_api.blg_can_end(s, &ce);
     if (st != .ok)
         artifactAndDie("can_end failed on active session: {s}", .{@tagName(st)}, "crash_can_end.json", schema_bytes);
     var any = false;
@@ -675,7 +675,7 @@ fn checkMaskInvariants(s: *c_api.Session, spec: TokSpec, m: []const u32, schema_
 fn refillCompare(s: *c_api.Session, buf: []u32, prev: []const u32, err: *c_api.ZgError, schema_bytes: []const u8) void {
     counters.walk_api_calls += 1;
     counters.walk_masks += 1;
-    const st = c_api.zg_fill_mask(s, buf.ptr, buf.len, err);
+    const st = c_api.blg_fill_mask(s, buf.ptr, buf.len, err);
     if (st != .ok)
         artifactAndDie("refill after failed accept gave {s} (state changed?)", .{@tagName(st)}, "crash_refill.json", schema_bytes);
     if (!std.mem.eql(u32, buf, prev))
@@ -686,7 +686,7 @@ fn runWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_ap
     var err = makeError();
     var sess: ?*c_api.Session = null;
     counters.walk_api_calls += 1;
-    var st = c_api.zg_session_create(ctx, gh, &sess, &err);
+    var st = c_api.blg_session_create(ctx, gh, &sess, &err);
     checkStatus(st, "session_create");
     if (st != .ok) {
         counters.walk_resource_limits += 1;
@@ -703,20 +703,20 @@ fn runWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_ap
     while (step < 24 and !done) : (step += 1) {
         if (rng.uintLessThan(u32, 100) < 4) {
             counters.walk_api_calls += 1;
-            st = c_api.zg_fill_mask(s, mbuf.ptr, words -| 1, &err);
+            st = c_api.blg_fill_mask(s, mbuf.ptr, words -| 1, &err);
             if (st != .buffer_too_small)
                 artifactAndDie("short mask buffer gave {s}", .{@tagName(st)}, "crash_short_buf.json", schema_bytes);
         }
         if (rng.uintLessThan(u32, 100) < 3) {
             const mis: [*]align(1) u32 = @ptrFromInt(@intFromPtr(buf.ptr) + 1);
             counters.walk_api_calls += 1;
-            st = c_api.zg_fill_mask(s, mis, words, &err);
+            st = c_api.blg_fill_mask(s, mis, words, &err);
             if (st != .invalid_argument)
                 artifactAndDie("misaligned mask ptr gave {s}", .{@tagName(st)}, "crash_misaligned.json", schema_bytes);
         }
         counters.walk_api_calls += 1;
         counters.walk_masks += 1;
-        st = c_api.zg_fill_mask(s, mbuf.ptr, words, &err);
+        st = c_api.blg_fill_mask(s, mbuf.ptr, words, &err);
         checkStatus(st, "fill_mask");
         if (st == .dead_end) {
             counters.walk_dead_ends += 1;
@@ -745,7 +745,7 @@ fn runWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_ap
             const tok = if (allowed.items.len == 0) spec.eos[0] else allowed.items[rng.uintLessThan(usize, allowed.items.len)];
             counters.walk_api_calls += 1;
             counters.walk_accepts += 1;
-            st = c_api.zg_accept_token(s, tok, &err);
+            st = c_api.blg_accept_token(s, tok, &err);
             if (st == .resource_limit) {
                 refillCompare(s, mbuf, prev, &err, schema_bytes);
                 counters.walk_resource_limits += 1;
@@ -756,28 +756,28 @@ fn runWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_ap
             // EOS / finish path
             if (eos_allowed) {
                 counters.walk_api_calls += 2;
-                st = c_api.zg_accept_token(s, spec.eos[0], &err);
+                st = c_api.blg_accept_token(s, spec.eos[0], &err);
                 if (st != .ok)
                     artifactAndDie("eos accept gave {s}", .{@tagName(st)}, "crash_eos_accept.json", schema_bytes);
-                st = c_api.zg_finish(s, &err);
+                st = c_api.blg_finish(s, &err);
                 if (st != .ok)
                     artifactAndDie("finish after eos gave {s}", .{@tagName(st)}, "crash_finish.json", schema_bytes);
                 // post-finish wrong_state
                 counters.walk_api_calls += 3;
-                if (c_api.zg_accept_token(s, 0, &err) != .wrong_state)
+                if (c_api.blg_accept_token(s, 0, &err) != .wrong_state)
                     artifactAndDie("accept after finish not wrong_state", .{}, "crash_post_finish.json", schema_bytes);
-                if (c_api.zg_fill_mask(s, mbuf.ptr, words, &err) != .wrong_state)
+                if (c_api.blg_fill_mask(s, mbuf.ptr, words, &err) != .wrong_state)
                     artifactAndDie("fill after finish not wrong_state", .{}, "crash_post_finish.json", schema_bytes);
-                if (c_api.zg_finish(s, &err) != .ok)
+                if (c_api.blg_finish(s, &err) != .ok)
                     artifactAndDie("re-finish not ok", .{}, "crash_post_finish.json", schema_bytes);
                 done = true;
             } else {
                 counters.walk_api_calls += 2;
-                st = c_api.zg_accept_token(s, spec.eos[0], &err);
+                st = c_api.blg_accept_token(s, spec.eos[0], &err);
                 if (st != .invalid_token)
                     artifactAndDie("premature eos gave {s}", .{@tagName(st)}, "crash_premature_eos.json", schema_bytes);
                 refillCompare(s, mbuf, prev, &err, schema_bytes);
-                if (c_api.zg_finish(s, &err) != .wrong_state)
+                if (c_api.blg_finish(s, &err) != .wrong_state)
                     artifactAndDie("finish without can_end not wrong_state", .{}, "crash_finish_state.json", schema_bytes);
             }
         } else if (action < 84) {
@@ -793,7 +793,7 @@ fn runWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_ap
             }
             if (disallowed) |tok| {
                 counters.walk_api_calls += 1;
-                st = c_api.zg_accept_token(s, tok, &err);
+                st = c_api.blg_accept_token(s, tok, &err);
                 if (st != .invalid_token)
                     artifactAndDie("disallowed token {d} gave {s}", .{ tok, @tagName(st) }, "crash_disallowed_accepted.json", schema_bytes);
                 refillCompare(s, mbuf, prev, &err, schema_bytes);
@@ -806,13 +806,13 @@ fn runWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_ap
                 else => std.math.maxInt(u32),
             };
             counters.walk_api_calls += 1;
-            st = c_api.zg_accept_token(s, tok, &err);
+            st = c_api.blg_accept_token(s, tok, &err);
             if (st != .invalid_token)
                 artifactAndDie("out-of-range token {d} gave {s}", .{ tok, @tagName(st) }, "crash_oob_token.json", schema_bytes);
         } else if (action < 94) {
             // special token inside the document
             counters.walk_api_calls += 1;
-            st = c_api.zg_accept_token(s, spec.special[0], &err);
+            st = c_api.blg_accept_token(s, spec.special[0], &err);
             if (st != .invalid_token)
                 artifactAndDie("special token gave {s}", .{@tagName(st)}, "crash_special_accept.json", schema_bytes);
             refillCompare(s, mbuf, prev, &err, schema_bytes);
@@ -820,7 +820,7 @@ fn runWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_ap
             // early finish when can_end
             if (eos_allowed) {
                 counters.walk_api_calls += 1;
-                st = c_api.zg_finish(s, &err);
+                st = c_api.blg_finish(s, &err);
                 if (st != .ok)
                     artifactAndDie("early finish gave {s}", .{@tagName(st)}, "crash_early_finish.json", schema_bytes);
                 done = true;
@@ -828,20 +828,20 @@ fn runWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_ap
         } else {
             // abort
             counters.walk_api_calls += 4;
-            if (c_api.zg_abort(s) != .ok)
+            if (c_api.blg_abort(s) != .ok)
                 artifactAndDie("abort not ok", .{}, "crash_abort.json", schema_bytes);
-            if (c_api.zg_accept_token(s, 0, &err) != .wrong_state)
+            if (c_api.blg_accept_token(s, 0, &err) != .wrong_state)
                 artifactAndDie("accept after abort not wrong_state", .{}, "crash_post_abort.json", schema_bytes);
-            if (c_api.zg_fill_mask(s, mbuf.ptr, words, &err) != .wrong_state)
+            if (c_api.blg_fill_mask(s, mbuf.ptr, words, &err) != .wrong_state)
                 artifactAndDie("fill after abort not wrong_state", .{}, "crash_post_abort.json", schema_bytes);
             var ce = false;
-            if (c_api.zg_can_end(s, &ce) != .wrong_state)
+            if (c_api.blg_can_end(s, &ce) != .wrong_state)
                 artifactAndDie("can_end after abort not wrong_state", .{}, "crash_post_abort.json", schema_bytes);
             done = true;
         }
     }
     counters.walk_api_calls += 1;
-    c_api.zg_session_destroy(s);
+    c_api.blg_session_destroy(s);
 }
 
 fn runBatchWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_api.GrammarHandle, spec: TokSpec, schema_bytes: []const u8) !void {
@@ -851,13 +851,13 @@ fn runBatchWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: 
     var st: c_api.Status = .ok;
     for (0..3) |i| {
         counters.walk_api_calls += 1;
-        st = c_api.zg_session_create(ctx, gh, &sess[i], &err);
+        st = c_api.blg_session_create(ctx, gh, &sess[i], &err);
         if (st != .ok) break;
         created += 1;
     }
     counters.walk_sessions += @intCast(created);
     if (created < 3) {
-        for (0..created) |i| c_api.zg_session_destroy(sess[i]);
+        for (0..created) |i| c_api.blg_session_destroy(sess[i]);
         counters.walk_resource_limits += 1;
         return;
     }
@@ -874,12 +874,30 @@ fn runBatchWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: 
         var sts: [3]c_int = .{ -1, -1, -1 };
         counters.walk_api_calls += 1;
         counters.walk_masks += 3;
-        st = c_api.zg_fill_masks_batch(&sess, &mask_ptrs, words, &sts, 3, &err);
+        st = c_api.blg_fill_masks_batch(&sess, &mask_ptrs, words, &sts, 3, &err);
         checkStatus(st, "batch");
         if (st == .dead_end or st == .resource_limit) {
-            for (sts) |x| {
-                if (x != @intFromEnum(st))
-                    artifactAndDie("batch statuses diverge", .{}, "crash_batch.json", schema_bytes);
+            // dead_end is a property of the state: identical rows must agree.
+            // resource_limit may come from a memory budget shared by the whole
+            // context (session scratch buffers are charged to the total
+            // accounting), so identical rows can legitimately diverge: earlier
+            // rows are admitted, later ones are refused. Then require only
+            // that every row is ok/resource_limit and that the batch status
+            // appears among the rows.
+            if (st == .resource_limit) {
+                var saw = false;
+                for (sts) |x| {
+                    if (x == @intFromEnum(st)) saw = true;
+                    if (x != @intFromEnum(c_api.Status.ok) and x != @intFromEnum(c_api.Status.resource_limit))
+                        artifactAndDie("batch statuses diverge (memory): batch={s} rows={d},{d},{d}", .{ @tagName(st), sts[0], sts[1], sts[2] }, "crash_batch.json", schema_bytes);
+                }
+                if (!saw)
+                    artifactAndDie("batch statuses diverge (memory): batch={s} rows={d},{d},{d}", .{ @tagName(st), sts[0], sts[1], sts[2] }, "crash_batch.json", schema_bytes);
+            } else {
+                for (sts) |x| {
+                    if (x != @intFromEnum(st))
+                        artifactAndDie("batch statuses diverge (dead_end): batch={s} rows={d},{d},{d}", .{ @tagName(st), sts[0], sts[1], sts[2] }, "crash_batch.json", schema_bytes);
+                }
             }
             break;
         }
@@ -888,7 +906,7 @@ fn runBatchWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: 
         // three identical states -> three identical masks, equal to the individual fill
         counters.walk_api_calls += 1;
         counters.walk_masks += 1;
-        st = c_api.zg_fill_mask(sess[0], single.ptr, words, &err);
+        st = c_api.blg_fill_mask(sess[0], single.ptr, words, &err);
         if (st != .ok)
             artifactAndDie("individual fill after batch gave {s}", .{@tagName(st)}, "crash_batch.json", schema_bytes);
         for (0..3) |i| {
@@ -905,14 +923,14 @@ fn runBatchWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: 
         for (0..3) |i| {
             counters.walk_api_calls += 1;
             counters.walk_accepts += 1;
-            st = c_api.zg_accept_token(sess[i], tok, &err);
+            st = c_api.blg_accept_token(sess[i], tok, &err);
             if (st != .ok) all_ok = false;
         }
         if (!all_ok) break;
         if (tok == spec.eos[0]) {
             for (0..3) |i| {
                 counters.walk_api_calls += 1;
-                if (c_api.zg_finish(sess[i], &err) != .ok)
+                if (c_api.blg_finish(sess[i], &err) != .ok)
                     artifactAndDie("batch finish failed", .{}, "crash_batch_finish.json", schema_bytes);
             }
             break;
@@ -920,8 +938,19 @@ fn runBatchWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: 
     }
     for (0..3) |i| {
         counters.walk_api_calls += 1;
-        c_api.zg_session_destroy(sess[i]);
+        c_api.blg_session_destroy(sess[i]);
     }
+}
+
+/// Artifact cache budget - a quarter of the effective cache_limit (logic of
+/// blg_context_create); lazy and cache_limit=0 disable the cache.
+fn artifactBudgetOf(config: *const c_api.ContextConfig) u64 {
+    if (config.mode == 0) return 0;
+    const limit: u64 = if (config.cache_limit_bytes == c_api.CACHE_DEFAULT)
+        c_api.DEFAULT_CACHE_LIMIT
+    else
+        config.cache_limit_bytes;
+    return limit / 4;
 }
 
 fn campaignWalk(rng: std.Random) !void {
@@ -937,7 +966,7 @@ fn campaignWalk(rng: std.Random) !void {
         var err = makeError();
         var ctx: ?*c_api.Context = null;
         counters.walk_api_calls += 1;
-        var st = c_api.zg_context_create(&config, &keep.desc, &ctx, &err);
+        var st = c_api.blg_context_create(&config, &keep.desc, &ctx, &err);
         checkStatus(st, "context_create");
         if (st != .ok) {
             if (st != .invalid_argument and st != .resource_limit and st != .unsupported_tokenizer)
@@ -956,14 +985,14 @@ fn campaignWalk(rng: std.Random) !void {
         };
         var gh: ?*c_api.GrammarHandle = null;
         counters.walk_api_calls += 1;
-        st = c_api.zg_compile(context, &req, &gh, &err);
+        st = c_api.blg_compile(context, &req, &gh, &err);
         checkStatus(st, "compile");
         if (st != .ok) {
             if (gh != null)
                 artifactAndDie("out_grammar set on failed compile", .{}, "crash_compile_out.json", sbuf.items);
             counters.walk_compile_failures += 1;
             counters.walk_api_calls += 1;
-            if (c_api.zg_context_destroy(context) != .ok)
+            if (c_api.blg_context_destroy(context) != .ok)
                 failInvariant("context destroy failed after failed compile", .{});
             continue;
         }
@@ -977,21 +1006,42 @@ fn campaignWalk(rng: std.Random) !void {
         const busy_probe = rng.uintLessThan(u32, 100) < 6;
         if (busy_probe) {
             counters.walk_api_calls += 1;
-            if (c_api.zg_context_destroy(context) != .busy)
+            if (c_api.blg_context_destroy(context) != .busy)
                 artifactAndDie("destroy with live grammar not busy", .{}, "crash_busy.json", sbuf.items);
         }
         counters.walk_api_calls += 1;
-        c_api.zg_grammar_release(grammar_h);
+        c_api.blg_grammar_release(grammar_h);
         var stats = std.mem.zeroes(c_api.StatsC);
         stats.struct_size = @sizeOf(c_api.StatsC);
         counters.walk_api_calls += 1;
-        st = c_api.zg_get_stats(context, &stats);
+        st = c_api.blg_get_stats(context, &stats);
         if (st != .ok)
             artifactAndDie("get_stats gave {s}", .{@tagName(st)}, "crash_stats.json", sbuf.items);
-        if (stats.mem_used[1] != 0 or stats.mem_used[2] != 0)
-            artifactAndDie("memory leak: grammar_used={d} session_used={d}", .{ stats.mem_used[1], stats.mem_used[2] }, "crash_walk_leak.json", sbuf.items);
+        // The artifact cache legally retains grammars after the user
+        // reference is dropped, but only within its budget: the old
+        // zero-memory invariant did not distinguish a leak from
+        // cache retention. Budget = a quarter of the effective cache_limit;
+        // with the cache off nothing may be retained.
+        const budget = artifactBudgetOf(&config);
+        if (stats.mem_used[1] > budget)
+            artifactAndDie("artifact cache over budget: grammar_used={d} budget={d}", .{ stats.mem_used[1], budget }, "crash_walk_cache_budget.json", sbuf.items);
+        if (budget == 0 and stats.mem_used[1] != 0)
+            artifactAndDie("grammar memory retained with cache off: {d}", .{stats.mem_used[1]}, "crash_walk_leak.json", sbuf.items);
+        // Testable reset: afterwards all grammar/session memory must return
+        // (checks memory return without weakening the invariant).
         counters.walk_api_calls += 1;
-        if (c_api.zg_context_destroy(context) != .ok)
+        if (c_api.blg_context_reset_cache(context) != .ok)
+            artifactAndDie("reset_cache failed", .{}, "crash_walk_reset.json", sbuf.items);
+        stats = std.mem.zeroes(c_api.StatsC);
+        stats.struct_size = @sizeOf(c_api.StatsC);
+        counters.walk_api_calls += 1;
+        st = c_api.blg_get_stats(context, &stats);
+        if (st != .ok)
+            artifactAndDie("get_stats after reset gave {s}", .{@tagName(st)}, "crash_stats.json", sbuf.items);
+        if (stats.mem_used[1] != 0 or stats.mem_used[2] != 0)
+            artifactAndDie("memory leak after cache reset: grammar_used={d} session_used={d}", .{ stats.mem_used[1], stats.mem_used[2] }, "crash_walk_leak.json", sbuf.items);
+        counters.walk_api_calls += 1;
+        if (c_api.blg_context_destroy(context) != .ok)
             artifactAndDie("context destroy failed", .{}, "crash_destroy.json", sbuf.items);
     }
 }
@@ -1037,8 +1087,8 @@ fn cacheWalk(a: std.mem.Allocator, walk_seed: u64, ctxs: *const [NCTX]*c_api.Con
     var sess: [NCTX]?*c_api.Session = .{ null, null, null, null };
     defer {
         for (0..NCTX) |i| {
-            if (sess[i]) |s| c_api.zg_session_destroy(s);
-            if (gh[i]) |g| c_api.zg_grammar_release(g);
+            if (sess[i]) |s| c_api.blg_session_destroy(s);
+            if (gh[i]) |g| c_api.blg_grammar_release(g);
         }
     }
     for (0..NCTX) |i| {
@@ -1050,11 +1100,11 @@ fn cacheWalk(a: std.mem.Allocator, walk_seed: u64, ctxs: *const [NCTX]*c_api.Con
             .data_len = schema_bytes.len,
         };
         cache_compile_mutex.lock();
-        const st = c_api.zg_compile(ctxs[i], &req, &gh[i], &err);
+        const st = c_api.blg_compile(ctxs[i], &req, &gh[i], &err);
         cache_compile_mutex.unlock();
         if (st != .ok)
             artifactAndDie("cache walk: must_compile schema rejected with {s}", .{@tagName(st)}, "crash_cache_compile.json", schema_bytes);
-        const st2 = c_api.zg_session_create(ctxs[i], gh[i], &sess[i], &err);
+        const st2 = c_api.blg_session_create(ctxs[i], gh[i], &sess[i], &err);
         if (st2 != .ok)
             artifactAndDie("cache walk: session_create gave {s}", .{@tagName(st2)}, "crash_cache_session.json", schema_bytes);
     }
@@ -1069,7 +1119,7 @@ fn cacheWalk(a: std.mem.Allocator, walk_seed: u64, ctxs: *const [NCTX]*c_api.Con
         var statuses: [NCTX]c_api.Status = undefined;
         for (0..NCTX) |i| {
             counters.walk_api_calls += 1;
-            statuses[i] = c_api.zg_fill_mask(sess[i], masks[i].ptr, words, &err);
+            statuses[i] = c_api.blg_fill_mask(sess[i], masks[i].ptr, words, &err);
         }
         for (1..NCTX) |i| {
             if (statuses[i] != statuses[0])
@@ -1095,14 +1145,14 @@ fn cacheWalk(a: std.mem.Allocator, walk_seed: u64, ctxs: *const [NCTX]*c_api.Con
         const tok = if (finish_now) spec.eos[0] else allowed.items[rng.uintLessThan(usize, allowed.items.len)];
         for (0..NCTX) |i| {
             counters.walk_api_calls += 1;
-            const st = c_api.zg_accept_token(sess[i], tok, &err);
+            const st = c_api.blg_accept_token(sess[i], tok, &err);
             if (st != .ok)
                 artifactAndDie("cache walk: allowed token {d} rejected in ctx {d} with {s}", .{ tok, i, @tagName(st) }, "crash_cache_accept.json", schema_bytes);
         }
         h = grammar.fnv1a64Update(h, std.mem.asBytes(&tok));
         if (finish_now) {
             for (0..NCTX) |i| {
-                const st = c_api.zg_finish(sess[i], &err);
+                const st = c_api.blg_finish(sess[i], &err);
                 if (st != .ok)
                     artifactAndDie("cache walk: finish in ctx {d} gave {s}", .{ i, @tagName(st) }, "crash_cache_finish.json", schema_bytes);
             }
@@ -1167,13 +1217,13 @@ fn campaignCache(rng: std.Random) !void {
         var err = makeError();
         for (0..NCTX) |i| {
             var ctx: ?*c_api.Context = null;
-            const st = c_api.zg_context_create(&configs[i], &keep.desc, &ctx, &err);
+            const st = c_api.blg_context_create(&configs[i], &keep.desc, &ctx, &err);
             if (st != .ok) failInvariant("cache ctx {d} create: {s}", .{ i, @tagName(st) });
             ctxs[i] = ctx.?;
         }
         try cachePhase(a, cfg.seed ^ 0xCACE_0001, walks, sums_single, &ctxs, spec);
         for (0..NCTX) |i| {
-            if (c_api.zg_context_destroy(ctxs[i]) != .ok)
+            if (c_api.blg_context_destroy(ctxs[i]) != .ok)
                 failInvariant("cache ctx {d} destroy failed (live handles?)", .{i});
         }
     }
@@ -1184,7 +1234,7 @@ fn campaignCache(rng: std.Random) !void {
         var err = makeError();
         for (0..NCTX) |i| {
             var ctx: ?*c_api.Context = null;
-            const st = c_api.zg_context_create(&configs[i], &keep.desc, &ctx, &err);
+            const st = c_api.blg_context_create(&configs[i], &keep.desc, &ctx, &err);
             if (st != .ok) failInvariant("cache ctx {d} create (threaded): {s}", .{ i, @tagName(st) });
             ctxs[i] = ctx.?;
         }
@@ -1221,7 +1271,7 @@ fn campaignCache(rng: std.Random) !void {
             if (jobs[t].err) |e| failInvariant("cache thread error: {s}", .{@errorName(e)});
         }
         for (0..NCTX) |i| {
-            if (c_api.zg_context_destroy(ctxs[i]) != .ok)
+            if (c_api.blg_context_destroy(ctxs[i]) != .ok)
                 failInvariant("cache ctx {d} destroy failed (threaded)", .{i});
         }
     }

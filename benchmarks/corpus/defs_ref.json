@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "$defs/$ref: переиспользуемые узлы, ациклический граф",
+  "title": "$defs/$ref: reusable nodes, acyclic graph",
   "$defs": {
     "money": {"type": "number"},
     "line_item": {

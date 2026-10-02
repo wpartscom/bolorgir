@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Вложенность 5 уровней с массивом на дне",
+  "title": "5-level nesting with an array at the bottom",
   "type": "object",
   "properties": {
     "l1": {

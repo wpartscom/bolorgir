@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Сводные отчёты по прогону JSONSchemaBench (support + parity).
+"""Summary reports for the JSONSchemaBench run (support + parity).
 
-Читает support_report.json и parity_report.json из каталога результатов,
-пишет рядом support_summary.md, parity_summary.md и summary.json
-(конвенции benchmarks/results/<timestamp>/ из предыдущих прогонов).
+Reads support_report.json and parity_report.json from the results directory
+and writes support_summary.md, parity_summary.md and summary.json next to
+them (conventions of benchmarks/results/<timestamp>/ from previous runs).
 """
 
 import argparse
@@ -16,14 +16,14 @@ DATASET_ORDER = [
     "JsonSchemaStore", "Github_ultra",
 ]
 OUTCOME_RU = {
-    "compiled": "скомпилировано",
+    "compiled": "compiled",
     "unsupported_feature": "UNSUPPORTED_FEATURE",
     "invalid_schema": "INVALID_SCHEMA",
     "unsatisfiable_constraint": "UNSATISFIABLE_CONSTRAINT",
     "resource_limit": "RESOURCE_LIMIT",
     "unsupported_tokenizer": "UNSUPPORTED_TOKENIZER",
-    "other_engine_error": "другая ошибка ядра",
-    "harness_error": "ошибка стенда",
+    "other_engine_error": "other engine error",
+    "harness_error": "harness error",
 }
 
 
@@ -34,21 +34,21 @@ def support_md(rep):
     by_out = agg["by_outcome"]
     lines = []
     a = lines.append
-    a("# JSONSchemaBench — отчёт поддержки схем zig-constraints")
+    a("# JSONSchemaBench - Bolorgir schema support report")
     a("")
-    a(f"- Корпус: JSONSchemaBench `{meta['corpus']['commit']}` "
-      f"({meta['corpus']['path']}), {total} схем, 10 датасетов.")
-    a(f"- Токенизатор: `{meta['tokenizer']['name']}` "
+    a(f"- Corpus: JSONSchemaBench `{meta['corpus']['commit']}` "
+      f"({meta['corpus']['path']}), {total} schemas, 10 datasets.")
+    a(f"- Tokenizer: `{meta['tokenizer']['name']}` "
       f"rev `{meta['tokenizer']['revision']}` "
       f"(vocab {meta['tokenizer']['vocab_size']}).")
-    a(f"- Движок: zig_constraints {meta['engine']['package_version']}, "
-      f"режим {meta['engine']['mode']}, профиль "
+    a(f"- Engine: bolorgir {meta['engine']['package_version']}, "
+      f"mode {meta['engine']['mode']}, profile "
       f"`{meta['engine']['profile']}`.")
-    a(f"- Дата прогона: {meta['date']}; wall-clock {meta['wall_seconds']} с.")
+    a(f"- Run date: {meta['date']}; wall-clock {meta['wall_seconds']} s.")
     a("")
-    a("## Итог")
+    a("## Result")
     a("")
-    a("| Исход | Схем | Доля |")
+    a("| Outcome | Schemas | Share |")
     a("|---|---:|---:|")
     for k in ("compiled", "unsupported_feature", "invalid_schema",
               "unsatisfiable_constraint", "resource_limit",
@@ -56,11 +56,11 @@ def support_md(rep):
         n = by_out.get(k, 0)
         if n:
             a(f"| {OUTCOME_RU[k]} | {n} | {100.0 * n / total:.2f}% |")
-    a(f"| **всего** | **{total}** | 100% |")
+    a(f"| **total** | **{total}** | 100% |")
     a("")
-    a("## По датасетам")
+    a("## By dataset")
     a("")
-    a("| Датасет | Всего | Compiled | UNSUPPORTED | INVALID_SCHEMA | RESOURCE_LIMIT |")
+    a("| Dataset | Total | Compiled | UNSUPPORTED | INVALID_SCHEMA | RESOURCE_LIMIT |")
     a("|---|---:|---:|---:|---:|---:|")
     for ds in DATASET_ORDER:
         d = agg["by_dataset"].get(ds)
@@ -71,27 +71,27 @@ def support_md(rep):
           f"{d.get('unsupported_feature', 0)} | {d.get('invalid_schema', 0)} | "
           f"{d.get('resource_limit', 0)} |")
     a("")
-    a("## Причины отказов")
+    a("## Refusal reasons")
     a("")
-    a("`INVALID_SCHEMA` — почти всё это правило «у каждого объектного узла "
-      "обязателен `additionalProperties: false`» и «обязательны `properties`/"
-      "`required`» (docs/supported_features.md §1, DESIGN §1.7); 2 файла "
-      "корпуса — невалидный JSON. `RESOURCE_LIMIT` — 3 схемы крупнее "
-      "schema_limit_bytes = 1 MiB.")
+    a("`INVALID_SCHEMA` - almost all of this is the rule \"every object node "
+      "must have `additionalProperties: false`\" and \"`properties`/"
+      "`required` are mandatory\" (docs/supported_features.md §1, DESIGN §1.7); "
+      "2 corpus files are invalid JSON. `RESOURCE_LIMIT` - 3 schemas larger "
+      "than schema_limit_bytes = 1 MiB.")
     a("")
-    a("Топ ключевых слов `UNSUPPORTED_FEATURE` (первое сообщённое компилятором "
-      "ключевое слово на схему):")
+    a("Top `UNSUPPORTED_FEATURE` keywords (the first keyword reported by the "
+      "compiler per schema):")
     a("")
-    a("| Ключевое слово | Схем |")
+    a("| Keyword | Schemas |")
     a("|---|---:|")
     for kw, n in list(agg["unsupported_keywords"].items())[:20]:
         a(f"| `{kw}` | {n} |")
     a("")
-    a("Полный per-schema список — `support_report.json` (`per_schema`, "
-      "9558 записей с detail и compile_ns).")
+    a("The full per-schema list is in `support_report.json` (`per_schema`, "
+      "9558 records with detail and compile_ns).")
     a("")
     cs = agg["compile_ns"]
-    a(f"Время компиляции на схему, нс: p50={cs['p50']}, p95={cs['p95']}, "
+    a(f"Compile time per schema, ns: p50={cs['p50']}, p95={cs['p95']}, "
       f"p99={cs['p99']}, max={cs['max']}.")
     a("")
     return "\n".join(lines)
@@ -101,105 +101,106 @@ def parity_md(rep):
     meta = rep["meta"]
     lines = []
     a = lines.append
-    a("# JSONSchemaBench — паритет масок (ТЗ T2)")
+    a("# JSONSchemaBench - mask parity (SPEC T2)")
     a("")
-    a(f"- Токенизатор: `{meta['tokenizer']['name']}` rev "
-      f"`{meta['tokenizer']['revision']}`; профиль `{meta['profile']}`; "
+    a(f"- Tokenizer: `{meta['tokenizer']['name']}` rev "
+      f"`{meta['tokenizer']['revision']}`; profile `{meta['profile']}`; "
       f"seed {meta['seed']}.")
-    a(f"- Версии: zig_constraints {meta['engine_versions']['zig_constraints']}, "
+    a(f"- Versions: bolorgir {meta['engine_versions']['bolorgir']}, "
       f"xgrammar {meta['engine_versions']['xgrammar']}, "
       f"llguidance {meta['engine_versions']['llguidance']}.")
-    a(f"- Выборка: {'; '.join(meta['sampling_rule'])}.")
-    a(f"- Трасс на схему: {meta['traces_per_schema']}, max шагов "
-      f"{meta['max_steps']}, бюджет rollout-классификации "
-      f"{meta['classify_budget_per_schema']} на движок.")
-    a(f"- Дата: {meta['date']}; wall-clock {meta['wall_seconds']} с.")
+    a(f"- Sample: {'; '.join(meta['sampling_rule'])}.")
+    a(f"- Traces per schema: {meta['traces_per_schema']}, max steps "
+      f"{meta['max_steps']}, rollout classification budget "
+      f"{meta['classify_budget_per_schema']} per engine.")
+    a(f"- Date: {meta['date']}; wall-clock {meta['wall_seconds']} s.")
     a("")
-    a("Сравнение побитовое по маске без бита EOS; завершение документа "
-      "сверяется отдельным флагом (can_end / is_terminated / is_stopped). "
-      "Oracle каноничности префиксов — независимый эталон "
-      "tests/reference.py (Matcher).")
+    a("The comparison is bitwise over the mask without the EOS bit; document "
+      "completion is checked by a separate flag (can_end / is_terminated / "
+      "is_stopped). The canonicality oracle for prefixes is the independent "
+      "reference tests/reference.py (Matcher).")
     a("")
     for eng, agg in rep["aggregate"].items():
         a(f"## {eng}")
         a("")
-        a(f"- Схем сравнено: {agg['schemas_compared']}; ошибок компиляции "
-          f"конкурента на нашем подмножестве: "
+        a(f"- Schemas compared: {agg['schemas_compared']}; competitor compile "
+          f"errors on our subset: "
           f"{agg['compile_errors_on_our_subset']}.")
-        a(f"- Префиксов: {agg['prefixes']}; побитовое совпадение масок: "
+        a(f"- Prefixes: {agg['prefixes']}; bitwise mask match: "
           f"{agg['raw_exact_prefixes']} "
           f"({100.0 * (agg['raw_match_rate'] or 0):.1f}%).")
-        a(f"- Расхождений флага завершения: {agg['termination_mismatches']}.")
+        a(f"- Completion flag mismatches: {agg['termination_mismatches']}.")
         a("")
-        a("| Класс расхождения | Случаев |")
+        a("| Divergence class | Cases |")
         a("|---|---:|")
         for cls, n in agg["divergence_classes"].items():
             a(f"| `{cls}` | {n} |")
         a("")
         bugs = agg["schemas_with_real_bug_candidates"]
         if bugs:
-            a(f"**Кандидаты в реальные баги нашего движка: {len(bugs)} "
-              f"схем** — см. reproducers/.")
+            a(f"**Candidates for real bugs in our engine: {len(bugs)} "
+              f"schemas** - see reproducers/.")
             for b in bugs:
                 a(f"- {b['dataset']}/{b['name']}: {b['classes']}")
         else:
-            a("Кандидатов в реальные баги нашего движка не обнаружено "
-              "(классы REAL-BUG:* отсутствуют).")
+            a("No candidates for real bugs in our engine found "
+              "(REAL-BUG:* classes absent).")
         a("")
         an = agg["schemas_with_competitor_anomalies"]
         if an:
-            a(f"Схемы с расхождениями на стороне конкурента "
+            a(f"Schemas with divergences on the competitor side "
               f"({len(an)}):")
             for x in an:
                 a(f"- {x['dataset']}/{x['name']}: {x['classes']}")
             a("")
-    a("## Ключевые наблюдения (ручной разбор)")
+    a("## Key observations (manual review)")
     a("")
-    a("1. **Низкая сырая побитовая совместимость ожидаема**: конкуренты "
-      "разрешают произвольные пробелы вне строк, canonical-v1 — нет "
-      "(semantics.md §1, §11). Классы expected:whitespace* и "
-      "expected:profile* — это ровно разница профилей сериализации, "
-      "подтверждённая oracle tests/reference.py и/или rollout-валидацией "
-      "по исходной схеме (jsonschema).")
-    a("2. **xgrammar competitor-undergeneration** (21 734 случая) — два "
-      "системных сужения языка xgrammar 0.2.6 относительно canonical-v1: "
-      "(а) в строках с minLength/maxLength запрещены ВСЕ escape-последовательности "
-      "(нет ни одного токена с `\\\\` в маске; воспроизведено изолированно: "
-      "`{\"type\":\"string\",\"minLength\":8,\"maxLength\":64}` — `accept_token(\"\\\\\") == False`, "
-      "тогда как в неограниченной строке escape разрешён); "
-      "(б) запрещён `-0` для integer (после `-` в маске нет `0`). "
-      "Оба — ограничения конкурента, не нашего движка (semantics.md §2.2, §4.1).")
-    a("3. **xgrammar competitor-overgeneration** (9 rollout-подтверждённых "
-      "случаев + аналогичные по семейству в expected:profile-unverified): "
-      "xgrammar пропускает в строках токены с невалидными UTF-8 lead-байтами "
-      "(0xC0, 0xC1, 0xF5-0xFF) — rollout даёт документ, не являющийся "
-      "валидным UTF-8 JSON. Наш движок валидирует UTF-8 DFA (semantics.md §3).")
-    a("4. **llguidance competitor-undergeneration** (7 375) — почти целиком "
-      "токен `\\x7f` (DEL): char-class строки llguidance исключает 0x7F, "
-      "canonical-v1 разрешает его raw (semantics.md §2.1, RFC 8259 тоже). "
-      "Ещё 999 расхождений — артефакт fast-forward аппроксимации битмаски "
-      "llguidance (validate_tokens токен принимает, битмаска неполна; "
-      "класс expected:llguidance-ff-approximation).")
-    a("5. **Флаги завершения** (41/2 «mismatch») — разница интерфейсной "
-      "семантики: xgrammar/llguidance выставляют is_terminated/is_stopped "
-      "только после фактического consume EOS; в точке завершённого документа "
-      "их маска ровно {EOS} и совпадает с нашей (EOS-бит проверен отдельно: "
-      "расхождений EOS-бита в финальном прогоне нет).")
-    a("6. **xgrammar 0.2.6: перекрёстное загрязнение кэша GrammarCompiler** "
-      "(competitor-баг): при cache_enabled=True грамматика o21459, "
-      "скомпилированная после o10014/o13837/o21458, разрешала EOS в середине "
-      "строки (5 случаев eos-policy-divergence). С cache_enabled=False не "
-      "воспроизводится; итоговый прогон выполнен с отключённым кэшем "
-      "компилятора. Reproducer: reproducers/competitor_xgrammar_cache_pollution.json.")
-    a("7. **Github_trivial/o48280** (enum из 255 строк): компилируется, но "
-      "создание сессии — RESOURCE_LIMIT «parser state init limit exceeded» "
-      "при любых лимитах памяти: 255 альтернатив enum > max_threads_per_state=64, "
-      "а поднять значение выше 64 нельзя (MAX_THREADS_CAP=64, "
-      "src/parser.zig). Задокументированное поведение лимитов "
-      "(supported_features.md §6), не молчаливое ослабление.")
+    a("1. **Low raw bitwise compatibility is expected**: competitors allow "
+      "arbitrary whitespace outside strings, canonical-v1 does not "
+      "(semantics.md §1, §11). The classes expected:whitespace* and "
+      "expected:profile* are exactly the difference of serialization "
+      "profiles, confirmed by the oracle tests/reference.py and/or rollout "
+      "validation against the source schema (jsonschema).")
+    a("2. **xgrammar competitor-undergeneration** (21 734 cases) - two "
+      "systemic narrowings of the xgrammar 0.2.6 language relative to "
+      "canonical-v1: (a) in strings with minLength/maxLength ALL escape "
+      "sequences are forbidden (there is not a single token with `\\\\` in "
+      "the mask; reproduced in isolation: "
+      "`{\"type\":\"string\",\"minLength\":8,\"maxLength\":64}` - `accept_token(\"\\\\\") == False`, "
+      "while in an unconstrained string the escape is allowed); "
+      "(b) `-0` is forbidden for integer (no `0` after `-` in the mask). "
+      "Both are competitor limitations, not our engine's (semantics.md §2.2, §4.1).")
+    a("3. **xgrammar competitor-overgeneration** (9 rollout-confirmed cases "
+      "+ family-wise similar ones in expected:profile-unverified): "
+      "xgrammar lets through tokens with invalid UTF-8 lead bytes in strings "
+      "(0xC0, 0xC1, 0xF5-0xFF) - the rollout produces a document that is not "
+      "valid UTF-8 JSON. Our engine validates UTF-8 with a DFA (semantics.md §3).")
+    a("4. **llguidance competitor-undergeneration** (7 375) - almost entirely "
+      "the token `\\x7f` (DEL): the llguidance string char-class excludes "
+      "0x7F, canonical-v1 allows it raw (semantics.md §2.1, RFC 8259 too). "
+      "Another 999 divergences are an artifact of the llguidance bitmask "
+      "fast-forward approximation (validate_tokens accepts the token, the "
+      "bitmask is incomplete; class expected:llguidance-ff-approximation).")
+    a("5. **Completion flags** (41/2 \"mismatch\") - a difference of interface "
+      "semantics: xgrammar/llguidance set is_terminated/is_stopped only "
+      "after an actual consume of EOS; at the point of a completed document "
+      "their mask is exactly {EOS} and matches ours (the EOS bit was checked "
+      "separately: there are no EOS-bit divergences in the final run).")
+    a("6. **xgrammar 0.2.6: GrammarCompiler cache cross-pollution** "
+      "(competitor bug): with cache_enabled=True the grammar o21459, "
+      "compiled after o10014/o13837/o21458, allowed EOS in the middle of a "
+      "string (5 cases of eos-policy-divergence). It does not reproduce with "
+      "cache_enabled=False; the final run was executed with the compiler "
+      "cache disabled. Reproducer: reproducers/competitor_xgrammar_cache_pollution.json.")
+    a("7. **Github_trivial/o48280** (enum of 255 strings): compiles, but "
+      "session creation gives RESOURCE_LIMIT \"parser state init limit exceeded\" "
+      "at any memory limit: 255 enum alternatives > max_threads_per_state=64, "
+      "and the value cannot be raised above 64 (MAX_THREADS_CAP=64, "
+      "src/parser.zig). Documented limit behavior "
+      "(supported_features.md §6), not a silent weakening.")
     a("")
-    a("Сырые записи расхождений (схема, профиль, revision токенизатора, "
-      "token IDs префикса, различающиеся биты) — `parity_report.json`, "
+    a("Raw divergence records (schema, profile, tokenizer revision, "
+      "prefix token IDs, differing bits) - `parity_report.json`, "
       "per_schema[].parity.divergences.")
     a("")
     return "\n".join(lines)

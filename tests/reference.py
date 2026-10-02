@@ -24,7 +24,7 @@ from decimal import Decimal
 
 
 # ---------------------------------------------------------------------------
-# Reference errors (mirror zg_status from include/zig_constraints.h)
+# Reference errors (mirror blg_status from include/bolorgir.h)
 # ---------------------------------------------------------------------------
 
 class ReferenceError(Exception):
@@ -152,7 +152,7 @@ def normalize_number(value) -> bytes:
     normalization (empty frac part is dropped together with the dot),
     exponent normalized ('E'->'e', no '+', no leading zeros).
     Zero in any notation (including -0) -> "0".
-    Limit: <= 400 significant digits, |written exponent| <= 400 —
+    Limit: <= 400 significant digits, |written exponent| <= 400 -
     beyond that -> InvalidSchema.
     """
     lex = _number_lexeme(value)
@@ -327,7 +327,7 @@ class _Compiler:
 
         if "$ref" in sch:
             # alongside $ref only annotations and $defs are allowed
-            # (DESIGN §1.7: "only annotations next to $ref" — $defs is allowed
+            # (DESIGN §1.7: "only annotations next to $ref" - $defs is allowed
             # as the definition carrier, otherwise a root $ref is inexpressible)
             extra = set(sch) - {"$ref", "$defs"} - ANNOTATIONS
             if extra:
@@ -569,9 +569,9 @@ def enumerate_language(lang: Language, *, max_string_len: int = 3,
     """Full enumeration of documents of a bounded schema.
 
     Unbounded strings/numbers are bounded by parameters:
-    strings — length <= max_string_len over string_alphabet, array items —
-    at most min(max, min+max_items_extra), integers — |v| <= max_abs_int,
-    number — the same integers plus NUM_EXTRA_LITERALS.
+    strings - length <= max_string_len over string_alphabet, array items -
+    at most min(max, min+max_items_extra), integers - |v| <= max_abs_int,
+    number - the same integers plus NUM_EXTRA_LITERALS.
     Exceeding cap_docs -> EnumerationCapped (the set would be incomplete).
     """
     budget = [cap_docs]
@@ -657,12 +657,12 @@ def enumerate_language(lang: Language, *, max_string_len: int = 3,
 
 
 # ---------------------------------------------------------------------------
-# Tokenizer (test spec; C ABI conversion lives in zg_ctypes)
+# Tokenizer (test spec; C ABI conversion lives in blg_ctypes)
 # ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class TokenizerSpec:
-    # tokens[id] — token bytes; b"" for EOS/special
+    # tokens[id] - token bytes; b"" for EOS/special
     tokens: tuple
     eos_ids: tuple = ()
     special_ids: tuple = ()
@@ -689,8 +689,13 @@ class TokenizerSpec:
 
 
 def oracle_mask(prefix_valid, can_end: bool, spec: TokenizerSpec) -> set[int]:
-    """Allowed token ids: an ordinary token is allowed iff its bytes are
-    accepted (prefix_valid(prefix+bytes)); EOS iff can_end; special — never."""
+    """Byte-legal mask: an ordinary token is allowed iff its bytes are
+    accepted (prefix_valid(prefix+bytes)); EOS iff can_end; special - never.
+
+    For vocabularies with full byte coverage this equals the TZ 3.1 mask
+    (any language prefix can be completed byte-by-byte). PrefixOracle.mask
+    implements the exact TZ 3.1 rule for partial vocabularies; the Matcher
+    interface keeps this byte-legal form."""
     allowed = set()
     eos = set(spec.eos_ids)
     special = set(spec.special_ids)
@@ -721,7 +726,13 @@ def _to_bytes(x) -> bytes:
 
 class PrefixOracle:
     """allowed_next(prefix): prefix is a prefix of some document;
-    can_end(prefix): prefix ∈ docs; mask(prefix, spec): set of token ids."""
+    can_end(prefix): prefix ∈ docs; mask(prefix, spec): set of token ids.
+
+    The mask follows TZ 3.1: an ordinary token is allowed only when after
+    it the document can still be completed by a finite continuation of
+    ordinary tokens. A byte-legal prefix that cannot be finished (a
+    competing segmentation trap) is excluded, so this oracle is stricter
+    than the byte-legal form on partial vocabularies."""
 
     def __init__(self, docs):
         self.docs = {_to_bytes(d) for d in docs}
@@ -738,14 +749,47 @@ class PrefixOracle:
 
     def mask(self, prefix, spec: TokenizerSpec) -> set[int]:
         p = _to_bytes(prefix)
-        return oracle_mask(lambda tok: (p + tok) in self.prefixes,
-                           self.can_end(p), spec)
+        eos = set(spec.eos_ids)
+        special = set(spec.special_ids)
+        comp: dict = {}
+
+        def completable(b: bytes) -> bool:
+            if b in self.docs:
+                return True
+            cached = comp.get(b)
+            if cached is not None:
+                return cached
+            if b not in self.prefixes:
+                comp[b] = False
+                return False
+            comp[b] = False  # finite language: no cycles, guard anyway
+            result = False
+            for i, tok in enumerate(spec.tokens):
+                if not tok or i in eos or i in special:
+                    continue
+                nxt = b + tok
+                if nxt in self.prefixes and completable(nxt):
+                    result = True
+                    break
+            comp[b] = result
+            return result
+
+        allowed = set()
+        for i, tok in enumerate(spec.tokens):
+            if i in eos:
+                if self.can_end(p):
+                    allowed.add(i)
+            elif i in special:
+                continue
+            elif tok and completable(p + tok):
+                allowed.add(i)
+        return allowed
 
 
 # ---------------------------------------------------------------------------
 # Incremental Matcher (exact oracle for unbounded languages too)
 # ---------------------------------------------------------------------------
-# Independent implementation of DESIGN §1.1–1.5 semantics: threads are frame
+# Independent implementation of DESIGN §1.1-1.5 semantics: threads are frame
 # stacks. Frames: LitF / StrF / NumF / RepF / ObjF. No Seq frame: an object
 # manages the key/value alternation itself (phases open|key|value|sep).
 
@@ -777,7 +821,7 @@ class NumF:
 class RepF:
     node: Repeat
     count: int = 0
-    phase: str = "open"    # open|body|body_ac|sep (_ac — after comma)
+    phase: str = "open"    # open|body|body_ac|sep (_ac - after comma)
 
 
 @dataclass
@@ -785,7 +829,7 @@ class ObjF:
     node: Obj
     idx: int = 0
     cur: int = 0
-    phase: str = "open"    # open|key|key_ac|value|sep (_ac — after comma)
+    phase: str = "open"    # open|key|key_ac|value|sep (_ac - after comma)
 
 
 def _make_frame(node):
@@ -820,7 +864,7 @@ _HAS_SHORT = {0x08, 0x09, 0x0A, 0x0C, 0x0D}
 
 
 def _str_feed(f: StrF, b: int) -> str:
-    """-> 'ok' | 'done' | 'err'. done — closing quote consumed."""
+    """-> 'ok' | 'done' | 'err'. done - closing quote consumed."""
     node = f.node
 
     def char_done():
@@ -886,7 +930,7 @@ def _str_feed(f: StrF, b: int) -> str:
         return "err"
     # Start of a new character (escape, single byte, lead byte of a multibyte
     # sequence): at count == max finishing the character would exceed
-    # maxLength — reject immediately, otherwise the mask would contain
+    # maxLength - reject immediately, otherwise the mask would contain
     # dead-end tokens (DESIGN §3.1). Mirrors src/parser.zig strFeed.
     if node.max_len is not None and f.count >= node.max_len:
         return "err"

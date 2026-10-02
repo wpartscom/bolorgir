@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 """
-Пример: буквальный выбор (FR-3) без Hugging Face.
+Example: literal choice (FR-3) without Hugging Face.
 
-Мини-токенизатор собран вручную: id 0..255 — однобайтовые токены,
-id 256 — EOS. «Модель» — равномерный выбор из разрешённых токенов
-с фиксированным seed; маска ядра гарантирует, что ответ — ровно одна
-из буквальных строк.
+Mini-tokenizer is assembled by hand: ids 0..255 are single-byte tokens,
+id 256 is EOS. The "model" samples uniformly among allowed tokens with a
+fixed seed; the core mask guarantees the answer is exactly one of the
+literal strings.
 
-Запуск (после сборки расширения, см. python/setup.py):
+Run (after building the extension, see python/setup.py):
     PYTHONPATH=python python3 examples/literal_choice.py
 """
 
 import random
 import sys
 
-from zig_constraints import Engine, TokenizerBundle
+from bolorgir import Engine, TokenizerBundle
 
 EOS_ID = 256
 
@@ -46,7 +46,7 @@ def main() -> int:
         "definitely yes",
         "probably not",
         "need more data",
-        "абсолютно согласен",
+        "absolutely agree",
     ]
     rng = random.Random(20260914)
     with Engine(mode="lazy") as engine:
@@ -57,7 +57,7 @@ def main() -> int:
     print(f"completed={ok}")
     print(f"document: {text!r}")
     if not ok or text not in answers:
-        print("ОШИБКА: документ не из списка альтернатив", file=sys.stderr)
+        print("ERROR: document is not one of the alternatives", file=sys.stderr)
         return 1
     return 0
 

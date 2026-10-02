@@ -1,1 +1,0 @@
-{"$defs":{"d0":{"type":"array","items":{"type":"null"},"minItems":2,"maxItems":4},"d1":{"enum":[null,null,null]}},"$ref":"#/$defs/d1"}

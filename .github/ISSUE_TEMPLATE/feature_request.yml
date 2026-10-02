@@ -1,0 +1,31 @@
+name: Feature request
+description: Suggest a capability or an improvement
+title: "[feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do that is currently hard or impossible?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+  - type: markdown
+    attributes:
+      value: |
+        Note: the current MVP explicitly rejects unsupported JSON Schema
+        keywords (see `docs/supported_features.md`). Requests to support new
+        keywords (e.g. `pattern`, numeric bounds, `anyOf`) are welcome - please
+        describe the target workload.

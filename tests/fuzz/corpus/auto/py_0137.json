@@ -1,1 +1,0 @@
-{"type":"array","items":{"type":"boolean","enum":[false,false,false,true]},"minItems":1,"maxItems":3}

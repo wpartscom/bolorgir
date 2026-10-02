@@ -1,1 +1,0 @@
-{"type":"object","properties":{"k0":{"type":"integer"},"k1":{"type":"integer"},"k2":{"type":"object","properties":{"k0":{"type":"integer"},"k1":{"type":"number"},"k2":{"type":"string","minLength":0,"maxLength":0}},"required":["k0","k1"],"additionalProperties":false}},"required":["k0","k1","k2"],"additionalProperties":false}

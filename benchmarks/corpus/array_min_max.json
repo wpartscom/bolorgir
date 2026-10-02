@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Массивы с minItems/maxItems, в том числе вложенный",
+  "title": "Arrays with minItems/maxItems, including a nested one",
   "type": "object",
   "properties": {
     "tags": {

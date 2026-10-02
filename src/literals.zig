@@ -7,7 +7,7 @@ const work_mod = @import("work.zig");
 pub const CompileError = schema.CompileError;
 pub const Diagnostic = schema.Diagnostic;
 
-pub fn compileLiterals(child_allocator: std.mem.Allocator, json_bytes: []const u8, max_depth: u32, diag: *Diagnostic, w: *work_mod.Work) CompileError!grammar.Grammar {
+pub fn compileLiterals(child_allocator: std.mem.Allocator, json_bytes: []const u8, max_depth: u32, diag: *Diagnostic, w: *work_mod.Work, strip_lead_space: bool) CompileError!grammar.Grammar {
     _ = max_depth;
     diag.* = .{};
     var arena = std.heap.ArenaAllocator.init(child_allocator);
@@ -43,21 +43,41 @@ pub fn compileLiterals(child_allocator: std.mem.Allocator, json_bytes: []const u
                 return error.InvalidSchema;
             },
         };
-        const gop = try seen.getOrPut(a, s);
-        if (gop.found_existing) continue;
-        try alts.append(a, try builder.addNode(.{ .literal = try builder.addLiteral(s) }));
+        if (!strip_lead_space) {
+            try addLiteralAlt(a, &builder, &alts, &seen, s);
+            continue;
+        }
+        // Strip(" ", start=1, stop=0): the text = stream with one leading
+        // space dropped. A literal s is producible from streams s (when s
+        // does not start with a space) and " " + s; a space-leading s only
+        // from " " + s.
+        if (s.len == 0 or s[0] != ' ') try addLiteralAlt(a, &builder, &alts, &seen, s);
+        const padded = try std.mem.concat(a, u8, &.{ " ", s });
+        try addLiteralAlt(a, &builder, &alts, &seen, padded);
     }
     const root_id = if (alts.items.len == 1)
         alts.items[0]
     else
-        try builder.addNode(.{ .choice = try builder.copyNodeIds(alts.items) });
+        try builder.addNode(try builder.alternativesNode(alts.items));
     return builder.finish(arena, .literal_set, root_id, grammar.identityOf(.literal_set, json_bytes));
+}
+
+fn addLiteralAlt(
+    a: std.mem.Allocator,
+    builder: *grammar.Builder,
+    alts: *std.ArrayListUnmanaged(grammar.NodeId),
+    seen: *std.StringHashMapUnmanaged(void),
+    s: []const u8,
+) CompileError!void {
+    const gop = try seen.getOrPut(a, s);
+    if (gop.found_existing) return;
+    try alts.append(a, try builder.addNode(.{ .literal = try builder.addLiteral(s) }));
 }
 
 fn compileT(json_bytes: []const u8) CompileError!grammar.Grammar {
     var diag: Diagnostic = .{};
     var w = work_mod.Work{};
-    return compileLiterals(std.testing.allocator, json_bytes, 64, &diag, &w);
+    return compileLiterals(std.testing.allocator, json_bytes, 64, &diag, &w, false);
 }
 
 test "single literal compiles to literal node" {
@@ -74,17 +94,13 @@ test "single literal compiles to literal node" {
 test "multiple literals with common prefix and duplicates" {
     var g = try compileT("[\"foo\",\"foobar\",\"fob\",\"foo\"]");
     defer g.deinit();
-    const alts = switch (g.node(g.root).*) {
-        .choice => |c| c,
+    const tr = switch (g.node(g.root).*) {
+        .lit_trie => |lt| lt,
         else => return error.TestUnexpectedResult,
     };
-    try std.testing.expectEqual(@as(usize, 3), alts.len);
+    try std.testing.expectEqual(@as(usize, 3), tr.literals.len);
     const expected = [_][]const u8{ "foo", "foobar", "fob" };
-    for (alts, expected) |id, exp| {
-        const lit = switch (g.node(id).*) {
-            .literal => |l| l,
-            else => return error.TestUnexpectedResult,
-        };
+    for (tr.literals, expected) |lit, exp| {
         try std.testing.expectEqualStrings(exp, g.literalBytes(lit));
     }
 }
@@ -102,20 +118,13 @@ test "empty string is a valid alternative" {
 test "unicode and escaped input decode to raw bytes" {
     var g = try compileT("[\"a\\nb\",\"\\u00e9\"]");
     defer g.deinit();
-    const alts = switch (g.node(g.root).*) {
-        .choice => |c| c,
+    const tr = switch (g.node(g.root).*) {
+        .lit_trie => |lt| lt,
         else => return error.TestUnexpectedResult,
     };
-    const l0 = switch (g.node(alts[0]).*) {
-        .literal => |l| l,
-        else => return error.TestUnexpectedResult,
-    };
-    const l1 = switch (g.node(alts[1]).*) {
-        .literal => |l| l,
-        else => return error.TestUnexpectedResult,
-    };
-    try std.testing.expectEqualStrings("a\nb", g.literalBytes(l0));
-    try std.testing.expectEqualStrings("\xc3\xa9", g.literalBytes(l1));
+    try std.testing.expectEqual(@as(usize, 2), tr.literals.len);
+    try std.testing.expectEqualStrings("a\nb", g.literalBytes(tr.literals[0]));
+    try std.testing.expectEqualStrings("\xc3\xa9", g.literalBytes(tr.literals[1]));
 }
 
 test "reject empty array, non-array and non-string elements" {

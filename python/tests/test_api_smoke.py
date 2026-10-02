@@ -1,16 +1,16 @@
 """
-Smoke-тесты Python-машинерии zig_constraints.
+Smoke tests for the bolorgir Python machinery.
 
-Тесты делятся на две группы:
-- машинерия без нативных вызовов (иерархия исключений, валидация аргументов,
-  упаковка TokenizerBundle) — проходят всегда;
-- вызовы через C ABI (context/compile/session create-destroy, fill_mask,
-  маппинг ошибок accept/finish) — проходят и со stub-ядром, и с настоящим.
-  Единственное расхождение поведения stub — занулённая маска fill_mask —
-  ветвится по ZG_CORE_STUB=1 (см. test_fill_mask_shape_and_batch).
+The tests fall into two groups:
+- machinery without native calls (exception hierarchy, argument validation,
+  TokenizerBundle packing) - always pass;
+- calls through the C ABI (context/compile/session create-destroy, fill_mask,
+  accept/finish error mapping) - pass with both a stub core and the real one.
+  The only stub behavior difference - a zeroed fill_mask mask - branches on
+  BLG_CORE_STUB=1 (see test_fill_mask_shape_and_batch).
 
-Запуск: python3 -m pytest python/tests/test_api_smoke.py             (настоящее ядро)
-        ZG_CORE_STUB=1 python3 -m pytest python/tests/test_api_smoke.py (stub)
+Run: python3 -m pytest python/tests/test_api_smoke.py             (real core)
+     BLG_CORE_STUB=1 python3 -m pytest python/tests/test_api_smoke.py (stub)
 """
 
 import os
@@ -18,10 +18,10 @@ import struct
 
 import pytest
 
-CORE_IS_STUB = os.environ.get("ZG_CORE_STUB") == "1"
+CORE_IS_STUB = os.environ.get("BLG_CORE_STUB") == "1"
 
-import zig_constraints as zc
-from zig_constraints import Engine, TokenizerBundle
+import bolorgir as zc
+from bolorgir import Engine, TokenizerBundle
 
 EOS_ID = 256
 VOCAB = 257
@@ -33,7 +33,7 @@ def mini_bundle() -> TokenizerBundle:
 
 
 # ----------------------------------------------------------------------
-# Машинерия без нативных вызовов
+# Machinery without native calls
 # ----------------------------------------------------------------------
 
 def test_exception_hierarchy():
@@ -78,6 +78,26 @@ def test_compile_requires_tokenizer():
             engine.compile({"type": "integer"})
 
 
+def test_engine_eos_ids_memoizes_bundle(monkeypatch):
+    # Regression (e2e TTFT): Engine.eos_ids used to rebuild
+    # the tokenizer bundle on every access (~178 ms for Qwen); the EOS-subset
+    # check in constrained_generate reads it once per batch row, which turned into
+    # batch*~180 ms of pure overhead before generate.
+    calls = {"n": 0}
+    orig = zc._coerce_bundle
+
+    def counting(tok):
+        calls["n"] += 1
+        return orig(tok)
+
+    monkeypatch.setattr(zc, "_coerce_bundle", counting)
+    with Engine(mode="lazy", tokenizer=mini_bundle()) as engine:
+        first = engine.eos_ids
+        for _ in range(5):
+            assert engine.eos_ids == first
+    assert calls["n"] == 1  # built once at Engine init, never on property read
+
+
 def test_compile_schema_type_validation():
     with Engine(mode="lazy") as engine:
         with pytest.raises(zc.InvalidArgumentError):
@@ -117,13 +137,69 @@ def test_bundle_core_kwargs_layout():
 
 
 def test_byte_level_decode():
-    from zig_constraints.tokenizers import _decode_byte_level
+    from bolorgir.tokenizers import _decode_byte_level
 
-    # 'Ġ' — каноническая кодировка пробела в byte-level BPE
+    # 'Ġ' is the canonical space encoding in byte-level BPE
     assert _decode_byte_level("Ġhello") == b" hello"
     assert _decode_byte_level("ĠĠ") == b"  "
-    # кириллица не входит в алфавит byte-level BPE
-    assert _decode_byte_level("привет") is None
+    # Chars outside the byte alphabet come through as UTF-8
+    # (empirical: decoders.ByteLevel), so CJK is literal bytes, not a
+    # rejection: the added token "日本語" decodes to "日本語".
+    assert _decode_byte_level("日本語") == "日本語".encode("utf-8")
+    assert _decode_byte_level("Ċ") == b"\n"
+    # The fallback on a NON-mappable char happens at the
+    # whole-token level (byte_level.rs: unwrap_or_else(t.as_bytes())), not
+    # per element: 'Ġhello🙂' stays as-is, including 'Ġ'.
+    assert _decode_byte_level("Ġhello🙂") == "Ġhello🙂".encode("utf-8")
+    assert _decode_byte_level("Ġ日本語") == "Ġ日本語".encode("utf-8")
+    assert _decode_byte_level("Ġ🙂") == "Ġ🙂".encode("utf-8")
+    assert _decode_byte_level("aĠb") == b"a b"  # pure alphabet - the table
+
+
+def test_engine_close_busy_with_live_constraint():
+    # engine.close() with a live Constraint must raise
+    # BusyError (previously it passed in adaptive mode with a cache, and a
+    # subsequent constraint.close() crashed with SIGSEGV); after the
+    # references are dropped, close succeeds.
+    bundle = TokenizerBundle.from_token_bytes([b"a", b"<eos>"], eos_ids=[1])
+    engine = Engine(mode="adaptive", tokenizer=bundle)
+    c = engine.compile_literals(["a"])
+    with pytest.raises(zc.BusyError):
+        engine.close()
+    c.close()
+    engine.close()
+    engine.close()  # repeated close is a no-op
+
+
+def test_partial_vocab_infinite_language_refused():
+    # The string counterexample - vocab ["\"\"", "\"a", EOS] - gives
+    # a dead-end prefix `"a` with an infinite {"type": "string"} language;
+    # such a schema/tokenizer pair is rejected before generation. Control:
+    # the same vocab with a finite literal constraint is accepted.
+    bundle = TokenizerBundle.from_token_bytes([b'""', b'"a', b"<eos>"], eos_ids=[2])
+    with Engine(mode="lazy", tokenizer=bundle) as engine:
+        with pytest.raises(zc.UnsupportedTokenizerError) as exc:
+            engine.compile({"type": "string"})
+        assert "partial byte coverage" in str(exc.value)
+        # a finite language remains available (exact completion filter)
+        c = engine.compile_literals(['""'])
+        c.close()
+    # A one-item enum array is also infinite for the filter (repeat) - rejected.
+    arr = TokenizerBundle.from_token_bytes(
+        [b"[", b"]", b"ab", b"a", b'"', b"<eos>"], eos_ids=[5]
+    )
+    with Engine(mode="lazy", tokenizer=arr) as engine:
+        with pytest.raises(zc.UnsupportedTokenizerError):
+            engine.compile(
+                {"type": "array", "items": {"enum": ["ab"]}, "minItems": 1, "maxItems": 1}
+            )
+    # a byte-complete vocab with the same infinite schema compiles.
+    full = TokenizerBundle.from_token_bytes(
+        [bytes([b]) for b in range(256)] + [b"<eos>"], eos_ids=[256]
+    )
+    with Engine(mode="lazy", tokenizer=full) as engine:
+        c = engine.compile({"type": "string"})
+        c.close()
 
 
 def test_allowed_token_ids_parsing():
@@ -134,7 +210,7 @@ def test_allowed_token_ids_parsing():
 
 
 # ----------------------------------------------------------------------
-# Вызовы через C ABI (проходят и со stub-ядром, и с настоящим)
+# Calls through the C ABI (pass with a stub core and the real one)
 # ----------------------------------------------------------------------
 
 def test_context_compile_session_lifecycle():
@@ -162,13 +238,78 @@ def test_fill_mask_shape_and_batch():
         assert isinstance(mask, bytes)
         assert len(mask) == s1.mask_words * 4
         if CORE_IS_STUB:
-            assert s1.allowed_token_ids(mask) == []  # stub зануляет маску
+            assert s1.allowed_token_ids(mask) == []  # stub zeroes the mask
         else:
-            # literal "a": на старте разрешён только байт 'a'
-            # (совпадает с oracle tests/reference.py)
+            # literal "a": only byte 'a' is allowed at start
+            # (matches the oracle tests/reference.py)
             assert s1.allowed_token_ids(mask) == [ord("a")]
         masks = zc.fill_masks_batch([s1, s2])
         assert len(masks) == 2 and all(len(m) == len(mask) for m in masks)
+        assert zc.fill_masks_batch([]) == []
+        s1.close()
+        s2.close()
+        c1.close()
+        c2.close()
+
+
+# ----------------------------------------------------------------------
+# NFR-2: cancellation API and the work/adaptive budgets
+# ----------------------------------------------------------------------
+
+@pytest.mark.skipif(CORE_IS_STUB, reason="stub core does not compute masks")
+def test_cancel_token_wins_even_on_cache_hit():
+    with Engine(mode="adaptive", tokenizer=mini_bundle()) as engine:
+        token = engine.cancel_token()
+        with engine.compile_literals(["a"]) as constraint:
+            with constraint.create_session() as session:
+                first = session.allowed_token_ids()
+                assert first == [ord("a")]
+                session.allowed_token_ids()  # same state: the mask may come from the cache
+                token.cancel()
+                assert token.cancelled
+                with pytest.raises(zc.CancelledError):
+                    session.allowed_token_ids()
+        engine.clear_cancel_tokens()
+        with engine.compile_literals(["a"]) as constraint:
+            with constraint.create_session() as session:
+                assert session.allowed_token_ids() == [ord("a")]
+
+
+@pytest.mark.skipif(CORE_IS_STUB, reason="stub core does not compute masks")
+def test_cancelled_compile_fails_before_generation():
+    with Engine(mode="lazy", tokenizer=mini_bundle()) as engine:
+        token = engine.cancel_token()
+        token.cancel()
+        with pytest.raises(zc.CancelledError):
+            engine.compile({"type": "boolean"})
+        engine.clear_cancel_tokens()
+        with engine.compile({"type": "boolean"}) as constraint:
+            assert constraint is not None
+
+
+def test_engine_accepts_work_and_adaptive_budgets():
+    with Engine(
+        mode="precompute",
+        tokenizer=mini_bundle(),
+        work_limit_ops=10**9,
+        adaptive_min_hits=1,
+        adaptive_min_cost_ns=1,
+        precompute_max_states=64,
+    ) as engine:
+        if not CORE_IS_STUB:
+            with engine.compile_literals(["ab"]) as constraint:
+                with constraint.create_session() as session:
+                    assert session.allowed_token_ids()
+    for bad in (
+        {"work_limit_ops": -1},
+        {"adaptive_min_hits": -1},
+        {"adaptive_min_cost_ns": -1},
+        {"precompute_max_states": -1},
+    ):
+        with pytest.raises(zc.InvalidArgumentError):
+            Engine(**bad)
+    with pytest.raises(zc.InvalidArgumentError):
+        Engine().register_cancel_token(object())
         assert zc.fill_masks_batch([]) == []
         s1.close()
         s2.close()

@@ -1,0 +1,16 @@
+{
+ "num_schemas": 11306,
+ "num_crashes": 0,
+ "num_tests": 37011,
+ "ser_incompat": 0,
+ "compile_err": 10682,
+ "ok": 624,
+ "verr": 0,
+ "ierr": 0,
+ "vt": 633,
+ "it": 77,
+ "tokens": 15752,
+ "masks_us": 4137792,
+ "max_mask": 7107,
+ "avg_mask_us": 262
+}

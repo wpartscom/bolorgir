@@ -1,25 +1,54 @@
 [build-system]
-requires = ["setuptools>=61", "wheel"]
+# setuptools>=77 understands the SPDX license string and license-files.
+requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "zig-constraints"
+name = "bolorgir"
 version = "0.1.0"
-description = "Адаптивный движок структурированной генерации LLM (ядро Zig, C ABI, Python-мост)"
-readme = { text = "Structured generation engine: Zig core + CPython abi3 bridge.", content-type = "text/plain" }
+description = "Embeddable structured-generation engine for LLMs: Zig core, C ABI, Python bindings"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
-license = { text = "Proprietary" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Bolorgir contributors" }]
+keywords = ["llm", "structured-generation", "constrained-decoding", "json-schema", "zig"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Software Development :: Libraries",
+]
+
+[project.urls]
+Homepage = "https://github.com/wpartscom/bolorgir"
+Repository = "https://github.com/wpartscom/bolorgir"
+Issues = "https://github.com/wpartscom/bolorgir/issues"
+Changelog = "https://github.com/wpartscom/bolorgir/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 transformers = ["torch>=2.1,<3", "transformers>=4.40,<6"]
 numpy = ["numpy>=1.23"]
+dev = ["pytest>=7", "numpy>=1.23", "jsonschema>=4", "transformers>=4.40,<6", "torch>=2.1,<3", "pillow>=10"]
 
 [tool.setuptools]
-packages = ["zig_constraints"]
+packages = ["bolorgir"]
 include-package-data = true
 
 [tool.setuptools.package-data]
-zig_constraints = ["py.typed", "_lib/libzig_constraints.so*"]
+bolorgir = ["py.typed", "_lib/libbolorgir.so*"]
 
 [tool.distutils.bdist_wheel]
 py_limited_api = "cp310"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["F"]

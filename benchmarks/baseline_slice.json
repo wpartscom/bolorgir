@@ -1,0 +1,276 @@
+{
+  "version": 1,
+  "created": "2026-09-20",
+  "spec": "ROADMAP.md revision 2, section 6 (performance track) and review A8.5 (pinned perf slices)",
+  "purpose": "Fixed baseline slice for the performance track. This list changes never; regressions are isolated against it. The phase slice and the full available set are measured separately and are NOT part of this file (A8.5). Baseline numbers: benchmarks/reports/20260920T022651_perf-baseline/REPORT.md.",
+  "protocol": {
+    "engine_mode": "adaptive",
+    "profile": "canonical-v1",
+    "memory_limit_mb": 256,
+    "cache_limit_bytes": "default (64 MiB)",
+    "parallelism": "1: strictly sequential observations, no other benchmark processes on the machine",
+    "warmup": {
+      "cold_permissive": "none: every observation is a fresh Engine + compile + new session, so the state is always a first visit",
+      "warm_path": "one populating fill_mask per measured state, discarded; every timed observation is a verified cache hit (cache_hits delta == observation count)"
+    },
+    "observations": {
+      "cold_permissive_fill_ns": 30,
+      "warm_permissive_fill_ns": 10000,
+      "corpus_warm_fill_ns": 10000
+    },
+    "aggregation": "benchmarks/bench_common.py percentile_stats: count/min/p50/p95/p99/max/mean",
+    "timers": "time.perf_counter_ns around Session.fill_mask (wall); for the DFS cost model additionally the core-internal mask_ns_total and work_ops_total of blg_stats (C ABI) with work_limit_ops set so ops are counted"
+  },
+  "tokenizer_128k": {
+    "name": "unsloth/Meta-Llama-3.1-8B-Instruct",
+    "revision": "a2856192dd7c25b842431f39c179a6c2c2f627d1",
+    "vocab_size": 128256,
+    "family": "BPE with byte fallback (Llama 3.1)",
+    "why": "the MaskBench default tokenizer and the 128k-token vocabulary of the ROADMAP section 6 baseline (cold permissive ~0.6 s, ~400k trie nodes)"
+  },
+  "tokenizer_synthetic": {
+    "name": "synthetic byte vocabulary of bench_common.make_byte_tokenizer (256 single-byte tokens + common JSON pairs + EOS)",
+    "why": "the tokenizer of the control-series warm-path benchmarks (B2/B3); corpus trace replay follows that convention"
+  },
+  "probes": [
+    {
+      "id": "permissive_string_content",
+      "schema": {
+        "type": "string"
+      },
+      "prefix_bytes": "\"",
+      "why": "the state named in ROADMAP section 6: string content, (almost) every token byte-legal, the mask DFS walks the whole trie; this is the state with the <= 50 ms target"
+    },
+    {
+      "id": "permissive_string_in_object",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "s": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "s"
+        ],
+        "additionalProperties": false
+      },
+      "prefix_bytes": "{\"s\":\"",
+      "why": "the same permissive state in the position where MaskBench instances actually reach it (string value of a closed object)"
+    }
+  ],
+  "corpus_slice": [
+    {
+      "name": "closed_object_action_amount",
+      "file": "corpus/closed_object_action_amount.json",
+      "sha256": "6dce585c36379aaa6e1d9f3059a56a058d4c7f99b986fc9fe173501815ac5b0a",
+      "why": "primary schema of the control series"
+    },
+    {
+      "name": "nested_5_levels",
+      "file": "corpus/nested_5_levels.json",
+      "sha256": "5d2b3e2caaae7f9da502234f8c0388c1de01f0fc9a6a13caaec4b335103d496f",
+      "why": "deep nesting"
+    },
+    {
+      "name": "array_min_max",
+      "file": "corpus/array_min_max.json",
+      "sha256": "36ef97027217960c7160dad151784e72ce303bb3d988f245cad038ec41253d8d",
+      "why": "arrays with min/maxItems"
+    },
+    {
+      "name": "unicode_strings",
+      "file": "corpus/unicode_strings.json",
+      "sha256": "a3a0714316baef8f01710e4b4cbbd984fb10ee353d36b2dfdcc62c7a8ae4345c",
+      "why": "Unicode enums and strings (multi-byte UTF-8 paths)"
+    },
+    {
+      "name": "big_enum_64",
+      "file": "corpus/big_enum_64.json",
+      "sha256": "c0f06d0713be24b07b5b2154b1286c856812082ac559a4371512c0821e6ae7c7",
+      "why": "large literal set, shared prefixes (LitTrie)"
+    },
+    {
+      "name": "mixed_records",
+      "file": "corpus/mixed_records.json",
+      "sha256": "33cdec624dad74a3636ba50505cdfc432573a65d57e85ff3dfb6e1cded294072",
+      "why": "mix of objects, arrays, enum, $ref, Unicode"
+    }
+  ],
+  "full_available_set": {
+    "corpus": "all benchmarks/corpus/index.json entries with kind=json_schema and expect_support=true except the secondary holdout (16 schemas)",
+    "repo_snapshot_compilable": {
+      "source": "benchmarks/external/jsonschemabench/data (the repository snapshot, 9558 files)",
+      "selection": "every file that compiles under canonical-v1 (38 files; matches the non-BFCL compiled counts of the MaskBench full-corpus run)",
+      "files": [
+        {
+          "path": "Github_easy/o10014.json",
+          "sha256": "b1be0c567350a47eca0c33aff1fb56056c125619e6ac40620c81b740be835309"
+        },
+        {
+          "path": "Github_easy/o13837.json",
+          "sha256": "c48f3995ddaba3490064c5fce6ddbcca66244abfc28f0cf52e0c19ad65cb8eec"
+        },
+        {
+          "path": "Github_easy/o21458.json",
+          "sha256": "d2a0509c070b1e8b1c7092d174f9174a4f6b259ec925927f4d5ee806da032f60"
+        },
+        {
+          "path": "Github_easy/o21459.json",
+          "sha256": "f517fdedfb2ce0b13395afcbb863ad496e3d539387350c006248aa20f6a3b592"
+        },
+        {
+          "path": "Github_easy/o27838.json",
+          "sha256": "5013f92f6c920979ce47179408a770bf830965ac77a516e166e189b78ec51a4e"
+        },
+        {
+          "path": "Github_easy/o28256.json",
+          "sha256": "947279e89e7793ada10b8654bace44c588d11ca2202e92de0ae3b5c1dc58bfff"
+        },
+        {
+          "path": "Github_easy/o28263.json",
+          "sha256": "248f0c6ecd4782b57196eedf07a4b63a689eb8ce72e3f90ed3d8c2dee5c489a0"
+        },
+        {
+          "path": "Github_easy/o39077.json",
+          "sha256": "5aef7a44812dbc3c6f5483a97d7e4be6deb171b3a7201320de42331c6a8f2da0"
+        },
+        {
+          "path": "Github_easy/o39082.json",
+          "sha256": "56f98ca486a5b61ea2ecafb1eba92358a7e35500a5540978e0bb310065522cce"
+        },
+        {
+          "path": "Github_easy/o39085.json",
+          "sha256": "10e1dd2724d9b00dd707180667cf7e84341b89cae996fda3a1cf24b60841cef9"
+        },
+        {
+          "path": "Github_easy/o39138.json",
+          "sha256": "028cd76b52384a3b041b2e7759922040cc6c85fd605a75dc67ff81d1bdb39f44"
+        },
+        {
+          "path": "Github_easy/o47167.json",
+          "sha256": "3f9ffa9ae2da574f3d67636cc5f007ecc11c67cd20641158150230f1c5c4069c"
+        },
+        {
+          "path": "Github_easy/o53902.json",
+          "sha256": "e7895650f79f78890ec69e1712bc64369b84610a73e4ffed404df0644fb5597e"
+        },
+        {
+          "path": "Github_easy/o67501.json",
+          "sha256": "fc9dffeb3ec18e3d79f5199460fc005f866b52fdf4b035a03f955c83c0779642"
+        },
+        {
+          "path": "Github_easy/o83939.json",
+          "sha256": "da6e58bbcb8a0f9795d81931a9a9867123d91dfd363d4f7ea1bfa17ed7604e67"
+        },
+        {
+          "path": "Github_easy/o85086.json",
+          "sha256": "8f0fa54f07bad070a1cc6fd3599598e7d6f254c2913cbb1575e6a20cc43d290e"
+        },
+        {
+          "path": "Github_easy/o91109.json",
+          "sha256": "32cfd8628946b4e65e93b284e499dfa6de33124daf3b7dd9b6af9b6f20e104b2"
+        },
+        {
+          "path": "Github_medium/o39078.json",
+          "sha256": "71bd40ee28b1d24da9e8f9a70c9e6afe1b92202e3a8f920a3352225687bd2c31"
+        },
+        {
+          "path": "Github_medium/o4844.json",
+          "sha256": "49d6688a6a2ca06733a46c8c7821c1d88dc1e53ca51479f41bb4a2f5c3d0a828"
+        },
+        {
+          "path": "Github_trivial/o10055.json",
+          "sha256": "98e36e976e0969cc7e76e03cdd403d40e2063aa3ef7c5461fc77f9c0478663c6"
+        },
+        {
+          "path": "Github_trivial/o24503.json",
+          "sha256": "85e67a731f13d54c18a4f1487763cecb2b7bc56fc1fc3cf1141ebf6f82aa036a"
+        },
+        {
+          "path": "Github_trivial/o27825.json",
+          "sha256": "4a1fbfbe9e3205365513ea52d3f95787b30b1b750838e0c89a507d406f4ef5fb"
+        },
+        {
+          "path": "Github_trivial/o27832.json",
+          "sha256": "2f475956cd6356083a975bba256307f5d0b787210457205935e29f0bf0252c1b"
+        },
+        {
+          "path": "Github_trivial/o27834.json",
+          "sha256": "ab8b5c43715292b767f9bfd901be6b17ca7784f2abe03dd9f5bd6c04f8b6f2f1"
+        },
+        {
+          "path": "Github_trivial/o28265.json",
+          "sha256": "0e3473e858282b5d8b23f00b70736b3720c8efd0463e02efb7134fcf3a210c65"
+        },
+        {
+          "path": "Github_trivial/o45630.json",
+          "sha256": "918c7685ba1db54380955fc4357c2cc62747818164896dff7887bcdc66a92df1"
+        },
+        {
+          "path": "Github_trivial/o45633.json",
+          "sha256": "654cd3001e0625b69d731202082152c908d10281784b29c4f89560b6e885784a"
+        },
+        {
+          "path": "Github_trivial/o45634.json",
+          "sha256": "f517452968629b08f06330b65dc054a3eeb5d27be06b4b5ec2793f95f4a5a816"
+        },
+        {
+          "path": "Github_trivial/o46364.json",
+          "sha256": "3c607cfcd1e97674cd47581f05f401de723b84c35e47826c1665a1bc35f4e906"
+        },
+        {
+          "path": "Github_trivial/o46562.json",
+          "sha256": "87a00c010387992cdfcb08f45fc1f77d5165385e5e9fb864811d0e942ff483b1"
+        },
+        {
+          "path": "Github_trivial/o48280.json",
+          "sha256": "5792b967c3ab01ddf3717ae5f1a9660bfc4d1e574e397e8545a16efb5028dd23"
+        },
+        {
+          "path": "Github_trivial/o48762.json",
+          "sha256": "07ba9d97faaadc5bcfc19dae185184aaa35227c6a6eb58516711ad0ba0a0107b"
+        },
+        {
+          "path": "Github_trivial/o6021.json",
+          "sha256": "722d13c527f189fb76a0bc61c0fed9ffec44c7df7086dbae3eff4eb111bdc56c"
+        },
+        {
+          "path": "Github_trivial/o64870.json",
+          "sha256": "868bf097deafcb09a85cf4f9d7e6442ca0af784d197ca1fefd3eeceddbab209d"
+        },
+        {
+          "path": "Github_trivial/o67689.json",
+          "sha256": "22ba3bfdedf430d97acb127c6b29d1983044a813cb6f44f692d79694ac1b31e5"
+        },
+        {
+          "path": "Github_trivial/o78729.json",
+          "sha256": "4ae644dca62079fb57588122105daa5b85f6f0bd75670858bc320cdda3045f5c"
+        },
+        {
+          "path": "Github_trivial/o79654.json",
+          "sha256": "6af94c141fcf48759b895a64f9720889ffa1c710a1a2abcb3354016b831c4b38"
+        },
+        {
+          "path": "Glaiveai2K/generate_random_password_e0f7b38a.json",
+          "sha256": "d6d211a8d0781537f21423c772e88e238808c4fd8aa7a54f1cdab8c91f0c1dda"
+        }
+      ]
+    }
+  },
+  "excluded": [
+    {
+      "name": "secondary_geo_route",
+      "why": "independent generalization holdout of the control series; must not become part of a tuned-against baseline"
+    },
+    {
+      "name": "unsat_min_gt_max / unsat_enum_filtered / unsupported_*",
+      "why": "reject entries: no sessions, no masks to measure"
+    }
+  ],
+  "targets": {
+    "cold_permissive_fill": "<= 50 ms on this slice (stretch <= 10 ms); baseline ~0.6 s under the MaskBench protocol, see the report for the sequential number",
+    "maskbench_tbm_p90": "<= 1 ms under the pinned MaskBench protocol and profile; baseline 609,222 us (benchmarks/maskbench/results/)",
+    "warm_path": "not worse than the 1.3 us baseline (cache hit)"
+  }
+}

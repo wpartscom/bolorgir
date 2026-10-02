@@ -1,1 +1,0 @@
-{"$defs":{"d0":{"type":"array","items":{"type":"array","items":{"type":"string","minLength":1,"maxLength":4},"minItems":2,"maxItems":4},"minItems":0,"maxItems":2}},"$ref":"#/$defs/d0"}

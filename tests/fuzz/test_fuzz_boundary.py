@@ -1,14 +1,14 @@
-"""T4: C/Python boundary — negative ABI fuzz over really existing buffers.
+"""T4: C/Python boundary - negative ABI fuzz over really existing buffers.
 
-Rules (TZ T4): never dereference arbitrary addresses — only NULL or live
+Rules (TZ T4): never dereference arbitrary addresses - only NULL or live
 ctypes buffers; wrong sizes (struct_size, mask_words, data_len, entry_count)
 are fed on really allocated structs/buffers.
 
-Each iteration checks that the kernel returns the expected zg_status (rather
+Each iteration checks that the kernel returns the expected blg_status (rather
 than crashing): any segfault kills the pytest process and counts as a
 campaign failure.
 
-Scale: ZG_FUZZ_BOUNDARY (default 4000 iterations), seed: ZG_FUZZ_SEED+2.
+Scale: BLG_FUZZ_BOUNDARY (default 4000 iterations), seed: BLG_FUZZ_SEED+2.
 """
 
 from __future__ import annotations
@@ -24,24 +24,24 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import fuzz_common as fc
 import schema_gen
-import zg_ctypes
-from zg_ctypes import (LIB, ZgCompileRequest, ZgContextConfig, ZgError, ZgStats,
+import blg_ctypes
+from blg_ctypes import (LIB, ZgCompileRequest, ZgContextConfig, ZgError, ZgStats,
                        ZgTokenEntry, ZgTokenizerDesc)
 
-pytest.importorskip("zg_ctypes")
+pytest.importorskip("blg_ctypes")
 
-SEED = int(os.environ.get("ZG_FUZZ_SEED", "20260914")) + 2
-N_ITERS = int(os.environ.get("ZG_FUZZ_BOUNDARY", "4000"))
+SEED = int(os.environ.get("BLG_FUZZ_SEED", "20260914")) + 2
+N_ITERS = int(os.environ.get("BLG_FUZZ_BOUNDARY", "4000"))
 
-OK = zg_ctypes.ZG_OK
-INV_ARG = zg_ctypes.ZG_ERR_INVALID_ARGUMENT
-INV_TOK = zg_ctypes.ZG_ERR_INVALID_TOKEN
-UNSUP_TOK = zg_ctypes.ZG_ERR_UNSUPPORTED_TOKENIZER
-UNSUP_FEAT = zg_ctypes.ZG_ERR_UNSUPPORTED_FEATURE
-RES_LIMIT = zg_ctypes.ZG_ERR_RESOURCE_LIMIT
-BUSY = zg_ctypes.ZG_ERR_BUSY
-WRONG_STATE = zg_ctypes.ZG_ERR_WRONG_STATE
-TOO_SMALL = zg_ctypes.ZG_ERR_BUFFER_TOO_SMALL
+OK = blg_ctypes.BLG_OK
+INV_ARG = blg_ctypes.BLG_ERR_INVALID_ARGUMENT
+INV_TOK = blg_ctypes.BLG_ERR_INVALID_TOKEN
+UNSUP_TOK = blg_ctypes.BLG_ERR_UNSUPPORTED_TOKENIZER
+UNSUP_FEAT = blg_ctypes.BLG_ERR_UNSUPPORTED_FEATURE
+RES_LIMIT = blg_ctypes.BLG_ERR_RESOURCE_LIMIT
+BUSY = blg_ctypes.BLG_ERR_BUSY
+WRONG_STATE = blg_ctypes.BLG_ERR_WRONG_STATE
+TOO_SMALL = blg_ctypes.BLG_ERR_BUFFER_TOO_SMALL
 
 U32_MAX = 0xFFFFFFFF
 
@@ -58,13 +58,13 @@ SPEC = fc.make_fuzz_tokenizer()
 
 
 def valid_desc():
-    return zg_ctypes.make_tokenizer_desc(SPEC)
+    return blg_ctypes.make_tokenizer_desc(SPEC)
 
 
-def valid_config(mode=zg_ctypes.ZG_MODE_LAZY):
+def valid_config(mode=blg_ctypes.BLG_MODE_LAZY):
     cfg = ZgContextConfig()
     cfg.struct_size = ctypes.sizeof(ZgContextConfig)
-    cfg.version = zg_ctypes.ZG_ABI_VERSION
+    cfg.version = blg_ctypes.BLG_ABI_VERSION
     cfg.mode = mode
     return cfg
 
@@ -73,22 +73,22 @@ def create_ctx(cfg=None, desc=None):
     cfg = cfg or valid_config()
     desc = desc or valid_desc()[0]
     out = ctypes.c_void_p()
-    err = zg_ctypes.new_error()
-    st = LIB.zg_context_create(ctypes.byref(cfg), ctypes.byref(desc),
+    err = blg_ctypes.new_error()
+    st = LIB.blg_context_create(ctypes.byref(cfg), ctypes.byref(desc),
                                ctypes.byref(out), ctypes.byref(err))
     return st, out, err
 
 
 def make_ctx_with_grammar(schema_text='{"type":"integer"}'):
-    ctx = zg_ctypes.Context(SPEC, zg_ctypes.ZG_MODE_LAZY)
-    gh = zg_ctypes.compile_schema(ctx, schema_text)
+    ctx = blg_ctypes.Context(SPEC, blg_ctypes.BLG_MODE_LAZY)
+    gh = blg_ctypes.compile_schema(ctx, schema_text)
     return ctx, gh
 
 
 def compile_raw(ctx_handle, req):
     out = ctypes.c_void_p()
-    err = zg_ctypes.new_error()
-    st = LIB.zg_compile(ctx_handle, ctypes.byref(req), ctypes.byref(out), ctypes.byref(err))
+    err = blg_ctypes.new_error()
+    st = LIB.blg_compile(ctx_handle, ctypes.byref(req), ctypes.byref(out), ctypes.byref(err))
     return st, out, err
 
 
@@ -96,7 +96,7 @@ def valid_request(data: bytes):
     buf = (ctypes.c_uint8 * max(len(data), 1)).from_buffer_copy(data or b"\0")
     req = ZgCompileRequest()
     req.struct_size = ctypes.sizeof(ZgCompileRequest)
-    req.kind = zg_ctypes.ZG_CONSTRAINT_JSON_SCHEMA
+    req.kind = blg_ctypes.BLG_CONSTRAINT_JSON_SCHEMA
     req.profile = None
     req.data = buf
     req.data_len = len(data)
@@ -128,16 +128,17 @@ def sc_config(rng, counters):
         cfg.max_depth = rng.choice([65, 1000, U32_MAX])
         expect = INV_ARG
     elif choice == 5:
-        cfg.max_threads_per_state = rng.choice([65, 1000, U32_MAX])
+        # MAX_THREADS_CAP is 128 (lazy choice frames); 65/1000 are valid now.
+        cfg.max_threads_per_state = rng.choice([129, 1000, U32_MAX])
         expect = INV_ARG
     elif choice == 6:
-        # NULL config — allowed, defaults
+        # NULL config - allowed, defaults
         out = ctypes.c_void_p()
-        err = zg_ctypes.new_error()
-        st = LIB.zg_context_create(None, ctypes.byref(desc), ctypes.byref(out), ctypes.byref(err))
+        err = blg_ctypes.new_error()
+        st = LIB.blg_context_create(None, ctypes.byref(desc), ctypes.byref(out), ctypes.byref(err))
         check_status(st, "ctx null config")
         assert st == OK, f"null config gave {st}"
-        assert LIB.zg_context_destroy(out) == OK
+        assert LIB.blg_context_destroy(out) == OK
         counters["ctx_ok"] += 1
         return
     else:
@@ -148,7 +149,7 @@ def sc_config(rng, counters):
     check_status(st, "ctx config mutation")
     assert st == expect, f"config mutation expect {expect} got {st}"
     if st == OK:
-        assert LIB.zg_context_destroy(out) == OK
+        assert LIB.blg_context_destroy(out) == OK
     counters["ctx"] += 1
 
 
@@ -194,27 +195,27 @@ def sc_desc(rng, counters):
     check_status(st, "ctx desc mutation")
     assert st == expect, f"desc mutation choice {choice}: expect {expect} got {st}"
     if st == OK:
-        LIB.zg_context_destroy(out)
+        LIB.blg_context_destroy(out)
     counters["desc"] += 1
 
 
 def sc_ctx_nulls(rng, counters):
     desc, keep = valid_desc()
     cfg = valid_config()
-    err = zg_ctypes.new_error()
+    err = blg_ctypes.new_error()
     out = ctypes.c_void_p()
-    assert LIB.zg_context_create(ctypes.byref(cfg), None, ctypes.byref(out), ctypes.byref(err)) == INV_ARG
-    assert LIB.zg_context_create(ctypes.byref(cfg), ctypes.byref(desc), None, ctypes.byref(err)) == INV_ARG
+    assert LIB.blg_context_create(ctypes.byref(cfg), None, ctypes.byref(out), ctypes.byref(err)) == INV_ARG
+    assert LIB.blg_context_create(ctypes.byref(cfg), ctypes.byref(desc), None, ctypes.byref(err)) == INV_ARG
     bad_err = ZgError()
     bad_err.struct_size = rng.choice([0, 7, 100])
-    st = LIB.zg_context_create(ctypes.byref(cfg), ctypes.byref(desc), ctypes.byref(out), ctypes.byref(bad_err))
+    st = LIB.blg_context_create(ctypes.byref(cfg), ctypes.byref(desc), ctypes.byref(out), ctypes.byref(bad_err))
     assert st == INV_ARG, f"bad err buf gave {st}"
-    assert LIB.zg_context_destroy(None) == INV_ARG
+    assert LIB.blg_context_destroy(None) == INV_ARG
     counters["ctx_nulls"] += 1
 
 
 def sc_compile(rng, counters):
-    ctx = zg_ctypes.Context(SPEC, zg_ctypes.ZG_MODE_LAZY)
+    ctx = blg_ctypes.Context(SPEC, blg_ctypes.BLG_MODE_LAZY)
     try:
         data = schema_gen.gen_schema(rng, must_compile=True).encode("utf-8")
         choice = rng.randrange(7)
@@ -248,7 +249,7 @@ def sc_compile(rng, counters):
             assert st == expect, f"compile choice {choice}: expect {expect} got {st}"
         if st == OK:
             assert out
-            LIB.zg_grammar_release(out)
+            LIB.blg_grammar_release(out)
         else:
             assert not out, f"out_grammar set on failed compile (choice {choice})"
         # null arguments
@@ -264,84 +265,84 @@ def sc_session(rng, counters):
     ctx2, gh2 = make_ctx_with_grammar()
     try:
         out = ctypes.c_void_p()
-        err = zg_ctypes.new_error()
-        assert LIB.zg_session_create(None, gh, ctypes.byref(out), ctypes.byref(err)) == INV_ARG
-        assert LIB.zg_session_create(ctx.handle, None, ctypes.byref(out), ctypes.byref(err)) == INV_ARG
-        assert LIB.zg_session_create(ctx.handle, gh, None, ctypes.byref(err)) == INV_ARG
+        err = blg_ctypes.new_error()
+        assert LIB.blg_session_create(None, gh, ctypes.byref(out), ctypes.byref(err)) == INV_ARG
+        assert LIB.blg_session_create(ctx.handle, None, ctypes.byref(out), ctypes.byref(err)) == INV_ARG
+        assert LIB.blg_session_create(ctx.handle, gh, None, ctypes.byref(err)) == INV_ARG
         # grammar of a foreign context
-        assert LIB.zg_session_create(ctx.handle, gh2, ctypes.byref(out), ctypes.byref(err)) == INV_ARG
+        assert LIB.blg_session_create(ctx.handle, gh2, ctypes.byref(out), ctypes.byref(err)) == INV_ARG
         assert not out
         counters["session"] += 1
     finally:
-        zg_ctypes.grammar_release(gh2)
+        blg_ctypes.grammar_release(gh2)
         ctx2.destroy()
-        zg_ctypes.grammar_release(gh)
+        blg_ctypes.grammar_release(gh)
         ctx.destroy()
 
 
 def sc_mask_accept(rng, counters):
     ctx, gh = make_ctx_with_grammar(schema_gen.gen_schema(rng, must_compile=True))
-    s = zg_ctypes.Session(ctx, gh)
+    s = blg_ctypes.Session(ctx, gh)
     words = SPEC.mask_words
     try:
-        err = zg_ctypes.new_error()
+        err = blg_ctypes.new_error()
         buf = (ctypes.c_uint32 * (words + 1))()
-        assert LIB.zg_fill_mask(None, buf, words, ctypes.byref(err)) == INV_ARG
-        assert LIB.zg_fill_mask(s.handle, None, words, ctypes.byref(err)) == INV_ARG
+        assert LIB.blg_fill_mask(None, buf, words, ctypes.byref(err)) == INV_ARG
+        assert LIB.blg_fill_mask(s.handle, None, words, ctypes.byref(err)) == INV_ARG
         # small but real buffer
-        assert LIB.zg_fill_mask(s.handle, buf, rng.randrange(0, words), ctypes.byref(err)) == TOO_SMALL
+        assert LIB.blg_fill_mask(s.handle, buf, rng.randrange(0, words), ctypes.byref(err)) == TOO_SMALL
         # misaligned pointer inside a real buffer
         mis = ctypes.cast(ctypes.byref(buf, 1), ctypes.POINTER(ctypes.c_uint32))
-        assert LIB.zg_fill_mask(s.handle, mis, words, ctypes.byref(err)) == INV_ARG
+        assert LIB.blg_fill_mask(s.handle, mis, words, ctypes.byref(err)) == INV_ARG
         # accept: random ids, incl. outside vocab
         for _ in range(rng.randrange(1, 6)):
             tok = rng.choice([rng.randrange(SPEC.vocab_size + 100), U32_MAX,
                               SPEC.special_ids[0], SPEC.vocab_size])
-            st = LIB.zg_accept_token(s.handle, tok, ctypes.byref(err))
+            st = LIB.blg_accept_token(s.handle, tok, ctypes.byref(err))
             check_status(st, "accept random")
             if tok >= SPEC.vocab_size or tok in SPEC.special_ids:
                 assert st == INV_TOK, f"accept({tok}) gave {st}"
         # can_end/finish/abort nulls
         ce = ctypes.c_bool()
-        assert LIB.zg_can_end(None, ctypes.byref(ce)) == INV_ARG
-        assert LIB.zg_can_end(s.handle, None) == INV_ARG
-        assert LIB.zg_finish(None, ctypes.byref(err)) == INV_ARG
-        assert LIB.zg_abort(None) == INV_ARG
+        assert LIB.blg_can_end(None, ctypes.byref(ce)) == INV_ARG
+        assert LIB.blg_can_end(s.handle, None) == INV_ARG
+        assert LIB.blg_finish(None, ctypes.byref(err)) == INV_ARG
+        assert LIB.blg_abort(None) == INV_ARG
         counters["mask_accept"] += 1
     finally:
         s.destroy()
-        zg_ctypes.grammar_release(gh)
+        blg_ctypes.grammar_release(gh)
         ctx.destroy()
 
 
 def sc_batch(rng, counters):
     ctx, gh = make_ctx_with_grammar(schema_gen.gen_schema(rng, must_compile=True))
-    sessions = [zg_ctypes.Session(ctx, gh) for _ in range(3)]
+    sessions = [blg_ctypes.Session(ctx, gh) for _ in range(3)]
     words = SPEC.mask_words
     try:
-        err = zg_ctypes.new_error()
+        err = blg_ctypes.new_error()
         # empty batch
-        assert LIB.zg_fill_masks_batch(None, None, 0, None, 0, ctypes.byref(err)) == OK
+        assert LIB.blg_fill_masks_batch(None, None, 0, None, 0, ctypes.byref(err)) == OK
         # null pointers with count>0
-        assert LIB.zg_fill_masks_batch(None, None, words, None, 2, ctypes.byref(err)) == INV_ARG
+        assert LIB.blg_fill_masks_batch(None, None, words, None, 2, ctypes.byref(err)) == INV_ARG
         handles = (ctypes.c_void_p * 3)(*(s.handle.value for s in sessions))
         bufs = [(ctypes.c_uint32 * words)() for _ in sessions]
         ptrs = (ctypes.POINTER(ctypes.c_uint32) * 3)(*bufs)
         sts = (ctypes.c_int32 * 3)()
         # normal batch
-        assert LIB.zg_fill_masks_batch(handles, ptrs, words, sts, 3, ctypes.byref(err)) == OK
+        assert LIB.blg_fill_masks_batch(handles, ptrs, words, sts, 3, ctypes.byref(err)) == OK
         # small words_each on real buffers
-        st = LIB.zg_fill_masks_batch(handles, ptrs, words - 1, sts, 3, ctypes.byref(err))
+        st = LIB.blg_fill_masks_batch(handles, ptrs, words - 1, sts, 3, ctypes.byref(err))
         assert st == TOO_SMALL and all(x == TOO_SMALL for x in sts)
         # null session in the middle
         handles[1] = None
-        st = LIB.zg_fill_masks_batch(handles, ptrs, words, sts, 3, ctypes.byref(err))
+        st = LIB.blg_fill_masks_batch(handles, ptrs, words, sts, 3, ctypes.byref(err))
         assert st == INV_ARG and sts[1] == INV_ARG and sts[0] == OK and sts[2] == OK
         counters["batch"] += 1
     finally:
         for s in sessions:
             s.destroy()
-        zg_ctypes.grammar_release(gh)
+        blg_ctypes.grammar_release(gh)
         ctx.destroy()
 
 
@@ -350,25 +351,25 @@ def sc_stats(rng, counters):
     try:
         st_obj = ZgStats()
         st_obj.struct_size = rng.choice([1, 4, ctypes.sizeof(ZgStats) + 8])
-        assert LIB.zg_get_stats(ctx.handle, ctypes.byref(st_obj)) == INV_ARG
+        assert LIB.blg_get_stats(ctx.handle, ctypes.byref(st_obj)) == INV_ARG
         st2 = ZgStats()  # struct_size=0 is allowed: the kernel fills it in
-        assert LIB.zg_get_stats(ctx.handle, ctypes.byref(st2)) == OK
+        assert LIB.blg_get_stats(ctx.handle, ctypes.byref(st2)) == OK
         assert st2.struct_size == ctypes.sizeof(ZgStats)
-        assert LIB.zg_get_stats(None, ctypes.byref(st2)) == INV_ARG
-        assert LIB.zg_get_stats(ctx.handle, None) == INV_ARG
+        assert LIB.blg_get_stats(None, ctypes.byref(st2)) == INV_ARG
+        assert LIB.blg_get_stats(ctx.handle, None) == INV_ARG
         counters["stats"] += 1
     finally:
-        zg_ctypes.grammar_release(gh)
+        blg_ctypes.grammar_release(gh)
         ctx.destroy()
 
 
 def sc_busy(rng, counters):
     ctx, gh = make_ctx_with_grammar(schema_gen.gen_schema(rng, must_compile=True))
-    s = zg_ctypes.Session(ctx, gh)
-    assert LIB.zg_context_destroy(ctx.handle) == BUSY
+    s = blg_ctypes.Session(ctx, gh)
+    assert LIB.blg_context_destroy(ctx.handle) == BUSY
     s.destroy()
-    assert LIB.zg_context_destroy(ctx.handle) == BUSY
-    zg_ctypes.grammar_release(gh)
+    assert LIB.blg_context_destroy(ctx.handle) == BUSY
+    blg_ctypes.grammar_release(gh)
     assert ctx.destroy() == OK
     counters["busy"] += 1
 
@@ -376,14 +377,14 @@ def sc_busy(rng, counters):
 def sc_random_sequence(rng, counters):
     """Random but well-formed call sequence over live objects."""
     ctx, gh = make_ctx_with_grammar(schema_gen.gen_schema(rng, must_compile=True))
-    live: list[zg_ctypes.Session] = []
-    err = zg_ctypes.new_error()
+    live: list[blg_ctypes.Session] = []
+    err = blg_ctypes.new_error()
     try:
         for _ in range(rng.randrange(10, 30)):
             op = rng.randrange(8)
             if op == 0 or not live:
                 if len(live) < 5:
-                    live.append(zg_ctypes.Session(ctx, gh))
+                    live.append(blg_ctypes.Session(ctx, gh))
                 continue
             s = rng.choice(live)
             if op == 1:
@@ -400,20 +401,20 @@ def sc_random_sequence(rng, counters):
             elif op == 5:
                 try:
                     s.can_end()
-                except zg_ctypes.CoreFailure as e:
+                except blg_ctypes.CoreFailure as e:
                     check_status(e.status, "seq can_end")
             elif op == 6:
                 s.destroy()
                 live.remove(s)
             else:
                 stats = ctx.get_stats()
-                assert stats.mem_used[zg_ctypes.ZG_MEM_SESSION] > 0 or not live
+                assert stats.mem_used[blg_ctypes.BLG_MEM_SESSION] > 0 or not live
             counters["seq_ops"] += 1
         counters["sequence"] += 1
     finally:
         for s in live:
             s.destroy()
-        zg_ctypes.grammar_release(gh)
+        blg_ctypes.grammar_release(gh)
         assert ctx.destroy() == OK
 
 

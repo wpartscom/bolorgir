@@ -1,1 +1,0 @@
-{"type":"array","items":{"type":"object","properties":{"k0":{"const":-0.5},"k1":{"type":"null","const":null,"title":"t"}},"required":["k1"],"additionalProperties":false},"minItems":2,"maxItems":2}

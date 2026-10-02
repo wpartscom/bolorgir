@@ -1,453 +1,326 @@
-# DESIGN.md — внутренние контракты zig-constraints (MVP)
+# Implementation notes
 
-Этот документ — обязательный контракт для всех модулей. Отклонения согласуются
-через изменение этого файла, а не молча.
+These notes are for contributors. They describe how the engine is built and
+the invariants the code relies on. They are not the public interface (see
+[API.md](API.md)) and not the language definition (see
+[semantics.md](semantics.md) and [semantics-spec-v1.md](semantics-spec-v1.md)).
+For a module-level overview start with [architecture.md](architecture.md);
+the reasoning behind individual decisions is recorded in the
+[ADRs](adr/).
 
-- Toolchain: **Zig 0.15.2** (`/home/gm/.local/bin/zig`), Python 3.10, gcc.
-- Все исходники ядра — в `src/`, C ABI заголовок — `include/zig_constraints.h`.
-- Стиль: без комментариев, объясняющих очевидное; snake_case; ошибки — через
-  `error{...}` внутри Zig, через `zg_status` на ABI-границе. Ни один panic не
-  должен пересекать C ABI: все экспортируемые функции оборачивают ошибки в коды.
+Section numbers are stable: source comments and tests cite them as
+"DESIGN §N". If a change breaks an invariant described here, update this
+file in the same change.
 
-## 0. Дерево файлов и владение
+**Conventions**
 
-```
-build.zig                     (написан, не трогать без необходимости)
-include/zig_constraints.h     (написан; изменения только согласованно)
-docs/DESIGN.md                (этот файл)
-src/grammar.zig               (написан — IR грамматики; расширять, не ломая)
-src/tokenizer.zig             (написан — тип Tokenizer + create; доработка: agent C)
-src/json.zig                  (agent A) JSON-парсер схемы (свое дерево значений)
-src/schema.zig                (agent A) компилятор JSON Schema -> Grammar
-src/literals.zig              (agent A) компилятор FR-3 (список буквальных строк) -> Grammar
-src/parser.zig                (agent B) инкрементный парсер (Thread/State)
-src/mask.zig                  (agent B) построитель маски (обход trie токенов)
-src/coverage.zig              (agent C) проверка покрытия токенизатора на compile
-src/work.zig                  (agent C) per-call бюджет работы и флаг отмены
-src/precompute.zig            (agent C) BFS-прогрев масок при compile (экспериментальный)
-src/alloc.zig                 (agent C) учитывающий аллокатор
-src/stats.zig                 (agent C) статистика
-src/cache.zig                 (agent C) LRU-кэш масок с жёстким байтовым бюджетом и adaptive admission
-src/root.zig                  (agent D) корень библиотеки, экспорт C ABI
-src/c_api.zig                 (agent D) реализация C ABI
-examples/c_client.c           (agent D) пример C-клиента без Python
-python/...                    (agent E) Python-пакет и расширение
-tests/...                     (agent F) эталон + parity/edge тесты
-docs/*.md, benchmarks/...     (agent G) документация и бенчмарки
-```
+- Toolchain: Zig 0.15.2 (the version pinned in CI), Python 3.10+, a C
+  compiler for the Python extension. Formatting: `zig fmt`.
+- Core sources live in `src/`; the C ABI is declared in
+  `include/bolorgir.h`.
+- Errors are Zig error sets inside the core and `blg_status` codes at the
+  ABI boundary. No panic or error union crosses the ABI (§7, §10).
+- The core is deterministic: there is no RNG, and a mask is a function of
+  the grammar, the tokenizer and the parse state only. Caches, modes and
+  worker counts never change results.
 
-## 1. Семантика canonical-v1 (нормативно)
+## 0. Source layout
 
-### 1.1. Строки
+| Path | Responsibility |
+|---|---|
+| `src/json.zig` | JSON reader for schemas: value tree, duplicate-key rejection, size limit. |
+| `src/schema.zig` | JSON Schema to grammar compiler for both profiles: profile dispatch, dialect normalization, `$ref` resolution, value filters, compile-time diagnostics with JSON pointers. |
+| `src/literals.zig` | Literal-set (FR-3) compiler. |
+| `src/grammar.zig` | Grammar IR (§2). |
+| `src/pattern.zig` | ECMA-262 regex subset compiled to a DFA over Unicode scalar values (`pattern`, regex `patternProperties`). |
+| `src/parser.zig` | Incremental parser (§3). |
+| `src/mask.zig` | Mask builder: vocabulary trie walk and the fast path (§4). |
+| `src/complete.zig` | Completion-reachability filter: certificates and bounded search (§4). |
+| `src/witset.zig`, `src/synth.zig` | Value-level tools and completion synthesis used by the reachability certificates. |
+| `src/tokenizer.zig` | Token table, identity, vocabulary trie (§5). |
+| `src/coverage.zig` | Compile-time tokenizer coverage gate (§6). |
+| `src/alloc.zig`, `src/stats.zig`, `src/cache.zig`, `src/work.zig`, `src/precompute.zig` | Memory accounting, statistics, mask cache, per-call work budget and cancellation, precompute warm-up (§6). |
+| `src/c_api.zig`, `src/root.zig` | C ABI implementation and library root (§7). |
+| `src/tests.zig` | Registers the unit tests of all modules. |
+| `src/fuzz_main.zig` | Fuzz and fault-injection runner (`zig build fuzz`). |
+| `examples/c_client.c` | C client without Python. |
+| `python/` | Python package, C extension and adapters (§8). |
+| `tests/` | Reference implementation, parity, edge-case, spec-v1, oracle and fuzz tests (§9). |
+| `benchmarks/` | Measurement scripts, acceptance protocol and published reports. |
 
-- Строка: `"` содержимое `"`. Содержимое: raw-байты >= 0x20, кроме `"` (0x22)
-  и `\` (0x5C); UTF-8 multibyte — raw, валидируется DFA из п.1.3.
-- Таблица экранирования (единственная допустимая):
-  - `\"` `\\` `\/`?? — НЕТ: `/` экранировать запрещено. Допустимые escapes:
-    `\"`, `\\`, `\b` (0x08), `\f` (0x0C), `\n` (0x0A), `\r` (0x0D), `\t` (0x09).
-  - Прочие управляющие символы (0x00–0x07, 0x0B, 0x0E–0x1F): только `\u00xx`,
-    xx — две **строчные** hex-цифры (0-9a-f), образующие код < 0x20, не имеющий
-    короткого escape. Ровно форма `\u00xx`: первые две цифры обязаны быть `00`.
-  - Любой другой escape (`\'`, `\u0041`, `\U`, hex верхнего регистра и т.п.) — ошибка разбора.
-- Raw управляющие байты < 0x20 внутри строки — ошибка. 0x7F допустим raw.
-- minLength/maxLength считаются в Unicode scalar values: ASCII-байт = 1;
-  завершённый multibyte-символ = 1; завершённый escape (короткий или \u00xx) = 1.
-- Превышение maxLength при инкременте счётчика — ошибка разбора (токен отклонён).
+## 1. canonical-v1 semantics
 
-### 1.2. UTF-8 DFA (внутри строк)
+The canonical-v1 language is defined normatively in
+[semantics.md](semantics.md), and its schema acceptance rules in
+[supported_features.md section 1](supported_features.md#1-json-schema-profile-fr-1-canonical-v1-serialization-profile).
+This section is kept so that the subsection numbers cited in code resolve;
+each points to the normative text.
 
-Состояние: `rem` (0..3) + диапазон `[lo,hi]` для следующего байта.
-- rem=0: байт 0x00–0x7F — символ завершён; 0xC2–0xDF → rem=1, [80,BF];
-  0xE0 → rem=2, [A0,BF]; 0xE1–0xEC,0xEE,0xEF → rem=2, [80,BF];
-  0xED → rem=2, [80,9F]; 0xF0 → rem=3, [90,BF]; 0xF1–0xF3 → rem=3, [80,BF];
-  0xF4 → rem=3, [80,8F]. Прочие (0x80–0xC1, 0xF5–0xFF) — ошибка.
-- rem>0: байт в [lo,hi] → rem-=1; если rem>0 — диапазон сбрасывается в [80,BF];
-  если rem==0 — символ завершён. Иначе ошибка.
-- Незавершённая последовательность между токенами допустима (состояние хранится);
-  завершённый документ с rem>0 — недопустим (строка не закроется корректно:
-  закрывающая кавычка при rem>0 — ошибка).
+| § | Topic | Normative text |
+|---|---|---|
+| 1.1 | Strings and the escape table | semantics.md §2 |
+| 1.2 | UTF-8 automaton inside strings | semantics.md §3 |
+| 1.3 | Numbers and lazy number completion | semantics.md §4 |
+| 1.4 | Objects: key order and the candidate rule | semantics.md §5 |
+| 1.5 | Arrays | semantics.md §7 |
+| 1.6 | `enum`/`const` normalization (exact decimal) | semantics.md §6 |
+| 1.7 | Schema acceptance rules | supported_features.md §1 |
+| 1.8 | Literal alternatives (FR-3) | semantics.md §9 |
+| 1.9 | Completeness and dead ends | semantics.md §10 |
 
-### 1.3. Числа
+Names used in the parser for these rules:
 
-- integer: `-?(0|[1-9][0-9]*)`. Состояния: start → ('-' → minus; '0' → zero_complete;
-  [1-9] → digits_complete). В zero_complete и digits_complete число может
-  завершиться; цифра в zero_complete — НЕ продолжение (ведущие нули запрещены).
-- number: integer-часть, затем опционально `.` [0-9]+ , затем опционально
-  [eE][+-]?[0-9]+. Complete-состояния: после цифр int-части, после цифры
-  дробной части, после цифры экспоненты.
-- Завершение числа — «ленивое»: байт, не являющийся продолжением числа в
-  complete-состоянии, завершает число (pop) и переобрабатывается родителем.
-  В не-complete состоянии такой байт — ошибка.
+- Numbers (§1.3): `NumState` runs `start`, `minus`, then `zero_complete`
+  or `int_digits`, and for `number` continues through `dot`, `frac_digits`,
+  `exp`, `exp_sign`, `exp_digits`. The complete states are
+  `zero_complete`, `int_digits`, `frac_digits` and `exp_digits`. A digit
+  after `zero_complete` is not a continuation (leading zeros are
+  forbidden). In a complete state a byte that cannot continue the number
+  pops the frame and is re-fed to the parent.
+- Objects (§1.4): the frame keeps `idx` (first unresolved property) and
+  `cur` (selected property), with phases `open`, `key`, `key_lit`,
+  `value`, `sep` and `key_after_comma`. In `key_after_comma` a `}` is an
+  error, which rules out trailing commas.
+- Arrays (§1.5): phases `open`, `body`, `sep` and `body_after_comma`; `]`
+  in `body_after_comma` is an error.
 
-### 1.4. Объекты (порядок ключей и исключение тупиков)
+## 2. Grammar IR (`src/grammar.zig`)
 
-- Ключи идут в порядке объявления в `properties`; optional-ключи можно
-  пропускать; пропущенный ключ вернуть нельзя.
-- Frame объекта: `idx` — индекс первого неразрешённого свойства, `cur` —
-  индекс выбранного свойства, фаза: open | key | value | sep.
-  - open: ожидает `{` → фаза key.
-  - key: при байте `"` кандидаты = { i >= idx : все props[j], idx<=j<i — optional }.
-    На каждого кандидата — отдельный thread: cur=i, push literal `"key_i":`.
-    При байте `}`: допустимо, только если все props[j], j>=idx — optional
-    (т.е. не осталось required) → complete. Иной байт — ошибка.
-  - value: после завершения key-литерала (childDone в фазе key) — push value-узла.
-  - sep (после childDone в фазе value): idx=cur+1; байт `,` допустим, только
-    если idx < len(props) (иначе это гарантированный trailing comma) → фаза
-    key_after_comma; байт `}` → complete, если нет required j>=idx; иное — ошибка.
-  - key_after_comma: как key, но байт `}` — ошибка: после запятой ключ
-    обязателен. Trailing comma запрещён ВСЕГДА — и в объектах, и в массивах
-    (п.1.5).
-- Это правило конструктивно исключает тупик «пропущен required-ключ».
+- Node kinds used by canonical-v1: `literal`, `lit_trie`, `str`, `int_v`,
+  `num_v`, `choice`, `seq`, `repeat`, `object`.
+- Additional kinds used by spec-v1: `int_num` and `num_const` (numbers by
+  value), `num_range`, `num_mult`, `num_excl`, `not_int_num`, `str_excl`,
+  `str_pat` (regex DFA), `comb` (boolean combinators with a verdict at the
+  value boundary) and `open_obj` (objects with a dynamic key set).
+- A grammar is immutable after compilation, lives in its own arena and is
+  shared by sessions through a reference count held by the C ABI layer.
+- `lit_trie` is a shared-prefix trie of literal alternatives (`enum`,
+  `const`, literal sets). Nodes and edges are contiguous arrays; a node's
+  edges are sorted by byte and searched by binary search. The `literals`
+  list enumerates all alternatives for the coverage gate. See ADR-0002
+  (literal trie).
+- Repetition is a counter (`repeat {item, min, max}`, `max` may be
+  unbounded); a large `maxItems` is never expanded into copies.
+- Recursive `$ref` is compiled by bounded unrolling (ADR-0008), so every
+  grammar is a finite tree.
+- Identity: two independent 64-bit hashes of the source bytes and the
+  constraint kind (FNV-1a and Wyhash). Both enter the mask-cache key; a
+  simultaneous collision (about 2^-128) is the accepted residual risk.
 
-### 1.5. Массивы
+## 3. Parser (`src/parser.zig`)
 
-- repeat-узел {item, min, max}; max может быть UNBOUNDED (maxInt(u32)).
-- Фазы: open (`[`) → body: если count>=max — только `]`; если `]` — complete
-  при count>=min, иначе ошибка; иначе push item (байт переобрабатывается item'ом).
-- После childDone item'а: count+=1, фаза sep: `,` → body_after_comma (если
-  count>=max — ошибка); `]` → complete при count>=min иначе ошибка; иное — ошибка.
-- body_after_comma: как body, но `]` — ошибка: после запятой элемент
-  обязателен. Trailing comma запрещён ВСЕГДА (как и в объектах, п.1.4).
+The parser simulates a nondeterministic automaton with a bounded set of
+deterministic threads (ADR-0001).
 
-### 1.6. Компиляция enum/const
+- A `State` holds up to `MAX_THREADS_CAP` (128) threads; a thread is a stack
+  of up to `MAX_DEPTH_CAP` (64) POD frames. The runtime limits
+  `max_threads_per_state` and `max_depth` can only lower these caps.
+- Variable-size data needed by spec-v1 (the key set of an open object,
+  `uniqueItems` signatures, captured element bytes) lives in reference-counted
+  copy-on-write chunks in a per-owner side store (`Side`, ADR-0006). Frames
+  carry 32-bit handles into it. The cache stores chunk content, never
+  handles.
+- `initState` expands the root node. `feedBytes(in, bytes, out)` never
+  modifies `in`; each thread consumes the bytes, failing threads are
+  dropped, and if none survives the result is `error.Parse`. Exceeding the
+  thread cap is `error.ResourceLimit`: threads are never dropped silently,
+  because that would make masks incomplete.
+- Duplicate threads are merged after every byte (`dedupThreads`).
+- A `choice` frame spawns its alternatives lazily on the first byte, and
+  only those whose language may start with that byte; alternatives that may
+  be empty are forked eagerly. A `lit_trie` frame covers all alternatives
+  with one thread per trie position.
+- A byte arriving when a thread's stack is empty is an error: nothing may
+  follow the end of the document.
+- `canEnd` reports whether some thread can complete without more bytes.
+- `hashState` and `eqlStates` are deterministic and cover frames and chunk
+  content; the mask cache uses them for keys and collision checks.
 
-- enum/const сериализуются в literal-альтернативы (choice из literal-узлов):
-  - string → канонический JSON-литерал по таблице п.1.1;
-  - boolean/null → `true`/`false`/`null`;
-  - числа → точная десятичная нормализация lexeme из схемы БЕЗ binary64:
-    парсинг в десятичную дробь (мантисса+экспонента как big-рациональное,
-    допустимо ограничение: <= 400 значащих цифр, |записанная экспонента| <= 400 —
-    превышение → InvalidSchema). Ноль в любой записи (включая `-0`, `-0.0`,
-    `-0e7`) → `0`. Если значение целое → десятичная целая запись. Нецелое без
-    экспоненты → запись int.frac: убрать ведущие нули int-части до одной цифры,
-    убрать хвостовые нули дробной части. Нецелое С экспонентой → научная форма
-    СОХРАНЯЕТСЯ: мантисса — как в схеме с той же нормализацией нулей (дробная
-    часть, опустевшая после удаления хвостовых нулей, опускается вместе с
-    точкой), экспонента нормализуется: 'E'→'e', без '+', без ведущих нулей.
-    Примеры: `1e2`→`100`, `2.500e2`→`250`, `1.50`→`1.5`, `0.10`→`0.1`,
-    `1.5e-3`→`1.5e-3`, `1.50E-3`→`1.5e-3`, `10e-3`→`10e-3`, `12.340e0`→`12.34e0`.
-    Запись всегда соответствует грамматике number из п.1.3.
-- Каждое значение enum проверяется против type и minLength/maxLength
-  (несовместимые значения отбрасываются); если не осталось ни одного —
-  `UnsatisfiableConstraint`. Дубликаты значений после нормализации удаляются.
-- const эквивалентен enum из одного значения; enum и const одновременно в
-  одной схеме → InvalidSchema (НЕ пересечение множеств).
-- enum без явного type: выводится из значений (все одного типа; смешанный —
-  UnsupportedFeature в MVP).
+## 4. Masks (`src/mask.zig`, `src/complete.zig`)
 
-### 1.7. Схема: правила приёма (FR-1)
+- Output: `ceil(vocab_size / 32)` words, bit `t % 32` of word `t / 32`,
+  unused trailing bits zero. EOS bits are set when `canEnd` holds; special
+  non-EOS tokens are never set. A repeated call on the same state yields the
+  same mask bit for bit.
+- Trie walk: an iterative depth-first walk over the vocabulary trie (§5).
+  Each edge feeds one byte to the parser; a parse error prunes the whole
+  subtree; a terminal node sets the bits of every token id with that byte
+  image. Nodes with a single edge do not grow the stack, so stack depth is
+  the branching depth of the trie, not the token length. The scratch states
+  live in a per-session `MaskBuf`.
+- Fast path (ADR-0007): for states with uniform residual behavior, such as
+  string content, tokens are classified without walking each one
+  (`fillMaskFast`). It is an equivalence optimization, verified by a
+  differential on/off test; `mask_fast_path` and `BLG_MASK_FAST_PATH=0`
+  turn it off.
+- Completion filter (ADR-0003, ADR-0005): a token is admitted only if a
+  completed document stays reachable after it. The filter is active when
+  the vocabulary is not byte-complete and the grammar's language is a finite
+  set of literals, or when the grammar has deferred value verdicts
+  (spec-v1 combinators, patterns, value-constrained numbers). States are
+  first settled by closed-form certificates (`certifyState`), then by a
+  bounded search (`stateAlive`) with per-call budgets. A state that cannot
+  be settled within the budget is treated as unknown, not alive: the mask
+  call fails with `RESOURCE_LIMIT`, and so does `accept` of such a token
+  (strict ADR-0005 Decision 3).
+- With a byte-complete vocabulary and a canonical-v1 grammar the filter is
+  unnecessary: every live parse state can be completed byte by byte
+  (semantics.md §10).
+- An empty mask is `error.DeadEnd`; nothing is allowed as a fallback.
+- All steps are charged to the call's `Work` (§6).
+- `mask.zig` keeps a linear vocabulary scan as a reference for equivalence
+  tests.
 
-- Значение схемы — объект с поддерживаемым `type` либо чистой ссылкой `$ref`.
-  Boolean-схемы → UnsupportedFeature.
-- Поддерживаемые ключевые слова: type (ровно одна строка из 7), properties,
-  required, additionalProperties (обязателен, ровно false; любое другое
-  значение или отсутствие → InvalidSchema), items (обязателен
-  для array, одна схема), minItems/maxItems, minLength/maxLength, enum, const,
-  $defs, $ref, $schema (только идентификатор Draft 2020-12
-  `https://json-schema.org/draft/2020-12/schema` с необязательным '#'),
-  аннотации title/description/$comment/examples/default (игнорируются).
-- Известные ключевые слова вне MVP (anyOf, oneOf, allOf, not, if, then, else,
-  minimum, maximum, multipleOf, exclusiveMinimum, exclusiveMaximum, pattern,
-  format, patternProperties, uniqueItems, contains, dependentSchemas,
-  dependentRequired, unevaluatedProperties, propertyNames, minContains,
-  maxContains, prefixItems, additionalItems, $id, $anchor, $dynamicRef,
-  $recursiveRef, definitions, dependencies, contentEncoding, contentMediaType,
-  contentSchema, readOnly, writeOnly, deprecated, const-рядом-с-$ref…) —
-  UnsupportedFeature с JSON Pointer (byte offset в сообщении/поле ошибки).
-  Любое другое неизвестное ключевое слово — тоже UnsupportedFeature.
-- required: обязателен у object (может быть []), все имена — из properties,
-  без дубликатов; properties обязателен (может быть {}).
-- min>max (items/length) → UnsatisfiableConstraint. Неотрицательные целые,
-  иначе InvalidSchema.
-- $ref: только локальный `#` или `#/$defs/<name>` (pointer с ~0/~1
-  экранированием); внешние ссылки и сетевые — UnsupportedFeature. Рядом с $ref
-  допустимы только аннотации. Цикл ссылок → InvalidSchema (указать pointer).
-- Глубина схемы/раскрытой грамматики > max_depth (по умолчанию 64) → ResourceLimit.
-- Дубликаты ключей в JSON схемы → InvalidSchema. Размер схемы > лимита → ResourceLimit.
+## 5. Tokenizer (`src/tokenizer.zig`)
 
-### 1.8. FR-3: буквальные альтернативы
+- The table is copied into context-owned memory and validated: ids cover
+  `0..vocab_size-1` exactly once, a regular token has non-empty bytes,
+  EOS and special ids are in range and disjoint. Token bytes may be
+  arbitrary, including partial UTF-8.
+- Identity: FNV-1a-64 over the adapter tag (`"zg-bbpe-v1"`), all token
+  bytes in id order, the EOS list, the special list and `vocab_size`; the
+  strip-leading-space flag is mixed in, so grammars of contexts with
+  different flags never share cache entries.
+- Strip leading space: when the decoder drops one leading space of the
+  text, the language `L` is compiled as
+  `{t in L without a leading space} ∪ {" " + t}` (literals are rebuilt, a
+  JSON Schema root is wrapped in `choice[seq(" ", root), root]`).
+- Vocabulary trie: a flat prefix tree whose node edges are contiguous and
+  sorted by byte. EOS, special and empty tokens are not in the trie.
+  Different ids with the same byte image are linked into a chain, and the
+  mask sets all of them. `byte_complete` records whether all 256
+  single-byte tokens exist.
 
-Вход: JSON-массив строк UTF-8 (не JSON-экранированные значения — сами строки,
-уже декодированные из JSON). Непустой. Дубликаты удаляются. Пустая строка
-допустима (literal len=0). Компилируется в choice из raw-literal узлов;
-одна альтернатива — просто literal. Полнота: ответ = ровно одна строка целиком.
+## 6. Memory, statistics, caches, budgets
 
-### 1.9. Завершённость и тупики
+- **Accounting** (`src/alloc.zig`): every core allocation goes through
+  `Accounting`, with used and peak counters per category (`tokenizer`,
+  `grammar`, `session`, `cache`, `temp`) and a total limit; exceeding it is
+  `RESOURCE_LIMIT`. `SessionAccount` adds the per-session limit;
+  `Limited` enforces the hard cache budget. After a context is destroyed,
+  used bytes are zero in every category (checked by tests).
+- **Root allocator**: `smp_allocator`. The page allocator was replaced
+  because one mapping per allocation exhausted `vm.max_map_count` on long
+  runs.
+- **Statistics** (`src/stats.zig`) mirror `blg_stats`.
+- **Mask cache** (`src/cache.zig`): key
+  `{grammar_id, grammar_hi, tokenizer_id, state_hash}`; the value holds the
+  serialized state for an exact equality check on hit, plus the mask. All
+  of its memory, including table overhead, counts against the hard budget;
+  the least recently used entries are evicted, and an entry larger than the
+  budget is not stored. Admission in adaptive mode: a computed mask is
+  stored when its state was seen at least `adaptive_min_hits` times or took
+  at least `adaptive_min_cost_ns` to compute. The cache never changes mask
+  contents; `cache_limit_bytes == 0` disables it.
+- **Compile-artifact cache** (ADR-0004): repeated compilation of identical
+  input returns the existing grammar after a byte comparison. Budget: a
+  quarter of the cache limit, counted by actually retained bytes; FIFO
+  eviction drops only the cache's reference.
+- **Coverage gate** (`src/coverage.zig`): at compile time every grammar
+  literal must be segmentable into vocabulary tokens, and open classes and
+  structural syntax must have a producible completion; otherwise
+  `UNSUPPORTED_TOKENIZER`. The check is conservative; a byte-complete
+  vocabulary always passes.
+- **Work budget and cancellation** (`src/work.zig`): one `Work` per public
+  compile or mask call, holding the op budget and a pointer to the caller's
+  cancellation byte (read with acquire ordering). Loops in the parser,
+  trie walk, coverage gate and warm-up charge it. The mask call checks the
+  flag before consulting the cache, so cancellation wins over a cache hit.
+- **Precompute warm-up** (`src/precompute.zig`): a breadth-first walk over
+  reachable states at compile time that fills the cache, bounded by
+  `precompute_max_states`, temporary memory and cancellation. It has its own
+  op counter; running out of budget silently stops the warm-up.
 
-В canonical-v1 после перечисленных compile-time проверок всякое состояние,
-не являющееся ошибкой разбора, допускает завершение документа (строка всегда
-может закрыться или добрать символы, число завершиться, скобки закрыться;
-required-ключи нельзя пропустить благодаря п.1.4). Поэтому runtime-проверка
-допустимости токена = «байты токена принимаются хотя бы одним thread'ом».
-Если маска пуста (ни один токен и ни один EOS не разрешён) — ZG_ERR_DEAD_END.
-Доказательство отсутствия тупиков фиксируется в docs/semantics.md.
+## 7. C ABI implementation (`src/c_api.zig`)
 
-## 2. IR грамматики (src/grammar.zig — уже написан)
+The public contract is in [API.md section 2](API.md#2-c-abi). Invariants
+of the implementation:
 
-См. файл. Узлы: literal / str / int_v / num_v / choice / seq / repeat / object.
-Память грамматики — арена внутри Grammar; Grammar неизменяема после компиляции
-и разделяется сессиями через refcount (в c_api). Identity — два независимых
-64-битных хэша исходных байт схемы + байта kind (FNV-1a в `id`, Wyhash в
-`id_hi`; заполняет компилятор): оба входят в ключ кэша, одновременная коллизия
-(~2^-128) — принятый остаточный риск.
+- Ownership: context > grammars (reference-counted) > sessions. The context
+  counts external grammar references, live sessions and calls in progress;
+  destroying it while any are non-zero returns `BUSY` and leaves it intact.
+- Tail-grown structs are read only up to the caller's `struct_size`, and
+  output structs are never written beyond it.
+- `blg_accept_token` re-runs the full grammar check; a previously issued
+  mask is never trusted. On rejection the session state is unchanged.
+- Every Zig error is mapped explicitly (§10); `unreachable` and panics are
+  forbidden in exported paths. An unexpected error yields `INTERNAL`, and
+  the session is marked aborted when its state can no longer be trusted.
+- A session holds its current parse state, a scratch state, its status
+  (active, finished, aborted), its `SessionAccount` and statistics.
 
-## 3. Парсер (src/parser.zig)
+## 8. Python bridge (`python/`)
 
-```zig
-pub const MAX_DEPTH_DEFAULT = 64;
-pub const Frame = union(enum) { ... };  // см. п.1.4/1.5/3.x
-pub const Thread = struct { frames: []Frame (inline array cap max_depth), len: u16 };
-pub const State = struct { threads: inline array of Thread, n: u16, max_threads: u16 };
-```
+- `bolorgir._core` is a C extension built against the Limited API
+  (`Py_LIMITED_API=0x030A0000`, abi3). It links against `libbolorgir.so`
+  shipped in the package (`rpath $ORIGIN/_lib`); see ADR-0002 (Python
+  bridge).
+- The GIL is released around native calls. Each session has a lock; a batch
+  call deduplicates its sessions and takes their locks in one global order
+  (by native pointer), then re-validates them under the locks.
+- `setup.py` runs `zig build`, copies the library into the package and
+  syncs the C header, so wheels and sdists build without the repository.
+- The Python-level contracts of `TokenizerBundle`, `Engine`, the
+  Transformers adapter and the serializer are documented in
+  [API.md section 3](API.md#3-python-api).
 
-Контракт:
+## 9. Tests
 
-- `State.init(g, max_threads, max_depth)` — один thread, корневой узел раскрыт
-  (push_node: choice раскрывается в несколько threads сразу; literal len=0
-  завершается мгновенно через after_child_done-цепочку).
-- `feedBytes(g, in: *const State, bytes: []const u8, out: *State) error{Parse,ResourceLimit}!void`
-  — out становится новым состоянием; in не меняется. Для каждого thread'а in —
-  копия, посимвольная обработка; ошибка → thread отбрасывается; если ни один
-  thread не выжил — error.Parse. Превышение max_threads при спавне →
-  error.ResourceLimit (НЕ молчаливое отбрасывание — полнота важнее).
-- Посимвольный цикл thread'а: см. псевдокод ниже. Ключевые правила:
-  - число в complete-состоянии при «чужом» байте: pop + переобработка байта;
-  - str завершается только байтом `"` в normal-состоянии (при count>=min);
-  - after_child_done каскадно поднимается по стеку (seq idx++, repeat count/sep,
-    object key→value / value→sep; завершившийся родитель — pop и продолжить каскад);
-  - байт при пустом стеке — ошибка (контент после конца документа).
-- `canEnd(g, state) bool` — существует thread, завершимый без байтов:
-  стек пуст, ЛИБО каскад «вершина — число в complete-состоянии» виртуально
-  схлопывается до пустого стека (через after_child_done-логику без байт).
-- `hash(state) u64` (FNV-1a по всем живым frames всех threads, порядок threads
-  значим и детерминирован) и `eql(a,b) bool` — для кэша и тестов.
-- Thread/Frame — POD, копируются побитово; вся глубина <= max_depth.
+- **Zig unit tests** live next to the code in each module and are
+  registered in `src/tests.zig` (`zig build test`).
+- **Reference implementation** (`tests/reference.py`): an independent
+  canonical-v1 compiler and parser written from semantics.md. For bounded
+  schemas it enumerates the whole document language; a prefix is admissible
+  if and only if it is a prefix of some document.
+- **Parity**: exhaustive token sequences up to a fixed depth on small
+  vocabularies (`test_parity_exhaustive.py`) and traces on larger schemas
+  (`test_parity_traces.py`) compare core masks with the reference bit for
+  bit; lazy and adaptive modes must agree.
+- **Edge cases** (`test_edge_cases.py`): vocabulary sizes not divisible by
+  32, empty batches, invalid ids, small buffers, repeated EOS, special
+  tokens, multi-character tokens, partial UTF-8, escapes split across
+  tokens, empty strings, enums with shared prefixes, optional keys,
+  dead ends.
+- **spec-v1**: per-phase tests (`test_spec_v1_p*.py`), each with a
+  reachability companion, plus regression suites for fixed defects.
+- **Oracle** (`tests/oracle/`): runs the pinned JSON Schema Test Suite
+  against the engine with `jsonschema` as the second opinion, across five
+  dialects. Results are written to `tests/oracle/results/`, which is not
+  versioned; see `tests/oracle/README.md`.
+- **Fuzzing**: `tests/fuzz/` (Python) and `src/fuzz_main.zig`
+  (`zig build fuzz`).
+- Generated documents marked `completed=True` are validated with an
+  independent validator.
+- `BLG_TEST_BACKEND=ctypes|package` selects whether Python tests call the
+  library directly or through the package.
 
-Псевдокод посимвольного шага thread'а:
+## 10. Error mapping
 
-```
-fn step(t, b):  // error.Parse при отказе; спавн threads — у feedBytes
-  loop {
-    if t.len == 0: return error.Parse
-    f = top(t)
-    switch (f.kind) {
-      .literal => { bytes=...; if b!=bytes[f.off] return error.Parse;
-                    f.off+=1; if f.off==len { pop; afterChild(t); } return; }
-      .str     => { r=strFeed(f,b); if r==.err return error.Parse;
-                    if r==.done { pop; afterChild(t); } return; }
-      .int_v,.num_v => { r=numFeed(f,b);
-                    if r==.consumed return;
-                    if r==.complete_pop { pop; afterChild(t); continue; } // retry b
-                    return error.Parse; }
-      .repeat  => { switch phase: .open expect '['; .body — ']'? complete-or-err :
-                    push item (continue, байт переобработается); .sep — ','→body_after_comma /
-                    ']'→complete / else err; .body_after_comma — ']'→err, иначе push item;
-                    complete: pop+afterChild; return }
-      .object  => { open expect '{'; key — '"' → spawn candidates (см. 1.4),
-                    '}' → complete-if-no-required; sep — ','→key_after_comma
-                    (err, если свойств не осталось) / '}' аналогично;
-                    key_after_comma — как key, но '}'→err; return }
-      .seq,.choice => unreachable // seq существует как frame: см. ниже
-    }
-  }
-```
+Status codes are those of `include/bolorgir.h` ([API.md section
+2.2](API.md#22-status-codes)). Inside the core:
 
-seq-frame: при push_node(seq) — push frame {idx:0}, затем push_node(child[0]).
-afterChild(seq): idx+=1; idx==n → pop+afterChild; иначе push_node(child[idx]).
-push_node(choice): для каждой альтернативы — новый thread (копия стека) с
-push_node(alt); первый остаётся в исходном thread'е. push_node(literal len=0):
-считать мгновенно завершённым → afterChild.
+| Zig error | Status |
+|---|---|
+| `Parse` in `accept` | `INVALID_TOKEN` |
+| `DeadEnd` in a mask call | `DEAD_END` |
+| `ResourceLimit`, `OutOfMemory` | `RESOURCE_LIMIT` |
+| `Cancelled` | `CANCELLED` |
+| Compile errors | `INVALID_SCHEMA`, `UNSUPPORTED_FEATURE`, `UNSATISFIABLE_CONSTRAINT` or `UNSUPPORTED_TOKENIZER`, with a JSON pointer |
+| Anything unexpected | `INTERNAL` |
 
-strFeed состояния: normal | escape | u0 (ждём '0') | u00 (ждём второй '0') |
-uhex1 | uhex2. В normal: `"`→done(проверка min), `\`→escape, байт<0x20→err,
-иначе UTF-8 DFA (счётчик символов инкрементируется при завершении символа;
-max-проверка при инкременте: count>max → err). escape: один из `"\/bfnrt`…
-стоп: `/` НЕ экранируется — допустимы `"` `\` `b` `f` `n` `r` `t` `u`.
-uhex: ровно `\u00xx`, xx — строчные hex, значение <0x20 и не из {08,09,0A,0C,0D}.
+## 11. Commands
 
-## 4. Маска (src/mask.zig)
+```sh
+zig build -Drelease=true            # zig-out/lib/libbolorgir.so (ReleaseSafe)
+zig build test --summary all        # core unit tests
+zig build example-c                 # C example
+zig build fuzz -- <args>            # fuzz campaigns
+zig fmt --check build.zig src
 
-```zig
-pub fn fillMask(g: *const Grammar, tok: *const Tokenizer, st: *const parser.State,
-                out: []u32, w: *work.Work, buf: *MaskBuf) !void
-```
-
-- out.len == (vocab_size+31)/32; бит t: слово t/32, бит t%32; 1 = разрешён.
-- Хвостовые неиспользуемые биты последнего слова = 0.
-- Алгоритм: обнулить; special non-EOS — пропуск; EOS-ids — бит при canEnd;
-  обычные токены — итеративный DFS по префиксному дереву словаря (trie, п.5):
-  каждое ребро trie скармливает один байт парсеру (feedBytes в стеке
-  scratch-состояний MaskBuf), ошибка Parse отсекает всё поддерево, терминальный
-  узел выставляет биты всех id с совпадающим байтовым образом (цепочка
-  token_chain). Узел с одним ребром обходится без роста стека: глубина стека —
-  ветвящаяся глубина trie, а не длина токена. Токен разрешён ⟺ feedBytes
-  успешен на его байтах. Линейный перебор словаря сохранён в mask.zig только
-  как эталон для тестов эквивалентности. Шаги обхода взимаются в `w`
-  (отмена/лимит работы, п.7).
-- Если ни один бит не установлен — error.DeadEnd (вызывающий получает код и
-  состояние; автоматически ничего не разрешаем).
-- Повторный fillMask на том же состоянии — побитово тот же результат.
-
-## 5. Токенизатор (src/tokenizer.zig — тип уже написан)
-
-- create(allocator_cat_tokenizer, desc) — копирует таблицу во владение
-  контекста; валидация: id < vocab_size, id уникальны и покрывают
-  0..vocab_size-1; обычный токен с len==0 → error.UnsupportedTokenizer;
-  eos_ids ⊆ [0,vocab); special ∩ eos = ∅; байты токена — любые (включая
-  незавершённый UTF-8 — решение принимает парсер).
-- identity: FNV-1a-64 над: строкой тега адаптера (пока "zg-bbpe-v1"), всеми
-  байтами всех токенов в порядке id, списком eos, списком special, vocab_size.
-- trie: плоское префиксное дерево словаря (без поузловых выделений: рёбра узла —
-  непрерывный срез общих массивов); строится в create. EOS, special и пустые
-  токены в trie не входят (EOS — по canEnd, special запрещены). Разные id с
-  одинаковым байтовым образом связываются в цепочку token_chain — маска
-  выставляет биты всех совпадающих id. max_stack — ветвящаяся глубина дерева
-  (один фрейм на предка с >= 2 рёбрами) для обхода в fillMask.
-- maskWords() = (vocab_size+31)/32.
-
-## 6. Память, статистика, кэш (agent C)
-
-- alloc.zig: `Accounting` — над `std.mem.Allocator`: счётчики used/peak по
-  категориям {tokenizer, grammar, session, cache, temp} + total; лимит total;
-  `allocator(cat) std.mem.Allocator` (реализация через rawAlloc/resize/free
-  обёртку со служебным заголовком категории). При превышении лимита выделение
-  возвращает ошибку → ResourceLimit. После destroy контекста used[все]==0
-  (проверяется тестами).
-- stats.zig: `Stats` — поля как zg_stats в заголовке (ns-таймеры
-  std.time.Timer, счётчики кэша, память из Accounting, tokens_accepted,
-  счётчики ошибок по классам, cache_adaptive_skips, precompute_states,
-  work_ops_total).
-- cache.zig: LRU масок. Ключ: {grammar_id u64, grammar_hi u64, tokenizer_id u64,
-  state_hash u64} (identity грамматики — 128 бит, п.2); значение: копия
-  состояния (для проверки коллизий: сравнение parser.eql) + копия маски.
-  Бюджет жёсткий: все выделения (Entry, состояние, маска, таблицы HashMap)
-  идут через ограничивающий allocator (alloc.Limited), учтённые байты никогда
-  его не превышают; при нехватке вытесняется LRU-хвост, запись больше бюджета
-  не хранится. Adaptive admission (FR-9): обращения к ключу считаются
-  bumpSeen (ограниченные счётчики в том же бюджете); put выполняет c_api
-  только когда seen >= adaptive_min_hits ИЛИ compute_ns >=
-  adaptive_min_cost_ns, иначе — cache_adaptive_skips. Промах/попадание/
-  вытеснение — счётчики в Stats. Кэш не меняет маски (ТЗ T2: побитовый
-  паритет). При cache_limit==0 кэш отключён — режим lazy-эквивалент.
-- coverage.zig: проверка на zg_compile: каждый литерал грамматики сегментируется
-  в токены словаря (DP по байтам), открытые классы (str/int/num) и структурный
-  синтаксис имеют порождаемое завершение; иначе — UnsupportedTokenizer.
-  Консервативно: границы токенов обязаны совпадать с границами узлов
-  грамматики; byte-полный словарь проходит всегда.
-- work.zig: `Work` — per-call бюджет (ops, 0 = без лимита) + указатель на
-  вызывательский флаг отмены (атомарный байт, чтение acquire); charge()
-  возвращает Cancelled/ResourceLimit. Один Work на публичный вызов
-  compile/fill_mask(s); циклы парсера/trie/coverage/precompute взимают ops.
-- precompute.zig: экспериментальный прогрев при zg_compile (режим precompute):
-  BFS по достижимым состояниям парсера с вычислением масок и put в кэш, не
-  более precompute_max_states состояний. Исчерпание бюджета состояний/памяти/
-  работы — тихая остановка (генерация продолжается лениво); наружу
-  пробрасывается только Cancelled.
-
-## 7. C ABI (agent D) — соответствие include/zig_constraints.h
-
-- Context: владеет Accounting, Tokenizer, Cache, mode, limits; реестр живых
-  grammar/session (счётчики) — destroy занятого → ZG_ERR_BUSY.
-- Grammar handle: refcount + *Grammar; release уменьшает; сессия держит ref.
-- Session: parser.State + scratch State + статус active/finished/aborted +
-  per-session accounting (лимит session_limit_bytes) + stats (accept/mask ns).
-- zg_compile: после построения грамматики — coverage gate (п.6): непокрываемое
-  токенизатором ограничение отклоняется ZG_ERR_UNSUPPORTED_TOKENIZER, тупиковые
-  токены в маске невозможны. В режиме precompute (и включённом кэше) — прогрев
-  масок (precompute.zig): ограниченный BFS до precompute_max_states состояний;
-  исчерпание бюджета состояний/памяти/работы — не ошибка, генерация продолжается
-  лениво; наружу пробрасывается только отмена флагом (ZG_ERR_CANCELLED).
-- zg_fill_mask: проверки (session active, mask_words >= нужного, указатели
-  выравнивания достаточного для u32); заполняет; DeadEnd → код ошибки, маска
-  недействительна. В режимах adaptive/precompute — через cache (ключ по hash
-  состояния, проверка eql); вычисленная маска попадает в кэш по политике
-  admission (seen >= adaptive_min_hits ИЛИ compute_ns >= adaptive_min_cost_ns,
-  иначе — cache_adaptive_skips).
-- Отмена и лимит работы: zg_cancel_flag_set(ctx, flag) регистрирует
-  вызывательский атомарный байт (NULL — отсоединить); zg_compile и
-  zg_fill_mask(s) создают per-call Work(work_limit_ops, cancel). Отмена →
-  ZG_ERR_CANCELLED; превышение work_limit_ops → ZG_ERR_RESOURCE_LIMIT
-  (частичная маска не возвращается); в прогреве precompute превышение лимита
-  работы — тихая остановка прогрева.
-- zg_accept_token: token_id < vocab_size, иначе ZG_ERR_INVALID_TOKEN;
-  бит должен быть разрешён: полная проверка feedBytes (НЕ доверяем ранее
-  выданной маске — состояние могли не обновить); при отказе — InvalidToken,
-  состояние не меняется. EOS при can_end → состояние остаётся active, can_end
-  остаётся true; finish закрывает сессию. Специальный non-EOS → InvalidToken.
-- zg_can_end, zg_finish (требует can_end иначе WRONG_STATE), zg_abort,
-  zg_fill_masks_batch (последовательно; на строку — свой status; пустой батч OK;
-  завершённые/абортированные сессии → их статус WRONG_STATE, остальные
-  обрабатываются).
-- Все строки диагностики — в вызывательский zg_error (struct_size валидируется;
-  поле json_pointer — RFC 6901 указатель на узел схемы при ошибках компиляции,
-  в буферах legacy-размера отсутствует). Глобального состояния ошибок нет.
-- Ошибки Zig ловятся и маппятся; unreachable/panic в экспортах запрещены —
-  любая непредвиденная ошибка → ZG_ERR_INTERNAL и (если состояние не гарант.)
-  сессия помечается aborted.
-
-## 8. Python (agent E)
-
-- Мост: CPython C-расширение `zig_constraints._core` с **Limited API**
-  (`Py_LIMITED_API=0x030A0000`), abi3. Python.h есть в /usr/include/python3.10.
-  GIL освобождается вокруг нативных вызовов. ADR-0002 о выборе моста — agent E.
-- Сборка: pyproject.toml (setuptools); build-шаг вызывает
-  `/home/gm/.local/bin/zig build -Drelease=true` и копирует
-  libzig_constraints.so в пакет; расширение линкуется с ней (rpath $ORIGIN).
-- API: `Engine(mode=..., memory_limit_mb=..., cache_limit_mb=...)`,
-  `engine.compile(schema: dict|str, tokenizer=None, profile="canonical-v1")`,
-  `engine.compile_literals(list[str])`; Constraint.create_session();
-  Session.fill_mask()->bytes, accept_token, can_end, finish/abort,
-  контекстные менеджеры. Токенизатор: `TokenizerBundle.from_hf(hf_tokenizer)`
-  (извлечение байтов: byte-level BPE через обратную таблицу bytes_to_unicode;
-  byte fallback `<0xNN>` — до byte-level; SentencePiece с byte_fallback=True:
-  ▁ → пробел; added tokens — литеральный UTF-8; SentencePiece без
-  byte_fallback и неизвестная схема → UnsupportedTokenizerError без
-  приближения). Исключения: по одному классу на zg_status.
-- transformers.py (extra, импорт torch только внутри): LogitsProcessor +
-  constrained_generate-обёртка (greedy/sampling, batch, left padding;
-  completed=True только при принятом разрешённом EOS, без EOS — completed=False
-  со stop_reason="length"; NaN/+inf среди разрешённых маской логитов —
-  ZigConstraintsError; финальный accept последних токенов; конфликтующие
-  настройки по эффективному generation_config (num_beams>1 и т.п.) →
-  UnsupportedModeError до генерации).
-
-## 9. Тесты (agent F)
-
-- tests/reference.py — независимый эталон: свой компилятор схемы в генератор
-  языка; для ограниченных схем (все длины/элементы ограничены) — полное
-  перечисление документов (cap ~200k); oracle: строка-prefix допустима ⟺
-  является префиксом некоторого документа языка; can_end ⟺ prefix ∈ язык.
-- tests/conftest.py — мини-токенизаторы (побайтовый, словарный с
-  многосимвольными токенами, vocab не кратный 32) и сборка C ABI через
-  python-пакет (или ctypes напрямую к .so, если пакет не готов — но
-  предпочтительно через пакет; координация через include/zig_constraints.h).
-- parity: исчерпывающий перебор последовательностей токенов до глубины N на
-  малых словарях — маска ядра vs oracle эталона (побитово); traces на больших
-  схемах; режимы lazy/adaptive — побитовое совпадение.
-- edge-кейсы: список из ТЗ T3 (vocab%32, пустой батч, невалидный ID, малый
-  буфер, повторный EOS, PAD в активной сессии, мультисимвольные токены,
-  незавершённый UTF-8, escapes на границах токенов, пустая строка, enum с
-  общими префиксами, optional-ключи, число перед разделителем, min/max длины,
-  пустое множество продолжений/DeadEnd).
-- Финальные документы completed=true валидируются независимым валидатором
-  (jsonschema, если pip-пакет доступен; иначе мини-валидатор в reference.py).
-
-## 10. Коды ошибок (== include/zig_constraints.h)
-
-OK, INVALID_ARGUMENT, INVALID_SCHEMA, UNSUPPORTED_FEATURE,
-UNSATISFIABLE_CONSTRAINT, UNSUPPORTED_TOKENIZER, INVALID_TOKEN, DEAD_END,
-RESOURCE_LIMIT, CANCELLED, BUSY, WRONG_STATE, BUFFER_TOO_SMALL, INTERNAL.
-Маппинг Zig errors: Parse→INVALID_TOKEN/DEAD_END по месту, OutOfMemory→
-RESOURCE_LIMIT, остальное явно.
-
-## 11. Команды
-
-```
-/home/gm/.local/bin/zig build                 # libzig_constraints.so (zig-out/lib)
-/home/gm/.local/bin/zig build test            # unit-тесты ядра
-/home/gm/.local/bin/zig build example-c       # C-пример
-python3 -m pytest tests/                      # интеграционные тесты
+cd python && ZIG=$(command -v zig) python3 setup.py build_ext --inplace && cd ..
+PYTHONPATH=python BLG_TEST_BACKEND=ctypes  python3 -m pytest tests/ python/tests/ -q
+PYTHONPATH=python BLG_TEST_BACKEND=package python3 -m pytest tests/ python/tests/ -q
 ```
 
-Режим сборки по умолчанию: Debug для разработки; распространение — ReleaseSafe
-(фиксируется в benchmarks/manifest.json).
+Use Debug builds for development and ReleaseSafe for distribution and
+measurements.

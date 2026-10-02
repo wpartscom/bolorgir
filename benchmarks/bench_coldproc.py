@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""B1. Холодный старт: N НЕЗАВИСИМЫХ ПРОЦЕССОВ на движок (аудит 2026-09-15, п.3).
+"""B1. Cold start: N INDEPENDENT PROCESSES per engine.
 
-Каждый повтор — отдельный процесс (этот же скрипт с --one-shot), который
-измеряет: импорт движка, загрузку HF-токенизатора (кэш), prepare, compile
-новой схемы, первую маску, peak RSS процесса. Драйвер запускает процессы
-ПОСЛЕДОВАТЕЛЬНО (без конкуренции за CPU), собирает JSON каждого и считает
-p50/p95/p99/max по N повторам (ТЗ 10.5: >= 30 холодных повторов).
+Every repeat is a separate process (this same script with --one-shot) that
+measures: engine import, HF tokenizer load (cache), prepare, compile of a
+new schema, first mask, process peak RSS. The driver runs processes
+SEQUENTIALLY (no CPU contention), collects each JSON and computes
+p50/p95/p99/max over N repeats (SPEC 10.5: >= 30 cold repeats).
 
-Запуск из корня проекта:
+Run from the project root:
     PYTHONPATH=python:benchmarks python3 benchmarks/bench_coldproc.py \
         --repeats 30 --engines zig_adaptive,xgrammar,llguidance
 """
@@ -26,7 +26,7 @@ TOKENIZER_REVISION = "607a30d783dfa663caf39e06633721c8d4cfcd7e"
 
 
 def one_shot(engine, schema, schema_str):
-    """Один холодный прогон в текущем (свежем) процессе."""
+    """One cold run in the current (fresh) process."""
     import time
     t_start = time.perf_counter_ns()
     res = {"engine": engine}
@@ -40,7 +40,7 @@ def one_shot(engine, schema, schema_str):
     if engine == "zig_adaptive" or engine == "zig_lazy":
         mode = engine.split("_", 1)[1]
         t0 = time.perf_counter_ns()
-        import zig_constraints as zc
+        import bolorgir as zc
         res["engine_import_ns"] = time.perf_counter_ns() - t0
         t0 = time.perf_counter_ns()
         bundle = zc.TokenizerBundle.from_hf(hf_tok, use_cache=False)
@@ -104,12 +104,12 @@ def main():
     ap.add_argument("--seed", type=int, default=bc.SEED)
     ap.add_argument("--one-shot", default=None, help=argparse.SUPPRESS)
     ap.add_argument("--timeout", type=int, default=120,
-                    help="таймаут одного процесса, сек")
+                    help="timeout of one process, seconds")
     args = ap.parse_args()
 
     entry, schema_bytes = bc.load_schema(args.schema, args.corpus_dir)
     if entry["kind"] != "json_schema" or not entry["expect_support"]:
-        bc.skip(f"схема {args.schema} не является поддерживаемой json_schema")
+        bc.skip(f"schema {args.schema} is not a supported json_schema")
     schema = json.loads(schema_bytes)
     schema_str = schema_bytes.decode("utf-8")
 
@@ -159,7 +159,7 @@ def main():
     bc.emit({
         "status": "OK", "case": "B1_cold_processes", "schema": args.schema,
         "seed": args.seed, "repeats_per_engine": args.repeats,
-        "processes": "последовательные независимые процессы",
+        "processes": "sequential independent processes",
         "tokenizer": {"name": TOKENIZER_NAME, "revision": TOKENIZER_REVISION},
         "engines": report,
     })

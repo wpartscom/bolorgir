@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""GPU-интервалы маски: построение / перенос H2D / применение (аудит 2026-09-15, п.5).
+"""GPU mask intervals: build / H2D transfer / apply.
 
-ТЗ 10.5: публиковать время построения маски, её переноса, применения и полный
-путь отдельно (перекрывающиеся интервалы не суммируются как независимая
-задержка); микробенчмарки GPU синхронизируют измеряемые операции
-(torch.cuda.synchronize вокруг каждого измеряемого этапа).
+SPEC 10.5: publish build, transfer, apply and full-path times separately
+(overlapping intervals are not summed as independent latency); GPU
+microbenchmarks synchronize the measured operations
+(torch.cuda.synchronize around every measured stage).
 
-Участники: zig-constraints (adaptive), XGrammar, llguidance — на одном
-токенизаторе (по умолчанию Qwen2.5-1.5B-Instruct, как в B7), одной схеме и
-одной трассе (каноническая BPE-токенизация --document, приём подтверждён
-accept/consume каждого движка).
+Participants: Bolorgir (adaptive), XGrammar, llguidance - on one
+tokenizer (Qwen2.5-1.5B-Instruct by default, as in B7), one schema and
+one trace (canonical BPE tokenization of --document, acceptance confirmed
+by accept/consume of every engine).
 
-Запуск из корня проекта:
+Run from the project root:
     PYTHONPATH=python:benchmarks python3 benchmarks/bench_gpu_mask_path.py \
         --document '{"action":"buy","amount":42}'
 """
@@ -37,7 +37,7 @@ def main():
     ap.add_argument("--tokenizer", default="Qwen/Qwen2.5-1.5B-Instruct")
     ap.add_argument("--tokenizer-revision", default=None)
     ap.add_argument("--steps", type=int, default=200,
-                    help="число измеренных шагов на движок (трасса циклится)")
+                    help="number of measured steps per engine (the trace is looped)")
     ap.add_argument("--warmup", type=int, default=20)
     ap.add_argument("--seed", type=int, default=bc.SEED)
     args = ap.parse_args()
@@ -45,25 +45,25 @@ def main():
     torch = bc.import_or_skip("torch")
     np = bc.import_or_skip("numpy")
     tf = bc.import_or_skip("transformers")
-    zc = bc.import_or_skip("zig_constraints")
+    zc = bc.import_or_skip("bolorgir")
     xg = bc.import_or_skip("xgrammar")
     lg = bc.import_or_skip("llguidance")
     if None in (torch, np, tf, zc, xg, lg):
-        bc.skip("нужны torch, numpy, transformers, zig_constraints, xgrammar, llguidance")
+        bc.skip("needs torch, numpy, transformers, bolorgir, xgrammar, llguidance")
     if not torch.cuda.is_available():
-        bc.skip("CUDA недоступна: GPU-матрица не закрыта в этой конфигурации")
+        bc.skip("CUDA is not available: the GPU matrix is not closed in this configuration")
     import llguidance.hf as lghf
 
     entry, schema_bytes = bc.load_schema(args.schema, args.corpus_dir)
     if entry["kind"] != "json_schema" or not entry["expect_support"]:
-        bc.skip(f"схема {args.schema} не является поддерживаемой json_schema")
+        bc.skip(f"schema {args.schema} is not a supported json_schema")
     schema = json.loads(schema_bytes)
     schema_str = schema_bytes.decode("utf-8")
 
     hf_tok = tf.AutoTokenizer.from_pretrained(args.tokenizer,
                                               revision=args.tokenizer_revision)
     trace = hf_tok.encode(args.document)
-    vocab_pad = 151936  # ширина lm_head Qwen2.5-1.5B; logits делаем по факту ниже
+    vocab_pad = 151936  # Qwen2.5-1.5B lm_head width; logits are sized as needed below
 
     total = args.warmup + args.steps
     gpu_name = torch.cuda.get_device_name(0)
@@ -71,14 +71,14 @@ def main():
     out = {"status": "OK", "case": "gpu_mask_path", "gpu": gpu_name,
            "tokenizer": args.tokenizer, "schema": args.schema,
            "document": args.document, "trace": trace, "seed": args.seed,
-           "sync_rule": "torch.cuda.synchronize вокруг каждого измеряемого этапа",
+           "sync_rule": "torch.cuda.synchronize around every measured stage",
            "engines": {}}
 
     def sync():
         torch.cuda.synchronize()
 
-    # ---------- zig (штатный путь transformers.py: MaskGpuUnpacker) ----------
-    import zig_constraints.transformers as zct
+    # ---------- zig (stock path transformers.py: MaskGpuUnpacker) ----------
+    import bolorgir.transformers as zct
     bundle = zc.TokenizerBundle.from_hf(hf_tok)
     engine = zc.Engine(mode="adaptive", memory_limit_mb=256, tokenizer=bundle)
     constraint = engine.compile(schema)
@@ -110,10 +110,10 @@ def main():
     session.close(); constraint.close(); engine.close()
     out["engines"]["zig_adaptive"] = {
         "vocab_size": vocab,
-        "note": "этапы как в штатном ConstraintLogitsProcessor "
-                "(transformers.py, MaskGpuUnpacker): на GPU переносятся только "
-                "компактные слова uint32 (vocab/32), распаковка битов — на "
-                "устройстве, pinned staging и буферы кэшируются",
+        "note": "stages as in the stock ConstraintLogitsProcessor "
+                "(transformers.py, MaskGpuUnpacker): only compact uint32 words "
+                "(vocab/32) are transferred to GPU, bit unpacking happens "
+                "on device, pinned staging and buffers are cached",
         "build_ns": pct(build), "h2d_ns": pct(h2d), "apply_ns": pct(apply),
         "full_ns": pct(full)}
 
@@ -144,9 +144,9 @@ def main():
             full.append(t3 - t0)
     out["engines"]["xgrammar"] = {
         "vocab_size": info.vocab_size,
-        "note": "apply через xgrammar.apply_token_bitmask_inplace; "
-                "logits шире bitmask (padded lm_head) — хвост не маскируется "
-                "(штатное поведение xgrammar.contrib.hf)",
+        "note": "apply via xgrammar.apply_token_bitmask_inplace; "
+                "logits are wider than the bitmask (padded lm_head) - the "
+                "tail is not masked (stock behavior of xgrammar.contrib.hf)",
         "build_ns": pct(build), "h2d_ns": pct(h2d), "apply_ns": pct(apply),
         "full_ns": pct(full)}
 

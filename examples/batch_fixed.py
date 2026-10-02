@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-Пример: фиксированный батч независимых сессий (FR-11) без Hugging Face.
+Example: fixed batch of independent sessions (FR-11) without Hugging Face.
 
-Каждая строка батча — своя сессия со своей схемой; маски запрашиваются
-батчем (fill_masks_batch), строки завершаются независимо. Мини-токенизатор
-— побайтовый (id 0..255) + EOS (id 256), собран вручную.
+Each batch row is its own session with its own schema; masks are requested
+as a batch (fill_masks_batch), rows finish independently. The mini-tokenizer
+is byte-level (ids 0..255) + EOS (id 256), assembled by hand.
 
-Запуск (после сборки расширения, см. python/setup.py):
+Run (after building the extension, see python/setup.py):
     PYTHONPATH=python python3 examples/batch_fixed.py
 """
 
 import random
 import sys
 
-from zig_constraints import Engine, TokenizerBundle, fill_masks_batch
+from bolorgir import Engine, TokenizerBundle, fill_masks_batch
 
 EOS_ID = 256
 
@@ -77,7 +77,7 @@ def main() -> int:
                     finished[row] = True
                     continue
                 if not allowed:
-                    session.abort()  # тупик (FR: маска пуста) — строка мертва
+                    session.abort()  # dead end (FR: empty mask) - the row is dead
                     done[row] = True
                     continue
                 tok = rng.choice(allowed)

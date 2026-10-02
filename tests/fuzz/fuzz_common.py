@@ -1,8 +1,8 @@
-"""T4 fuzz: shared utilities — tokenizer, artifacts, results.
+"""T4 fuzz: shared utilities - tokenizer, artifacts, results.
 
 Directories:
-  tests/fuzz/artifacts/   — crash reproducers + campaign JSON reports;
-  tests/fuzz/corpus/auto/ — saved schema corpus (sample).
+  tests/fuzz/artifacts/   - crash reproducers + campaign JSON reports;
+  tests/fuzz/corpus/auto/ - saved schema corpus (sample).
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ if _TESTS not in sys.path:
     sys.path.insert(0, _TESTS)
 
 import reference as ref  # noqa: E402
-import zg_ctypes  # noqa: E402
+import blg_ctypes  # noqa: E402
 
 ARTIFACTS = os.path.join(_HERE, "artifacts")
 CORPUS_AUTO = os.path.join(_HERE, "corpus", "auto")

@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""Полный прогон корпуса JSONSchemaBench: отчёт поддержки/отказов.
+"""Full JSONSchemaBench corpus run: support/refusal report.
 
-ТЗ 10.3 («Полный перечень схем выбранной закреплённой версии JSONSchemaBench
-с отчётом поддержки/отказов») и 13.1 п.8.
+SPEC 10.3 ("Full inventory of schemas of the pinned JSONSchemaBench version
+with a support/refusal report") and 13.1 §8.
 
-Для каждой схемы из benchmarks/external/jsonschemabench/data/**.json выполняется
-компиляция нашим движком (профиль canonical-v1, токенизатор gpt2 — как в
-manifest) и классификация исхода:
+For every schema from benchmarks/external/jsonschemabench/data/**.json our
+engine compiles it (canonical-v1 profile, gpt2 tokenizer - as in manifest)
+and the outcome is classified:
 
-  compiled                  — схема скомпилировалась;
-  invalid_schema            — ZG_ERR_INVALID_SCHEMA;
-  unsupported_feature       — ZG_ERR_UNSUPPORTED_FEATURE;
-  unsatisfiable_constraint  — ZG_ERR_UNSATISFIABLE_CONSTRAINT;
-  resource_limit            — ZG_ERR_RESOURCE_LIMIT;
-  unsupported_tokenizer     — ZG_ERR_UNSUPPORTED_TOKENIZER;
-  other_engine_error        — прочие ошибки ядра;
-  harness_error             — ошибка вне ядра (чтение файла и т.п.).
+  compiled                  - the schema compiled;
+  invalid_schema            - BLG_ERR_INVALID_SCHEMA;
+  unsupported_feature       - BLG_ERR_UNSUPPORTED_FEATURE;
+  unsatisfiable_constraint  - BLG_ERR_UNSATISFIABLE_CONSTRAINT;
+  resource_limit            - BLG_ERR_RESOURCE_LIMIT;
+  unsupported_tokenizer     - BLG_ERR_UNSUPPORTED_TOKENIZER;
+  other_engine_error        - other engine errors;
+  harness_error             - error outside the engine (file read etc.).
 
-Выход: <out-dir>/support_report.json (метаданные, per-schema список, агрегаты).
-Сырые байты схем передаются в ядро как есть (дубликаты ключей ловит сам
-компилятор как INVALID_SCHEMA).
+Output: <out-dir>/support_report.json (metadata, per-schema list, aggregates).
+Raw schema bytes are passed to the engine as is (duplicate keys are caught by
+the compiler itself as INVALID_SCHEMA).
 """
 
 import argparse
@@ -67,14 +67,14 @@ def classify(zc, engine, data):
         return "unsupported_tokenizer", str(e)
     except zc.ZigConstraintsError as e:
         return "other_engine_error", f"{type(e).__name__}: {e}"
-    except Exception as e:  # noqa: BLE001 — фиксируем всё, ничего не теряем
+    except Exception as e:  # noqa: BLE001 - record everything, lose nothing
         return "harness_error", f"{type(e).__name__}: {e}"
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--data-dir", default=JSB_DATA)
-    ap.add_argument("--out", required=True, help="путь support_report.json")
+    ap.add_argument("--out", required=True, help="path of support_report.json")
     ap.add_argument("--progress-every", type=int, default=500)
     args = ap.parse_args()
 
@@ -82,7 +82,7 @@ def main():
     zc = bc.require_core()
     tf = bc.import_or_skip("transformers")
     if tf is None:
-        bc.skip("transformers не установлен")
+        bc.skip("transformers is not installed")
 
     hf_tok = tf.AutoTokenizer.from_pretrained(TOKENIZER_NAME,
                                               revision=TOKENIZER_REVISION)
@@ -119,7 +119,7 @@ def main():
             kw = detail.split("keyword '", 1)[1].split("'", 1)[0]
             unsupported_keywords[kw] = unsupported_keywords.get(kw, 0) + 1
         if len(per_schema) % args.progress_every == 0:
-            print(f"... {len(per_schema)} схем, {time.time() - t_start:.1f} c",
+            print(f"... {len(per_schema)} schemas, {time.time() - t_start:.1f} s",
                   file=sys.stderr, flush=True)
 
     total = len(per_schema)

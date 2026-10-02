@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build sdist and wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build core (portable CPU)
+        run: zig build -Drelease=true -Dcpu=baseline
+
+      - name: Build sdist and wheel
+        working-directory: python
+        env:
+          BLG_SKIP_ZIG: "1"
+        run: |
+          python3 -m pip install --upgrade "pip>=24" "setuptools>=77" wheel build
+          python3 -m build --no-isolation
+
+      - name: Smoke-test the wheel
+        run: |
+          python3 -m venv /tmp/bolorgir-release-venv
+          /tmp/bolorgir-release-venv/bin/pip install --upgrade "pip>=24"
+          /tmp/bolorgir-release-venv/bin/pip install python/dist/*.whl
+          /tmp/bolorgir-release-venv/bin/python - <<'EOF'
+          from bolorgir import Engine, TokenizerBundle
+
+          tokens = [bytes([i]) for i in range(256)] + [b"<eos>"]
+          bundle = TokenizerBundle.from_token_bytes(tokens, eos_ids=[256])
+          with Engine(mode="lazy", tokenizer=bundle) as engine:
+              with engine.compile_literals(["ok"]) as constraint:
+                  with constraint.create_session() as session:
+                      assert session.allowed_token_ids()
+          print("release smoke OK")
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: python/dist/*
+
+  release:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+
+      # PyPI publishing (optional): configure trusted publishing for this
+      # repository on PyPI and uncomment the step below.
+      #
+      # - name: Publish to PyPI
+      #   uses: pypa/gh-action-pypi-publish@release/v1

@@ -1,36 +1,39 @@
-"""Регрессионные тесты HF-интеграции (bugs B-1/B-2/B-3) без реальной модели.
+"""Regression tests for the HF integration (bugs B-1/B-2/B-3) without a real model.
 
-ConstraintLogitsProcessor вызывается напрямую с фабричными input_ids/scores
-(CPU, побайтовый мини-токенизатор: vocab 257 = 256 байт + EOS); веса моделей
-не скачиваются. Маски — настоящего ядра; под stub-ядром (ZG_CORE_STUB=1,
-маски занулены) маскозависимые тесты пропускаются.
+ConstraintLogitsProcessor is called directly with factory input_ids/scores
+(CPU, byte-wise mini tokenizer: vocab 257 = 256 bytes + EOS); model weights
+are never downloaded. Masks come from the real core; under a stub core
+(BLG_CORE_STUB=1, masks zeroed) mask-dependent tests are skipped.
 
-Покрытие:
-- B-1: ширина lm_head больше словаря ограничений (padded vocab) — хвост
-  логитов запрещается (-inf), маска применяется к первым vocab позициям;
-- B-3: строка батча завершилась EOS раньше остальных — pad'ы HF после EOS
-  не попадают в accept_token, fill_mask для завершённой строки не зовётся;
-- B-2: Engine.__exit__ при активном исключении не маскирует его BusyError.
+Coverage:
+- B-1: lm_head width exceeds the constraint vocab (padded vocab) - the logit
+  tail is forbidden (-inf), the mask applies to the first vocab positions;
+- B-3: a batch row finished with EOS before the others - HF pads after EOS
+  never reach accept_token, fill_mask is not called for a finished row;
+- B-2: Engine.__exit__ with an active exception does not mask it with a
+  BusyError;
+- D-1 (eighth run): unpack_forbid - inverted unpacking and its out= form
+  match ~unpack (padded word buffer).
 
-Импорты torch/transformers — только внутри тестов (collection не должен
-тащить torch в sys.modules, см. test_import_without_torch_numpy).
+torch/transformers imports are inside tests only (collection must not pull
+torch into sys.modules, see test_import_without_torch_numpy).
 """
 
 import os
 
 import pytest
 
-CORE_IS_STUB = os.environ.get("ZG_CORE_STUB") == "1"
+CORE_IS_STUB = os.environ.get("BLG_CORE_STUB") == "1"
 
-import zig_constraints as zc
-from zig_constraints import Engine, TokenizerBundle
+import bolorgir as zc
+from bolorgir import Engine, TokenizerBundle
 
 EOS_ID = 256
 VOCAB = 257
-PAD_ID = 0  # байт 0x00: вне любого literal'а ниже, «pad» HF
+PAD_ID = 0  # byte 0x00: outside any literal below, the HF "pad"
 
 needs_core_masks = pytest.mark.skipif(
-    CORE_IS_STUB, reason="stub-ядро зануляет маски fill_mask"
+    CORE_IS_STUB, reason="stub core zeroes fill_mask masks"
 )
 
 
@@ -49,7 +52,7 @@ def make_processor(zt, constraints, prompt_len):
 @pytest.fixture
 def zt():
     torch = pytest.importorskip("torch")
-    from zig_constraints.transformers import ConstraintLogitsProcessor
+    from bolorgir.transformers import ConstraintLogitsProcessor
 
     return torch, ConstraintLogitsProcessor
 
@@ -65,11 +68,11 @@ def test_padded_lm_head_tail_masked(zt):
         c = engine.compile_literals(["a"], tokenizer=mini_bundle())
         proc, sessions = make_processor(zt, [c], prompt_len=1)
         ids = torch.zeros((1, 1), dtype=torch.long)
-        scores = torch.zeros((1, 320))  # lm_head шире словаря (320 > 257)
+        scores = torch.zeros((1, 320))  # lm_head wider than the vocab (320 > 257)
         out = proc(ids, scores)
         finite = torch.isfinite(out[0]).nonzero().flatten().tolist()
-        assert finite == [ord("a")]  # literal "a": на старте разрешён только 'a'
-        assert torch.isinf(out[0, VOCAB:]).all()  # хвост запрещён
+        assert finite == [ord("a")]  # literal "a": only 'a' allowed at start
+        assert torch.isinf(out[0, VOCAB:]).all()  # tail forbidden
         assert (out[0, VOCAB:] < 0).all()
         sessions[0].close()
         c.close()
@@ -82,7 +85,7 @@ def test_exact_width_logits_regression(zt):
         c = engine.compile_literals(["a"], tokenizer=mini_bundle())
         proc, sessions = make_processor(zt, [c], prompt_len=1)
         ids = torch.zeros((1, 1), dtype=torch.long)
-        scores = torch.zeros((1, VOCAB))  # ширина == vocab: прежний путь
+        scores = torch.zeros((1, VOCAB))  # width == vocab: the previous path
         out = proc(ids, scores)
         finite = torch.isfinite(out[0]).nonzero().flatten().tolist()
         assert finite == [ord("a")]
@@ -96,7 +99,7 @@ def test_narrower_than_vocab_logits_rejected(zt):
         c = engine.compile_literals(["a"], tokenizer=mini_bundle())
         proc, sessions = make_processor(zt, [c], prompt_len=1)
         ids = torch.zeros((1, 1), dtype=torch.long)
-        scores = torch.zeros((1, 100))  # уже словаря — явная ошибка
+        scores = torch.zeros((1, 100))  # narrower than the vocab - explicit error
         with pytest.raises(zc.ZigConstraintsError):
             proc(ids, scores)
         sessions[0].close()
@@ -104,7 +107,36 @@ def test_narrower_than_vocab_logits_rejected(zt):
 
 
 # ----------------------------------------------------------------------
-# B-3: ранний EOS одной строки батча; pad'ы HF не идут в accept_token
+# D-1 (eighth run): fast forbid path of mask unpacking
+# ----------------------------------------------------------------------
+
+@needs_core_masks
+def test_unpack_forbid_matches_unpack_inverted(zt):
+    torch, _ = zt
+    from bolorgir.transformers import MaskGpuUnpacker
+
+    with Engine(mode="lazy") as engine:
+        c = engine.compile_literals(["a", "b"], tokenizer=mini_bundle())
+        sess = c.create_session()
+        mask = sess.fill_mask()
+        up = MaskGpuUnpacker()
+        dev = torch.device("cpu")
+        nwords = (VOCAB + 31) // 32
+        allowed = up.unpack(mask, VOCAB, dev).clone()  # the buffer is reused
+        forbid = up.unpack_forbid(mask, VOCAB, dev).clone()
+        assert forbid.shape == (1, nwords * 32)
+        assert bool((forbid[:, :VOCAB] == ~allowed).all())
+        # the out= form writes into the passed buffer and returns it
+        out = torch.zeros(1, nwords * 32, dtype=torch.bool)
+        ret = up.unpack_forbid(mask, VOCAB, dev, out=out)
+        assert ret is out
+        assert bool((out[:, :VOCAB] == ~allowed).all())
+        sess.close()
+        c.close()
+
+
+# ----------------------------------------------------------------------
+# B-3: early EOS of one batch row; HF pads never reach accept_token
 # ----------------------------------------------------------------------
 
 @needs_core_masks
@@ -116,22 +148,22 @@ def test_batch_early_eos_row_skips_hf_padding(zt):
         c1 = engine.compile_literals(["ab"], tokenizer=bundle)
         proc, sessions = make_processor(zt, [c0, c1], prompt_len=1)
 
-        # шаг 0: только промпт
+        # step 0: prompt only
         ids = torch.zeros((2, 1), dtype=torch.long)
         proc(ids, torch.zeros((2, VOCAB)))
 
-        # шаг 1: обе строки выбрали 'a'
+        # step 1: both rows picked 'a'
         ids = torch.tensor([[0, ord("a")], [0, ord("a")]])
         proc(ids, torch.zeros((2, VOCAB)))
 
-        # шаг 2: строка 0 завершила документ и выбрала EOS; строка 1 — 'b'
+        # step 2: row 0 finished the document and picked EOS; row 1 picked 'b'
         ids = torch.tensor([[0, ord("a"), EOS_ID], [0, ord("a"), ord("b")]])
         proc(ids, torch.zeros((2, VOCAB)))
         assert proc.eos_done == [True, False]
         assert proc.active == [False, True]
 
-        # шаг 3: HF добил завершённую строку 0 pad'ом, строка 1 выбрала EOS.
-        # До фикса B-3 pad попадал в accept_token -> InvalidTokenError.
+        # step 3: HF padded the finished row 0, row 1 picked EOS.
+        # Before the B-3 fix the pad reached accept_token -> InvalidTokenError.
         ids = torch.tensor(
             [[0, ord("a"), EOS_ID, PAD_ID], [0, ord("a"), ord("b"), EOS_ID]]
         )
@@ -149,7 +181,7 @@ def test_batch_early_eos_row_skips_hf_padding(zt):
 
 
 # ----------------------------------------------------------------------
-# B-2: __exit__ при активном исключении не маскирует его ошибкой очистки
+# B-2: __exit__ with an active exception does not mask it with a cleanup error
 # ----------------------------------------------------------------------
 
 def test_engine_exit_does_not_mask_active_exception():
@@ -157,7 +189,7 @@ def test_engine_exit_does_not_mask_active_exception():
         with Engine(mode="lazy") as engine:
             c = engine.compile_literals(["a"], tokenizer=mini_bundle())
             s = c.create_session()
-            _keep_alive = (c, s)  # живые обёртки -> close() был бы BusyError
+            _keep_alive = (c, s)  # live wrappers -> close() would raise BusyError
             raise ValueError("boom")
 
 
@@ -168,7 +200,7 @@ def test_engine_exit_raises_cleanup_error_without_active_exception():
     _keep_alive = (c, s)
     with pytest.raises(zc.BusyError):
         with engine:
-            pass  # исключения нет: ошибка очистки должна подниматься
+            pass  # no exception: the cleanup error must be raised
     s.close()
     c.close()
     engine.close()

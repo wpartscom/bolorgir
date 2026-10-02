@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Smoke: HF Transformers + zig_constraints на CUDA (Qwen2.5-1.5B-Instruct).
+"""Smoke: HF Transformers + bolorgir on CUDA (Qwen2.5-1.5B-Instruct).
 
-Запуск из корня проекта:
+Run from the project root:
     PYTHONPATH=python python3 benchmarks/hf_smoke.py
 """
 
@@ -10,7 +10,7 @@ import sys
 
 import torch
 
-from zig_constraints import Engine
+from bolorgir import Engine
 
 from hf_common import (
     close_result,
@@ -37,7 +37,7 @@ PROMPT = (
 
 
 def main() -> int:
-    assert torch.cuda.is_available(), "CUDA недоступна"
+    assert torch.cuda.is_available(), "CUDA is not available"
     print(f"device: {torch.cuda.get_device_name(0)}")
     model, tokenizer = load_model()
 

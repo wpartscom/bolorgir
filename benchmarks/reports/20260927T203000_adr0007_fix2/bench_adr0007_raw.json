@@ -1,0 +1,326 @@
+{
+ "status": "OK",
+ "case": "adr0007_mask_fast_path",
+ "lib": "/tmp/zigout-fix2/lib/libbolorgir.so",
+ "environment": {
+  "date_utc": "2026-09-28T03:00:42Z"
+ },
+ "vocab_size": 128256,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS",
+  "maskbench_states": 425
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 10,
+      "min": 378774851,
+      "p50": 388817225,
+      "p95": 406603726,
+      "p99": 406603726,
+      "max": 406603726,
+      "mean": 391063306.9
+     },
+     "core_ns": {
+      "count": 10,
+      "min": 378557425,
+      "p50": 388598045,
+      "p95": 406362380,
+      "p99": 406362380,
+      "max": 406362380,
+      "mean": 390838122.0
+     },
+     "work_ops": {
+      "count": 10,
+      "min": 383647,
+      "p50": 383647,
+      "p95": 383647,
+      "p99": 383647,
+      "max": 383647,
+      "mean": 383647.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 10,
+      "min": 4361122,
+      "p50": 4395669,
+      "p95": 6857433,
+      "p99": 6857433,
+      "max": 6857433,
+      "mean": 4706339.3
+     },
+     "core_ns": {
+      "count": 10,
+      "min": 4160498,
+      "p50": 4189522,
+      "p95": 6418112,
+      "p99": 6418112,
+      "max": 6418112,
+      "mean": 4478268.6
+     },
+     "work_ops": {
+      "count": 10,
+      "min": 20744,
+      "p50": 20744,
+      "p95": 20744,
+      "p99": 20744,
+      "max": 20744,
+      "mean": 20744.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1686,
+      "p50": 1929,
+      "p95": 2644,
+      "p99": 4628,
+      "max": 21934,
+      "mean": 2050.1645
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1674,
+      "p50": 1883,
+      "p95": 2083,
+      "p99": 2899,
+      "max": 9532,
+      "mean": 1928.1735
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 736,
+      "p50": 839,
+      "p95": 1205,
+      "p99": 3673,
+      "max": 17727,
+      "mean": 936.825
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 795,
+      "p50": 898,
+      "p95": 983,
+      "p99": 1171,
+      "max": 18438,
+      "mean": 931.993
+     }
+    }
+   }
+  },
+  "permissive_string_in_object": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 10,
+      "min": 380130732,
+      "p50": 386776987,
+      "p95": 399980654,
+      "p99": 399980654,
+      "max": 399980654,
+      "mean": 388506161.0
+     },
+     "core_ns": {
+      "count": 10,
+      "min": 379922913,
+      "p50": 386572052,
+      "p95": 399759974,
+      "p99": 399759974,
+      "max": 399759974,
+      "mean": 388293720.7
+     },
+     "work_ops": {
+      "count": 10,
+      "min": 383662,
+      "p50": 383662,
+      "p95": 383662,
+      "p99": 383662,
+      "max": 383662,
+      "mean": 383662.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 10,
+      "min": 4341229,
+      "p50": 4427485,
+      "p95": 4588123,
+      "p99": 4588123,
+      "max": 4588123,
+      "mean": 4442104.3
+     },
+     "core_ns": {
+      "count": 10,
+      "min": 4140815,
+      "p50": 4236514,
+      "p95": 4375861,
+      "p99": 4375861,
+      "max": 4375861,
+      "mean": 4241117.9
+     },
+     "work_ops": {
+      "count": 10,
+      "min": 20759,
+      "p50": 20759,
+      "p95": 20759,
+      "p99": 20759,
+      "max": 20759,
+      "mean": 20759.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1699,
+      "p50": 1869,
+      "p95": 2014,
+      "p99": 2269,
+      "max": 19683,
+      "mean": 1911.168
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1763,
+      "p50": 1980,
+      "p95": 2132,
+      "p99": 2425,
+      "max": 37566,
+      "mean": 2024.54
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 853,
+      "p50": 950,
+      "p95": 1036,
+      "p99": 1366,
+      "max": 22168,
+      "mean": 996.184
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 824,
+      "p50": 946,
+      "p95": 1043,
+      "p99": 1325,
+      "max": 16237,
+      "mean": 968.8085
+     }
+    }
+   }
+  }
+ },
+ "maskbench_slice": {
+  "files": [
+   "BFCL_java_6",
+   "BFCL_java_10",
+   "BFCL_java_18",
+   "BFCL_java_22",
+   "BFCL_java_23",
+   "BFCL_java_24",
+   "BFCL_java_25",
+   "BFCL_java_27",
+   "BFCL_java_32",
+   "BFCL_java_44",
+   "BFCL_java_47",
+   "BFCL_java_49",
+   "BFCL_java_53",
+   "BFCL_java_57",
+   "BFCL_java_63",
+   "BFCL_java_73",
+   "BFCL_java_74",
+   "BFCL_java_76",
+   "BFCL_java_77",
+   "BFCL_java_78",
+   "BFCL_java_79",
+   "BFCL_java_80",
+   "BFCL_java_92",
+   "BFCL_java_98"
+  ],
+  "off": {
+   "tbm_us": {
+    "count": 564,
+    "min": 127.939,
+    "p50": 164.189,
+    "p95": 395707.899,
+    "p99": 409590.642,
+    "max": 446282.838,
+    "mean": 89546.42888297868
+   },
+   "stats": {
+    "files": 24,
+    "compiled": 24,
+    "compile_error": 0,
+    "instances": 24,
+    "masks": 564,
+    "validation_error": 0
+   }
+  },
+  "on": {
+   "tbm_us": {
+    "count": 564,
+    "min": 131.735,
+    "p50": 157.035,
+    "p95": 1415.699,
+    "p99": 3366.485,
+    "max": 5997.46,
+    "mean": 346.17653723404266
+   },
+   "stats": {
+    "files": 24,
+    "compiled": 24,
+    "compile_error": 0,
+    "instances": 24,
+    "masks": 564,
+    "validation_error": 0
+   }
+  }
+ }
+}

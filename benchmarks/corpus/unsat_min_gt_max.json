@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ОТКАЗ: противоречие minItems > maxItems (UnsatisfiableConstraint)",
+  "title": "REJECT: contradiction minItems > maxItems (UnsatisfiableConstraint)",
   "type": "object",
   "properties": {
     "items": {

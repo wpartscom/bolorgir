@@ -1,0 +1,1377 @@
+{
+ "comment": "Pinned ADR-0005 D3 residual (2026-09-30, fix3g): exact ENGINE_ERROR rows of the spec-v1 oracle runs. Each row is identified by (draft, suite_file, case, test_index) and must carry engine == 'error:RESOURCE_LIMIT'; the certificate families behind every group are documented with counterexample schemas in benchmarks/reports/20260929T_fix3_adr0007/REPORT.md and docs/supported_features.md. Ratchet: a fixed family must shrink this list and any new/moved row fails the gate (tests/oracle/test_oracle_spec_v1.py, tests/oracle/test_oracle_dialects.py).",
+ "rows": [
+  {
+   "draft": "draft2019-09",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 5,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "dependentSchemas.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "dependentSchemas.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "dependentSchemas.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "dependentSchemas.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "dependentSchemas.json",
+   "case": "single dependency",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "dependentSchemas.json",
+   "case": "single dependency",
+   "test_index": 4,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "if-then-else.json",
+   "case": "if and then without else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "if-then-else.json",
+   "case": "validate against correct branch, then vs else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "multipleOf.json",
+   "case": "float division = inf",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with boolean schemas, all true",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with boolean schemas, more than one true",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with required",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation with pattern",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation with pattern",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames with boolean schema false",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames with boolean schema false",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "recursiveRef.json",
+   "case": "dynamic $recursiveRef destination (not predictable at schema compile time)",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "recursiveRef.json",
+   "case": "multiple dynamic paths to the $recursiveRef keyword",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "unevaluatedItems.json",
+   "case": "unevaluatedItems with if/then/else",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "unevaluatedItems.json",
+   "case": "unevaluatedItems with if/then/else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties can see annotations from if without then and else",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties can see annotations from if without then and else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties not affected by propertyNames",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties not affected by propertyNames",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties with nested patternProperties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties with nested patternProperties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2019-09",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties with not",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 5,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dependentSchemas.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dependentSchemas.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dependentSchemas.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dependentSchemas.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dependentSchemas.json",
+   "case": "single dependency",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dependentSchemas.json",
+   "case": "single dependency",
+   "test_index": 4,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dynamicRef.json",
+   "case": "after leaving a dynamic scope, it is not used by a $dynamicRef",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dynamicRef.json",
+   "case": "after leaving a dynamic scope, it is not used by a $dynamicRef",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dynamicRef.json",
+   "case": "after leaving a dynamic scope, it is not used by a $dynamicRef",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dynamicRef.json",
+   "case": "multiple dynamic paths to the $dynamicRef keyword",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "dynamicRef.json",
+   "case": "multiple dynamic paths to the $dynamicRef keyword",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "if-then-else.json",
+   "case": "if and then without else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "if-then-else.json",
+   "case": "validate against correct branch, then vs else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "multipleOf.json",
+   "case": "float division = inf",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with boolean schemas, all true",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with boolean schemas, more than one true",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with required",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames with boolean schema false",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames with boolean schema false",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "unevaluatedItems.json",
+   "case": "unevaluatedItems with if/then/else",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "unevaluatedItems.json",
+   "case": "unevaluatedItems with if/then/else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties can see annotations from if without then and else",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties can see annotations from if without then and else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties not affected by propertyNames",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties not affected by propertyNames",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties with nested patternProperties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties with nested patternProperties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft2020-12",
+   "suite_file": "unevaluatedProperties.json",
+   "case": "unevaluatedProperties with not",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 5,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "dependencies.json",
+   "case": "multiple dependencies subschema",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "dependencies.json",
+   "case": "multiple dependencies subschema",
+   "test_index": 4,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "multipleOf.json",
+   "case": "float division = inf",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft4",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with required",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 5,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "dependencies.json",
+   "case": "multiple dependencies subschema",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "dependencies.json",
+   "case": "multiple dependencies subschema",
+   "test_index": 4,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "multipleOf.json",
+   "case": "float division = inf",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with boolean schemas, all true",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with boolean schemas, more than one true",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with required",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation with pattern",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation with pattern",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames with boolean schema false",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft6",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames with boolean schema false",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "additionalProperties.json",
+   "case": "additionalProperties being false does not allow other properties",
+   "test_index": 5,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "additionalProperties.json",
+   "case": "non-ASCII pattern with additionalProperties",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "allOf.json",
+   "case": "allOf simple types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "dependencies.json",
+   "case": "dependent subschema incompatible with root",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "dependencies.json",
+   "case": "multiple dependencies subschema",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "dependencies.json",
+   "case": "multiple dependencies subschema",
+   "test_index": 4,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "if-then-else.json",
+   "case": "if and then without else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "if-then-else.json",
+   "case": "validate against correct branch, then vs else",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "multipleOf.json",
+   "case": "float division = inf",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf complex types",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with boolean schemas, all true",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with boolean schemas, more than one true",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with empty schema",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 2,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with missing optional property",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "oneOf.json",
+   "case": "oneOf with required",
+   "test_index": 3,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation with pattern",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames validation with pattern",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames with boolean schema false",
+   "test_index": 0,
+   "engine": "error:RESOURCE_LIMIT"
+  },
+  {
+   "draft": "draft7",
+   "suite_file": "propertyNames.json",
+   "case": "propertyNames with boolean schema false",
+   "test_index": 1,
+   "engine": "error:RESOURCE_LIMIT"
+  }
+ ]
+}

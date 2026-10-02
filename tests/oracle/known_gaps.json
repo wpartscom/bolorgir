@@ -1,0 +1,69 @@
+{
+  "comment": "Documented profile gaps (ROADMAP section 5, P0 item 4): oracle rows whose mismatch is a documented profile/serialization gap, not an engine defect. Each entry matches suite file + case description (+ optional test index and mismatch_class) and carries a reason. An optional 'profile' field scopes an entry to that compile profile; unscoped entries apply to every profile. An optional 'draft' field (added for the R6 dialect matrix) scopes an entry to one suite draft directory (draft4/draft6/draft7/draft2019-09/draft2020-12); unscoped entries match every draft, so the spec-v1 const-object key-order gap below covers the identical 'const with object' case of every dialect that has const (draft-06+). The canonical-v1 entries below are fixed under spec-v1 (value equality, ROADMAP 4.2 P1) and stay as the canonical profile's documented gaps; an entry that stops matching its profile's rows is reported by test_oracle.py as a stale gap.",
+  "gaps": [
+    {
+      "file": "const.json",
+      "case": "const with 0 does not match other zero-like types",
+      "test": 2,
+      "mismatch_class": "engine_vs_both",
+      "profile": "canonical-v1",
+      "reason": "canonical-v1 enum/const compares normalized literal bytes (DESIGN section 1.6), so const 0 accepts only '0', not the fed '0.0'. JSON Schema instance equality (core 4.2.2) equates 0 and 0.0; value equality is a spec-v1 item (ROADMAP 4.2, P1 structural enum/const)."
+    },
+    {
+      "file": "const.json",
+      "case": "const with 1 does not match true",
+      "test": 2,
+      "mismatch_class": "engine_vs_both",
+      "profile": "canonical-v1",
+      "reason": "same as const.json/'const with 0 does not match other zero-like types': const 1 accepts only '1', not the fed '1.0'."
+    },
+    {
+      "file": "const.json",
+      "case": "const with -2.0 matches integer and float types",
+      "test": 2,
+      "mismatch_class": "engine_vs_both",
+      "profile": "canonical-v1",
+      "reason": "same normalization gap: const -2.0 normalizes to the literal '-2'; the fed '-2.0' is outside the canonical-v1 language."
+    },
+    {
+      "file": "const.json",
+      "case": "float and integers are equal up to 64-bit representation limits",
+      "test": 2,
+      "mismatch_class": "engine_vs_both",
+      "profile": "canonical-v1",
+      "reason": "same normalization gap: the const literal is stored in normalized integer form; the fed document keeps a fractional spelling."
+    },
+    {
+      "file": "enum.json",
+      "case": "enum with 0 does not match false",
+      "test": 2,
+      "mismatch_class": "engine_vs_both",
+      "profile": "canonical-v1",
+      "reason": "same normalization gap as const.json: enum [0] accepts only the literal '0', not the fed '0.0'."
+    },
+    {
+      "file": "enum.json",
+      "case": "enum with 1 does not match true",
+      "test": 2,
+      "mismatch_class": "engine_vs_both",
+      "profile": "canonical-v1",
+      "reason": "same normalization gap as const.json: enum [1] accepts only the literal '1', not the fed '1.0'."
+    },
+    {
+      "file": "type.json",
+      "case": "integer type matches integers",
+      "test": 1,
+      "mismatch_class": "engine_vs_both",
+      "profile": "canonical-v1",
+      "reason": "canonical-v1 integer is a lexeme class (no fraction/exponent, DESIGN section 1.3); the fed '1.0' is a number lexeme. JSON Schema treats 1.0 as an integer (validation 6.1.1); value-based typing is a spec-v1 item (ROADMAP 4.2, P1)."
+    },
+    {
+      "file": "const.json",
+      "case": "const with object",
+      "test": 1,
+      "mismatch_class": "engine_vs_both",
+      "profile": "spec-v1",
+      "reason": "spec-v1 serialization policy (semantics-spec-v1 4.3): object keys serialize in the schema spelling order, so a const object accepts the key order of the schema document only; the suite feeds the same object with keys swapped ('same object with different property order is valid'). Value equality of objects is order-insensitive (semantics-spec-v1 2), but the byte language fixes one order; accepting all permutations is exponential in the key count and out of P1 scope."
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "id": "blg",
+  "name": "Bolorgir",
+  "module": "bolorgir",
+  "module_version": "0.1.0",
+  "cmd": [
+    "python3",
+    "-m",
+    "maskbench.runner",
+    "--multi",
+    "--blg",
+    "--compact",
+    "--output",
+    "/home/gm/maskbench-work/runs/full-blg-compact"
+  ],
+  "info": "11306 files, timeout 900s, memory 40GB, output /home/gm/maskbench-work/runs/full-blg-compact; 20 threads; cmd: python3 -m maskbench.runner --multi --blg --compact --output /home/gm/maskbench-work/runs/full-blg-compact"
+}

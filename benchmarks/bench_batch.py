@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""B4. Батч: 1/8/32/128 независимых сессий одним вызовом (ТЗ 10.4 B4).
+"""B4. Batch: 1/8/32/128 independent sessions in one call (SPEC 10.4 B4).
 
-Метрики: время всего батча и пропускная способность (масок/с). Если пакет не
-предоставляет пакетный вызов, используется последовательный обход с пометкой
-sequential_fallback=true.
+Metrics: whole-batch time and throughput (masks/s). If the package does not
+provide a batch call, a sequential loop is used with the
+sequential_fallback=true marker.
 """
 
 import argparse
@@ -22,7 +22,7 @@ def main():
     ap.add_argument("--corpus-dir", default=bc.CORPUS_DIR)
     ap.add_argument("--batches", default="1,8,32,128")
     ap.add_argument("--steps", type=int, default=64,
-                    help="число шагов батч-маски на замер")
+                    help="number of batch-mask steps per measurement")
     ap.add_argument("--repeats", type=int, default=30)
     ap.add_argument("--mode", choices=["lazy", "adaptive", "precompute"],
                     default="adaptive")

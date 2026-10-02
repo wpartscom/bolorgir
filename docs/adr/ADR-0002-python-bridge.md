@@ -1,65 +1,66 @@
-# ADR-0002. Мост Python ↔ ядро: CPython C-расширение с Limited API (abi3)
+# ADR-0002. Python ↔ core bridge: CPython C extension with the Limited API (abi3)
 
-- Статус: accepted
-- Дата: 2026-09-14
-- Контекст: ТЗ FR-13, DESIGN.md §8
+- Status: accepted
+- Date: 2026-09-14
+- Context: spec FR-13, DESIGN.md §8
 
-## Контекст
+## Context
 
-Ядро zig-constraints — разделяемая Zig-библиотека с C ABI
-(`include/zig_constraints.h`). Нужен Python-мост, который не дублирует
-алгоритмы построения масок, корректно управляет GIL и владением буферами
-и упаковывается в wheel для Linux x86_64. Рассматривались три варианта.
+The Bolorgir core is a shared Zig library with a C ABI
+(`include/bolorgir.h`). A Python bridge is needed that does not duplicate
+mask construction algorithms, manages the GIL and buffer ownership correctly,
+and packages into a wheel for Linux x86_64. Three options were considered.
 
-## Варианты
+## Options
 
-### 1. CPython C-расширение с Limited API (выбрано)
+### 1. CPython C extension with the Limited API (chosen)
 
-`zig_constraints/_core.c`, `Py_LIMITED_API=0x030A0000` → одно abi3-колесо
-`cp310` для всех Python ≥ 3.10 (проверяется сборкой и тестами; обычную
-сборку метить abi3 нельзя — контролируется через `py_limited_api=True` и
+`bolorgir/_core.c`, `Py_LIMITED_API=0x030A0000` → a single abi3 wheel
+`cp310` for all Python ≥ 3.10 (verified by builds and tests; a regular
+build cannot be labeled abi3 - controlled via `py_limited_api=True` and
 `bdist_wheel --py-limited-api`).
 
-- Стоимость вызова: прямой C-вызов `zg_*`, без маршалинга аргументов через
-  чужеродные типы; на путях fill_mask/accept_token (горячий цикл генерации)
-  накладные расходы минимальны и измеримы.
-- GIL: освобождается явно (`PyEval_SaveThread`) вокруг всех немгновенных
-  нативных вызовов (context_create, compile, session_create, fill_mask(s),
+- Call cost: a direct C call to `blg_*`, without marshaling arguments through
+  foreign types; on the fill_mask/accept_token paths (the generation hot loop)
+  overhead is minimal and measurable.
+- GIL: released explicitly (`PyEval_SaveThread`) around all non-instantaneous
+  native calls (context_create, compile, session_create, fill_mask(s),
   accept_token, destroy).
-- Владение: буферы маски — `PyBytes`, заполняемые на месте (ноль копий);
-  таблица токенизатора копируется ядром при `zg_context_create`; ссылки
-  Grammar→Context и Session→Context/Grammar гарантируют порядок destroy.
-- Конкурентность: per-session `PyThread_type_lock` сериализует операции
-  одной сессии; блокирующий захват выполняется без GIL.
-- Ошибки: `zg_status` + `zg_error` (message, schema_offset) маппятся в
-  типизированную иерархию исключений на C-стороне.
+- Ownership: mask buffers - `PyBytes` filled in place (zero copies);
+  the tokenizer table is copied by the core at `blg_context_create`; the
+  Grammar→Context and Session→Context/Grammar references guarantee destroy order.
+- Concurrency: a per-session `PyThread_type_lock` serializes operations
+  of one session; the blocking acquisition is performed without the GIL.
+- Errors: `blg_status` + `blg_error` (message, schema_offset) are mapped to a
+  typed exception hierarchy on the C side.
 
 ### 2. ctypes
 
-- Нет шага компиляции, но: маршалинг структур (`zg_token_entry`,
-  `zg_tokenizer_desc`) описывается на Python и дублирует layout заголовка
-  (риск расхождения при изменении ABI); обратные вызовы и управление GIL
-  (ctypes освобождает GIL только на время вызова и не даёт per-session
-  локов без собственного C-кода) слабее; упаковка всё равно требует
-  поставки .so. Стоимость вызова выше (подготовка аргументов на Python).
+- No compilation step, but: struct marshaling (`blg_token_entry`,
+  `blg_tokenizer_desc`) is described in Python and duplicates the header layout
+  (risk of divergence when the ABI changes); callbacks and GIL management
+  (ctypes releases the GIL only for the duration of a call and provides no
+  per-session locks without custom C code) are weaker; packaging still requires
+  shipping a .so. Call cost is higher (argument preparation in Python).
 
 ### 3. cffi
 
-- Точнее ctypes по ABI (парсинг заголовка), но добавляет runtime-зависимость
-  cffi и, в out-of-line режиме, всё тот же шаг компиляции C; GIL и владение
-  буферами контролируются хуже, чем в собственном расширении.
+- More ABI-precise than ctypes (header parsing), but adds a runtime dependency
+  on cffi and, in out-of-line mode, the same C compilation step; the GIL and
+  buffer ownership are controlled less well than in a custom extension.
 
-## Решение
+## Decision
 
-C-расширение с Limited API, abi3 wheel `cp310`. Если при развитии ABI
-обнаружится ограничение Limited API, переходим на wheels под конкретные
-версии Python и обновляем релизную матрицу (явно, без ложной метки abi3).
+A C extension with the Limited API, abi3 wheel `cp310`. If ABI evolution
+uncovers a Limited API limitation, we switch to wheels for specific
+Python versions and update the release matrix (explicitly, without a false abi3
+label).
 
-## Последствия
+## Consequences
 
-- Сборка требует компилятор C и заголовки Python 3.10+ (есть на целевой
-  платформе); wheel не требует ни того, ни другого.
-- `_core.c` не содержит алгоритмов ядра: только объекты Python, GIL,
-  владение буферами и маппинг ошибок.
-- Финализаторы (`tp_dealloc`) — дополнительная защита; основной путь —
-  контекстные менеджеры (`close()`), см. FR-13.
+- Building requires a C compiler and Python 3.10+ headers (available on the
+  target platform); the wheel requires neither.
+- `_core.c` contains no core algorithms: only Python objects, the GIL,
+  buffer ownership and error mapping.
+- Finalizers (`tp_dealloc`) are an additional safety net; the main path is
+  context managers (`close()`), see FR-13.

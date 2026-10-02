@@ -1,133 +1,133 @@
 {
   "version": 1,
-  "description": "Собственный MVP-корпус zig-constraints (ТЗ 10.3)",
+  "description": "Own MVP corpus of Bolorgir (spec §10.3)",
   "entries": {
     "closed_object_action_amount": {
       "file": "closed_object_action_amount.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Закрытый объект: enum действий + integer (пример ТЗ)",
-      "sha256": "ab702279e8dae4f8072fa2ab5b8e35e773690acba189cc2f3c681f3005984bb6"
+      "description": "Closed object: action enum + integer (spec example)",
+      "sha256": "6dce585c36379aaa6e1d9f3059a56a058d4c7f99b986fc9fe173501815ac5b0a"
     },
     "optional_fields": {
       "file": "optional_fields.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Необязательные поля, порядок объявления, type null",
-      "sha256": "5ac02a4dcaacfa2a08f9ce717e5879f5e13d87089dbdc98615b5f61b980d6db8"
+      "description": "Optional fields, declaration order, type null",
+      "sha256": "c8eb62ed51abc17bb0f8324b5837e1bca11f811d715795cc7d1ce66a1be762da"
     },
     "nested_3_levels": {
       "file": "nested_3_levels.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Вложенность 3 уровня объектов",
-      "sha256": "975d7838b0cbbaf00b056ab68110f76cbce654cf56476aaa65b8d8adae806793"
+      "description": "3-level object nesting",
+      "sha256": "6bdd83cc723ba5169a33e60bf4ded97ddfd5eed11e35d1f3c6f2e93ec9110995"
     },
     "nested_5_levels": {
       "file": "nested_5_levels.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Вложенность 5 уровней, массив на дне",
-      "sha256": "e13775fcd0ceb641879d15d50b94119ebd7ae1b352848510e3b52f5a5961294c"
+      "description": "5-level nesting, array at the bottom",
+      "sha256": "5d2b3e2caaae7f9da502234f8c0388c1de01f0fc9a6a13caaec4b335103d496f"
     },
     "array_min_max": {
       "file": "array_min_max.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Массивы с min/maxItems, вложенный массив 3x2..4",
-      "sha256": "97767ee41dd21132cec7f9dc7e9982d6518bdb23cde450405e703ceffe7ff634"
+      "description": "Arrays with min/maxItems, nested 3x2..4 array",
+      "sha256": "36ef97027217960c7160dad151784e72ce303bb3d988f245cad038ec41253d8d"
     },
     "unicode_strings": {
       "file": "unicode_strings.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Unicode: кириллица/CJK/emoji в enum и строках",
-      "sha256": "bbc61d38a7ea68bfc72bc36a794e01eac1adc78f3b2a5d551140e45ccca2b25a"
+      "description": "Unicode: diacritics/CJK/emoji in enum and strings",
+      "sha256": "a3a0714316baef8f01710e4b4cbbd984fb10ee353d36b2dfdcc62c7a8ae4345c"
     },
     "long_string": {
       "file": "long_string.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Длинная строка maxLength=100000, minLength=1024",
-      "sha256": "893a40f4fcd124f46b284a6de81ecf5030319f37b47826ccaa11307a6cb2f7ac"
+      "description": "Long string maxLength=100000, minLength=1024",
+      "sha256": "4833923d66793fd3def986f52f78f08a819e2e25102b85ef86ede7b2335c2d68"
     },
     "enum_common_prefixes": {
       "file": "enum_common_prefixes.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "enum с общими префиксами buy/buyback/sell_short...",
-      "sha256": "84a41c0909b3638ae0ef943597a2b73c6efa62d5b6c6fad26f991110ded2c31e"
+      "description": "enum with common prefixes buy/buyback/sell_short...",
+      "sha256": "4acde236534673e3361d30b97a3de00ec1be5ab96b9664826e7ad922cf359efa"
     },
     "big_enum_64": {
       "file": "big_enum_64.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Большой enum: 64 альтернативы с общим префиксом",
-      "sha256": "69e5d614ad94697325f2d335a9a6125de4fd441d9bed99c16e379f0ca74ea02c"
+      "description": "Large enum: 64 alternatives sharing a common prefix",
+      "sha256": "c0f06d0713be24b07b5b2154b1286c856812082ac559a4371512c0821e6ae7c7"
     },
     "defs_ref": {
       "file": "defs_ref.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "$defs/$ref локальные, ациклический граф",
-      "sha256": "f034bc931a840e4a63e476be44ab7c091d2d2db7fbe85dafdafda805388ea1ab"
+      "description": "$defs/$ref local, acyclic graph",
+      "sha256": "3b71c2e98a51b90730b388d5a5174b00c0484f98967131a59197d66f8d044eec"
     },
     "empty_object": {
       "file": "empty_object.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Пустой объект: единственный документ {}",
-      "sha256": "5a9bea3c1bf0f6732827dd964a4802d11a9648759540a145fd46b9a2cb1e0629"
+      "description": "Empty object: single document {}",
+      "sha256": "344323349a030d0216c15a3b135a26615ef65fbe7564adf557c4f2236fe55b1b"
     },
     "empty_array": {
       "file": "empty_array.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Пустой массив: maxItems=0, единственный документ []",
-      "sha256": "3d42eddc615510f30f22ad179ba48a5c15688e38748658932b8d44fb8145a4dc"
+      "description": "Empty array: maxItems=0, single document []",
+      "sha256": "7575427656933ae297b987814125e5445521f10c1253fde931a22c338fefafd1"
     },
     "string_length_bounds": {
       "file": "string_length_bounds.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "min==maxLength, minLength=0, границы длин",
-      "sha256": "c56d592e02e385385473329787071fb4b728a483778b91407f7b324a0ddbb582"
+      "description": "min==maxLength, minLength=0, length bounds",
+      "sha256": "5b82246778df6b81430e7cc498105d686356b9dc9ce7ea21eb8f87401dad10bc"
     },
     "numbers_integers": {
       "file": "numbers_integers.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "integer/number, числовые enum с нормализацией (1e2, 1.50, -0)",
-      "sha256": "ea6165a101280c13649b24ed7aeb654b0fdc7ea1cff26f6a0fe62abbb031154a"
+      "description": "integer/number, numeric enums with normalization (1e2, 1.50, -0)",
+      "sha256": "bf6c6c12b908eb9ddb7afdcf85b6670e60d9c2355a240b69d4eb802ff2c3ed54"
     },
     "mixed_records": {
       "file": "mixed_records.json",
       "kind": "json_schema",
       "expect_support": true,
       "expect_error": null,
-      "description": "Смесь: вложенные объекты, массивы, enum, $ref, Unicode",
-      "sha256": "f8a1875c5309420cb5af20d9ed6e81ee5c04f61ec876a906e45b5333351af86f"
+      "description": "Mix: nested objects, arrays, enum, $ref, Unicode",
+      "sha256": "33cdec624dad74a3636ba50505cdfc432573a65d57e85ff3dfb6e1cded294072"
     },
     "literals_common_prefix": {
       "file": "literals_common_prefix.json",
       "kind": "literal_set",
       "expect_support": true,
       "expect_error": null,
-      "description": "FR-3: набор строк с общими префиксами in*/ins*",
+      "description": "FR-3: set of strings with common prefixes in*/ins*",
       "sha256": "760f98d8003b30b3ec58a1eb76fae76f79204cb4715f67f1af38f67399b2162a"
     },
     "literals_empty_string": {
@@ -135,7 +135,7 @@
       "kind": "literal_set",
       "expect_support": true,
       "expect_error": null,
-      "description": "FR-3: пустая строка как один из вариантов",
+      "description": "FR-3: empty string as one of the alternatives",
       "sha256": "83b1af9e40c127a4b042b13e7451da284e5a30e8360b0ee9d0c2c51abc1c24ba"
     },
     "literals_unicode": {
@@ -143,48 +143,57 @@
       "kind": "literal_set",
       "expect_support": true,
       "expect_error": null,
-      "description": "FR-3: Unicode-строки, emoji, диакритика",
-      "sha256": "ef9fd6109bbd474c33a29c9d6907e7ce0519a1ae0a91c5f85935abb9c1520d77"
+      "description": "FR-3: Unicode strings, emoji, diacritics",
+      "sha256": "9f81e15016f03413cc25102ef7c27f32b9bae54cdd8d8e94d302d63137e9cfb0"
     },
     "unsat_min_gt_max": {
       "file": "unsat_min_gt_max.json",
       "kind": "json_schema",
       "expect_support": false,
-      "expect_error": "ZG_ERR_UNSATISFIABLE_CONSTRAINT",
-      "description": "ОТКАЗ: minItems > maxItems",
-      "sha256": "974009172bc6879fa075410df016ef98711160608800a1e0f3944ccb5db03dc8"
+      "expect_error": "BLG_ERR_UNSATISFIABLE_CONSTRAINT",
+      "description": "REJECT: minItems > maxItems",
+      "sha256": "b9754cec21a83b675c530c5c795bb8a01075489b0c1715932fdb8bf5b1cbd93e"
     },
     "unsat_enum_filtered": {
       "file": "unsat_enum_filtered.json",
       "kind": "json_schema",
       "expect_support": false,
-      "expect_error": "ZG_ERR_UNSATISFIABLE_CONSTRAINT",
-      "description": "ОТКАЗ: enum пуст после фильтрации по minLength",
-      "sha256": "9ab30a65705702979cd01b7e48d3fafc77b44c335183fcfd93a50ed8bc2b0b4c"
+      "expect_error": "BLG_ERR_UNSATISFIABLE_CONSTRAINT",
+      "description": "REJECT: enum empty after minLength filtering",
+      "sha256": "d18a96cbea6a085d56759264f53187f757c20d1c2c70cc22b2fa269bf4ee0221"
     },
     "unsupported_anyof": {
       "file": "unsupported_anyof.json",
       "kind": "json_schema",
       "expect_support": false,
-      "expect_error": "ZG_ERR_UNSUPPORTED_FEATURE",
-      "description": "ОТКАЗ: anyOf вне MVP",
-      "sha256": "88b2a31dc3fedee9ead4fbc94cf077f0c8b758b3c86e8b7c38435c6afe4c3e5a"
+      "expect_error": "BLG_ERR_UNSUPPORTED_FEATURE",
+      "description": "REJECT: anyOf outside the MVP",
+      "sha256": "7fa96818eaec8e87921754d26eb14d4fe1ad010c8c6569c84c98a83bef0c2392"
     },
     "unsupported_pattern": {
       "file": "unsupported_pattern.json",
       "kind": "json_schema",
       "expect_support": false,
-      "expect_error": "ZG_ERR_UNSUPPORTED_FEATURE",
-      "description": "ОТКАЗ: pattern вне MVP",
-      "sha256": "ef58149039fc65deaf3508efde328fa4a750dcd6aa02e67986dcd3ee52c45940"
+      "expect_error": "BLG_ERR_UNSUPPORTED_FEATURE",
+      "description": "REJECT: pattern outside the MVP",
+      "sha256": "d6cf2b2ed4aff67d9daa536f3c1ef030b1f2be8fee7d028a07ff33c2bc234a86"
     },
     "unsupported_open_object": {
       "file": "unsupported_open_object.json",
       "kind": "json_schema",
       "expect_support": false,
-      "expect_error": "ZG_ERR_UNSUPPORTED_FEATURE",
-      "description": "ОТКАЗ: нет additionalProperties: false",
-      "sha256": "ad014872926b0b45492692fa18ead95dd057fdd6bb494ab3d5a9e00cbe9e098a"
+      "expect_error": "BLG_ERR_UNSUPPORTED_FEATURE",
+      "description": "REJECT: no additionalProperties: false",
+      "sha256": "9bb0dfc1dfa824a6ee2b5ec501ce49225c7b89bddcb145ce854da8e38e908af4"
+    },
+    "secondary_geo_route": {
+      "file": "secondary_geo_route.json",
+      "kind": "json_schema",
+      "expect_support": true,
+      "expect_error": null,
+      "description": "SECONDARY (review 817c860, item 5): previously unused holdout for an independent generalization check; 3 levels, array of objects 2..6, enum, string bounds, integer/number",
+      "sha256": "8cadd09885b7394acf51c64a7b7a9b6b75240eaafd56e1b9bc6e916436903b5c",
+      "secondary": true
     }
   }
 }

@@ -1,0 +1,16 @@
+{
+  "suite": {
+    "repository": "https://github.com/json-schema-org/JSON-Schema-Test-Suite",
+    "release": "23.2.0",
+    "commit": "95fe6ca20a90a019f4538f3670b6dd49d91dfdee",
+    "fetched": "2026-09-20",
+    "layout": "vendored snapshot at tests/oracle/external/JSON-Schema-Test-Suite/ (tests/ tree + LICENSE only, .git removed; gitignored)",
+    "refetch": "tests/oracle/fetch_suite.sh"
+  },
+  "validator": {
+    "package": "jsonschema",
+    "version": "4.26.0",
+    "install": "pip install 'jsonschema==4.26.0'",
+    "dialect": "per suite directory: Draft4Validator/Draft6Validator/Draft7Validator/Draft201909Validator/Draft202012Validator (DRAFTS in run_oracle.py)"
+  }
+}

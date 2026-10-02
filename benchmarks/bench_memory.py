@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""B5/B8. Бюджеты памяти и длительная работа.
+"""B5/B8. Memory budgets and long-run behavior.
 
-- плато RSS при циклах session create/destroy (по умолчанию 10k циклов, ТЗ B8);
-- поведение при общих лимитах ядра 64/128/256 MiB (ТЗ B5): поддерживаемая
-  нагрузка и штатный ResourceLimit;
-- дополнительно: циклы compile/release грамматики.
+- RSS plateau under session create/destroy cycles (10k cycles by default, SPEC B8);
+- behavior under the core-wide limits 64/128/256 MiB (SPEC B5): supported
+  load and the stock ResourceLimit;
+- also: grammar compile/release cycles.
 
-Проверяется плато при фиксированной нагрузке и отсутствие накопления после
-циклов create/destroy (NFR-2), а не абсолютное отсутствие роста RSS.
+The criterion is a plateau under fixed load and no accumulation after
+create/destroy cycles (NFR-2), not the absolute absence of RSS growth.
 """
 
 import argparse
@@ -27,7 +27,7 @@ def session_cycles(engine, constraint, cycles, sample_every):
             s = constraint.create_session()
             s.fill_mask()
             s.abort()
-        except Exception as e:  # типизированные исключения пакета
+        except Exception as e:  # typed exceptions of the package
             name = type(e).__name__
             if "ResourceLimit" in name:
                 errors["ResourceLimit"] += 1
@@ -91,7 +91,7 @@ def main():
                 "message": str(e)[:256],
             }
 
-    # циклы compile/release на лимите по умолчанию
+    # compile/release cycles at the default limit
     engine = zc.Engine(mode="adaptive", memory_limit_mb=256,
                        tokenizer=bc.make_byte_tokenizer(zc))
     rss = []
@@ -107,8 +107,8 @@ def main():
         "limits_mb": limits_report,
         "compile_release_cycles": args.compile_cycles,
         "compile_release_rss": plateau_report(rss),
-        "note": "рост RSS при легитимном заполнении кэша допустим; критерий — "
-                "плато при фиксированной нагрузке (NFR-2)",
+        "note": "RSS growth from legitimate cache filling is allowed; the criterion "
+                "is a plateau under fixed load (NFR-2)",
     })
 
 

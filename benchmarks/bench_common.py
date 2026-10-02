@@ -1,11 +1,11 @@
-"""Общие утилиты бенчмарков zig-constraints.
+"""Shared utilities for Bolorgir benchmarks.
 
-Конвенции (ТЗ 10.5):
-- фиксированный seed = 42;
-- таймер time.perf_counter_ns;
-- peak RSS через resource.getrusage(RUSAGE_SELF).ru_maxrss;
-- без ядра (пакет zig_constraints не собран) каждый скрипт печатает
-  {"status": "SKIP", ...} и завершается с кодом 0.
+Conventions (SPEC 10.5):
+- fixed seed = 42;
+- timer time.perf_counter_ns;
+- peak RSS via resource.getrusage(RUSAGE_SELF).ru_maxrss;
+- without the core (bolorgir package not built) every script prints
+  {"status": "SKIP", ...} and exits with code 0.
 """
 
 import json
@@ -33,9 +33,9 @@ def skip(reason):
 
 
 def require_core():
-    zc = import_or_skip("zig_constraints")
+    zc = import_or_skip("bolorgir")
     if zc is None:
-        skip("пакет zig_constraints не установлен: ядро ещё не собрано")
+        skip("bolorgir package is not installed: the core is not built yet")
     return zc
 
 
@@ -49,6 +49,20 @@ def now_ns():
 
 def peak_rss_bytes():
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
+
+
+def current_rss_bytes():
+    """Current process RSS (VmRSS); falls back to the historical peak without /proc.
+
+    SPEC 10.5: the plateau needs current RSS, not ru_maxrss - an early
+    peak otherwise masks later growth.
+    """
+    try:
+        with open("/proc/self/statm", "r", encoding="ascii") as f:
+            rss_pages = int(f.read().split()[1])
+        return rss_pages * os.sysconf("SC_PAGE_SIZE")
+    except Exception:
+        return peak_rss_bytes()
 
 
 def percentile_stats(samples):
@@ -70,7 +84,7 @@ def percentile_stats(samples):
 
 
 def load_corpus(corpus_dir=CORPUS_DIR):
-    """Итерация по corpus/index.json: (name, kind, expect_support, raw_bytes)."""
+    """Iterate over corpus/index.json: (name, kind, expect_support, raw_bytes)."""
     with open(os.path.join(corpus_dir, "index.json"), encoding="utf-8") as f:
         index = json.load(f)
     for name, entry in index["entries"].items():
@@ -87,13 +101,13 @@ def load_schema(name, corpus_dir=CORPUS_DIR):
 
 
 def make_byte_tokenizer(zc, hf_name=None, hf_revision=None):
-    """Токенизатор для бенчмарков ядра.
+    """Tokenizer for core benchmarks.
 
-    hf_name задан -> TokenizerBundle.from_hf(AutoTokenizer.from_pretrained(...))
-    (семья byte-level BPE либо byte fallback; ревизия обязана быть
-    закреплена в manifest).
-    Иначе — синтетический побайтовый словарь: 256 однобайтовых токенов
-    + типичные пары байтов + EOS.
+    hf_name set -> TokenizerBundle.from_hf(AutoTokenizer.from_pretrained(...))
+    (byte-level BPE or byte fallback family; the revision must be
+    pinned in manifest).
+    Otherwise - a synthetic byte vocabulary: 256 single-byte tokens
+    + common byte pairs + EOS.
     """
     if hf_name:
         from transformers import AutoTokenizer
@@ -107,7 +121,7 @@ def make_byte_tokenizer(zc, hf_name=None, hf_revision=None):
 
 
 def mask_bits(mask, vocab_size):
-    """Индексы разрешённых токенов из маски (numpy array или bytes из uint32)."""
+    """Allowed token indices from a mask (numpy array or bytes of uint32)."""
     if hasattr(mask, "tolist"):
         words = mask.tolist()
     else:
@@ -120,10 +134,10 @@ def mask_bits(mask, vocab_size):
 
 
 def gen_trace(session, vocab_size, rng, max_steps=4096):
-    """Детерминированная валидная трасса: на каждом шаге случайный (по rng)
-    разрешённый токен, пока состояние не станет принимающим.
+    """Deterministic valid trace: each step takes a random (by rng)
+    allowed token until the state becomes accepting.
 
-    Возвращает (trace, completed).
+    Returns (trace, completed).
     """
     trace = []
     for _ in range(max_steps):

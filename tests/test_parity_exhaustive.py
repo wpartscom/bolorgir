@@ -19,16 +19,16 @@ import corpora
 import reference as ref
 from conftest import assert_masks_equal, backend_available, make_backend  # noqa: E402
 
-_ok, _why = backend_available(os.environ.get("ZG_TEST_BACKEND", "auto"))
+_ok, _why = backend_available(os.environ.get("BLG_TEST_BACKEND", "auto"))
 if not _ok:
     pytest.skip(f"core unavailable: {_why}", allow_module_level=True)
 
 try:
-    import zg_ctypes
-    ZG_OK = zg_ctypes.ZG_OK
+    import blg_ctypes
+    BLG_OK = blg_ctypes.BLG_OK
 except ImportError:  # package-only access, no .so
-    zg_ctypes = None
-    ZG_OK = 0
+    blg_ctypes = None
+    BLG_OK = 0
 
 STATE_CAP = corpora.SMALL_STATE_CAP
 
@@ -58,7 +58,7 @@ def _exhaustive_case(backend, spec, case):
             try:
                 for tid in seq:
                     status = session.accept(tid)
-                    assert status == ZG_OK, (
+                    assert status == BLG_OK, (
                         f"replay failed: schema={case['name']} seq={list(seq)} "
                         f"tid={tid} status={status}")
 
@@ -120,7 +120,7 @@ def test_parity_exhaustive_literals(backend_factory, byte_tok):
             session = constraint.create_session()
             try:
                 for tid in seq:
-                    assert session.accept(tid) == ZG_OK
+                    assert session.accept(tid) == BLG_OK
                 kernel_mask = session.mask()
                 prefix = b"".join(byte_tok.tokens[t] for t in seq)
                 matcher = ref.Matcher(lang)
@@ -154,11 +154,11 @@ def test_lazy_vs_adaptive_bitwise(byte_tok):
             assert wl == wa, (
                 f"lazy/adaptive mask divergence at seq prefix, tid={tid}\n"
                 f"  lazy:     {wl}\n  adaptive: {wa}")
-            assert sl.accept(tid) == ZG_OK
-            assert sa.accept(tid) == ZG_OK
+            assert sl.accept(tid) == BLG_OK
+            assert sa.accept(tid) == BLG_OK
         assert sl.can_end() and sa.can_end()
-        assert sl.finish() == ZG_OK
-        assert sa.finish() == ZG_OK
+        assert sl.finish() == BLG_OK
+        assert sa.finish() == BLG_OK
         m = ref.Matcher(lang)
         assert m.feed(doc) and m.can_end()
     finally:

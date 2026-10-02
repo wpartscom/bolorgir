@@ -1,9 +1,0 @@
-{
- "schemas": 120,
- "traces": 120,
- "mask_cmps": 5808,
- "accepts": 7744,
- "threaded_traces": 120,
- "threaded_mismatches": 0,
- "seed": 20260915
-}

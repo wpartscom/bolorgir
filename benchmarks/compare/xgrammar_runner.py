@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Сравнительный раннер: те же сценарии B1/B2 через XGrammar.
+"""Comparison runner: the same B1/B2 scenarios through XGrammar.
 
-Участник сравнения по ТЗ 10.2 (закреплённая версия — benchmarks/manifest.json).
-Токенизатор: openai-community/gpt2, revision закреплён (byte-level BPE).
-Профиль JSON у XGrammar отличается от canonical-v1 (произвольные пробелы,
-порядок ключей не фиксирован); измерения задержки сопоставимы, побитовое
-сравнение масок — только на явно размеченном пересечении языков (ТЗ 10.2).
+Comparison participant per SPEC 10.2 (pinned version - benchmarks/manifest.json).
+Tokenizer: openai-community/gpt2, revision pinned (byte-level BPE).
+The XGrammar JSON profile differs from canonical-v1 (arbitrary whitespace,
+key order not fixed); latency measurements are comparable, bitwise mask
+comparison only on the explicitly labeled language intersection (SPEC 10.2).
 """
 
 import argparse
@@ -34,12 +34,12 @@ def main():
     tf = bc.import_or_skip("transformers")
     np = bc.import_or_skip("numpy")
     if xg is None or tf is None or np is None:
-        bc.skip("xgrammar/transformers/numpy не установлены: сравнение pending "
-                "(команда установки — benchmarks/README.md)")
+        bc.skip("xgrammar/transformers/numpy not installed: comparison pending "
+                "(install command - benchmarks/README.md)")
 
     def allowed_from_bitmask(bitmask, vocab_size):
-        # векторная распаковка uint32-битмаски (xgrammar.testing.bitmask_to_bool_mask
-        # перебирает vocab в Python-цикле и непригодна для трасс)
+        # vectorized unpacking of the uint32 bitmask (xgrammar.testing.bitmask_to_bool_mask
+        # iterates over the vocab in a Python loop and is unusable for traces)
         arr = bitmask.numpy().astype(np.uint32, copy=False).ravel()
         bits = np.unpackbits(arr.view(np.uint8), bitorder="little")[:vocab_size]
         return np.flatnonzero(bits).tolist()
@@ -48,9 +48,9 @@ def main():
     schema_str = schema_bytes.decode("utf-8")
     schema = json.loads(schema_str)
     if entry["kind"] != "json_schema" or not entry["expect_support"]:
-        bc.skip(f"схема {args.schema} не является поддерживаемой json_schema")
+        bc.skip(f"schema {args.schema} is not a supported json_schema")
 
-    # B1: подготовка
+    # B1: preparation
     t0 = bc.now_ns()
     tok = tf.AutoTokenizer.from_pretrained(TOKENIZER_NAME,
                                            revision=TOKENIZER_REVISION)
@@ -78,7 +78,7 @@ def main():
         compiler.compile_json_schema(schema_str)
         warm_compile.append(bc.now_ns() - t0)
 
-    # B2: маска/accept на трассе
+    # B2: mask/accept on the trace
     rng = random.Random(args.seed)
     compiled = compiler.compile_json_schema(schema_str)
     bitmask = xg.allocate_token_bitmask(1, info.vocab_size)
@@ -102,7 +102,7 @@ def main():
     trace, completed = gen_trace()
     if not completed or not trace:
         bc.emit({"status": "ERROR", "engine": "xgrammar", "case": "B2",
-                 "reason": "не удалось сгенерировать валидную трассу",
+                 "reason": "failed to generate a valid trace",
                  "completed": completed, "trace_len": len(trace)})
         return
 
@@ -138,8 +138,8 @@ def main():
             "fill_mask_ns": bc.percentile_stats(mask_ns),
             "accept_ns": bc.percentile_stats(accept_ns),
         },
-        "note": "профиль JSON XGrammar != canonical-v1; сравнение задержек "
-                "на эквивалентной схеме, не побитовое",
+        "note": "XGrammar JSON profile != canonical-v1; latency comparison "
+                "on an equivalent schema, not bitwise",
     })
 
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Пустой объект: единственный документ {}",
+  "title": "Empty object: single document {}",
   "type": "object",
   "properties": {},
   "required": [],

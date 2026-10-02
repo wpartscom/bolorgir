@@ -1,11 +1,11 @@
-"""T4: differential campaign — kernel (ctypes) vs tests/reference.py.
+"""T4: differential campaign - kernel (ctypes) vs tests/reference.py.
 
 For each random schema:
-  1. Compilation classification: kernel (ZG_OK/INVALID_SCHEMA/
+  1. Compilation classification: kernel (BLG_OK/INVALID_SCHEMA/
      UNSUPPORTED_FEATURE/UNSATISFIABLE_CONSTRAINT/RESOURCE_LIMIT) is compared
      with the reference exception class (InvalidSchema/UnsupportedFeature/
      UnsatisfiableConstraint).
-  2. If both sides accept the schema — random walk: at each step the kernel
+  2. If both sides accept the schema - random walk: at each step the kernel
      mask == the Matcher reference mask, can_end agrees; an allowed token is
      accepted by both sides, a forbidden one is rejected with INVALID_TOKEN
      and does not change state (the mask afterwards is bitwise identical);
@@ -14,7 +14,7 @@ For each random schema:
      validate_document.
 
 Any divergence -> reproducer in tests/fuzz/artifacts/ + test failure.
-Scale: ZG_FUZZ_DIFF (default 600 schemas), seed: ZG_FUZZ_SEED.
+Scale: BLG_FUZZ_DIFF (default 600 schemas), seed: BLG_FUZZ_SEED.
 """
 
 from __future__ import annotations
@@ -30,19 +30,19 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import fuzz_common as fc
 import reference as ref
 import schema_gen
-import zg_ctypes
+import blg_ctypes
 
-pytest.importorskip("zg_ctypes")
+pytest.importorskip("blg_ctypes")
 
-SEED = int(os.environ.get("ZG_FUZZ_SEED", "20260914"))
-N_SCHEMAS = int(os.environ.get("ZG_FUZZ_DIFF", "600"))
+SEED = int(os.environ.get("BLG_FUZZ_SEED", "20260914"))
+N_SCHEMAS = int(os.environ.get("BLG_FUZZ_DIFF", "600"))
 MAX_STEPS = 20
 
 _CLASS_BY_STATUS = {
-    zg_ctypes.ZG_ERR_INVALID_SCHEMA: "InvalidSchema",
-    zg_ctypes.ZG_ERR_UNSUPPORTED_FEATURE: "UnsupportedFeature",
-    zg_ctypes.ZG_ERR_UNSATISFIABLE_CONSTRAINT: "UnsatisfiableConstraint",
-    zg_ctypes.ZG_ERR_RESOURCE_LIMIT: "ResourceLimit",
+    blg_ctypes.BLG_ERR_INVALID_SCHEMA: "InvalidSchema",
+    blg_ctypes.BLG_ERR_UNSUPPORTED_FEATURE: "UnsupportedFeature",
+    blg_ctypes.BLG_ERR_UNSATISFIABLE_CONSTRAINT: "UnsatisfiableConstraint",
+    blg_ctypes.BLG_ERR_RESOURCE_LIMIT: "ResourceLimit",
 }
 _ORACLE_CLASSES = {
     "InvalidSchema", "UnsupportedFeature", "UnsatisfiableConstraint", "ResourceLimit",
@@ -62,9 +62,9 @@ def oracle_class(schema_text: str):
 def kernel_compile(ctx, schema_text: str):
     """-> (status, grammar|None)."""
     try:
-        gh = zg_ctypes.compile_schema(ctx, schema_text)
-        return zg_ctypes.ZG_OK, gh
-    except zg_ctypes.CoreFailure as e:
+        gh = blg_ctypes.compile_schema(ctx, schema_text)
+        return blg_ctypes.BLG_OK, gh
+    except blg_ctypes.CoreFailure as e:
         return e.status, None
 
 
@@ -75,13 +75,13 @@ def describe_mask(ids, spec):
 def differential_walk(ctx, spec, schema_text, lang, gh, seed, counters):
     rng = random.Random(seed)
     oracle = ref.Matcher(lang)
-    session = zg_ctypes.Session(ctx, gh)
+    session = blg_ctypes.Session(ctx, gh)
     prefix = []
     try:
         for step in range(MAX_STEPS):
             status, words = session.fill_mask_words()
             omask = oracle.mask(b"", spec)
-            if status == zg_ctypes.ZG_ERR_DEAD_END:
+            if status == blg_ctypes.BLG_ERR_DEAD_END:
                 if omask:
                     path = fc.save_artifact("deadend_vs_oracle", {
                         "seed": seed, "schema": schema_text, "prefix": prefix,
@@ -89,7 +89,7 @@ def differential_walk(ctx, spec, schema_text, lang, gh, seed, counters):
                     pytest.fail(f"kernel DEAD_END but oracle allows {len(omask)} tokens; repro {path}")
                 counters["dead_ends"] += 1
                 return
-            if status != zg_ctypes.ZG_OK:
+            if status != blg_ctypes.BLG_OK:
                 path = fc.save_artifact("unexpected_fill_status", {
                     "seed": seed, "schema": schema_text, "prefix": prefix, "status": status})
                 pytest.fail(f"fill_mask status {status}; repro {path}")
@@ -117,7 +117,7 @@ def differential_walk(ctx, spec, schema_text, lang, gh, seed, counters):
             if action < 0.70 and ordinary:
                 tok = ordinary[rng.randrange(len(ordinary))]
                 st = session.accept(tok)
-                if st == zg_ctypes.ZG_ERR_RESOURCE_LIMIT:
+                if st == blg_ctypes.BLG_ERR_RESOURCE_LIMIT:
                     # the reference must confirm the threads overflow
                     try:
                         oracle.feed(spec.tokens[tok])
@@ -126,7 +126,7 @@ def differential_walk(ctx, spec, schema_text, lang, gh, seed, counters):
                         pytest.fail(f"kernel RESOURCE_LIMIT but oracle feeds fine; repro {path}")
                     except ref.ResourceLimit:
                         return
-                if st != zg_ctypes.ZG_OK:
+                if st != blg_ctypes.BLG_OK:
                     path = fc.save_artifact("allowed_rejected", {
                         "seed": seed, "schema": schema_text, "prefix": prefix,
                         "token": tok, "status": st})
@@ -145,7 +145,7 @@ def differential_walk(ctx, spec, schema_text, lang, gh, seed, counters):
                     continue
                 tok = disallowed[rng.randrange(len(disallowed))]
                 st = session.accept(tok)
-                if st != zg_ctypes.ZG_ERR_INVALID_TOKEN:
+                if st != blg_ctypes.BLG_ERR_INVALID_TOKEN:
                     path = fc.save_artifact("disallowed_status", {
                         "seed": seed, "schema": schema_text, "prefix": prefix,
                         "token": tok, "status": st})
@@ -156,23 +156,23 @@ def differential_walk(ctx, spec, schema_text, lang, gh, seed, counters):
                         "seed": seed, "schema": schema_text, "prefix": prefix, "token": tok})
                     pytest.fail(f"oracle accepts kernel-disallowed token {tok}; repro {path}")
                 st2, words2 = session.fill_mask_words()
-                if st2 != zg_ctypes.ZG_OK or words2 != words:
+                if st2 != blg_ctypes.BLG_OK or words2 != words:
                     path = fc.save_artifact("partial_accept", {
                         "seed": seed, "schema": schema_text, "prefix": prefix, "token": tok})
                     pytest.fail(f"state changed after rejected token {tok}; repro {path}")
                 counters["rejects"] += 1
             elif action < 0.90 and eos in kmask:
                 st = session.accept(eos)
-                if st != zg_ctypes.ZG_OK:
+                if st != blg_ctypes.BLG_OK:
                     path = fc.save_artifact("eos_rejected", {
                         "seed": seed, "schema": schema_text, "prefix": prefix, "status": st})
                     pytest.fail(f"allowed EOS rejected with {st}; repro {path}")
-                if session.finish() != zg_ctypes.ZG_OK:
+                if session.finish() != blg_ctypes.BLG_OK:
                     path = fc.save_artifact("finish_failed", {
                         "seed": seed, "schema": schema_text, "prefix": prefix})
                     pytest.fail(f"finish after EOS failed; repro {path}")
                 doc = b"".join(spec.tokens[t] for t in prefix)
-                # canonical_check (Matcher) — exact membership check;
+                # canonical_check (Matcher) - exact membership check;
                 # validate_document is unsuitable: json.loads yields inf for
                 # huge exponents and the mini-validator rejects those.
                 if not ref.canonical_check(doc, lang):
@@ -184,7 +184,7 @@ def differential_walk(ctx, spec, schema_text, lang, gh, seed, counters):
                 return
             else:
                 if k_ce and rng.random() < 0.5:
-                    if session.finish() != zg_ctypes.ZG_OK:
+                    if session.finish() != blg_ctypes.BLG_OK:
                         path = fc.save_artifact("early_finish_failed", {
                             "seed": seed, "schema": schema_text, "prefix": prefix})
                         pytest.fail(f"finish with can_end=true failed; repro {path}")
@@ -192,7 +192,7 @@ def differential_walk(ctx, spec, schema_text, lang, gh, seed, counters):
                     return
                 # otherwise a step without accept: the repeated mask must match
                 st2, words2 = session.fill_mask_words()
-                if st2 != zg_ctypes.ZG_OK or words2 != words:
+                if st2 != blg_ctypes.BLG_OK or words2 != words:
                     path = fc.save_artifact("nondet_mask", {
                         "seed": seed, "schema": schema_text, "prefix": prefix})
                     pytest.fail(f"mask not deterministic; repro {path}")
@@ -202,7 +202,7 @@ def differential_walk(ctx, spec, schema_text, lang, gh, seed, counters):
 
 def test_differential_fuzz():
     spec = fc.make_fuzz_tokenizer()
-    ctx = zg_ctypes.Context(spec, zg_ctypes.ZG_MODE_LAZY)
+    ctx = blg_ctypes.Context(spec, blg_ctypes.BLG_MODE_LAZY)
     rng = random.Random(SEED)
     counters = {"schemas": 0, "both_rejected": 0, "walks": 0, "mask_cmps": 0,
                 "accepts": 0, "rejects": 0, "dead_ends": 0, "finishes": 0}
@@ -216,9 +216,9 @@ def test_differential_fuzz():
                 fc.save_corpus_schema(schema_text)
             status, gh = kernel_compile(ctx, schema_text)
             oclass, lang = oracle_class(schema_text)
-            kclass = "ok" if status == zg_ctypes.ZG_OK else _CLASS_BY_STATUS.get(status, f"status_{status}")
+            kclass = "ok" if status == blg_ctypes.BLG_OK else _CLASS_BY_STATUS.get(status, f"status_{status}")
             if kclass == "ResourceLimit":
-                # kernel and reference limits need not agree — skip the schema
+                # kernel and reference limits need not agree - skip the schema
                 continue
             if kclass != oclass:
                 path = fc.save_artifact("classification_mismatch", {
@@ -230,7 +230,7 @@ def test_differential_fuzz():
                 continue
             counters["walks"] += 1
             differential_walk(ctx, spec, schema_text, lang, gh, seed, counters)
-            zg_ctypes.grammar_release(gh)
+            blg_ctypes.grammar_release(gh)
     finally:
         ctx.destroy()
     counters["seed"] = SEED

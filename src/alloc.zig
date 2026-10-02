@@ -18,6 +18,14 @@ fn layoutFor(len: usize, alignment: std.mem.Alignment) ?Layout {
     return .{ .header = header, .total = total, .alignment = eff };
 }
 
+/// Bytes charged by the accounting allocator for a request of length len
+/// (header and alignment included). Mirror computation for the budget
+/// counters, which must match the actual charge.
+pub fn chargedBytes(len: usize, alignment: std.mem.Alignment) usize {
+    const lay = layoutFor(len, alignment) orelse return std.math.maxInt(usize);
+    return lay.total;
+}
+
 fn Impl(
     comptime Ctx: type,
     comptime chargeFn: fn (Ctx, u64) bool,
@@ -105,12 +113,14 @@ fn chargeCas(counter: *std.atomic.Value(u64), limit: u64, size: u64) bool {
 }
 
 // Counters are atomic: compile/session create/destroy run from multiple
-// threads without external locking (the zg_context mutex does not cover
+// threads without external locking (the blg_context mutex does not cover
 // them), and FR-10 requires exact accounting under any thread count.
 
 fn accCharge(ctx: AccCtx, size: u64) bool {
     const acc = ctx.acc;
-    if (!chargeCas(&acc.total_used, acc.total_limit, size)) return false;
+    if (!chargeCas(&acc.total_used, acc.total_limit, size)) {
+        return false;
+    }
     const i = @intFromEnum(ctx.cat);
     const cat_used = acc.used_arr[i].fetchAdd(size, .monotonic) + size;
     atomicMaxU64(&acc.peak_arr[i], cat_used);
@@ -135,7 +145,9 @@ const SessCtx = struct { sess: *SessionAccount, cat: Category };
 fn sessCharge(ctx: SessCtx, size: u64) bool {
     const sess = ctx.sess;
     const acc = sess.parent;
-    if (!chargeCas(&sess.used_bytes, sess.limit, size)) return false;
+    if (!chargeCas(&sess.used_bytes, sess.limit, size)) {
+        return false;
+    }
     if (!chargeCas(&acc.total_used, acc.total_limit, size)) {
         _ = sess.used_bytes.fetchSub(size, .monotonic);
         return false;
@@ -220,12 +232,27 @@ pub const Accounting = struct {
 
 const LimCtx = struct { lim: *Limited, cat: Category };
 
+// One allocation layer = one header: when the limited allocator is also the
+// accounting layer for its category, the same full cost (header included)
+// is charged to both the local limit and the global counters. Stacking a
+// separate Accounting layer would add a second header that the local limit
+// does not see.
 fn limCharge(ctx: LimCtx, size: u64) bool {
-    return chargeCas(&ctx.lim.used, ctx.lim.limit, size);
+    if (!chargeCas(&ctx.lim.used, ctx.lim.limit, size)) {
+        return false;
+    }
+    if (ctx.lim.acc) |a| {
+        if (!accCharge(.{ .acc = a, .cat = ctx.lim.acc_cat }, size)) {
+            _ = ctx.lim.used.fetchSub(size, .monotonic);
+            return false;
+        }
+    }
+    return true;
 }
 
 fn limUncharge(ctx: LimCtx, size: u64) void {
     _ = ctx.lim.used.fetchSub(size, .monotonic);
+    if (ctx.lim.acc) |a| accUncharge(.{ .acc = a, .cat = ctx.lim.acc_cat }, size);
 }
 
 fn limBacking(ctx: LimCtx) std.mem.Allocator {
@@ -237,14 +264,32 @@ const LimImpl = Impl(LimCtx, limCharge, limUncharge, limBacking);
 /// Hard-limit wrapper over any allocator: total bytes charged never exceed
 /// `limit` (allocation fails instead). Used to give the mask cache a strict
 /// byte budget that covers every allocation it makes, map growth included.
+/// With `acc` set the same total is also charged to the category counters
+/// of the accounting, so the hard budget and the global accounting always
+/// agree (single header).
 pub const Limited = struct {
     parent: std.mem.Allocator,
     limit: u64,
     used: std.atomic.Value(u64),
+    acc: ?*Accounting = null,
+    acc_cat: Category = .cache,
     ctx: LimCtx = undefined,
 
     pub fn init(parent: std.mem.Allocator, limit: u64) Limited {
         return .{ .parent = parent, .limit = limit, .used = std.atomic.Value(u64).init(0) };
+    }
+
+    /// Limited over the raw backing allocator that also charges `limit`
+    /// against the accounting's `cat` counters (parent must be the raw
+    /// allocator, not an Accounting layer: see limCharge).
+    pub fn initAccounting(parent: std.mem.Allocator, limit: u64, acc: *Accounting, cat: Category) Limited {
+        return .{
+            .parent = parent,
+            .limit = limit,
+            .used = std.atomic.Value(u64).init(0),
+            .acc = acc,
+            .acc_cat = cat,
+        };
     }
 
     pub fn allocator(self: *Limited, cat: Category) std.mem.Allocator {

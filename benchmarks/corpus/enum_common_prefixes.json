@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "enum с общими префиксами и длинными хвостами",
+  "title": "enum with common prefixes and long tails",
   "type": "object",
   "properties": {
     "action": {

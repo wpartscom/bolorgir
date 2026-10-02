@@ -1,6 +1,6 @@
 """Self-check of the independent reference (tests/reference.py).
 
-Uses neither the core nor the package — must stay green before integration.
+Uses neither the core nor the package - must stay green before integration.
 Run: python3 -m pytest tests/test_reference_selfcheck.py -q
 """
 
@@ -210,7 +210,7 @@ def test_optional_keys_subsets_and_order():
     lang = compile_schema(corpora.OPT_KEYS)
     docs = enumerate_language(lang, max_abs_int=0, max_string_len=1,
                               string_alphabet=("x",))
-    # a — required int (0), b — opt string ("" or "x"), c — opt bool
+    # a - required int (0), b - opt string ("" or "x"), c - opt bool
     expected = {
         b'{"a":0}',
         b'{"a":0,"b":""}', b'{"a":0,"b":"x"}',
@@ -267,10 +267,10 @@ def test_compile_literals_dedup_and_validation():
 
 
 def test_literals_raw_not_json_quoted():
-    lang = compile_literals(['a"b', "мир"])
+    lang = compile_literals(['a"b', "日本"])
     docs = enumerate_language(lang)
     assert b'a"b' in docs
-    assert "мир".encode("utf-8") in docs
+    assert "日本".encode("utf-8") in docs
 
 
 # ---------------------------------------------------------------------------
@@ -309,6 +309,20 @@ def test_prefix_oracle_token_mask():
     assert 257 not in m2
 
 
+def test_prefix_oracle_excludes_dead_end_tokens():
+    # TZ 3.1: a byte-legal token that cannot be completed is not allowed.
+    spec = TokenizerSpec(tokens=(b"ab", b"a", b""), eos_ids=(2,)).validate()
+    o = PrefixOracle({b"ab"})
+    assert o.mask(b"", spec) == {0}
+    assert o.mask(b"ab", spec) == {2}
+    assert o.mask(b"a", spec) == set()
+    # sanity: with a completing vocabulary the same language is fully open
+    spec_ok = TokenizerSpec(tokens=(b"a", b"b", b"ab", b""),
+                            eos_ids=(3,)).validate()
+    assert o.mask(b"", spec_ok) == {0, 2}
+    assert o.mask(b"a", spec_ok) == {1}
+
+
 # ---------------------------------------------------------------------------
 # Matcher (incremental oracle): manual semantics checks
 # ---------------------------------------------------------------------------
@@ -325,11 +339,11 @@ def test_matcher_number_lazy_completion():
     assert ok and m.can_end() is False
     # number in complete state: ']' finishes it and the array
     assert m.feed(b"]") and m.can_end()
-    # '[01' — leading zeros are forbidden
+    # '[01' - leading zeros are forbidden
     m2, ok2 = feed_seq(lang, b"[0")
     assert ok2
     assert not m2.feed(b"1")
-    # '[0' — ']' is allowed (lazy completion of zero)
+    # '[0' - ']' is allowed (lazy completion of zero)
     m3, _ = feed_seq(lang, b"[0")
     assert m3.feed(b"]") and m3.can_end()
 
@@ -379,7 +393,7 @@ def test_matcher_string_min_max_and_utf8():
 def test_matcher_utf8_split_across_feeds():
     lang = compile_schema({"type": "string", "minLength": 1, "maxLength": 1})
     m, _ = feed_seq(lang, b'"')
-    assert m.feed(b"\xd0")             # start of 'Д' (D0 94) — intermediate ok
+    assert m.feed(b"\xd0")             # start of a 2-byte UTF-8 char (D0 94) - intermediate ok
     assert not m.feed(b'"')            # cannot close with unfinished UTF-8
     m2, _ = feed_seq(lang, b'"')
     assert m2.feed(b"\xd0\x94") and m2.feed(b'"') and m2.can_end()
@@ -431,7 +445,7 @@ def test_matcher_object_key_order_and_skip():
     # required cannot be skipped: '}' right away is an error
     m, _ = feed_seq(lang, b"{")
     assert not m.feed(b"}")
-    # b and c both optional — after a, candidates are b and c (c before b is
+    # b and c both optional - after a, candidates are b and c (c before b is
     # allowed, declaration order preserved: b is skipped)
     m, _ = feed_seq(lang, b'{"a":1,')
     assert m.feed(b'"c":false}') and m.can_end()
@@ -445,7 +459,7 @@ def test_matcher_required_after_optional_not_skippable():
               "required": ["req"], "additionalProperties": False}
     lang = compile_schema(schema)
     m, _ = feed_seq(lang, b'{"opt":true')
-    # after opt the object cannot be closed — a required key remains
+    # after opt the object cannot be closed - a required key remains
     assert not m.feed(b"}")
     m2, _ = feed_seq(lang, b'{"opt":true')
     assert m2.feed(b',"req":5}') and m2.can_end()

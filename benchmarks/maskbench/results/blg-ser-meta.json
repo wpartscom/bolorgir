@@ -1,0 +1,17 @@
+{
+  "id": "blg-ser",
+  "name": "Bolorgir",
+  "module": "bolorgir",
+  "module_version": "0.1.0",
+  "cmd": [
+    "python3",
+    "-m",
+    "maskbench.runner",
+    "--multi",
+    "--blg",
+    "--compact",
+    "--output",
+    "/home/gm/maskbench-work/runs/full-blg-compact-ser-final4"
+  ],
+  "info": "11306 files, timeout 900s, memory 40GB, output /home/gm/maskbench-work/runs/full-blg-compact-ser-final4; 20 threads; BOLORGIR_SERIALIZER=1; lib=/tmp/zigout-final4 (sha256 d8f93692..., post minLength mask fix); cmd: python3 -m maskbench.runner --multi --blg --compact --output /home/gm/maskbench-work/runs/full-blg-compact-ser-final4"
+}

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Длинная строка с большим maxLength",
+  "title": "Long string with a large maxLength",
   "type": "object",
   "properties": {
     "payload": {"type": "string", "minLength": 1024, "maxLength": 100000},

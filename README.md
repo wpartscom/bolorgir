@@ -1,78 +1,78 @@
-# zig-constraints
+# Bolorgir
 
-Адаптивный движок структурированной генерации для LLM на Zig.
+[![CI](https://github.com/wpartscom/bolorgir/actions/workflows/ci.yml/badge.svg)](https://github.com/wpartscom/bolorgir/actions/workflows/ci.yml)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 
-Библиотека на каждом шаге генерации определяет множество допустимых следующих
-токенов согласно заданным ограничениям (профиль JSON Schema Draft 2020-12 либо
-набор буквальных строк), хранит состояние разбора между шагами и обновляет его
-после принятия токена. Завершённый ответ гарантированно соответствует заданной
-структуре; выбор содержательно правильного значения остаётся задачей модели.
+Embeddable structured-generation engine for LLMs: a small Zig core with a
+versioned C ABI, Python bindings, and a Hugging Face Transformers adapter.
+Given a JSON Schema (a strict Draft 2020-12 subset) or a set of literal
+strings, Bolorgir computes the set of allowed next tokens at every generation
+step - the model's output is guaranteed to match the requested structure,
+while the choice of value stays with the model.
 
-Основные применения: JSON для программной обработки, аргументы вызова
-инструментов, извлечение структурированных данных, выбор из фиксированного
-набора значений. Проект — самостоятельная реализация идей constrained decoding;
-XGrammar и llguidance участвуют только как обязательные участники сравнения.
+**Design rules:** unsupported input is rejected at compile time with a JSON
+Pointer (the engine never silently continues unconstrained); mask computation
+runs under hard memory budgets; tokenizer semantics are verified against the
+actual backend decoder.
 
-## Статус
+Typical uses: tool-call arguments, JSON extraction for programmatic
+processing, classification via fixed value sets, agentic pipelines.
 
-Прототип. По плану этапов ТЗ (§12) в работе этапы 1–3: точное ядро с C ABI,
-кэш/бюджеты памяти и batch API, Python-пакет и адаптер Transformers.
-Семантика canonical-v1 зафиксирована в `docs/semantics.md`, таблица поддержки —
-в `docs/supported_features.md`. Контрольный прогон §10.6 выполнен повторно
-2026-09-17 (`benchmarks/results/20260917T184826_perf-fix2/REPORT.md`): главная
-метрика пройдена (p99 маски −49.9% к лучшему конкуренту, порог −20%), e2e-гард
-пройден (регрессия ≤4.4% при пороге 5%); вердикт остаётся **NO-GO** по двум
-допусловиям (accept на многоthread-состояниях и холодная компиляция), обещаний
-ускорения не даётся.
+**Measured performance** (pinned control series, protocol v3; CPU, GPT-2
+tokenizer, vocab 50,257): mask p99 **0.81 µs** vs XGrammar 0.2.6 3.04 µs
+(primary scenario) and vs llguidance 1.8.0 358.68 µs (secondary holdout);
+constrained generation through HF stays within **+1.7%** of XGrammar (worst
+paired-median case at a 5% threshold). These are the lowest measured mask
+latencies among the compared engines on these workloads - reports:
+`benchmarks/reports/`, conditions and caveats: [Performance](#performance).
 
-Ядро также включает: проверку покрытия токенизатора при компиляции
-(непокрываемое ограничение отклоняется до генерации), кэш масок с
-adaptive-политикой admission и жёстким байтовым бюджетом, экспериментальный
-прогрев масок при компиляции (режим `precompute`), отмену по флагу
-(`zg_cancel_flag_set`) и лимит работы на вызов (`work_limit_ops`).
+## Features
 
-## Быстрый старт
+- **Exact or explicit.** A strict JSON Schema subset plus literal sets;
+  everything outside the profile is rejected with a JSON Pointer at compile
+  time. For incomplete vocabularies, completion reachability is checked
+  exactly on finite languages (`src/complete.zig`); dead-end tokens are
+  neither masked nor accepted.
+- **Bounded.** Hard byte budgets for context, mask cache, session and schema;
+  flag-based cancellation; per-call work limits; immutable compile-artifact
+  cache.
+- **Embeddable.** Zig core without runtime dependencies behind a versioned C
+  ABI (`include/bolorgir.h`, opaque handles, `blg_status` error codes).
+- **Python first-class.** CPython 3.10+ (abi3), Hugging Face Transformers
+  adapter, batched mask filling, GPU mask-unpacking path.
+- **Measured.** Performance claims come from a pinned acceptance protocol
+  (three collections, AB/BA pairing, bootstrap CIs); reports are published in
+  `benchmarks/reports/`.
 
-Требования: Zig 0.15.2 (`/home/gm/.local/bin/zig`), Python 3.10+, gcc.
+## Install
+
+From PyPI (wheels require no compiler; installing from the source
+distribution requires a C toolchain, Zig is not required):
 
 ```sh
-# Сборка ядра (Debug): zig-out/lib/libzig_constraints.so
-/home/gm/.local/bin/zig build
-
-# Сборка ядра (ReleaseSafe; у этой конфигурации нет -Doptimize)
-/home/gm/.local/bin/zig build -Drelease=true
-
-# Unit-тесты ядра
-/home/gm/.local/bin/zig build test
-
-# Пример C-клиента без Python (examples/c_client.c)
-/home/gm/.local/bin/zig build example-c
-LD_LIBRARY_PATH=zig-out/lib zig-out/bin/c_client
-
-# Python-пакет (каталог python/, собирает ядро через zig build -Drelease=true)
-cd python && pip3 install --user .
-
-# Колесо: pip3 wheel . --no-build-isolation -w dist
-# (на pip 22.x изолированная сборка даёт имя UNKNOWN-0.0.0 — дефект старого
-# pip+setuptools окружения, не репозитория; свежие pip в CI собирают штатно)
-
-# Интеграционные тесты (эталон, паритет режимов, граничные случаи).
-# Два бэкенда: ctypes напрямую к .so и Python-пакет (как в CI)
-PYTHONPATH=python ZG_TEST_BACKEND=ctypes python3 -m pytest tests/ python/tests/ -q
-PYTHONPATH=python ZG_TEST_BACKEND=package python3 -m pytest tests/ python/tests/ -q
+pip install bolorgir            # core engine
+pip install "bolorgir[transformers]"   # + torch/transformers adapter
 ```
 
-## CI
+From source:
 
-Workflow `.github/workflows/ci.yml` (push/PR + еженедельно): unit-тесты ядра в
-Debug и ReleaseSafe, `zig fmt --check`, сборка и запуск C-примера; pytest на
-Python 3.10/3.11/3.12 в обоих бэкендах (ctypes и package); сборка wheel и
-smoke-установка в чистом venv без torch.
+```sh
+git clone https://github.com/wpartscom/bolorgir
+cd bolorgir
+zig build -Drelease=true        # -> zig-out/lib/libbolorgir.so
+cd python && pip install .      # or: pip install ".[transformers]"
+```
 
-Минимальный пример Python API:
+## Quickstart
 
 ```python
-from zig_constraints import Engine
+from transformers import AutoTokenizer
+
+from bolorgir import Engine, TokenizerBundle
+
+hf = AutoTokenizer.from_pretrained("openai-community/gpt2")
+bundle = TokenizerBundle.from_hf(hf, use_cache=False)
 
 schema = {
     "type": "object",
@@ -84,34 +84,142 @@ schema = {
     "additionalProperties": False,
 }
 
-with Engine(mode="adaptive", memory_limit_mb=256) as engine:
-    constraint = engine.compile(schema, tokenizer, profile="canonical-v1")
-    session = constraint.create_session()
-    mask = session.fill_mask()   # битовая маска допустимых token IDs
-    session.accept_token(token_id)
+with Engine(mode="adaptive", tokenizer=bundle, memory_limit_mb=256) as engine:
+    with engine.compile(schema, profile="canonical-v1") as constraint:
+        with constraint.create_session() as session:
+            allowed = session.allowed_token_ids()   # tokens that keep the JSON valid
+            session.accept_token(allowed[0])
 ```
 
-## Структура репозитория
+Literal choices work without a schema:
 
-```
-build.zig                  сборка ядра, тестов и C-примера
-include/zig_constraints.h  версионированный C ABI (opaque handles, zg_status)
-src/                       ядро: компилятор схем, IR грамматики, парсер, маски,
-                           учитывающий аллокатор, кэш LRU, C ABI
-examples/c_client.c        пример C-клиента без Python
-python/                    Python-пакет (CPython-расширение, abi3) и адаптер
-tests/                     независимый эталон, parity/edge/fuzz-тесты
-docs/                      DESIGN.md, API.md, semantics.md, supported_features.md,
-                           architecture.md, ADR
-benchmarks/                manifest.json, корпус схем, скрипты измерений,
-                           сравнение с XGrammar/llguidance
+```python
+with Engine(mode="lazy", tokenizer=bundle) as engine:
+    with engine.compile_literals(["yes", "no", "maybe"]) as constraint:
+        with constraint.create_session() as session:
+            print(session.allowed_token_ids())
 ```
 
-## Документация
+A dependency-free C example lives in `examples/c_client.c`
+(`zig build example-c`).
 
-- `docs/semantics.md` — нормативная семантика профиля сериализации canonical-v1.
-- `docs/supported_features.md` — точная таблица поддержки FR-1, лимиты, коды ошибок.
-- `docs/architecture.md` — архитектура модулей и границы ответственности.
-- `benchmarks/README.md` — методика измерений и команды воспроизведения.
+## Comparison with alternatives
 
-Полное техническое задание: `ТЗ_Zig_движок_структурированной_генерации.md`.
+Bolorgir is an independent constrained-decoding engine (Zig core, C ABI,
+Python bridge); it does not vendor or wrap the libraries below. Tables reflect
+the state as of 2026-09 - check the linked projects for current data.
+Measured comparison used XGrammar 0.2.6 and llguidance 1.8.0.
+
+### Capabilities
+
+| | **Bolorgir** (v0.1) | XGrammar | llguidance | Outlines | lm-format-enforcer |
+|---|---|---|---|---|---|
+| Core | Zig, C ABI, no runtime deps | C++ | Rust | Python + Rust core | Python |
+| License | Apache-2.0 | Apache-2.0 | MIT | Apache-2.0 | MIT |
+| Constraints | JSON Schema subset (`canonical-v1`), literal sets | JSON Schema, regex, EBNF/GBNF, Lark | JSON Schema subset, regex, Lark-like CFG | JSON/Pydantic, regex, grammars | JSON Schema, JSON mode, regex |
+| Unsupported input | rejected at compile time with a JSON Pointer | - | - | - | - |
+| Reachability on incomplete vocabularies | exact (finite languages) or compile-time rejection | - | - | - | - |
+| Hard memory budgets | yes (published defaults) | - | - | - | - |
+| Integrations | HF Transformers adapter; C ABI | vLLM, SGLang, TensorRT-LLM, MLC-LLM, WebLLM | OpenAI Structured Outputs, llama.cpp, Chromium, vLLM, SGLang | vLLM, Ollama, transformers, API providers | vLLM, TensorRT-LLM, ExLlamaV2, LangChain/LlamaIndex/Haystack |
+| Platforms | Linux x86_64 (glibc); CPython 3.10+ | Linux/macOS/Windows; CPU/GPU/TPU | Linux/macOS/Windows | cross-platform | cross-platform |
+
+## Performance
+
+All numbers below are from the pinned control series (protocol v3, 2026-09-19,
+CPU-only, single host, GPT-2 tokenizer, vocab 50,257). XGrammar/llguidance JSON
+profiles differ from `canonical-v1`, so latency is compared on equivalent
+schemas, not bitwise mask equality. Full reports:
+`benchmarks/reports/`, methodology: `benchmarks/README.md`.
+
+On these measurements Bolorgir has the lowest mask latency of the three
+engines (both measured scenarios); end-to-end constrained generation is at
+parity with XGrammar (last row).
+
+| Metric | Bolorgir | XGrammar | llguidance |
+|---|---|---|---|
+| Mask build p99 (primary scenario) | 0.81 µs | 3.04 µs | - |
+| Mask build p99 (secondary holdout) | 1.02 µs | - | 358.68 µs |
+| First mask, cold, p95/p99 (n = 3000) | 586.5 / 684.1 µs | 965.0 / 1288.6 µs | - |
+| Warm compile | ~1.0 µs | ~2.1 µs | - |
+| Cold compile | ~120 µs | ~1.2 ms | - |
+| GPU mask path (full) | 47.75 µs | 49.83 µs | 126.09 µs |
+| Constrained generation e2e (HF, paired median) | worst case **+1.7%** vs XGrammar; 12/12 configurations within the 5% threshold | baseline | - |
+
+Caveats: these are our workloads under our acceptance protocol - not a
+cross-project benchmark suite. Competitor-reported figures may differ (for
+example, llguidance documents ~50 µs per token typical for a 128k-tokenizer
+JSON workload); for neutral cross-checks see
+[MaskBench / JSONSchemaBench](https://github.com/guidance-ai/jsonschemabench).
+Reproduce locally with `python3 benchmarks/run_all.py`.
+
+## MVP scope and limitations
+
+- **JSON Schema:** `type`, `properties`/`required`,
+  `additionalProperties: false`, `items`, `minItems`/`maxItems`,
+  `minLength`/`maxLength`, `enum`/`const`, local `$defs`/`$ref`, annotations.
+  Outside the MVP (rejected explicitly): `anyOf`/`oneOf`/`allOf`/`not`/
+  `if`/`then`/`else`, `pattern`, `format`, `patternProperties`, numeric bounds
+  (`minimum`/`maximum`/`multipleOf`), external references, boolean schemas.
+- **Regex and arbitrary CFG are not supported yet**; literal sets are.
+- **Platforms:** Linux x86_64 (glibc); CPython 3.10-3.13 via abi3.
+- **Tokenizers:** byte-level BPE and SentencePiece with byte fallback, with
+  exact decoder chains; other chains are rejected as `UNSUPPORTED_TOKENIZER`
+  rather than approximated.
+- **Integrations:** Hugging Face Transformers adapter and the C ABI today;
+  serving-engine wrappers (vLLM/SGLang) are not available yet.
+
+Details: `docs/supported_features.md`.
+
+## Repository layout
+
+```
+build.zig                  core, tests and C example build
+include/bolorgir.h         versioned C ABI (opaque handles, blg_status)
+src/                       compiler, grammar IR, parser, masks, accounting
+                           allocator, caches, C ABI
+examples/c_client.c        C client without Python
+python/                    Python package (abi3) and HF adapter
+tests/                     independent reference, parity/edge/fuzz tests
+docs/                      API reference, support tables, profile semantics,
+                           architecture, implementation notes, ADRs
+benchmarks/                corpus, measurement scripts, acceptance protocol,
+                           published reports (reports/), MaskBench runs
+                           (maskbench/)
+```
+
+## Development
+
+```sh
+zig build test --summary all      # core tests (Debug and ReleaseSafe)
+zig fmt --check build.zig src
+
+cd python && ZIG=$(command -v zig) python3 setup.py build_ext --inplace && cd ..
+PYTHONPATH=python BLG_TEST_BACKEND=ctypes  python3 -m pytest tests/ python/tests/ -q
+PYTHONPATH=python BLG_TEST_BACKEND=package python3 -m pytest tests/ python/tests/ -q
+```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow, and
+`docs/RUN_HISTORY.md` for the acceptance history behind the current verdict
+(build identities, outcomes, report links and unresolved limitations).
+
+## Documentation
+
+- `docs/README.md` - index of the documentation.
+- `docs/API.md` - C ABI and Python API reference.
+- `docs/supported_features.md` - exact support tables, limits, error codes.
+- `docs/semantics.md` - normative semantics of the `canonical-v1` profile.
+- `docs/semantics-spec-v1.md`, `docs/dialect-matrix.md` - the `spec-v1`
+  profile and its per-dialect keyword rules.
+- `docs/architecture.md`, `docs/DESIGN.md` - module architecture and
+  implementation notes for contributors.
+- `SPEC.md` - the full engine specification.
+- `ROADMAP.md` - developer plan for full JSON Schema coverage (spec-v1 profile).
+- `benchmarks/README.md` - measurement methodology and reproduction commands.
+- `benchmarks/maskbench/README.md` - independent MaskBench runs and the
+  upstream adapter patch.
+
+## License
+
+Apache-2.0 - see [LICENSE](LICENSE).
+
+Bolorgir is an independent implementation of constrained decoding.

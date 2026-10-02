@@ -1,7 +1,7 @@
 """
 Regression tests for batch serialization in fill_masks_batch (FR-11/13).
 
-Covers the audit findings (docs/AUDIT_TZ_2026-09-15.md, FR-11/13 row):
+Covers (FR-11/13 row):
 - duplicate sessions in one batch (double acquire of a non-recursive lock);
 - overlapping batches in concurrent threads (lock-order inversion);
 - closing a session while a batch is being prepared (stale native pointer).
@@ -15,8 +15,8 @@ import time
 
 import pytest
 
-import zig_constraints as zc
-from zig_constraints import Engine, TokenizerBundle
+import bolorgir as zc
+from bolorgir import Engine, TokenizerBundle
 
 EOS_ID = 256
 VOCAB = 257
@@ -62,7 +62,7 @@ def test_batch_duplicate_session():
         solo1, solo2 = s1.fill_mask(), s2.fill_mask()
         assert masks[0] == masks[1] == masks[3] == solo1
         assert masks[2] == solo2
-        # Core-level duplicate rows report ZG_OK as well.
+        # Core-level duplicate rows report BLG_OK as well.
         rows = zc._core.fill_masks_batch([s1._s, s1._s])
         assert [code for code, _ in rows] == [0, 0]
 
@@ -110,7 +110,7 @@ def test_batch_closed_session_raises():
 
 def test_batch_close_during_batch_no_crash():
     """A session closed concurrently with in-flight batches yields
-    WrongStateError (or success if the batch won the race) — never a hang
+    WrongStateError (or success if the batch won the race) - never a hang
     or a crash."""
     with engine_with_sessions(2) as (_, _, sessions):
         s1, s2 = sessions

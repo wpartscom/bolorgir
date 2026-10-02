@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "id": "llg",
+    "name": "LLGuidance",
+    "module": "llguidance",
+    "module_version": "0.7.10",
+    "cmd": [
+      "python3",
+      "-m",
+      "maskbench.runner",
+      "--multi",
+      "--llg",
+      "--compact",
+      "--output",
+      "/home/gm/maskbench-work/runs/full-llg-compact"
+    ],
+    "info": "11306 files, timeout 900s, memory 40GB, output /home/gm/maskbench-work/runs/full-llg-compact; 20 threads; cmd: python3 -m maskbench.runner --multi --llg --compact --output /home/gm/maskbench-work/runs/full-llg-compact"
+  },
+  "ttfm_us": 30774021,
+  "max_ttfm_us": 590451,
+  "masks_us": 86556261,
+  "avg_mask_us": 94,
+  "masks_us_under_10ms": 86303938,
+  "num_masks_under_10ms": 917747,
+  "avg_masks_under_10ms": 94,
+  "masks_us_over_10ms": 252323,
+  "num_masks_over_10ms": 21,
+  "avg_masks_over_10ms": 12015,
+  "max_mask_us": 22686,
+  "num_tokens": 917768,
+  "num_schemas": 11306,
+  "num_crashes_or_timeouts": 0,
+  "num_timeouts": 0,
+  "num_segv": 0,
+  "num_abort": 0,
+  "num_schemas_ok": 4727,
+  "num_compilation_errors": 2377,
+  "num_validation_errors": 4202,
+  "num_invalidation_errors": 0,
+  "num_tests": 37011,
+  "num_valid_tests": 5755,
+  "num_invalid_tests": 13344
+}

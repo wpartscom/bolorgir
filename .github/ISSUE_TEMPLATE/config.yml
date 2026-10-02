@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/wpartscom/bolorgir/blob/main/docs/supported_features.md
+    about: Exact MVP support table, limits, and error codes
+  - name: Benchmark methodology
+    url: https://github.com/wpartscom/bolorgir/blob/main/benchmarks/README.md
+    about: How performance numbers are produced and reproduced

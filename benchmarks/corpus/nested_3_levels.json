@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Вложенность 3 уровня: сессия/пользователь/адрес",
+  "title": "3-level nesting: session/user/address",
   "type": "object",
   "properties": {
     "session_id": {"type": "string", "minLength": 8, "maxLength": 64},

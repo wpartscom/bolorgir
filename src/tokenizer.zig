@@ -21,6 +21,24 @@ pub const Trie = struct {
     edge_child: []u32,
     max_depth: u32,
     max_stack: u32,
+
+    /// Child of `node` by byte; the edges of a node are sorted by byte, so
+    /// the lookup is a binary search (the root has up to 256 children).
+    pub fn child(self: *const Trie, node: u32, b: u8) ?u32 {
+        const base = self.node_edge_off[node];
+        var lo: u32 = 0;
+        var hi: u32 = self.node_edge_len[node];
+        while (lo < hi) {
+            const mid = lo + (hi - lo) / 2;
+            const eb = self.edge_byte[base + mid];
+            if (eb < b) {
+                lo = mid + 1;
+            } else if (eb > b) {
+                hi = mid;
+            } else return self.edge_child[base + mid];
+        }
+        return null;
+    }
 };
 
 /// Immutable tokenizer representation shared by the context.
@@ -34,6 +52,19 @@ pub const Tokenizer = struct {
     trie: Trie,
     token_chain: []u32,
     arena: std.heap.ArenaAllocator,
+    /// True when every one of the 256 byte values has a usable
+    /// single-byte token (ordinary, non-EOS, non-special). Byte-complete
+    /// vocabularies make masks exact without any completion search: from
+    /// any state that has a byte-wise completion, that completion can be
+    /// fed one byte at a time (TZ 3.1), so no byte-legal token can dead
+    /// end. The completion filter (src/complete.zig) is only needed when
+    /// this flag is false and the grammar language is finite.
+    byte_complete: bool,
+    /// True when the decoder drops one leading space of the whole text
+    /// (HF SentencePiece Strip(" ", start=1, stop=0)). Set by the C ABI
+    /// from blg_tokenizer_desc.flags; the compile step then models the
+    /// decoded text (see c_api.compileGrammar).
+    strip_lead_space: bool = false,
 
     pub fn deinit(self: *Tokenizer) void {
         self.arena.deinit();
@@ -102,6 +133,17 @@ pub const Tokenizer = struct {
 
         const built = try buildTrie(a, vocab_size, bytes, is_eos, is_special);
 
+        var have_byte = [_]bool{false} ** 256;
+        var have_count: u32 = 0;
+        for (bytes, 0..) |b, i| {
+            if (is_eos[i] or is_special[i]) continue;
+            if (b.len != 1) continue;
+            if (!have_byte[b[0]]) {
+                have_byte[b[0]] = true;
+                have_count += 1;
+            }
+        }
+
         return .{
             .vocab_size = vocab_size,
             .bytes = bytes,
@@ -111,6 +153,7 @@ pub const Tokenizer = struct {
             .trie = built.trie,
             .token_chain = built.chain,
             .arena = arena,
+            .byte_complete = have_count == 256,
         };
     }
 };
@@ -120,6 +163,10 @@ const TmpNode = struct {
     edges: std.ArrayListUnmanaged(TmpEdge) = .{},
     token: u32 = NO_TOKEN,
 };
+
+fn tmpEdgeLess(_: void, x: TmpEdge, y: TmpEdge) bool {
+    return x.byte < y.byte;
+}
 
 const BuiltTrie = struct { trie: Trie, chain: []u32 };
 
@@ -181,6 +228,9 @@ fn buildTrie(a: std.mem.Allocator, vocab_size: u32, bytes: []const []const u8, i
     };
     var off: u32 = 0;
     for (tmp.items, 0..) |*tn, i| {
+        // Sorted edges: mask generation only enumerates them, while the
+        // coverage DP looks children up by byte (binary search).
+        std.mem.sort(TmpEdge, tn.edges.items, {}, tmpEdgeLess);
         trie.node_edge_off[i] = off;
         trie.node_edge_len[i] = @intCast(tn.edges.items.len);
         trie.node_token[i] = tn.token;

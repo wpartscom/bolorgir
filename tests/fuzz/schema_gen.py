@@ -1,6 +1,6 @@
 """T4 fuzz: random schema generator (JSON text, to preserve number lexemes).
 
-Supported subset — docs/supported_features.md §1:
+Supported subset - docs/supported_features.md §1:
 object/properties/required/additionalProperties:false, array/items/min/maxItems,
 string min/maxLength, integer, number, boolean, null, enum/const of scalars,
 $defs/$ref. must_compile=True avoids knowingly rejected forms

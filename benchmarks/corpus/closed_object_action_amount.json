@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Закрытый объект: действие и сумма (пример из ТЗ)",
+  "title": "Closed object: action and amount (spec example)",
   "type": "object",
   "properties": {
     "action": {"type": "string", "enum": ["buy", "sell"]},

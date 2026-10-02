@@ -1,0 +1,62 @@
+{
+ "off": {
+  "p50": 166.3775,
+  "p90": 402746.9592,
+  "p95": 408218.9859,
+  "p99": 419248.67848,
+  "max": 444010.447,
+  "count": 564,
+  "gt_1ms": 153,
+  "stats": {
+   "files": 24,
+   "compiled": 24,
+   "compile_error": 0,
+   "instances": 24,
+   "masks": 564,
+   "validation_error": 0
+  }
+ },
+ "on": {
+  "p50": 158.5245,
+  "p90": 305.25399999999985,
+  "p95": 1496.1366500000004,
+  "p99": 3651.57179,
+  "max": 4891.044,
+  "count": 564,
+  "gt_1ms": 46,
+  "stats": {
+   "files": 24,
+   "compiled": 24,
+   "compile_error": 0,
+   "instances": 24,
+   "masks": 564,
+   "validation_error": 0
+  }
+ },
+ "files": [
+  "BFCL_java_6",
+  "BFCL_java_10",
+  "BFCL_java_18",
+  "BFCL_java_22",
+  "BFCL_java_23",
+  "BFCL_java_24",
+  "BFCL_java_25",
+  "BFCL_java_27",
+  "BFCL_java_32",
+  "BFCL_java_44",
+  "BFCL_java_47",
+  "BFCL_java_49",
+  "BFCL_java_53",
+  "BFCL_java_57",
+  "BFCL_java_63",
+  "BFCL_java_73",
+  "BFCL_java_74",
+  "BFCL_java_76",
+  "BFCL_java_77",
+  "BFCL_java_78",
+  "BFCL_java_79",
+  "BFCL_java_80",
+  "BFCL_java_92",
+  "BFCL_java_98"
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "lib": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/zig-out/lib/libbolorgir.so",
+ "files": [
+  "BFCL_java_6",
+  "BFCL_java_10",
+  "BFCL_java_18",
+  "BFCL_java_22",
+  "BFCL_java_23",
+  "BFCL_java_24",
+  "BFCL_java_25",
+  "BFCL_java_27",
+  "BFCL_java_32",
+  "BFCL_java_44",
+  "BFCL_java_47",
+  "BFCL_java_49",
+  "BFCL_java_53",
+  "BFCL_java_57",
+  "BFCL_java_63",
+  "BFCL_java_73",
+  "BFCL_java_74",
+  "BFCL_java_76",
+  "BFCL_java_77",
+  "BFCL_java_78",
+  "BFCL_java_79",
+  "BFCL_java_80",
+  "BFCL_java_92",
+  "BFCL_java_98"
+ ],
+ "on": {
+  "p50": 161.812,
+  "p90": 357.68069999999994,
+  "p95": 2976.2175,
+  "count": 564
+ },
+ "stats": {
+  "files": 24,
+  "compiled": 24,
+  "compile_error": 0,
+  "instances": 24,
+  "masks": 564,
+  "validation_error": 0
+ }
+}

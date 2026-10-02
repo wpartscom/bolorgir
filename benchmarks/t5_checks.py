@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""T5. Интеграционные проверки HF + zig_constraints на GPU (ТЗ §11 T5).
+"""T5. HF + bolorgir integration checks on GPU (SPEC §11 T5).
 
-Проверяется (CPU и CUDA, greedy/sampling, смешанный батч, left padding,
-ранний EOS, лимит длины, освобождение после ошибки, конфликты processors,
-отражение финального токена в состоянии сессии, неподдерживаемые режимы).
-Отдельно: запрет ограничения НЕ снимается последующим processor
-(MinNewTokens/RepetitionPenalty/аддитивный буст запрещённого токена);
-равенство текстов constrained и unconstrained НЕ требуется (ТЗ T5).
+Checks (CPU and CUDA, greedy/sampling, mixed batch, left padding, early EOS,
+length limit, recovery after an error, processor conflicts, reflection of the
+final token in the session state, unsupported modes). Separately: a constraint
+ban is NOT lifted by a following processor (MinNewTokens/RepetitionPenalty/
+additive boost of a banned token); equality of constrained and unconstrained
+texts is NOT required (SPEC T5).
 
-Использует constrained_generate_safe / VocabSafeConstraintProcessor —
-workaround'ы bug B-1/B-3 (см. hf_common.py и reproducers в results).
-Ядро (маски, сессии) штатное.
+Uses constrained_generate_safe / VocabSafeConstraintProcessor - workarounds
+for bug B-1/B-3 (see hf_common.py and reproducers in results). The engine
+(masks, sessions) is stock.
 
-Запуск из корня проекта:
+Run from the project root:
     PYTHONPATH=python:benchmarks python3 benchmarks/t5_checks.py \
         --out benchmarks/results/<timestamp>
 """
@@ -30,7 +30,7 @@ from transformers.generation.logits_process import (
     RepetitionPenaltyLogitsProcessor,
 )
 
-from zig_constraints import (
+from bolorgir import (
     Engine,
     InvalidSchemaError,
     UnsupportedFeatureError,
@@ -90,14 +90,14 @@ S3 = {
     "required": ["title", "year"],
     "additionalProperties": False,
 }
-# короткий документ для проверки раннего EOS
+# short document for the early EOS check
 S_TINY = {
     "type": "object",
     "properties": {"ok": {"type": "boolean"}},
     "required": ["ok"],
     "additionalProperties": False,
 }
-# документ с принудительно длинной строкой для проверки лимита длины
+# document with a forcibly long string for the length-limit check
 S_LONG = {
     "type": "object",
     "properties": {"text": {"type": "string", "minLength": 400}},
@@ -147,7 +147,7 @@ def make_inputs(tokenizer, prompts, device="cuda"):
     return {k: v.to(device) for k, v in enc.items()}
 
 
-# --- проверки ---------------------------------------------------------------
+# --- checks ---------------------------------------------------------------
 
 
 @check("greedy_cuda_batched_left_padding")
@@ -229,8 +229,8 @@ def t_length(ctx):
     rows = decode_rows(res, tok, inputs["input_ids"].shape[1], tok.eos_token_id)
     close_result(res)
     c.close()
-    # документ обрезан лимитом: completed=False, stop_reason="length",
-    # текст не обязан быть валидным JSON
+    # document cut off by the limit: completed=False, stop_reason="length",
+    # the text is not required to be valid JSON
     ok = res.completed == [False] and res.stop_reason == ["length"] and rows[0]["n"] == 24
     return ok, {"completed": res.completed, "stop_reason": res.stop_reason,
                 "n_tokens": rows[0]["n"], "text_prefix": rows[0]["text"][:60]}
@@ -241,14 +241,14 @@ def t_recovery(ctx):
     tok, model, engine = ctx["tokenizer"], ctx["model"], ctx["engine"]
     errs = []
     try:
-        engine.compile({"type": "object"})  # нет properties/required
+        engine.compile({"type": "object"})  # no properties/required
     except InvalidSchemaError as e:
         errs.append("InvalidSchemaError")
     try:
-        engine.compile({"type": "string", "pattern": "^a+$"})  # вне MVP
+        engine.compile({"type": "string", "pattern": "^a+$"})  # outside the MVP
     except UnsupportedFeatureError as e:
         errs.append("UnsupportedFeatureError")
-    # движок жив: компиляция валидной схемы и генерация после ошибок
+    # engine is alive: compile a valid schema and generate after the errors
     c = engine.compile(S_TINY)
     inputs = make_inputs(tok, [PROMPTS["tiny"]])
     res = constrained_generate_safe(model, tok, c, inputs=inputs, max_new_tokens=16)
@@ -261,7 +261,7 @@ def t_recovery(ctx):
 
 def direct_generate(ctx, schema, prompts, extra_processors, max_new_tokens=48,
                     do_sample=False, **kw):
-    """generate со списком processor'ов: constraint-процессор + extra после него."""
+    """generate with a processor list: the constraint processor + extras after it."""
     tok, model, engine = ctx["tokenizer"], ctx["model"], ctx["engine"]
     c = engine.compile(schema)
     inputs = make_inputs(tok, prompts)
@@ -290,12 +290,12 @@ def direct_generate(ctx, schema, prompts, extra_processors, max_new_tokens=48,
 
 @check("processor_conflict_min_new_tokens_and_repetition_penalty")
 def t_conflict_std(ctx):
-    # (a) min_new=3 + RepetitionPenalty после constraint-процессора:
-    #     штатная работа, выход валиден — последующие processor'ы не
-    #     снимают запрет ограничения.
-    # (b) min_new=12 на крошечной схеме: после конца документа маска
-    #     разрешает только EOS, а MinNewTokens запрещает EOS -> явная
-    #     ошибка конфликта (FR-15), а НЕ проскальзывание невалидного токена.
+    # (a) min_new=3 + RepetitionPenalty after the constraint processor:
+    #     regular operation, the output is valid - subsequent processors do
+    #     not lift the constraint ban.
+    # (b) min_new=12 on a tiny schema: after the end of the document the mask
+    #     allows only EOS, while MinNewTokens forbids EOS -> an explicit
+    #     conflict error (FR-15), NOT a slip of an invalid token.
     tok = ctx["tokenizer"]
 
     def extra_ok(prompt_len):
@@ -332,8 +332,8 @@ def t_conflict_std(ctx):
 
 @check("processor_conflict_additive_boost_banned_token")
 def t_conflict_boost(ctx):
-    # Аддитивный буст запрещённого токена (+50 к логиту произвольного
-    # запрещённого id): -inf + finite == -inf, запрет не снимается.
+    # Additive boost of a banned token (+50 to the logit of an arbitrary
+    # banned id): -inf + finite == -inf, the ban is not lifted.
     from transformers.generation.logits_process import LogitsProcessor
 
     tok = ctx["tokenizer"]
@@ -398,11 +398,11 @@ def t_eos_state(ctx):
     stats = sess.stats()
     seq = res.sequences[0][prompt_len:].tolist()
     eos_pos = seq.index(tok.eos_token_id) if tok.eos_token_id in seq else None
-    # tokens_accepted включает финальный EOS: == позиция EOS + 1
+    # tokens_accepted includes the final EOS: == EOS position + 1
     accepted_matches = eos_pos is not None and stats["tokens_accepted"] == eos_pos + 1
     state_err = None
     try:
-        sess.accept_token(0)  # сессия finished -> WrongStateError
+        sess.accept_token(0)  # session finished -> WrongStateError
     except ZigConstraintsError as e:
         state_err = type(e).__name__
     close_result(res)
@@ -423,7 +423,7 @@ def t_eos_state(ctx):
 
 @check("cpu_small_run")
 def t_cpu(ctx):
-    # CPU: отдельная fp32-копия модели, batch 1, короткая генерация.
+    # CPU: a separate fp32 copy of the model, batch 1, short generation.
     from transformers import AutoModelForCausalLM
 
     tok = ctx["tokenizer"]
@@ -449,7 +449,7 @@ def main() -> int:
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
-    assert torch.cuda.is_available(), "CUDA недоступна"
+    assert torch.cuda.is_available(), "CUDA is not available"
     model, tokenizer = load_model()
     engine = Engine(mode="adaptive", tokenizer=tokenizer)
     ctx = {"model": model, "tokenizer": tokenizer, "engine": engine}

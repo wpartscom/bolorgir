@@ -1,6 +1,6 @@
-"""FR-1 support table: positive and negative cases with exact zg_status.
+"""FR-1 support table: positive and negative cases with exact blg_status.
 
-Runs through a backend (zig_constraints package -> exception mapped to a code;
+Runs through a backend (bolorgir package -> exception mapped to a code;
 ctypes fallback -> code directly). Expected codes follow DESIGN §1.7/§10 and
 TZ FR-1.
 
@@ -21,13 +21,13 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from conftest import backend_available  # noqa: E402
 
-_ok, _why = backend_available(os.environ.get("ZG_TEST_BACKEND", "auto"))
+_ok, _why = backend_available(os.environ.get("BLG_TEST_BACKEND", "auto"))
 if not _ok:
     pytest.skip(f"core unavailable: {_why}", allow_module_level=True)
 
 try:
-    import zg_ctypes as zc
-except ImportError:  # package-only access, no .so — only the codes are needed
+    import blg_ctypes as zc
+except ImportError:  # package-only access, no .so - only the codes are needed
     zc = None
     from conftest import _status_code_of_exception  # noqa: F401
 
@@ -180,7 +180,7 @@ NEGATIVE = [(n, _deep_schema(70) if s is None else s, c) for n, s, c in NEGATIVE
 
 
 def _compile_code(backend, schema):
-    """-> zg_status code of the compilation (OK or an error code)."""
+    """-> blg_status code of the compilation (OK or an error code)."""
     if backend.name == "ctypes":
         try:
             g = backend.zg.compile_schema(backend.ctx, schema)
@@ -195,7 +195,7 @@ def _compile_code(backend, schema):
     except Exception as e:
         code = _status_code_of_exception(e)
         assert code is not None, (
-            f"cannot map package exception to a zg_status code: "
+            f"cannot map package exception to a blg_status code: "
             f"{type(e).__name__}: {e}")
         return code
     c.release()

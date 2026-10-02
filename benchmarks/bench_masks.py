@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""B2. Тёплая схема: p50/p95/p99/max времени fill_mask и accept_token.
+"""B2. Warm schema: p50/p95/p99/max of fill_mask and accept_token time.
 
->= 10k наблюдений на класс нагрузки (ТЗ 10.5). Используется заранее
-сгенерированная валидная трасса токенов (детерминированная, seed=42):
-каждый прогон переигрывает одну и ту же трассу на свежей сессии.
+>= 10k observations per load class (SPEC 10.5). A pre-generated valid token
+trace is used (deterministic, seed=42): every run replays the same trace on
+a fresh session.
 """
 
 import argparse
@@ -43,7 +43,7 @@ def main():
     probe.abort()
     if not completed or not trace:
         bc.emit({"status": "ERROR", "case": "B2", "schema": args.schema,
-                 "reason": "не удалось сгенерировать валидную трассу",
+                 "reason": "failed to generate a valid trace",
                  "completed": completed, "trace_len": len(trace)})
         return
 

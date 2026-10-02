@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Сравнительный раннер: те же сценарии B1/B2 через llguidance.
+"""Comparison runner: the same B1/B2 scenarios through llguidance.
 
-Участник сравнения по ТЗ 10.2 (закреплённая версия — benchmarks/manifest.json).
-Токенизатор: openai-community/gpt2, revision закреплён (byte-level BPE).
-Профиль JSON у llguidance отличается от canonical-v1; побитовое сравнение
-масок — только на явно размеченном пересечении языков (ТЗ 10.2).
+Comparison participant per SPEC 10.2 (pinned version - benchmarks/manifest.json).
+Tokenizer: openai-community/gpt2, revision pinned (byte-level BPE).
+The LLGuidance JSON profile differs from canonical-v1; bitwise mask
+comparison is performed only on the explicitly labeled language
+intersection (SPEC 10.2).
 """
 
 import argparse
@@ -33,17 +34,17 @@ def main():
     tf = bc.import_or_skip("transformers")
     np = bc.import_or_skip("numpy")
     if lg is None or tf is None or np is None:
-        bc.skip("llguidance/transformers/numpy не установлены: сравнение pending "
-                "(команда установки — benchmarks/README.md)")
+        bc.skip("llguidance/transformers/numpy not installed: comparison pending "
+                "(install command - benchmarks/README.md)")
 
     import llguidance.hf as lghf
 
     entry, schema_bytes = bc.load_schema(args.schema, args.corpus_dir)
     schema_str = schema_bytes.decode("utf-8")
     if entry["kind"] != "json_schema" or not entry["expect_support"]:
-        bc.skip(f"схема {args.schema} не является поддерживаемой json_schema")
+        bc.skip(f"schema {args.schema} is not a supported json_schema")
 
-    # B1: подготовка
+    # B1: preparation
     t0 = bc.now_ns()
     hf_tok = tf.AutoTokenizer.from_pretrained(TOKENIZER_NAME,
                                               revision=TOKENIZER_REVISION)
@@ -62,15 +63,15 @@ def main():
         cold_compile.append(t1 - t0)
         first_mask.append(t2 - t1)
 
-    # у llguidance нет межграмматического кэша в этом API: «тёплый» compile —
-    # повторный grammar_from в том же процессе
+    # llguidance has no cross-grammar cache in this API: "warm" compile is a
+    # repeated grammar_from in the same process
     warm_compile = []
     for _ in range(max(args.repeats, 100)):
         t0 = bc.now_ns()
         lg.grammar_from("json_schema", schema_str)
         warm_compile.append(bc.now_ns() - t0)
 
-    # B2: маска/accept на трассе
+    # B2: mask/accept on the trace
     rng = random.Random(args.seed)
     grm = lg.grammar_from("json_schema", schema_str)
     vocab_size = tok.vocab_size
@@ -99,7 +100,7 @@ def main():
     trace, completed = gen_trace()
     if not completed or not trace:
         bc.emit({"status": "ERROR", "engine": "llguidance", "case": "B2",
-                 "reason": "не удалось сгенерировать валидную трассу",
+                 "reason": "failed to generate a valid trace",
                  "completed": completed, "trace_len": len(trace)})
         return
 
@@ -135,8 +136,8 @@ def main():
             "fill_mask_ns": bc.percentile_stats(mask_ns),
             "accept_ns": bc.percentile_stats(accept_ns),
         },
-        "note": "профиль JSON llguidance != canonical-v1; сравнение задержек "
-                "на эквивалентной схеме, не побитовое",
+        "note": "LLGuidance JSON profile != canonical-v1; latency comparison "
+                "on an equivalent schema, not bitwise",
     })
 
 

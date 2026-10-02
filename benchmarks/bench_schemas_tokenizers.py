@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
-"""B3 (смена схем) + B6 (матрица токенизаторов) — аудит 2026-09-15, п.7.
+"""B3 (schema switching) + B6 (tokenizer matrix).
 
-B3: уникальные и повторяющиеся схемы в фиксированном порядке (ТЗ 10.4):
-- фаза U: K различных схем jsonschemabench (закреплённый commit в manifest)
-  компилируются по одному разу — задержка compile, поддержка/отказы;
-- фаза R: та же последовательность повторяется --rounds раз в фиксированном
-  порядке — задержка, hit rate кэша, evictions, память (stats ядра, RSS).
-Движки: zig lazy и adaptive (hit rate — свойство adaptive-кэша).
+B3: unique and repeated schemas in a fixed order (SPEC 10.4):
+- phase U: K distinct jsonschemabench schemas (commit pinned in manifest)
+  are compiled once each - compile latency, support/rejects;
+- phase R: the same sequence repeats --rounds times in a fixed order -
+  latency, cache hit rate, evictions, memory (core stats, RSS).
+Engines: zig lazy and adaptive (hit rate is a property of the adaptive cache).
 
-B6: матрица токенизаторов (ТЗ 10.4): реальные закреплённые словари
+B6: tokenizer matrix (SPEC 10.4): real pinned vocabularies
 (GPT-2 byte-level BPE 50257; Qwen2.5 byte-level BPE 151665; TinyLlama
-SentencePiece byte_fallback 32000 — вторая семья токенизаторов MVP) +
-синтетические 32k/128k/256k отдельно. Метрики: prepare, compile, первая
-маска, маска p50/p95 на трассе документа, память ядра (mem_used.tokenizer).
+SentencePiece byte_fallback 32000 - the second tokenizer family of the MVP) +
+synthetic 32k/128k/256k separately. Metrics: prepare, compile, first
+mask, mask p50/p95 on the document trace, core memory (mem_used.tokenizer).
 
-Запуск из корня проекта:
+Run from the project root:
     PYTHONPATH=python:benchmarks python3 benchmarks/bench_schemas_tokenizers.py
 """
 
@@ -41,17 +41,18 @@ REAL_TOKENIZERS = [
      "needs_sp_shim": True},
 ]
 
-# transformers 5.17: Llama-family токенизатор грузится как медленный
-# LlamaTokenizer без атрибута byte_fallback (fast-конверсия недоступна),
-# хотя tokenizer.json модели — BPE с byte_fallback (vocab '▁'-стиля +
-# <0xNN>). Пакет требует флаг byte_fallback для SP-ветки (tokenizers.py).
-# Shim: выставляем флаг явно; корректность байтов подтверждается
-# попарной конкатенацией против backend.decode (verify_sp_shim).
+# transformers 5.17: the Llama-family tokenizer loads as a slow
+# LlamaTokenizer without the byte_fallback attribute (fast conversion is
+# unavailable), although the model's tokenizer.json is BPE with byte_fallback
+# ('▁'-style vocab + <0xNN>). The package requires the byte_fallback flag for
+# the SP branch (tokenizers.py). Shim: set the flag explicitly; byte
+# correctness is confirmed by pairwise concatenation against backend.decode
+# (verify_sp_shim).
 def verify_sp_shim(tok, bundle, pairs=400, seed=42):
     import random
     backend = getattr(tok, "_tokenizer", None)
     if backend is None:
-        return {"status": "SKIP", "reason": "нет _tokenizer backend"}
+        return {"status": "SKIP", "reason": "no _tokenizer backend"}
     rng = random.Random(seed)
     ok, first_space_only, lossy_utf8, bad = 0, 0, 0, []
     for _ in range(pairs):
@@ -61,16 +62,16 @@ def verify_sp_shim(tok, bundle, pairs=400, seed=42):
         if got == ref:
             ok += 1
         elif got[1:] == ref and got[:1] == b" ":
-            # правило SP: ▁ самого первого токена потока не рендерится
+            # SP rule: the ▁ of the very first token of the stream is not rendered
             first_space_only += 1
         else:
-            # backend.decode декодирует байты как UTF-8 с заменой (U+FFFD):
-            # изолированная пара с «висячим» lead/continuation-байтом
-            # (напр. <0xD1> + пробел) как UTF-8 невалидна целиком, и
-            # эталон лоссов. Байты адаптера обязаны совпасть с тем, что
-            # ВИДЕЛ backend, поэтому сравниваем после той же замены; для
-            # реальных документов грамматика строк требует полных
-            # UTF-8-последовательностей (StrFrame: rem/lo/hi).
+            # backend.decode decodes bytes as UTF-8 with replacement (U+FFFD):
+            # an isolated pair with a dangling lead/continuation byte
+            # (e.g. <0xD1> + space) is wholly invalid as UTF-8, so the
+            # reference is lossy as well. The adapter bytes must match what
+            # the backend SAW, so we compare after the same replacement; for
+            # real documents the string grammar requires complete UTF-8
+            # sequences (StrFrame: rem/lo/hi).
             nrm = got.decode("utf-8", errors="replace").encode("utf-8")
             if nrm == ref or (nrm[1:] == ref and nrm[:1] == b" "):
                 lossy_utf8 += 1
@@ -85,7 +86,7 @@ DOC = '{"action":"buy","amount":42}'
 
 
 def synth_bundle(zc, vocab_size):
-    """Синтетический побайтовый словарь заданного размера (детерминированный)."""
+    """Synthetic byte vocabulary of the given size (deterministic)."""
     tokens = [bytes([b]) for b in range(256)]
     i = 0
     while len(tokens) < vocab_size - 1:
@@ -110,7 +111,7 @@ def bench_engine_on_bundle(zc, bundle, schema, trace_steps, mask_replays,
     session.close()
     vocab = engine.vocab_size
 
-    # трасса: повторяем байты документа как id < 256 (синтетика) либо encode
+    # trace: repeat the document bytes as ids < 256 (synthetic) or encode
     mask_ns = []
     for _ in range(mask_replays):
         session = constraint.create_session()
@@ -139,9 +140,9 @@ def main():
     ap.add_argument("--schema", default="closed_object_action_amount")
     ap.add_argument("--corpus-dir", default=bc.CORPUS_DIR)
     ap.add_argument("--b3-schemas", type=int, default=100,
-                    help="число различных схем jsonschemabench для фазы U")
+                    help="number of distinct jsonschemabench schemas for phase U")
     ap.add_argument("--rounds", type=int, default=3,
-                    help="повторов последовательности в фазе R")
+                    help="sequence repeats in phase R")
     ap.add_argument("--mask-replays", type=int, default=50)
     ap.add_argument("--seed", type=int, default=bc.SEED)
     args = ap.parse_args()
@@ -153,10 +154,11 @@ def main():
     schema = json.loads(schema_bytes)
     out = {"status": "OK", "seed": args.seed}
 
-    # ---------------- B3: смена схем ----------------
-    # отчёт поддержки на JSB-подмножестве (ТЗ 10.3: перечень с отчётом
-    # поддержки/отказов); фазы смены схем — на ПОДДЕРЖИВАЕМЫХ схемах корпуса,
-    # иначе кэш нечего измерять (MVP-язык покрывает малую долю сырых JSB).
+    # ---------------- B3: schema switching ----------------
+    # support report over a JSB subset (SPEC 10.3: a list with a
+    # support/rejects report); the switching phases run on SUPPORTED corpus
+    # schemas, otherwise there is nothing to measure in the cache (the MVP
+    # language covers a small share of raw JSB).
     files = sorted(glob.glob(os.path.join(JSB_DIR, "**", "*.json"), recursive=True))
     files = files[: args.b3_schemas]
     b3 = {"jsb_dir": os.path.relpath(JSB_DIR), "jsb_files": len(files),
@@ -175,7 +177,7 @@ def main():
             corpus_schemas.append((name, json.loads(raw)))
     b3["corpus_supported_schemas"] = len(corpus_schemas)
 
-    bundle = bc.make_byte_tokenizer(zc)  # B3 — про кэш схем, не про словарь
+    bundle = bc.make_byte_tokenizer(zc)  # B3 is about the schema cache, not the vocab
     engine = zc.Engine(mode="adaptive", memory_limit_mb=256, tokenizer=bundle)
     support = {"ok": 0, "unsupported": 0, "error": 0, "error_types": {}}
     for s in jsb_schemas:
@@ -219,9 +221,9 @@ def main():
         }
         engine.close()
 
-    # фаза сессий: фиксированный порядок схем, повторы; hit rate МАСКИ —
-    # основная метрика кэша (ТЗ 10.4 B3). Для каждой схемы — своя заранее
-    # сгенерированная валидная трасса (seed 42, побайтовый словарь).
+    # session phase: fixed schema order, repeats; MASK hit rate is the
+    # main cache metric (SPEC 10.4 B3). Each schema gets its own
+    # pre-generated valid trace (seed 42, byte vocabulary).
     import random
     engine = zc.Engine(mode="lazy", memory_limit_mb=256, tokenizer=bundle)
     traces = {}
@@ -275,7 +277,7 @@ def main():
     engine.close()
     out["B3"] = b3
 
-    # ---------------- B6: матрица токенизаторов ----------------
+    # ---------------- B6: tokenizer matrix ----------------
     b6 = {}
     if tf is not None:
         for spec in REAL_TOKENIZERS:
@@ -296,8 +298,8 @@ def main():
                 adjustment = None
                 b0 = bundle.token_bytes(trace[0])
                 if b0[:1] == b" ":
-                    # правило SP: ▁ первого токена потока не рендерится;
-                    # ищем то же написание без ведущего пробела
+                    # SP rule: the ▁ of the first token of the stream is not
+                    # rendered; look for the same spelling without the leading space
                     want = b0[1:]
                     alt = next((j for j in range(bundle.vocab_size)
                                 if bundle.token_bytes(j) == want), None)
@@ -306,7 +308,7 @@ def main():
                         adjustment = ("dropped SP leading-space token: "
                                       "document-start rule")
                 cat = b"".join(bundle.token_bytes(i) for i in trace)
-                assert cat == DOC.encode(), f"трасса не собирает документ: {cat!r}"
+                assert cat == DOC.encode(), f"trace does not assemble the document: {cat!r}"
                 r = bench_engine_on_bundle(zc, bundle, schema, trace,
                                            args.mask_replays)
                 if adjustment:
@@ -316,16 +318,17 @@ def main():
                 if shim is not None:
                     r["sp_shim_verify"] = shim
                     if shim.get("status") == "OK" and shim.get("bad"):
-                        # ТЗ риск-таблица: неверное байтовое представление ->
-                        # адаптер отклоняется, замеры помечаются несертифицир.
+                        # SPEC risk table: wrong byte representation ->
+                        # the adapter is rejected, measurements are marked
+                        # uncertified.
                         r["certified"] = False
                         r["certification_note"] = (
-                            "попарная конкатенация байтов расходится с "
-                            "backend.decode сверх объяснимых правил "
-                            "(первый ▁, lossy-замена U+FFFD для невалидного "
-                            "в изоляции UTF-8): байтовое представление "
-                            "части токенов неверно. "
-                            "Адаптер отклонён; требуется исправление пакета.")
+                            "pairwise byte concatenation diverges from "
+                            "backend.decode beyond explainable rules "
+                            "(first ▁, lossy U+FFFD replacement for UTF-8 "
+                            "invalid in isolation): the byte representation "
+                            "of some tokens is wrong. "
+                            "Adapter rejected; a package fix is required.")
                     elif shim.get("status") == "OK":
                         r["certified"] = True
             except Exception as e:
@@ -334,13 +337,13 @@ def main():
             b6[spec["id"]] = r
             print(f"B6 {spec['id']}: {r.get('status')}", file=sys.stderr, flush=True)
     else:
-        b6["_real"] = {"status": "SKIP", "reason": "transformers недоступен"}
+        b6["_real"] = {"status": "SKIP", "reason": "transformers is not available"}
 
     for size, limit_mb in ((32768, 256), (131072, 512), (262144, 1024)):
         t0 = bc.now_ns()
         bundle = synth_bundle(zc, size)
         build_ns = bc.now_ns() - t0
-        # трасса из однобайтовых токенов документа
+        # trace from single-byte tokens of the document
         trace = list(DOC.encode("utf-8"))
         try:
             r = bench_engine_on_bundle(zc, bundle, schema, trace,

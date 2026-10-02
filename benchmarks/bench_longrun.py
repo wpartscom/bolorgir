@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-"""B5/B8. Честная длительная генерация (аудит 2026-09-15, п.6).
+"""B5/B8. Honest long-running generation.
 
-Прежний опубликованный сценарий делал одну начальную маску + abort за цикл.
-Здесь — реальные шаги генерации: на КАЖДОМ цикле сессия проходит полную
-трассу (fill_mask + accept_token на каждом токене), сессия завершается
-finish() и уничтожается. Итого --steps суммарных шагов маски (по умолчанию
-100k, ТЗ B8) и ~steps/len(trace) циклов create/destroy (>= 10k, ТЗ B8).
+The previously published scenario did one initial mask + abort per cycle.
+Here - real generation steps: on EVERY cycle the session walks the full
+trace (fill_mask + accept_token at each token), the session is finished via
+finish() and destroyed. Total --steps aggregate mask steps (default 100k,
+SPEC B8) and ~steps/len(trace) create/destroy cycles (>= 10k, SPEC B8).
 
-Нагрузка повторяется при лимитах ядра 64/128/256 MiB (ТЗ B5): шаги делятся
-между лимитами поровну; ResourceLimit фиксируется, а не исключается молча.
+The load is repeated under engine limits of 64/128/256 MiB (SPEC B5): steps
+are split evenly between the limits; ResourceLimit is recorded, not silently
+excluded.
 
-Устойчивость: p50/p99 маски/accept по окнам (окно = 1/10 шагов лимита),
-RSS на границах окон, stats ядра (mem_used/mem_peak, cache hits/evictions)
-до и после. Критерий плато (NFR-2): среднее второй половины окон p99 не
-хуже первой более чем на 20% и RSS не растёт монотонно.
+Stability: p50/p99 of mask/accept per window (window = 1/10 of the limit's
+steps), RSS at window boundaries, engine stats (mem_used/mem_peak, cache
+hits/evictions) before and after. Plateau criterion (NFR-2): the mean of the
+second half of the windows' p99 is not worse than the first by more than 20%
+and RSS does not grow monotonically.
 
-Запуск из корня проекта:
+Run from the project root:
     PYTHONPATH=python:benchmarks python3 benchmarks/bench_longrun.py
 """
 
@@ -59,7 +61,8 @@ def run_limit(zc, hf_tok, bundle, docs, limit_mb, steps, windows, seed):
     per_window = max(1, steps // windows)
     win_mask, win_accept = [], []
     win_reports = []
-    rss_samples = []
+    rss_current_samples = []
+    rss_peak_samples = []
     cycles = 0
     done = 0
     rng = random.Random(seed)
@@ -67,6 +70,7 @@ def run_limit(zc, hf_tok, bundle, docs, limit_mb, steps, windows, seed):
         name = names[rng.randrange(len(names))]
         trace = traces[name]
         session = None
+        accepted = 0
         try:
             session = constraints[name].create_session()
             for t in trace:
@@ -77,6 +81,7 @@ def run_limit(zc, hf_tok, bundle, docs, limit_mb, steps, windows, seed):
                 t2 = bc.now_ns()
                 win_mask.append(t1 - t0)
                 win_accept.append(t2 - t1)
+                accepted += 1
             if session.can_end():
                 session.finish()
         except Exception as e:
@@ -91,13 +96,16 @@ def run_limit(zc, hf_tok, bundle, docs, limit_mb, steps, windows, seed):
                 except Exception:
                     pass
         cycles += 1
-        done += len(trace)
+        # SPEC 10.5: after an error only the actually walked steps
+        # are counted, not the full trace length.
+        done += accepted
         if len(win_mask) >= per_window:
             win_reports.append({
                 "mask_ns": bc.percentile_stats(win_mask),
                 "accept_ns": bc.percentile_stats(win_accept),
             })
-            rss_samples.append(bc.peak_rss_bytes())
+            rss_current_samples.append(bc.current_rss_bytes())
+            rss_peak_samples.append(bc.peak_rss_bytes())
             win_mask, win_accept = [], []
 
     stats1 = engine.stats()
@@ -115,14 +123,19 @@ def run_limit(zc, hf_tok, bundle, docs, limit_mb, steps, windows, seed):
                 "ratio": (l / f) if f else None}
 
     p99 = [w["mask_ns"]["p99"] for w in win_reports if w["mask_ns"].get("count")]
+    err_total = errors["ResourceLimit"] + errors["other"]
     return {
-        "status": "OK", "limit_mb": limit_mb,
+        "status": "OK" if err_total == 0 else "DEGRADED",
+        "clean": err_total == 0,
+        "limit_mb": limit_mb,
         "mask_steps": sum(w["mask_ns"]["count"] for w in win_reports),
         "session_cycles": cycles, "errors": errors,
         "windows": win_reports,
         "mask_p99_plateau": plateau(p99),
-        "rss_samples": rss_samples,
-        "rss_plateau": plateau(rss_samples),
+        "rss_current_samples": rss_current_samples,
+        "rss_peak_samples": rss_peak_samples,
+        "rss_plateau": plateau(rss_current_samples),
+        "rss_peak_plateau": plateau(rss_peak_samples),
         "core_stats_before": stats0, "core_stats_after": stats1,
     }
 
@@ -130,7 +143,7 @@ def run_limit(zc, hf_tok, bundle, docs, limit_mb, steps, windows, seed):
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--steps", type=int, default=100000,
-                    help="суммарных шагов маски на лимит (ТЗ B8: >= 100k)")
+                    help="aggregate mask steps per limit (SPEC B8: >= 100k)")
     ap.add_argument("--limits-mb", default="64,128,256")
     ap.add_argument("--windows", type=int, default=10)
     ap.add_argument("--seed", type=int, default=bc.SEED)
@@ -139,12 +152,12 @@ def main():
     zc = bc.require_core()
     tf = bc.import_or_skip("transformers")
     if tf is None:
-        bc.skip("нужен transformers (HF-токенизатор GPT-2 из кэша)")
+        bc.skip("transformers required (HF GPT-2 tokenizer from cache)")
     hf_tok = tf.AutoTokenizer.from_pretrained(TOKENIZER_NAME,
                                               revision=TOKENIZER_REVISION)
     bundle = zc.TokenizerBundle.from_hf(hf_tok)
 
-    # проверка приёма документов до старта длинного прогона
+    # check document acceptance before the long run starts
     docs = {}
     for name, doc in DEFAULT_DOCS.items():
         entry, schema_bytes = bc.load_schema(name)
@@ -157,12 +170,12 @@ def main():
             continue
         docs[name] = doc
     if not docs:
-        bc.emit({"status": "ERROR", "reason": "нет валидных пар схема/документ"})
+        bc.emit({"status": "ERROR", "reason": "no valid schema/document pairs"})
         return
 
     limits = {}
     for limit_mb in [int(x) for x in args.limits_mb.split(",")]:
-        print(f"limit {limit_mb} MiB: {args.steps} шагов...", file=sys.stderr, flush=True)
+        print(f"limit {limit_mb} MiB: {args.steps} steps...", file=sys.stderr, flush=True)
         limits[str(limit_mb)] = run_limit(zc, hf_tok, bundle, docs, limit_mb,
                                           args.steps, args.windows, args.seed)
         r = limits[str(limit_mb)]

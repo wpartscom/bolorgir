@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Unicode-строки: кириллица, CJK, emoji в enum и значениях",
+  "title": "Unicode strings: CJK, diacritics, emoji in enums and values",
   "type": "object",
   "properties": {
-    "city": {"type": "string", "enum": ["Москва", "Санкт-Петербург", "北京", "東京", "Мюнхен"]},
+    "city": {"type": "string", "enum": ["Zürich", "São Paulo", "北京", "東京", "München"]},
     "greeting": {"type": "string", "minLength": 1, "maxLength": 40},
     "emoji": {"type": "string", "enum": ["🚀", "🎉", "❤️"]}
   },

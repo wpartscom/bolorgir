@@ -1,0 +1,326 @@
+{
+ "status": "OK",
+ "case": "adr0007_mask_fast_path",
+ "lib": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/zig-out/lib/libbolorgir.so",
+ "environment": {
+  "date_utc": "2026-09-30T10:12:18Z"
+ },
+ "vocab_size": 128256,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS",
+  "maskbench_states": 425
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 10,
+      "min": 778840369,
+      "p50": 797296059,
+      "p95": 807433571,
+      "p99": 807433571,
+      "max": 807433571,
+      "mean": 796062200.2
+     },
+     "core_ns": {
+      "count": 10,
+      "min": 778624001,
+      "p50": 796963119,
+      "p95": 807204240,
+      "p99": 807204240,
+      "max": 807204240,
+      "mean": 795831592.8
+     },
+     "work_ops": {
+      "count": 10,
+      "min": 383647,
+      "p50": 383647,
+      "p95": 383647,
+      "p99": 383647,
+      "max": 383647,
+      "mean": 383647.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 10,
+      "min": 8446686,
+      "p50": 8727070,
+      "p95": 10284974,
+      "p99": 10284974,
+      "max": 10284974,
+      "mean": 9077395.5
+     },
+     "core_ns": {
+      "count": 10,
+      "min": 8253226,
+      "p50": 8519491,
+      "p95": 10047545,
+      "p99": 10047545,
+      "max": 10047545,
+      "mean": 8870401.7
+     },
+     "work_ops": {
+      "count": 10,
+      "min": 20744,
+      "p50": 20744,
+      "p95": 20744,
+      "p99": 20744,
+      "max": 20744,
+      "mean": 20744.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 2114,
+      "p50": 2404,
+      "p95": 2692,
+      "p99": 5118,
+      "max": 25747,
+      "mean": 2528.2025
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 2227,
+      "p50": 2485,
+      "p95": 2719,
+      "p99": 5705,
+      "max": 23923,
+      "mean": 2610.3415
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1211,
+      "p50": 1393,
+      "p95": 1490,
+      "p99": 1714,
+      "max": 19802,
+      "mean": 1410.5985
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1170,
+      "p50": 1313,
+      "p95": 1402,
+      "p99": 1598,
+      "max": 28151,
+      "mean": 1338.2295
+     }
+    }
+   }
+  },
+  "permissive_string_in_object": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 10,
+      "min": 761245302,
+      "p50": 783911581,
+      "p95": 840481518,
+      "p99": 840481518,
+      "max": 840481518,
+      "mean": 790297688.9
+     },
+     "core_ns": {
+      "count": 10,
+      "min": 761003540,
+      "p50": 783705200,
+      "p95": 840270079,
+      "p99": 840270079,
+      "max": 840270079,
+      "mean": 790055194.3
+     },
+     "work_ops": {
+      "count": 10,
+      "min": 383662,
+      "p50": 383662,
+      "p95": 383662,
+      "p99": 383662,
+      "max": 383662,
+      "mean": 383662.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 10,
+      "min": 8797858,
+      "p50": 8984249,
+      "p95": 10161747,
+      "p99": 10161747,
+      "max": 10161747,
+      "mean": 9226658.7
+     },
+     "core_ns": {
+      "count": 10,
+      "min": 8612438,
+      "p50": 8779879,
+      "p95": 9921095,
+      "p99": 9921095,
+      "max": 9921095,
+      "mean": 9016722.8
+     },
+     "work_ops": {
+      "count": 10,
+      "min": 20759,
+      "p50": 20759,
+      "p95": 20759,
+      "p99": 20759,
+      "max": 20759,
+      "mean": 20759.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 2124,
+      "p50": 2397,
+      "p95": 2865,
+      "p99": 5992,
+      "max": 23203,
+      "mean": 2526.699
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 2210,
+      "p50": 2408,
+      "p95": 2586,
+      "p99": 4559,
+      "max": 14847,
+      "mean": 2481.4735
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1181,
+      "p50": 1335,
+      "p95": 1880,
+      "p99": 3473,
+      "max": 25895,
+      "mean": 1423.5985
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1272,
+      "p50": 1394,
+      "p95": 1522,
+      "p99": 1891,
+      "max": 24755,
+      "mean": 1431.6035
+     }
+    }
+   }
+  }
+ },
+ "maskbench_slice": {
+  "files": [
+   "BFCL_java_6",
+   "BFCL_java_10",
+   "BFCL_java_18",
+   "BFCL_java_22",
+   "BFCL_java_23",
+   "BFCL_java_24",
+   "BFCL_java_25",
+   "BFCL_java_27",
+   "BFCL_java_32",
+   "BFCL_java_44",
+   "BFCL_java_47",
+   "BFCL_java_49",
+   "BFCL_java_53",
+   "BFCL_java_57",
+   "BFCL_java_63",
+   "BFCL_java_73",
+   "BFCL_java_74",
+   "BFCL_java_76",
+   "BFCL_java_77",
+   "BFCL_java_78",
+   "BFCL_java_79",
+   "BFCL_java_80",
+   "BFCL_java_92",
+   "BFCL_java_98"
+  ],
+  "off": {
+   "tbm_us": {
+    "count": 564,
+    "min": 134.576,
+    "p50": 179.552,
+    "p95": 798347.841,
+    "p99": 809041.475,
+    "max": 846892.115,
+    "mean": 179496.27965602835
+   },
+   "stats": {
+    "files": 24,
+    "compiled": 24,
+    "compile_error": 0,
+    "instances": 24,
+    "masks": 564,
+    "validation_error": 0
+   }
+  },
+  "on": {
+   "tbm_us": {
+    "count": 564,
+    "min": 130.518,
+    "p50": 163.041,
+    "p95": 2925.193,
+    "p99": 6283.242,
+    "max": 7438.192,
+    "mean": 532.5386861702127
+   },
+   "stats": {
+    "files": 24,
+    "compiled": 24,
+    "compile_error": 0,
+    "instances": 24,
+    "masks": 564,
+    "validation_error": 0
+   }
+  }
+ }
+}

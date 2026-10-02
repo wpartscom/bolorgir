@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Большой enum: 64 альтернативы с общим префиксом",
+  "title": "Large enum: 64 alternatives sharing a common prefix",
   "type": "object",
   "properties": {
     "symbol": {

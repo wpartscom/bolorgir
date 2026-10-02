@@ -1,0 +1,27 @@
+{"file": "JsonSchemaStore---aiproj-1.1.json", "test": 0, "valid": true, "outcome": "accept", "detail": "", "ms": 327, "ok": true}
+{"file": "JsonSchemaStore---aiproj-1.1.json", "test": 1, "valid": true, "outcome": "accept", "detail": "", "ms": 296, "ok": true}
+{"file": "Github_medium---o55595.json", "test": 1, "valid": false, "outcome": "reject", "detail": "byte 70 (0x22) not in mask", "ms": 26, "ok": true}
+{"file": "Github_hard---o77317.json", "test": 0, "valid": true, "outcome": "accept", "detail": "", "ms": 2812, "ok": true}
+{"file": "Github_ultra---o358.json", "test": 0, "valid": true, "outcome": "accept", "detail": "", "ms": 3345, "ok": true}
+{"file": "Github_ultra---o358.json", "test": 1, "valid": true, "outcome": "accept", "detail": "", "ms": 3345, "ok": true}
+{"file": "Github_ultra---o360.json", "test": 0, "valid": true, "outcome": "accept", "detail": "", "ms": 3199, "ok": true}
+{"file": "Github_ultra---o360.json", "test": 1, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 129", "ms": 4634, "ok": false}
+{"file": "Github_ultra---o17072.json", "test": 0, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 84", "ms": 732, "ok": false}
+{"file": "Github_ultra---o17072.json", "test": 1, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 84", "ms": 756, "ok": false}
+{"file": "JsonSchemaStore---v4-config.schema.json", "test": 0, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 177", "ms": 5250, "ok": false}
+{"file": "JsonSchemaStore---v4-config.schema.json", "test": 1, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 557", "ms": 16674, "ok": false}
+{"file": "Github_hard---o1184.json", "test": 0, "valid": true, "outcome": "accept", "detail": "", "ms": 2269, "ok": true}
+{"file": "Github_ultra---o58926.json", "test": 0, "valid": true, "outcome": "accept", "detail": "", "ms": 9022, "ok": true}
+{"file": "Github_hard---o21819.json", "test": 0, "valid": true, "outcome": "accept", "detail": "", "ms": 10913, "ok": true}
+{"file": "Github_hard---o21819.json", "test": 1, "valid": true, "outcome": "accept", "detail": "", "ms": 10922, "ok": true}
+{"file": "Github_hard---o84330.json", "test": 0, "valid": true, "outcome": "accept", "detail": "", "ms": 8269, "ok": true}
+{"file": "Github_hard---o84330.json", "test": 1, "valid": true, "outcome": "accept", "detail": "", "ms": 8373, "ok": true}
+{"file": "Github_medium---o35868.json", "test": 0, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 207", "ms": 2565, "ok": false}
+{"file": "Github_medium---o35868.json", "test": 1, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 220", "ms": 2554, "ok": false}
+{"file": "JsonSchemaStore---github-issue-forms.json", "test": 0, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 89", "ms": 1171, "ok": false}
+{"file": "JsonSchemaStore---minecraft-biome.json", "test": 0, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 429", "ms": 2487, "ok": false}
+{"file": "JsonSchemaStore---minecraft-biome.json", "test": 1, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 429", "ms": 2648, "ok": false}
+{"file": "Github_hard---o17529.json", "test": 0, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 141", "ms": 3553, "ok": false}
+{"file": "Github_hard---o17529.json", "test": 1, "valid": true, "outcome": "error:RESOURCE_LIMIT", "detail": "fill_mask at byte 141", "ms": 3735, "ok": false}
+{"file": "JsonSchemaStore---discovery.schema.json", "test": 0, "valid": true, "outcome": "accept", "detail": "", "ms": 634, "ok": true}
+BAD=12 of 26

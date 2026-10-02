@@ -1,0 +1,17 @@
+{
+  "id": "llg",
+  "name": "LLGuidance",
+  "module": "llguidance",
+  "module_version": "0.7.10",
+  "cmd": [
+    "python3",
+    "-m",
+    "maskbench.runner",
+    "--multi",
+    "--llg",
+    "--compact",
+    "--output",
+    "/home/gm/maskbench-work/runs/full-llg-compact"
+  ],
+  "info": "11306 files, timeout 900s, memory 40GB, output /home/gm/maskbench-work/runs/full-llg-compact; 20 threads; cmd: python3 -m maskbench.runner --multi --llg --compact --output /home/gm/maskbench-work/runs/full-llg-compact"
+}

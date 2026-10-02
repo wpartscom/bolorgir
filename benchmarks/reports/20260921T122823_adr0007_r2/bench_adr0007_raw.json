@@ -1,0 +1,322 @@
+{
+ "status": "OK",
+ "case": "adr0007_mask_fast_path",
+ "lib": "/tmp/zigout-perf2/lib/libbolorgir.so",
+ "environment": {
+  "date_utc": "2026-09-21T12:28:25Z"
+ },
+ "vocab_size": 128256,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS",
+  "maskbench_states": 411
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 30,
+      "min": 409825640,
+      "p50": 419558548,
+      "p95": 433883794,
+      "p99": 436511316,
+      "max": 436511316,
+      "mean": 420774264.8666667
+     },
+     "core_ns": {
+      "count": 30,
+      "min": 409610851,
+      "p50": 419369512,
+      "p95": 433682851,
+      "p99": 436313075,
+      "max": 436313075,
+      "mean": 420582279.7
+     },
+     "work_ops": {
+      "count": 30,
+      "min": 383647,
+      "p50": 383647,
+      "p95": 383647,
+      "p99": 383647,
+      "max": 383647,
+      "mean": 383647.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 30,
+      "min": 4824248,
+      "p50": 5070795,
+      "p95": 5290055,
+      "p99": 5385535,
+      "max": 5385535,
+      "mean": 5073228.733333333
+     },
+     "core_ns": {
+      "count": 30,
+      "min": 4654655,
+      "p50": 4881851,
+      "p95": 5104861,
+      "p99": 5195820,
+      "max": 5195820,
+      "mean": 4892036.5
+     },
+     "work_ops": {
+      "count": 30,
+      "min": 20744,
+      "p50": 20744,
+      "p95": 20744,
+      "p99": 20744,
+      "max": 20744,
+      "mean": 20744.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 10000,
+     "cache_hits": 10000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 10000,
+      "min": 2621,
+      "p50": 2978,
+      "p95": 3219,
+      "p99": 3587,
+      "max": 28965,
+      "mean": 3017.9355
+     }
+    },
+    "on": {
+     "observations": 10000,
+     "cache_hits": 10000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 10000,
+      "min": 2699,
+      "p50": 3029,
+      "p95": 3239,
+      "p99": 4973,
+      "max": 32739,
+      "mean": 3086.9843
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 10000,
+     "cache_hits": 10000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 10000,
+      "min": 1630,
+      "p50": 1953,
+      "p95": 2095,
+      "p99": 2264,
+      "max": 47245,
+      "mean": 1979.9594
+     }
+    },
+    "on": {
+     "observations": 10000,
+     "cache_hits": 10000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 10000,
+      "min": 1682,
+      "p50": 1902,
+      "p95": 2139,
+      "p99": 2892,
+      "max": 29325,
+      "mean": 1960.9779
+     }
+    }
+   }
+  },
+  "permissive_string_in_object": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 30,
+      "min": 415034454,
+      "p50": 423585820,
+      "p95": 432288370,
+      "p99": 434610706,
+      "max": 434610706,
+      "mean": 423357466.5
+     },
+     "core_ns": {
+      "count": 30,
+      "min": 414805483,
+      "p50": 423375686,
+      "p95": 431963732,
+      "p99": 434414868,
+      "max": 434414868,
+      "mean": 423149824.76666665
+     },
+     "work_ops": {
+      "count": 30,
+      "min": 383662,
+      "p50": 383662,
+      "p95": 383662,
+      "p99": 383662,
+      "max": 383662,
+      "mean": 383662.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 30,
+      "min": 4884730,
+      "p50": 5211789,
+      "p95": 5630202,
+      "p99": 7575233,
+      "max": 7575233,
+      "mean": 5292292.1
+     },
+     "core_ns": {
+      "count": 30,
+      "min": 4715702,
+      "p50": 5022308,
+      "p95": 5437751,
+      "p99": 7307111,
+      "max": 7307111,
+      "mean": 5100727.7
+     },
+     "work_ops": {
+      "count": 30,
+      "min": 20759,
+      "p50": 20759,
+      "p95": 20759,
+      "p99": 20759,
+      "max": 20759,
+      "mean": 20759.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 10000,
+     "cache_hits": 10000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 10000,
+      "min": 2747,
+      "p50": 3083,
+      "p95": 3334,
+      "p99": 3949,
+      "max": 25715,
+      "mean": 3123.2338
+     }
+    },
+    "on": {
+     "observations": 10000,
+     "cache_hits": 10000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 10000,
+      "min": 2855,
+      "p50": 3173,
+      "p95": 3458,
+      "p99": 4367,
+      "max": 59165,
+      "mean": 3227.0843
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 10000,
+     "cache_hits": 10000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 10000,
+      "min": 1722,
+      "p50": 1908,
+      "p95": 2022,
+      "p99": 2137,
+      "max": 26466,
+      "mean": 1936.8597
+     }
+    },
+    "on": {
+     "observations": 10000,
+     "cache_hits": 10000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 10000,
+      "min": 1845,
+      "p50": 2058,
+      "p95": 2196,
+      "p99": 2422,
+      "max": 27408,
+      "mean": 2080.7022
+     }
+    }
+   }
+  }
+ },
+ "maskbench_slice": {
+  "files": [
+   "BFCL_java_6",
+   "BFCL_java_10",
+   "BFCL_java_18",
+   "BFCL_java_22",
+   "BFCL_java_23",
+   "BFCL_java_24",
+   "BFCL_java_25",
+   "BFCL_java_27",
+   "BFCL_java_32",
+   "BFCL_java_44",
+   "BFCL_java_47",
+   "BFCL_java_49",
+   "BFCL_java_53",
+   "BFCL_java_57",
+   "BFCL_java_63",
+   "BFCL_java_73",
+   "BFCL_java_74",
+   "BFCL_java_76",
+   "BFCL_java_77",
+   "BFCL_java_78"
+  ],
+  "off": {
+   "tbm_us": {
+    "count": 473,
+    "min": 142.928,
+    "p50": 249.293,
+    "p95": 425895.476,
+    "p99": 434710.404,
+    "max": 442198.593,
+    "mean": 88886.05915221988
+   },
+   "stats": {
+    "files": 20,
+    "compiled": 20,
+    "compile_error": 0,
+    "instances": 20,
+    "masks": 473,
+    "validation_error": 0
+   }
+  },
+  "on": {
+   "tbm_us": {
+    "count": 473,
+    "min": 136.415,
+    "p50": 227.377,
+    "p95": 1475.683,
+    "p99": 4151.268,
+    "max": 4415.953,
+    "mean": 427.962997885835
+   },
+   "stats": {
+    "files": 20,
+    "compiled": 20,
+    "compile_error": 0,
+    "instances": 20,
+    "masks": 473,
+    "validation_error": 0
+   }
+  }
+ }
+}

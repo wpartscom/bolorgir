@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "ОТКАЗ: anyOf вне MVP (UnsupportedFeature)",
+  "title": "REJECT: anyOf outside the MVP (UnsupportedFeature)",
   "type": "object",
   "properties": {
     "value": {"anyOf": [{"type": "string"}, {"type": "integer"}]}

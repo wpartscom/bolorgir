@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""B7. End-to-end GPU: constrained vs CONSTRAINED-baseline (аудит 2026-09-15, п.4).
+"""B7. End-to-end GPU: constrained vs CONSTRAINED-baseline.
 
-По ТЗ 10.6 сравнение end-to-end идёт против выбранного constrained-baseline,
-а не против генерации без ограничений. Выбранный baseline — XGrammar 0.2.6
-(закреплён в manifest; штатная HF-интеграция xgrammar.contrib.hf.LogitsProcessor).
-llguidance при необходимости — опцией (--engines).
+Per SPEC 10.6 the end-to-end comparison runs against the chosen
+constrained-baseline, not against unconstrained generation. The chosen
+baseline is XGrammar 0.2.6 (pinned in manifest; the stock HF integration
+xgrammar.contrib.hf.LogitsProcessor). llguidance is available via
+option (--engines) if needed.
 
-Одинаковая конфигурация генерации (ТЗ 10.5): та же модель, dtype, батч,
-max_new_tokens=512, greedy, seed 42, reps повторов; равенство текстов НЕ
-требуется (разные допустимые распределения, ТЗ T5). Все constrained-ответы
-обоих движков валидируются jsonschema; публикуются длины ответов рядом с
-tokens/s (короткие ответы не создают иллюзию ускорения, ТЗ 10.4 B7).
+Identical generation configuration (SPEC 10.5): the same model, dtype, batch,
+max_new_tokens=512, greedy, seed 42, reps repeats; text equality is NOT
+required (different admissible distributions, SPEC T5). All constrained
+answers from both engines are validated with jsonschema; answer lengths are
+published next to tokens/s (short answers do not create an illusion of
+speedup, SPEC 10.4 B7).
 
-Запуск из корня проекта:
+Run from the project root:
     PYTHONPATH=python:benchmarks python3 benchmarks/bench_e2e_constrained.py \
         --out benchmarks/results/<timestamp>
 """
@@ -27,7 +29,7 @@ import time
 import torch
 import jsonschema
 
-from zig_constraints import Engine
+from bolorgir import Engine
 
 from hf_common import (
     MODEL_ID,
@@ -116,13 +118,13 @@ def make_xgrammar(tokenizer):
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--reps", type=int, default=3)
+    ap.add_argument("--reps", type=int, default=4)
     ap.add_argument("--batches", type=int, nargs="*", default=[1, 8, 32])
     ap.add_argument("--engines", default="zig,xgrammar")
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
-    assert torch.cuda.is_available(), "CUDA недоступна"
+    assert torch.cuda.is_available(), "CUDA is not available"
     gpu_name = torch.cuda.get_device_name(0)
     vram_total = torch.cuda.get_device_properties(0).total_memory
     print(f"GPU: {gpu_name}, VRAM {vram_total / 2**30:.1f} GiB")
@@ -157,6 +159,25 @@ def main() -> int:
                            json.dumps(SCHEMAS["s1_flat_enum"]["schema"]), 1)])
     torch.cuda.synchronize()
 
+    # Predefined warmed mode: for the core the first
+    # repeat of a new schema pays mask-cache misses (~2 ms/state on a 151k
+    # vocabulary), for xgrammar it is a cold compile. Both engines are warmed
+    # with one generation per EACH schema; the first request is published
+    # separately (field "warmups"), and the scored repeats run on the warmed
+    # state, alternating engines.
+    results["protocol"] = {
+        "warmed_mode": True,
+        "note": "each (schema, batch) warmed once per engine before timed reps; "
+                "first request published in 'warmups'",
+        "engine_order": "balanced_ab_ba",
+        "engine_order_note": "zig first on even reps, xgrammar first on odd "
+                             "reps",
+        "reps": args.reps,
+        "batches": args.batches,
+    }
+    results["warmups"] = []
+    print("batch warmups (first requests are published separately)...")
+
     try:
         for schema_name, (constraint, spec) in constraints.items():
             schema_str = json.dumps(spec["schema"])
@@ -168,8 +189,34 @@ def main() -> int:
                     modes.append("zig_constrained")
                 if xg_factory:
                     modes.append("xgrammar_constrained")
+                # Warmup at the target batch size: for the core the first rep
+                # of a new (schema, batch) pays mask/buffer cache misses, for
+                # xg it warms up the compiler; the first request is published
+                # separately and is not part of the scored repeats.
                 for mode in modes:
-                    for rep in range(args.reps):
+                    if mode == "zig_constrained":
+                        w = run_zig(model, tokenizer, constraint, inputs, prompt_len)
+                        summ_w = summarize_run(w, schema=spec["schema"])
+                        results["warmups"].append({
+                            "schema": schema_name, "batch": batch,
+                            "mode": mode, "total_ms": round(summ_w["total_s"] * 1e3, 1),
+                        })
+                    elif xg_factory:
+                        w = run_xgrammar(model, tokenizer, xg_factory, schema_str,
+                                         inputs, prompt_len)
+                        results["warmups"].append({
+                            "schema": schema_name, "batch": batch,
+                            "mode": mode,
+                            "total_ms": round(
+                                (w["t_end_ns"] - w["t_start_ns"]) / 1e6, 1),
+                        })
+                for rep in range(args.reps):
+                    # Balanced AB/BA order: zig goes
+                    # first on even reps, xgrammar on odd reps; paired
+                    # comparison symmetrizes thermal and background drift
+                    # between engines within a block (file x rep).
+                    order = modes if rep % 2 == 0 else list(reversed(modes))
+                    for order_pos, mode in enumerate(order):
                         label = f"{schema_name} b{batch} {mode} rep{rep}"
                         try:
                             if mode == "zig_constrained":
@@ -187,9 +234,13 @@ def main() -> int:
                             run, summ = None, {"status": "ERROR",
                                                "error": f"{type(e).__name__}: {e}"[:300]}
                         rec = {"schema": schema_name, "batch": batch, "mode": mode,
-                               "rep": rep, "prompt_len": prompt_len, "summary": summ}
+                               "rep": rep, "order_pos": order_pos,
+                               "block_id": f"{schema_name}-b{batch}-rep{rep}",
+                               "prompt_len": prompt_len, "summary": summ}
                         if run is not None:
                             rec["rows"] = run["rows"]
+                            rec["t_start_ns"] = run["t_start_ns"]
+                            rec["t_end_ns"] = run["t_end_ns"]
                         results["runs"].append(rec)
                         if summ["status"] == "OK":
                             print(f"{label}: ttft={summ['ttft_ms']:.0f}ms "

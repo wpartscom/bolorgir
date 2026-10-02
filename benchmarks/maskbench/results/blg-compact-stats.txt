@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "id": "blg",
+    "name": "Bolorgir",
+    "module": "bolorgir",
+    "module_version": "0.1.0",
+    "cmd": [
+      "python3",
+      "-m",
+      "maskbench.runner",
+      "--multi",
+      "--blg",
+      "--compact",
+      "--output",
+      "/home/gm/maskbench-work/runs/full-blg-compact"
+    ],
+    "info": "11306 files, timeout 900s, memory 40GB, output /home/gm/maskbench-work/runs/full-blg-compact; 20 threads; cmd: python3 -m maskbench.runner --multi --blg --compact --output /home/gm/maskbench-work/runs/full-blg-compact"
+  },
+  "ttfm_us": 167819,
+  "max_ttfm_us": 2501,
+  "masks_us": 2247980924,
+  "avg_mask_us": 143457,
+  "masks_us_under_10ms": 2763313,
+  "num_masks_under_10ms": 12189,
+  "avg_masks_under_10ms": 226,
+  "masks_us_over_10ms": 2245217611,
+  "num_masks_over_10ms": 3481,
+  "avg_masks_over_10ms": 644992,
+  "max_mask_us": 1992204,
+  "num_tokens": 15670,
+  "num_schemas": 11306,
+  "num_crashes_or_timeouts": 0,
+  "num_timeouts": 0,
+  "num_segv": 0,
+  "num_abort": 0,
+  "num_schemas_ok": 624,
+  "num_compilation_errors": 10682,
+  "num_validation_errors": 0,
+  "num_invalidation_errors": 0,
+  "num_tests": 37011,
+  "num_valid_tests": 633,
+  "num_invalid_tests": 77
+}

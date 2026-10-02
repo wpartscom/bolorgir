@@ -1,0 +1,10 @@
+{
+ "permissive_string_content": {
+  "on_p50_us": 1.206,
+  "off_p50_us": 1.219
+ },
+ "permissive_string_in_object": {
+  "on_p50_us": 1.297,
+  "off_p50_us": 1.446
+ }
+}

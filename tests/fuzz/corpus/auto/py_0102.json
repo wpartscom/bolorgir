@@ -1,1 +1,0 @@
-{"$defs":{"d0":{"type":"object","properties":{"k0":{"type":"integer"},"k1":{"type":"string"}},"required":["k1"],"additionalProperties":false},"d1":{"type":"object","properties":{"k0":{"type":"object","properties":{"k0":{"type":"string","enum":["","é~é\n","x"]}},"required":[],"additionalProperties":false}},"required":["k0"],"additionalProperties":false}},"$ref":"#/$defs/d1"}

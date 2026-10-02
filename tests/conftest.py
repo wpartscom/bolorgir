@@ -1,8 +1,8 @@
 """Fixtures: mini tokenizers and backend access to the core.
 
-Two backends: the zig_constraints package (Engine/Constraint/Session) and a
-direct ctypes fallback to zig-out/lib/libzig_constraints.so (tests/zg_ctypes.py).
-Selection: ZG_TEST_BACKEND = package | ctypes | auto (default auto).
+Two backends: the bolorgir package (Engine/Constraint/Session) and a
+direct ctypes fallback to zig-out/lib/libbolorgir.so (tests/blg_ctypes.py).
+Selection: BLG_TEST_BACKEND = package | ctypes | auto (default auto).
 """
 
 from __future__ import annotations
@@ -71,8 +71,8 @@ class BackendUnavailable(Exception):
 
 
 def _status_code_of_exception(exc: BaseException) -> int | None:
-    """Map a zig_constraints package exception to a zg_status code (best-effort)."""
-    import zg_ctypes
+    """Map a bolorgir package exception to a blg_status code (best-effort)."""
+    import blg_ctypes
     for cls in type(exc).__mro__:
         name = cls.__name__
         for suffix in ("Error", "Exception"):
@@ -84,10 +84,10 @@ def _status_code_of_exception(exc: BaseException) -> int | None:
                 snake.append("_")
             snake.append(ch.upper())
         snake = "".join(snake)
-        for code, sname in zg_ctypes.STATUS_NAMES.items():
+        for code, sname in blg_ctypes.STATUS_NAMES.items():
             if sname == snake:
                 return code
-    for attr in ("code", "status", "zg_status"):
+    for attr in ("code", "status", "blg_status"):
         v = getattr(exc, attr, None)
         if isinstance(v, int):
             return v
@@ -98,12 +98,12 @@ class CtypesBackend:
     name = "ctypes"
 
     def __init__(self, spec: TokenizerSpec, mode: str):
-        import zg_ctypes
-        mode_code = {"lazy": zg_ctypes.ZG_MODE_LAZY,
-                     "adaptive": zg_ctypes.ZG_MODE_ADAPTIVE,
-                     "precompute": zg_ctypes.ZG_MODE_PRECOMPUTE}[mode]
-        self.zg = zg_ctypes
-        self.ctx = zg_ctypes.Context(spec, mode_code)
+        import blg_ctypes
+        mode_code = {"lazy": blg_ctypes.BLG_MODE_LAZY,
+                     "adaptive": blg_ctypes.BLG_MODE_ADAPTIVE,
+                     "precompute": blg_ctypes.BLG_MODE_PRECOMPUTE}[mode]
+        self.zg = blg_ctypes
+        self.ctx = blg_ctypes.Context(spec, mode_code)
 
     def compile(self, schema) -> "CtypesConstraint":
         grammar = self.zg.compile_schema(self.ctx, schema)
@@ -155,12 +155,12 @@ class CtypesSessionWrap:
 
 
 class PackageBackend:
-    """Backend via the zig_constraints package (Engine/Constraint/Session)."""
+    """Backend via the bolorgir package (Engine/Constraint/Session)."""
 
     name = "package"
 
     def __init__(self, spec: TokenizerSpec, mode: str):
-        import zig_constraints as zg
+        import bolorgir as zg
         self.zg = zg
         self.spec = spec
         self.engine = zg.Engine(mode=mode)
@@ -243,31 +243,31 @@ class PackageSession:
 def backend_available(kind: str) -> tuple[bool, str]:
     if kind in ("package", "auto"):
         try:
-            import zig_constraints  # noqa: F401
+            import bolorgir  # noqa: F401
             return True, "package"
         except ImportError:
             if kind == "package":
-                return False, "zig_constraints package is not installed"
+                return False, "bolorgir package is not installed"
     if kind in ("ctypes", "auto"):
         try:
-            import zg_ctypes  # noqa: F401
+            import blg_ctypes  # noqa: F401
             return True, "ctypes"
         except ImportError as e:
             if kind == "ctypes":
                 return False, str(e)
-    return False, "neither zig_constraints package nor libzig_constraints.so available"
+    return False, "neither bolorgir package nor libbolorgir.so available"
 
 
 def make_backend(spec: TokenizerSpec, mode: str = "lazy", kind: str | None = None):
     """Backend factory; skips the test with a clear reason if the core is unavailable."""
-    kind = kind or os.environ.get("ZG_TEST_BACKEND", "auto")
+    kind = kind or os.environ.get("BLG_TEST_BACKEND", "auto")
     if kind == "package":
         try:
             return PackageBackend(spec, mode)
         except ImportError:
-            pytest.skip("zig_constraints package is not importable")
+            pytest.skip("bolorgir package is not importable")
         except BackendUnavailable as e:
-            pytest.skip(f"zig_constraints package is unusable for tests: {e}")
+            pytest.skip(f"bolorgir package is unusable for tests: {e}")
     if kind == "ctypes":
         try:
             return CtypesBackend(spec, mode)

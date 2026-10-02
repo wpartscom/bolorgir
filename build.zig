@@ -12,9 +12,13 @@ pub fn build(b: *std.Build) void {
 
     const lib = b.addLibrary(.{
         .linkage = .dynamic,
-        .name = "zig_constraints",
+        .name = "bolorgir",
         .root_module = core_mod,
         .version = .{ .major = 0, .minor = 1, .patch = 0 },
+        // The self-hosted x86_64 backend miscompiles this code in Debug
+        // (values kept in caller-saved registers across calls, e.g. a live
+        // pointer in %r11/%rdx clobbered by callees such as __tls_get_addr).
+        .use_llvm = true,
     });
     b.installArtifact(lib);
 
@@ -23,7 +27,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const unit_tests = b.addTest(.{ .root_module = test_mod });
+    const unit_tests = b.addTest(.{ .root_module = test_mod, .use_llvm = true });
     const run_tests = b.addRunArtifact(unit_tests);
     const test_step = b.step("test", "Run core unit tests");
     test_step.dependOn(&run_tests.step);
@@ -46,7 +50,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    const fuzz_exe = b.addExecutable(.{ .name = "zg_fuzz", .root_module = fuzz_mod });
+    const fuzz_exe = b.addExecutable(.{ .name = "blg_fuzz", .root_module = fuzz_mod, .use_llvm = true });
     const install_fuzz = b.addInstallArtifact(fuzz_exe, .{});
     const fuzz_build_step = b.step("fuzz-build", "Build the T4 fuzz runner");
     fuzz_build_step.dependOn(&install_fuzz.step);

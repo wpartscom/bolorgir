@@ -78,7 +78,7 @@ pub const Stats = struct {
     }
 };
 
-/// Fills mem_used/mem_peak by zg_stats indices:
+/// Fills mem_used/mem_peak by blg_stats indices:
 /// tokenizer=0, grammar=1, session=2, cache=3, temp=4, total=5.
 pub fn fillMemory(acc: *const alloc.Accounting, mem_used: []u64, mem_peak: []u64) void {
     std.debug.assert(mem_used.len > MEM_TOTAL and mem_peak.len > MEM_TOTAL);

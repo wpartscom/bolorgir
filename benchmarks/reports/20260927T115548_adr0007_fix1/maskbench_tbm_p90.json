@@ -1,0 +1,46 @@
+{
+  "off": {
+    "p50": 166.05349999999999,
+    "p90": 384103.2671,
+    "p95": 387809.17154999997,
+    "p99": 403810.01526,
+    "max": 423342.502,
+    "count": 564
+  },
+  "on": {
+    "p50": 151.639,
+    "p90": 267.5113,
+    "p95": 1437.1335000000001,
+    "p99": 3397.9614100000003,
+    "max": 3925.112,
+    "count": 564
+  },
+  "files": [
+    "BFCL_java_6",
+    "BFCL_java_10",
+    "BFCL_java_18",
+    "BFCL_java_22",
+    "BFCL_java_23",
+    "BFCL_java_24",
+    "BFCL_java_25",
+    "BFCL_java_27",
+    "BFCL_java_32",
+    "BFCL_java_44",
+    "BFCL_java_47",
+    "BFCL_java_49",
+    "BFCL_java_53",
+    "BFCL_java_57",
+    "BFCL_java_63",
+    "BFCL_java_73",
+    "BFCL_java_74",
+    "BFCL_java_76",
+    "BFCL_java_77",
+    "BFCL_java_78",
+    "BFCL_java_79",
+    "BFCL_java_80",
+    "BFCL_java_92",
+    "BFCL_java_98"
+  ],
+  "lib": "/tmp/zigout-fix1/lib/libbolorgir.so",
+  "note": "TBM microseconds over the same maskbench_traces/select_compiling slice as bench_adr0007_raw.json"
+}

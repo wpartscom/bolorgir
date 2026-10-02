@@ -1,1 +1,0 @@
-{"type":"object","properties":{"k0":{"type":"string"},"k1":{"type":"string","enum":["~01x","","bx\n "]},"k2":{"type":"boolean"},"k3":{"type":"number"}},"required":["k3"],"additionalProperties":false}

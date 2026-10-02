@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Границы длин строк: min==max, короткие и средние",
+  "title": "String length bounds: min==max, short and medium",
   "type": "object",
   "properties": {
     "exact5": {"type": "string", "minLength": 5, "maxLength": 5},

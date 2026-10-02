@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-Пример: JSON Schema (FR-1/FR-2) без Hugging Face.
+Example: JSON Schema (FR-1/FR-2) without Hugging Face.
 
-Мини-токенизатор — побайтовый (id 0..255) + EOS (id 256), собран вручную.
-«Модель» — случайный выбор из разрешённых токенов; сгенерированный
-документ валидируется стандартным json.loads + проверками схемы.
+Mini-tokenizer is byte-level (ids 0..255) + EOS (id 256), assembled by hand.
+The "model" samples at random among allowed tokens; the generated document is
+validated with the standard json.loads + schema checks.
 
-Запуск (после сборки расширения, см. python/setup.py):
+Run (after building the extension, see python/setup.py):
     PYTHONPATH=python python3 examples/json_schema_basic.py
 """
 
@@ -14,7 +14,7 @@ import json
 import random
 import sys
 
-from zig_constraints import Engine, TokenizerBundle
+from bolorgir import Engine, TokenizerBundle
 
 EOS_ID = 256
 
@@ -73,7 +73,7 @@ def main() -> int:
         return 1
     doc = json.loads(text)
     validate(doc)
-    print("json.loads + проверки схемы: OK")
+    print("json.loads + schema checks: OK")
     return 0
 
 

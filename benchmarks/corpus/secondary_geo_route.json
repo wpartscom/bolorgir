@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Geo route (secondary corpus from review 817c860, item 5)",
+  "type": "object",
+  "properties": {
+    "route_id": {"type": "integer"},
+    "active": {"type": "boolean"},
+    "waypoints": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["start", "stop", "charge", "rest"]
+          },
+          "label": {"type": "string", "minLength": 1, "maxLength": 16},
+          "distance_km": {"type": "number"}
+        },
+        "required": ["kind", "label", "distance_km"],
+        "additionalProperties": false
+      }
+    },
+    "note": {"type": "string", "maxLength": 32}
+  },
+  "required": ["route_id", "active", "waypoints"],
+  "additionalProperties": false
+}

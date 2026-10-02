@@ -1,0 +1,77 @@
+name: Bug report
+description: Report a reproducible problem in Bolorgir
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report! Please provide a minimal reproduction - it is
+        usually the schema (or literal set) plus the tokenizer description.
+  - type: input
+    id: version
+    attributes:
+      label: Bolorgir version
+      description: Release version or commit id
+      placeholder: "0.1.0 / abc1234"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python and Zig versions
+      placeholder: "Python 3.12.4, Zig 0.15.2"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS / platform
+      placeholder: "Ubuntu 22.04 x86_64, gcc 11.4"
+    validations:
+      required: true
+  - type: input
+    id: tokenizer
+    attributes:
+      label: Tokenizer
+      description: Name/revision, or how the TokenizerBundle was built
+      placeholder: "openai-community/gpt2, TokenizerBundle.from_hf"
+    validations:
+      required: true
+  - type: textarea
+    id: schema
+    attributes:
+      label: Schema or literal set
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the traceback or error status (if any)
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Mode and limits
+      description: Mode (lazy/adaptive/precompute), cache/memory limits, batch size
+      placeholder: "mode=adaptive, memory_limit_mb=256, cache default"
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for duplicates
+          required: true
+        - label: The reproduction is minimal (schema + tokenizer + steps)
+          required: true

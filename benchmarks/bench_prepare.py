@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""B1. Подготовка: холодный/тёплый compile, tokenizer prepare, первая маска,
-peak RSS (ТЗ 10.4 B1).
+"""B1. Prepare: cold/warm compile, tokenizer prepare, first mask,
+peak RSS (SPEC 10.4 B1).
 
-Холодный запуск в этом скрипте — свежий Engine на каждом повторе внутри одного
-процесса (нижняя граница); канонический cold-start — отдельный процесс на
-повтор (run_all.py запускает скрипт с --mode cold-process).
+Cold start in this script - a fresh Engine on every repeat inside one process
+(lower bound); the canonical cold-start - a separate process per repeat
+(run_all.py runs the script with --mode cold-process).
 """
 
 import argparse
@@ -18,7 +18,7 @@ import bench_common as bc
 
 
 def measure_once(zc, schema_bytes, mode, engine=None):
-    """Один прогон prepare-пути. Возвращает dict с ns и RSS."""
+    """One run of the prepare path. Returns a dict with ns and RSS."""
     rss0 = bc.peak_rss_bytes()
     res = {}
     t0 = bc.now_ns()
@@ -46,14 +46,14 @@ def main():
     ap.add_argument("--schema", default="closed_object_action_amount")
     ap.add_argument("--corpus-dir", default=bc.CORPUS_DIR)
     ap.add_argument("--repeats", type=int, default=30,
-                    help="холодных повторов (ТЗ 10.5: >= 30)")
+                    help="cold repeats (SPEC 10.5: >= 30)")
     ap.add_argument("--warm-repeats", type=int, default=100)
     ap.add_argument("--mode", choices=["inproc", "cold-process"], default="inproc")
     ap.add_argument("--seed", type=int, default=bc.SEED)
     args = ap.parse_args()
 
     if args.mode == "cold-process":
-        # вспомогательный режим: один холодный прогон в свежем процессе
+        # helper mode: one cold run in a fresh process
         zc = bc.require_core()
         entry, schema_bytes = bc.load_schema(args.schema, args.corpus_dir)
         res, _ = measure_once(zc, schema_bytes, "cold")
@@ -84,8 +84,8 @@ def main():
         "cold_repeats": args.repeats, "warm_repeats": args.warm_repeats,
         "cold": {k: bc.percentile_stats(v) for k, v in cold.items()},
         "warm_compile_ns": bc.percentile_stats(warm_compile),
-        "note": "холодный = свежий Engine в том же процессе; процессный cold-start "
-                "считается через --mode cold-process из run_all.py",
+        "note": "cold = fresh Engine in the same process; the per-process cold-start "
+                "is measured via --mode cold-process from run_all.py",
     })
 
 

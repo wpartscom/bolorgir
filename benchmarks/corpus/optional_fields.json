@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Необязательные поля с сохранением порядка объявления",
+  "title": "Optional fields preserving declaration order",
   "type": "object",
   "properties": {
     "id": {"type": "integer"},

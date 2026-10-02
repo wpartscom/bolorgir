@@ -1,8 +1,8 @@
 {
   "manifest_version": 1,
   "created": "2026-09-14",
-  "project": "zig-constraints",
-  "stage": "этап 0: исследование и стенд",
+  "project": "Bolorgir",
+  "stage": "stage 0: research and testbed",
   "hardware": {
     "cpu": {
       "model": "12th Gen Intel(R) Core(TM) i7-12700F",
@@ -33,9 +33,9 @@
       "vram_mib": 12288,
       "driver_version": "580.178.04",
       "cuda_version_driver": "13.0",
-      "pcie_link": "Gen1 x16 (на момент замера; энергосбережение, под нагрузкой поднимается)",
+      "pcie_link": "Gen1 x16 (at measurement time; power saving, ramps up under load)",
       "cuda_toolkit": null,
-      "note": "GPU есть и torch.cuda.is_available() == true, однако end-to-end модели 1-3B (B7) на момент фиксации не запускались; GPU-приёмка по ТЗ 10.1 требует закреплённого раннера/протокола и не заявлена.",
+      "note": "GPU is present and torch.cuda.is_available() == true, but end-to-end 1-3B models (B7) had not been run at pin time; GPU acceptance per SPEC §10.1 requires a pinned runner/protocol and is not claimed.",
       "source": "nvidia-smi, 2026-09-14"
     }
   },
@@ -48,13 +48,20 @@
   "toolchain": {
     "zig": {
       "version": "0.15.2",
-      "path": "/home/gm/.local/bin/zig",
+      "path": "zig",
       "tarball_path": "/tmp/zig.tar.xz",
       "tarball_sha256": "02aa270f183da276e5b5920b1dac44a63f1a49e55050ebde3aecc9eb82f93239"
     },
-    "python": {"version": "3.10.12", "path": "/usr/bin/python3"},
-    "gcc": {"version": "11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3)"},
-    "pip": {"path": "/home/gm/.local/bin/pip3"}
+    "python": {
+      "version": "3.10.12",
+      "path": "/usr/bin/python3"
+    },
+    "gcc": {
+      "version": "11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3)"
+    },
+    "pip": {
+      "path": "pip3"
+    }
   },
   "python_packages": {
     "numpy": "2.2.6",
@@ -63,17 +70,21 @@
     "tokenizers": "0.23.2",
     "xgrammar": "0.2.6",
     "llguidance": "1.8.0",
-    "sentencepiece": "0.2.2 (установлен 2026-09-15; нужен для Llama-family токенизаторов transformers 5.17)",
-    "install_scope": "pip3 install --user; системный numpy 1.21.5 (dist-packages) непригоден (нет libblas.so.3), перекрыт user-установкой numpy 2.2.6",
+    "sentencepiece": "0.2.2 (installed 2026-09-15; needed for Llama-family tokenizers in transformers 5.17)",
+    "install_scope": "pip3 install --user; system numpy 1.21.5 (dist-packages) unusable (no libblas.so.3), overridden by a user install of numpy 2.2.6",
     "source": "importlib.metadata, 2026-09-14"
   },
   "build": {
     "optimize_mode": "ReleaseSafe",
     "debug_also_tested": true,
-    "library": "zig-out/lib/libzig_constraints.so (soname .0.1.0)",
+    "library": "zig-out/lib/libbolorgir.so (soname .0.1.0)",
     "threads": 1,
-    "affinity": "без закрепления (все 20 логических CPU)",
-    "cache_modes": ["lazy", "adaptive", "precompute(=алиас adaptive в MVP)"]
+    "affinity": "no pinning (all 20 logical CPUs)",
+    "cache_modes": [
+      "lazy",
+      "adaptive",
+      "precompute(=alias of adaptive in the MVP)"
+    ]
   },
   "models_tokenizers": {
     "compare_tokenizer": {
@@ -82,30 +93,30 @@
       "family": "byte-level BPE",
       "vocab_size": 50257,
       "eos_token_id": 50256,
-      "usage": "токенизатор для compare-раннеров xgrammar/llguidance и (после сборки ядра) эквивалентных прогонов zig-constraints; закреплён 2026-09-14"
+      "usage": "tokenizer for xgrammar/llguidance compare runners and (after the core is built) equivalent Bolorgir runs; pinned 2026-09-14"
     },
-    "status": "tokenizer и модель закреплены 2026-09-15",
+    "status": "tokenizer and model pinned 2026-09-15",
     "b7_model": {
       "name": "Qwen/Qwen2.5-1.5B-Instruct",
       "revision": "989aa7980e4cf806f80c7fef2b1adb7bc71aa306",
       "dtype": "float16",
-      "attention_backend": "sdpa (по умолчанию transformers 5.17)",
-      "kv_cache": "по умолчанию (dynamic), compile выключен",
+      "attention_backend": "sdpa (transformers 5.17 default)",
+      "kv_cache": "default (dynamic), compile disabled",
       "decode": "greedy (do_sample=false), seed 42",
       "device": "cuda:0 (RTX 3060)"
     },
     "second_tokenizer_family": {
       "name": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",
       "revision": "fe8a4ea1ffedaf415f4da2f062534de366a451e6",
-      "family": "SentencePiece/BPE с byte_fallback (Llama)",
-      "shim": "transformers 5.17 грузит медленный LlamaTokenizer без атрибута byte_fallback; флаг выставляется явно в bench_schemas_tokenizers.py, корректность байтов подтверждается попарной конкатенацией против backend.decode (sp_shim_verify в результатах B6)"
+      "family": "SentencePiece/BPE with byte_fallback (Llama)",
+      "shim": "transformers 5.17 loads the slow LlamaTokenizer without the byte_fallback attribute; the flag is set explicitly in bench_schemas_tokenizers.py, byte correctness is confirmed by pairwise concatenation against backend.decode (sp_shim_verify in B6 results)"
     },
-    "note": "Модель для B7 (1-3B), dtype, attention backend, KV-cache и compile-состояние зафиксированы 2026-09-15 в b7_model. Вторая семья токенизаторов MVP (byte fallback) закреплена в second_tokenizer_family."
+    "note": "B7 model (1-3B), dtype, attention backend, KV-cache and compile state pinned 2026-09-15 in b7_model. The second MVP tokenizer family (byte fallback) is pinned in second_tokenizer_family."
   },
   "corpus": {
     "mvp_corpus_path": "benchmarks/corpus/",
-    "mvp_corpus_revision_sha256": "9e7d0c1824ad87698f0681b81e72368e838cbaa0c446445fd1ef3f49ebe2c7ea",
-    "mvp_corpus_revision_method": "sha256 файла benchmarks/corpus/index.json, содержащего sha256 каждого файла корпуса",
+    "mvp_corpus_revision_sha256": "7d051da01754b777a127386913483028dd2abe57cdd49ee8901888cc942a08d8",
+    "mvp_corpus_revision_method": "sha256 of benchmarks/corpus/index.json, which contains the sha256 of every corpus file",
     "mvp_corpus_entries": 23,
     "external": {
       "jsonschemabench": {
@@ -114,15 +125,40 @@
         "commit_date": "2026-02-12T16:33:36Z",
         "path": "benchmarks/external/jsonschemabench/",
         "schema_files": 9558,
-        "method": "tarball main на 2026-09-14, каталог data/ + README.md"
+        "method": "tarball main as of 2026-09-14, data/ directory + README.md"
       }
     },
     "tuning_holdout_split": {
-      "rule": "схемы MVP-корпуса сортируются по имени (порядок index.json не используется); чётные индексы (0-based) -> tuning, нечётные -> holdout. JSB-подмножество B3 (первые 100 файлов sorted(glob)) делится тем же правилом чёт/нечет по позиции.",
-      "fixed_at": "2026-09-15, до подбора/переподбора порогов adaptive (ТЗ 10.3)",
-      "tuning": ["array_min_max", "closed_object_action_amount", "empty_array", "enum_common_prefixes", "literals_empty_string", "long_string", "nested_3_levels", "numbers_integers", "string_length_bounds", "unsat_enum_filtered", "unsupported_anyof", "unsupported_pattern"],
-      "holdout": ["big_enum_64", "defs_ref", "empty_object", "literals_common_prefix", "literals_unicode", "mixed_records", "nested_5_levels", "optional_fields", "unicode_strings", "unsat_min_gt_max", "unsupported_open_object"],
-      "note": "контрольный сценарий Go/No-Go использует только holdout-схему"
+      "rule": "MVP corpus schemas are sorted by name (index.json order is not used); even indices (0-based) -> tuning, odd -> holdout. The B3 JSB subset (first 100 files of sorted(glob)) is split by the same even/odd rule by position.",
+      "fixed_at": "2026-09-15, before tuning/retuning of adaptive thresholds (SPEC §10.3)",
+      "tuning": [
+        "array_min_max",
+        "closed_object_action_amount",
+        "empty_array",
+        "enum_common_prefixes",
+        "literals_empty_string",
+        "long_string",
+        "nested_3_levels",
+        "numbers_integers",
+        "string_length_bounds",
+        "unsat_enum_filtered",
+        "unsupported_anyof",
+        "unsupported_pattern"
+      ],
+      "holdout": [
+        "big_enum_64",
+        "defs_ref",
+        "empty_object",
+        "literals_common_prefix",
+        "literals_unicode",
+        "mixed_records",
+        "nested_5_levels",
+        "optional_fields",
+        "unicode_strings",
+        "unsat_min_gt_max",
+        "unsupported_open_object"
+      ],
+      "note": "the Go/No-Go control scenario uses only the holdout schema"
     }
   },
   "measurement_protocol": {
@@ -130,44 +166,166 @@
     "warmup_iterations": 3,
     "cold_start_repeats_min": 30,
     "warm_observations_min": 10000,
-    "warm_metric_basis": "p99 требует >= 10k наблюдений на класс нагрузки (ТЗ 10.5)",
-    "timer": "time.perf_counter_ns; RSS через resource.getrusage(RUSAGE_SELF).ru_maxrss",
-    "gpu_sync": "torch.cuda.synchronize вокруг измеряемой операции для микробенчмарков; без лишней синхронизации на каждом токене в end-to-end",
+    "warm_metric_basis": "p99 requires >= 10k observations per workload class (SPEC §10.5)",
+    "timer": "time.perf_counter_ns; RSS via resource.getrusage(RUSAGE_SELF).ru_maxrss",
+    "gpu_sync": "torch.cuda.synchronize around the measured operation for microbenchmarks; no extra per-token synchronization in end-to-end",
     "timeouts": {
       "per_case_seconds": 300,
       "run_all_seconds": 3600,
-      "rule": "таймауты и ошибки записываются в сырые результаты, молча не исключаются"
+      "rule": "timeouts and errors are recorded in raw results, never silently excluded"
     },
-    "published_metrics": ["p50", "p95", "p99", "max", "mean", "count", "peak_rss_bytes"],
-    "raw_results": "benchmarks/results/<timestamp>/*.json (сырые наблюдения + агрегаты)"
+    "published_metrics": [
+      "p50",
+      "p95",
+      "p99",
+      "max",
+      "mean",
+      "count",
+      "peak_rss_bytes"
+    ],
+    "raw_results": "benchmarks/results/<timestamp>/*.json (raw observations + aggregates)"
   },
   "control_scenario": {
-    "fixed_at": "2026-09-15, до контрольного прогона (ТЗ 10.6: один основной сценарий и одна основная метрика выбираются заранее)",
+    "fixed_at": "2026-09-15, before the control run (SPEC §10.6: one primary scenario and one primary metric are chosen in advance)",
     "name": "uniform-mask-p99-big_enum_64",
-    "description": "B2 на одинаковой нагрузке (benchmarks/bench_compare_uniform.py): токенизатор openai-community/gpt2 @607a30d7, holdout-схема big_enum_64, общая трасса = каноническая BPE-токенизация документа {\"symbol\":\"sym_42\",\"weight\":0.5} (приём каждого токена подтверждён accept/consume всех трёх движков), >= 10000 тёплых наблюдений fill_mask на движок, seed 42, прогрев 3 трассы",
-    "primary_engine": "zig_constraints adaptive (сравнивается также lazy)",
-    "primary_metric": "p99 времени построения маски fill_mask на общей трассе",
-    "go_rule": "GO, если p99(fill_mask) zig_adaptive не менее чем на 20% ниже, чем у лучшего по этой метрике из {xgrammar 0.2.6, llguidance 1.8.0}, И одновременно остальные измеренные показатели задержки этого сценария (p50/p95 fill_mask, p50/p95/p99 accept_token, cold compile, первая маска) не хуже более чем на 10% относительно того же конкурента. Иначе NO-GO («корректный прототип, гипотеза производительности не подтверждена», ТЗ 10.6).",
-    "e2e_guard": "B7 (benchmarks/bench_e2e_constrained.py): регрессия output tokens/s и медианного времени запроса zig constrained относительно constrained-baseline xgrammar не более 5% на контрольной конфигурации (Qwen2.5-1.5B-Instruct fp16, RTX 3060, batch 1/8/32, greedy, 3 повтора, сравнение медиан, публикуются все повторы и длины ответов)",
-    "secondary_metrics": ["B1 cold-process (30 независимых процессов, bench_coldproc.py)", "B3/B6 (bench_schemas_tokenizers.py)", "B5/B8 (bench_longrun.py)", "GPU-интервалы маски (bench_gpu_mask_path.py)"],
-    "control_run": "benchmarks/results/20260917T184826_perf-fix2/ (повторный прогон 2026-09-17; REPORT.md + bench_*.json + environment.txt). Первый прогон: benchmarks/results/20260915T024409/.",
-    "verdict": "NO-GO 2026-09-17 (повторный): главная метрика впервые пройдена — p99(fill_mask) zig_adaptive 1.60 µs против 3.20 µs у лучшего конкурента (xgrammar), −49.9% при пороге −20%; e2e-гард пройден (макс. регрессия tok/s 4.4% ≤ 5%). Формально NO-GO из-за допусловий: accept p95/p99 +143%/+126% (структурная разница: работа принимается в accept у zig и в fill у xgrammar) и cold compile +85.9% (2.19 ms против 1.18 ms). Итог по ТЗ 10.6: корректный прототип, гипотеза производительности подтверждена по основной метрике, но не по двум дополнительным условиям."
+    "description": "B2 on uniform load (benchmarks/bench_compare_uniform.py): tokenizer openai-community/gpt2 @607a30d7, holdout schema big_enum_64, shared trace = canonical BPE tokenization of the document {\"symbol\":\"sym_42\",\"weight\":0.5} (acceptance of every token confirmed by accept/consume on all three engines), >= 10000 warm fill_mask observations per engine, seed 42, warmup of 3 traces",
+    "primary_engine": "bolorgir adaptive (lazy is also compared)",
+    "primary_metric": "p99 of fill_mask mask construction time on the shared trace",
+    "primary_metric_key": [
+      "fill_mask_ns",
+      "p99"
+    ],
+    "min_primary_observations": 10000,
+    "min_primary_win_pct": 20,
+    "max_extra_latency_pct": 10,
+    "min_warm_observations": 10000,
+    "min_cold_observations": 30,
+    "min_coldproc_processes": 30,
+    "observation_rule": "Review f721568: p99 of every class involved in the decision is backed by enough observations - mask/accept/warm compile at ≥10000 warm per class (SPEC §10.5), cold compile/first mask/tokenizer prepare at ≥30 independent repeats (cold start, SPEC §10.5), B1 - ≥30 processes. Fewer - INCONCLUSIVE, not a silent GO.",
+    "go_rule": "Single criterion (review R7+A5+817c860, tightened by review f721568 and 2040396): the primary metric is single and pinned - p99(fill_mask) of zig_adaptive at least 20% below the best of {xgrammar 0.2.6, llguidance 1.8.0} on that metric. In addition, all other measured latencies (p50/p95/p99 fill_mask, p50/p95/p99 accept_token, cold compile, warm compile, first mask) must be no worse than +10% relative to the same competitor (otherwise FAIL, not a switch to another option); the B7 e2e guard with the full matrix and the secondary holdout corpus are mandatory (secondary_guard, item 5 of review 817c860). The comparison is conservative: zig - worst source, competitor - best, across ALL collections (review 2040396 D2 - collections are merged, none is dropped). An error/invalid mandatory run (including summary={status:ERROR} without total_s - structural NO-GO), an incomplete matrix, insufficient repeats/observations (of every present source, review 2040396 D3) or B1 with fewer than 30 processes block GO; missing data - INCONCLUSIVE. B1 memory is published as an additional fact and provides no bypass to GO. Under the active v3 protocol (acceptance_protocol_v3) additionally: the e2e guard is decided by the median of paired block ratios (same +5% threshold), the first mask - from ≥1000 cold observations per engine/collection, collection composition and revision identity are checked by the gate before the decision.",
+    "e2e_guard": {
+      "description": "B7 (benchmarks/bench_e2e_constrained.py): median request-time regression of zig_constrained vs xgrammar_constrained at most 5% on the full matrix. The protocol is pinned (review 817c860): each schema is warmed with one generation on EACH engine before the scored repeats, the first request of each engine is published separately (warmups field), engines alternate within a repeat, 4 repeats per file by default; the first-repeat spike (core mask cache misses / xgrammar cold compilation) was measured separately and does not enter the verdict.",
+      "schemas": [
+        "s1_flat_enum",
+        "s2_nested_arrays",
+        "s3_optional_bounded",
+        "s4_batch_jobs"
+      ],
+      "batches": [
+        1,
+        8,
+        32
+      ],
+      "engines": {
+        "zig": "zig_constrained",
+        "xgrammar": "xgrammar_constrained"
+      },
+      "runs_files": [
+        "bench_e2e_constrained.json",
+        "bench_e2e_constrained_repeat.json"
+      ],
+      "min_reps_per_file": 3,
+      "max_regression_pct": 5,
+      "require_completed": true
+    },
+    "secondary_guard": {
+      "description": "Item 5 of review 817c860: independent generalization check on a PREVIOUSLY UNUSED holdout. The same threshold rules of the single metric (worst-zig/best-competitor) apply to schema secondary_geo_route (benchmarks/corpus/secondary_geo_route.json; added 2026-09-18, not involved in optimizations): file bench_compare_uniform_secondary.json, trace = canonical BPE tokenization of the document {'route_id':7,'active':true,waypoints: start/depot/0 + stop/north_gate/12.5}, >=10000 warm observations; the new e2e schema s4_batch_jobs is part of the mandatory e2e_guard matrix. Missing data of the secondary run - INCONCLUSIVE, threshold failure - NO-GO; thresholds unchanged (an additional, stricter check).",
+      "since": "2026-09-18 (introduced for the sixth run; pinned before the launch)",
+      "uniform_file": "bench_compare_uniform_secondary.json",
+      "min_primary_win_pct": 20,
+      "max_extra_latency_pct": 10,
+      "min_primary_observations": 10000,
+      "min_warm_observations": 10000,
+      "min_cold_observations": 30
+    },
+    "acceptance_protocol": {
+      "fixed_at": "2026-09-19, before the eighth run (review 2040396 D2); thresholds 20%/10%/5% unchanged",
+      "collections": 2,
+      "collection_tags": [
+        "2040396-fix",
+        "2040396-fix2"
+      ],
+      "merge_rule": "Both collections of the same code are merged WITHOUT dropping: uniform (primary scenario and secondary holdout) - worst zig / best competitor over all present sources of both collections; e2e - pool of all repeats of both collections with medians over repeats; B1 (≥30 processes) is checked in each collection; B3/B5/B6/B8/GPU are published for each collection.",
+      "rejection_rule": "A collection is not dropped based on measurement results. Objective rejection is structural only: status != OK of a mandatory file in any collection → NO-GO; missing mandatory files / insufficient observations / repeats → INCONCLUSIVE. Machine conditions are recorded in environment.txt of each collection and published; a conditions anomaly does not reject a collection by itself - it is absorbed by the conservative merge.",
+      "environment_capture": "each collection saves environment.txt (loadavg 1/5/15, MemAvailable, uptime, uname, date); values are compared between collections in REPORT.",
+      "e2e_variance": "medians of total_s over all repeats of both collections; worst zig / best competitor over repeats are published; the 5% threshold applies to the pool medians."
+    },
+    "acceptance_protocol_v2": {
+      "fixed_at": "2026-09-19, before the ninth run (review 2040396 D2; after the eighth-run NO-GO and diagnostics: s1 b8 flaps with isolated transient machine windows of +2..+20% on zig repeats - VS Code background, spikes demonstrated outside the scored CPU phases; the median of two collections is sensitive to such windows)",
+      "runs": 3,
+      "run_tags": [
+        "s1-hotpath",
+        "s1-hotpath2",
+        "s1-hotpath3"
+      ],
+      "merge_rule": "Same rules as in acceptance_protocol: collections of the same code are merged WITHOUT dropping - uniform (primary scenario and secondary holdout) over all present sources: zig - worst, competitor - best; e2e - pool of all repeats of all collections with medians; B1 (>=30 processes) is checked in EACH collection; B3/B5/B6/B8/GPU are published for each collection.",
+      "rejection_rule": "Same objective rejection as in acceptance_protocol: a collection is not dropped based on measurement results; status != OK of a mandatory file in any collection -> NO-GO; missing mandatory files / insufficient observations / repeats -> INCONCLUSIVE. Machine conditions (loadavg 1/5/15, MemAvailable, uptime, uname, date) are recorded in environment.txt of each collection and published.",
+      "e2e_variance": "medians of total_s over repeats of all three collections (pool of 24 repeats per configuration); worst zig / best competitor over repeats are published; the 5% threshold applies to the pool medians.",
+      "rationale": "the number of collections was increased 2 -> 3 IN ADVANCE for robustness of the merged median against transient machine windows: in the eighth run a window affected 2 of 4 e2e files and shifted the s1 b8 pool median (+6.9%); with 24 repeats a window affecting <=2 of 6 files does not push the median over the threshold. Merge rules, rejection rules and thresholds 20%/10%/5% unchanged.",
+      "code_change": "s1-hotpath wave: hot-path fusion in the HF adapter - unpack writes the FORBIDDEN bits with a single eq straight into a persistent buffer (fast path of all active rows: no logical_not_, no mask row copy, no per-step allocations; partial path: same cached buffer); regression unpack_forbid == ~unpack. The core was not changed."
+    },
+    "active_acceptance_protocol": "acceptance_protocol_v3",
+    "acceptance_protocol_v3": {
+      "fixed_at": "2026-09-19T09:28:45Z, before the tenth run (review 4bf4ada E1-E3, item 5); thresholds 20%/10%/5% unchanged; pinned by a commit BEFORE the first measurement - collections run on the committed bytes, revision is recorded in environment.txt of each collection",
+      "runs": 3,
+      "run_tags": [
+        "v3-run1",
+        "v3-run2",
+        "v3-run3"
+      ],
+      "environment_required": true,
+      "identity_rule": "The gate requires identical commit, protocol, protocol_sha256 (canonical sha256 of the protocol spec) and sources_sha256 (combined sha256 of the core/adapter/benchmark sources) in environment.txt of each collection; a difference or a missing field - INCONCLUSIVE (exit 2), GO impossible.",
+      "composition_rule": "The gate requires exactly runs unique collections with run_tags (uniqueness of canonical paths). A missing, repeated (same directory twice) or extraneous collection - INCONCLUSIVE (exit 2), GO impossible. A single directory - single-collection analysis mode (exit 3), explicitly marked as NOT acceptance.",
+      "uniform_requirements": {
+        "min_cold_observations": 1000,
+        "cold_repeats": 1000,
+        "cold_state": "new bundle (use_cache=False) + new engine + compile + first fill_mask; without warmup; run_all passes --repeats 1000 to both uniform runs (primary and secondary); p99 = 10th largest of 1000 observations per engine/collection/file (review 4bf4ada item 5.2/5.4: with n=30 p99 is effectively the sample maximum)",
+        "parameters_check": "the gate verifies the protocol block of each uniform file (cold_repeats>=1000, min_observations>=10000, min_warm_observations>=10000) and the length of raw observations"
+      },
+      "e2e_requirements": {
+        "engine_order": "balanced_ab_ba",
+        "reps_per_file": 4,
+        "files_per_collection": [
+          "bench_e2e_constrained.json",
+          "bench_e2e_constrained_repeat.json"
+        ],
+        "min_blocks_per_case": 24,
+        "decision": "paired_ratio_median",
+        "max_regression_pct": 5,
+        "bootstrap_n": 10000,
+        "bootstrap_seed": 42,
+        "margin_rule": "The decision is made on the point estimate: median of paired zig/xg ratios (block = file x repeat; on even repeats zig runs first, on odd repeats - xgrammar; the order is recorded in the order_pos field). The +5% threshold is unchanged. If the median <= 1.05 but the upper bound of the 95% bootstrap CI > 1.05, the case is marked margin and does NOT change the verdict (rule pinned in advance). Absolute pool medians are published for comparability, but the decision is not made on them."
+      },
+      "merge_rule": "Collections of the same code are merged WITHOUT dropping: uniform (primary scenario and secondary holdout) - worst zig / best competitor over all valid sources; e2e - paired ratios within blocks of all collections (median and CI), pool medians are published; B1 (>=30 processes) is checked in EACH collection; B3/B5/B6/B8/GPU are published for each collection.",
+      "rejection_rule": "Objective rejection is structural: status != OK or a corrupted mandatory file in any collection -> NO-GO; missing files / insufficient observations / incomplete paired blocks / repeats -> INCONCLUSIVE; an incomplete source is EXCLUDED from the number comparison (does not participate in the merge) and cannot yield GO. A collection is not dropped based on measurement results.",
+      "rationale": "Review 4bf4ada: (1) the gate did not check the v2 composition - now it does; single-collection analysis is separated from acceptance (exit 3); (2) an incomplete uniform with null p99 broke the summary - now a structured INCONCLUSIVE, the source is excluded; status=ERROR of a mandatory file - NO-GO in both the primary uniform and B1, as the published rule promises; (3) e2e compares engines within time blocks with balanced AB/BA order (removes systematic order asymmetry and inter-process drift in the pool median); the first mask gets 1000 cold observations, p99 stops being the sample maximum. Thresholds 20%/10%/5% unchanged; the ninth NO-GO remains a historical fact, the v3 methodology is not applied to past data retroactively.",
+      "code_change": "Gate fixes (4bf4ada E1/E2), balanced AB/BA and blocks in bench_e2e_constrained.py, 1000 cold repeats and the protocol block in bench_compare_uniform.py (via run_all), new benchmarks/capture_environment.py; the core and HF adapter were not changed."
+    },
+    "secondary_metrics": [
+      "B1 cold-process (30 independent processes, bench_coldproc.py)",
+      "B3/B6 (bench_schemas_tokenizers.py)",
+      "B5/B8 (bench_longrun.py)",
+      "GPU mask intervals (bench_gpu_mask_path.py)"
+    ],
+    "control_run": "benchmarks/results/20260919T033356_v3-run3/ (tenth run 2026-09-19, protocol acceptance_protocol_v3: balanced AB/BA and paired block median in e2e, 1000 cold observations of the first mask, composition and revision-identity checks; gate fixes from review 4bf4ada; commit b0ad006 pinned before the start of the first collection - 09:35:11Z vs 09:36:23Z). REPORT.md + tables.md + bench_*.json + environment.txt (commit/protocol_sha256/sources_sha256/nvidia-smi) in all three collections. Collections of the same code merged without dropping: benchmarks/results/20260919T023623_v3-run1/, benchmarks/results/20260919T030501_v3-run2/, benchmarks/results/20260919T033356_v3-run3/. Previous: benchmarks/results/20260918T222603_s1-hotpath3/ (ninth, NO-GO), benchmarks/results/20260918T220214_s1-hotpath/ and benchmarks/results/20260918T221427_s1-hotpath2/ (ninth, collections 1-2), benchmarks/results/20260918T212317_2040396-fix2/ (eighth, NO-GO), benchmarks/results/20260918T211014_2040396-fix/ (eighth, collection 1), benchmarks/results/20260918T194406_f721568-fix2/ (seventh, GO), benchmarks/results/20260918T193132_f721568-fix/ (seventh broken collection, NO-GO), benchmarks/results/20260918T183010_817c860-fix2/ (sixth), benchmarks/results/20260918T162851_817c860-fix/ (fifth), benchmarks/results/20260917T230013_perf-fix4/ (fourth), benchmarks/results/20260917T193735_perf-fix3/ (third), benchmarks/results/20260917T184826_perf-fix2/ (second), benchmarks/results/20260915T024409/ (first). Directory names use pre-rename commit ids; the mapping to current names is in benchmarks/reports/README.md.",
+    "verdict": "GO 2026-09-19 (tenth run, protocol acceptance_protocol_v3, pinned by commit b0ad006 before the launch; thresholds 20%/10%/5% unchanged; the ninth NO-GO remains a historical fact): composition (3 unique collections) and code revision identity were verified by the gate automatically. Primary metric p99 mask +73.5% (0.81 vs 3.04 µs for xgrammar), secondary holdout +99.7% (1.02 vs 358.68 µs for llguidance), other latencies ≤+10% (first mask - from 1000 cold observations, the zig tail is consistently thinner than xg: >600 µs - 117 vs 878 of 3000 in the primary scenario and 14 vs 1253 of 3000 in the secondary; the sum 131 vs 2131 of 6000 mixes the two corpora), e2e guard 12/12 by the paired block median AB/BA (maximum +1.7% at the 5% threshold; s1 b8 +1.0%, s1 b32 +1.7% - cases that flapped in the fifth-ninth runs; the margin flag never triggered), B1 30/30 in each of the three collections, B5/B8 without degradation, GPU path 47.26 µs. The v3 methodology applies only to this series, not retroactively to past data; a single registered set of three collections - no stability beyond it is claimed."
   },
   "participants": {
-    "zig_constraints_lazy": "build из этого репозитория, ReleaseSafe",
-    "zig_constraints_adaptive": "cache 64 MiB по умолчанию",
-    "zig_constraints_precompute": "алиас adaptive в MVP",
+    "bolorgir_lazy": "build from this repository, ReleaseSafe",
+    "bolorgir_adaptive": "cache 64 MiB by default",
+    "bolorgir_precompute": "alias of adaptive in the MVP",
     "xgrammar": "0.2.6",
     "llguidance": "1.8.0",
-    "python_callback_user": "pending: реальный пользовательский callback не найден; искусственно медленный callback основной базой не считается (ТЗ 10.2)"
+    "python_callback_user": "pending: no real user callback found; an artificially slow callback is not counted as the primary baseline (SPEC §10.2)"
   },
   "notes": [
-    "GPU end-to-end прогон B7 выполнен 2026-09-15 (Qwen2.5-1.5B-Instruct fp16, RTX 3060, constrained zig vs constrained xgrammar): benchmarks/results/20260915T024409/. GPU-приёмка по §10.6 не заявлена: вердикт NO-GO.",
-    "CUDA toolkit не установлен; используется CUDA из wheel torch 2.14.0 (cu13).",
-    "model/tokenizer revisions закреплены (models_tokenizers.b7_model, second_tokenizer_family).",
-    "PCIe link на момент замера Gen1 x16 (энергосбережение простоя); под нагрузкой ожидается Gen4 x16.",
-    "Разделение корпуса tuning/holdout зафиксировано (corpus.tuning_holdout_split); контрольный сценарий и вердикт — control_scenario.",
-    "Вторая семья токенизаторов (SentencePiece/Llama) отклонена при сертификации байтов: пакет декодирует токены с символами U+00A0-U+00FF веткой byte-level BPE раньше SP-ветки (tokenizers.py); 25/400 расхождений попарной конкатенации против backend.decode. Требуется исправление пакета.",
-    "Системный python3-NumPy сломан окружением; воспроизведение: pip3 install --user --ignore-installed numpy."
+    "GPU end-to-end run B7 completed 2026-09-15 (Qwen2.5-1.5B-Instruct fp16, RTX 3060, constrained zig vs constrained xgrammar): benchmarks/results/20260915T024409/. GPU acceptance per §10.6 not claimed: verdict NO-GO.",
+    "CUDA toolkit is not installed; CUDA from the torch 2.14.0 wheel (cu13) is used.",
+    "model/tokenizer revisions are pinned (models_tokenizers.b7_model, second_tokenizer_family).",
+    "PCIe link at measurement time Gen1 x16 (idle power saving); Gen4 x16 is expected under load.",
+    "Corpus tuning/holdout split is pinned (corpus.tuning_holdout_split); control scenario and verdict - control_scenario.",
+    "The second tokenizer family (SentencePiece/Llama) was rejected at byte certification: the package decodes tokens with characters U+00A0-U+00FF via the byte-level BPE branch before the SP branch (tokenizers.py); 25/400 pairwise-concatenation disagreements vs backend.decode. A package fix is required.",
+    "System python3-NumPy is broken by the environment; reproduction: pip3 install --user --ignore-installed numpy.",
+    "2026-09-19: repository translated to English (code, docs, gate messages). No protocol rules or thresholds changed. The acceptance_protocol_v3 spec text was translated together with the rest; the gate still accepts the pre-translation spec hash 02af30e0 recorded in environment.txt of the three v3 collections."
   ]
 }

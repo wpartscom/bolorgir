@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
-"""B7. End-to-end GPU-бенчмарк: constrained vs unconstrained генерация.
+"""B7. End-to-end GPU benchmark: constrained vs unconstrained generation.
 
-ТЗ 10.4 B7: одна модель 1–3B, batch 1/8/32 в пределах VRAM,
-max_new_tokens=512. Метрики на конфигурацию: TTFT, время запроса,
-output tokens/s, p50/p99 inter-token latency, фактическая длина каждого
-ответа (публикуются вместе с tokens/s, чтобы короткие ответы не создавали
-иллюзию ускорения). OOM/неподдерживаемые конфигурации отражаются в таблице.
+SPEC 10.4 B7: one 1-3B model, batch 1/8/32 within VRAM,
+max_new_tokens=512. Per-configuration metrics: TTFT, request time,
+output tokens/s, p50/p99 inter-token latency, actual length of every
+answer (published together with tokens/s so short answers do not create
+an illusion of speedup). OOM/unsupported configurations are shown in the table.
 
-Constrained: zig_constraints через constrained_generate_safe (workaround
-bug B-1, см. hf_common.py). Baseline: те же промпты и батчинг без
-logits_processor. Равенство текстов НЕ требуется (ТЗ T5: разные
-допустимые распределения). Каждый constrained-ответ валидируется
-jsonschema; целевая валидность 100%.
+Constrained: bolorgir via constrained_generate_safe (workaround for
+bug B-1, see hf_common.py). Baseline: the same prompts and batching without
+logits_processor. Text equality is NOT required (SPEC T5: different
+admissible distributions). Every constrained answer is validated with
+jsonschema; target validity 100%.
 
-Декодирование greedy (do_sample=False) для воспроизводимости; seed
-фиксируется перед каждым прогоном (значение имеет значение только для
-sampling-прогонов T5).
+Greedy decoding (do_sample=False) for reproducibility; the seed is fixed
+before every run (it matters only for T5 sampling runs).
 
-Запуск из корня проекта:
+Run from the project root:
     PYTHONPATH=python:benchmarks python3 benchmarks/bench_e2e.py \
         --out benchmarks/results/<timestamp>
 """
@@ -32,7 +31,7 @@ import time
 import torch
 import jsonschema
 
-from zig_constraints import Engine
+from bolorgir import Engine
 
 from hf_common import (
     MODEL_ID,
@@ -46,9 +45,9 @@ from hf_common import (
 MAX_NEW_TOKENS = 512
 SEED = 42
 
-# Три схемы разной сложности (минимумы/максимумы чисел вне MVP — не используются).
+# Three schemas of different complexity (number minimums/maximums are outside the MVP - not used).
 SCHEMAS = {
-    # S1: плоский объект с enum и числом
+    # S1: flat object with an enum and a number
     "s1_flat_enum": {
         "schema": {
             "type": "object",
@@ -67,7 +66,7 @@ SCHEMAS = {
             "You are a trading API. Reply with one JSON object for the request.\nRequest: buy 7 bonds for 990.25 USD.\nJSON:",
         ],
     },
-    # S2: вложенный объект с массивом объектов
+    # S2: nested object with an array of objects
     "s2_nested_arrays": {
         "schema": {
             "type": "object",
@@ -107,7 +106,7 @@ SCHEMAS = {
             "Return the order as JSON.\nOrder 5004: Dan (not vip) bought 12x C-3.\nJSON:",
         ],
     },
-    # S3: необязательные поля и границы длины строк
+    # S3: optional fields and string length bounds
     "s3_optional_bounded": {
         "schema": {
             "type": "object",
@@ -130,6 +129,48 @@ SCHEMAS = {
             "Describe the book as JSON.\nBook: 'The Hobbit' (1937), subtitle 'There and Back Again', rating 9.1, tags: fantasy, classic.\nJSON:",
             "Describe the album as JSON.\nAlbum: 'Kind of Blue' (1959), rating 9.8, tags: jazz.\nJSON:",
             "Describe the game as JSON.\nGame: 'Portal' (2007), rating 8.9, tags: puzzle, sci-fi, short.\nJSON:",
+        ],
+    },
+    # S4: secondary holdout: a previously unused
+    # schema for independent generalization checks; array of step objects,
+    # four enum values for the step name, integer/number fields
+    "s4_batch_jobs": {
+        "schema": {
+            "type": "object",
+            "properties": {
+                "job_id": {"type": "integer"},
+                "status": {
+                    "type": "string",
+                    "enum": ["queued", "running", "done", "failed"],
+                },
+                "priority": {"type": "integer"},
+                "steps": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 4,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "enum": ["load", "map", "reduce", "store"],
+                            },
+                            "count": {"type": "integer"},
+                        },
+                        "required": ["name", "count"],
+                        "additionalProperties": False,
+                    },
+                },
+                "comment": {"type": "string", "maxLength": 24},
+            },
+            "required": ["job_id", "status", "priority", "steps"],
+            "additionalProperties": False,
+        },
+        "prompts": [
+            "You are a batch scheduler. Reply with one JSON object for the request.\nJob 17 is done: it stored 3 outputs after mapping 120 records.\nJSON:",
+            "You are a batch scheduler. Reply with one JSON object for the request.\nJob 42 is running with priority 5: loading 1 shard.\nJSON:",
+            "You are a batch scheduler. Reply with one JSON object for the request.\nJob 7 failed at priority 2: reducing 12 groups hit a limit.\nJSON:",
+            "You are a batch scheduler. Reply with one JSON object for the request.\nJob 99 is queued: it will map 2000 records first.\nJSON:",
         ],
     },
 }
@@ -222,7 +263,7 @@ def run_baseline(model, tokenizer, inputs, prompt_len):
 def summarize_run(run, schema=None):
     ts = run["step_ts_ns"]
     total_ns = run["t_end_ns"] - run["t_start_ns"]
-    # первый put стримера — сам промпт; токены начинаются со второго
+    # the streamer's first put is the prompt itself; tokens start from the second
     tok_ts = ts[1:]
     ttft_ns = (tok_ts[0] - run["t_start_ns"]) if tok_ts else None
     itls = [b - a for a, b in zip(tok_ts, tok_ts[1:])]
@@ -263,13 +304,13 @@ def summarize_run(run, schema=None):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", required=True, help="каталог результатов")
-    ap.add_argument("--reps", type=int, default=3, help="повторов на конфигурацию")
+    ap.add_argument("--out", required=True, help="results directory")
+    ap.add_argument("--reps", type=int, default=3, help="repeats per configuration")
     ap.add_argument("--batches", type=int, nargs="*", default=BATCH_SIZES)
     args = ap.parse_args()
     os.makedirs(args.out, exist_ok=True)
 
-    assert torch.cuda.is_available(), "CUDA недоступна"
+    assert torch.cuda.is_available(), "CUDA is not available"
     gpu_name = torch.cuda.get_device_name(0)
     vram_total = torch.cuda.get_device_properties(0).total_memory
     print(f"GPU: {gpu_name}, VRAM {vram_total / 2**30:.1f} GiB")
@@ -293,7 +334,7 @@ def main() -> int:
         "runs": [],
     }
 
-    # прогрев CUDA и кэша масок
+    # warm up CUDA and the mask cache
     print("warmup...")
     warm = build_inputs(tokenizer, SCHEMAS["s1_flat_enum"]["prompts"], 1)
     c0 = next(iter(constraints.values()))[0]

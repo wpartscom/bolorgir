@@ -5,7 +5,7 @@ ways (greedy cover + random covers with a fixed seed), including tokens
 crossing field boundaries, whole/half escapes and byte-split UTF-8.
 At each step:
   - the kernel mask contains the next trace token;
-  - the kernel mask == reference oracle (computed over the byte prefix —
+  - the kernel mask == reference oracle (computed over the byte prefix -
     the concatenation of accepted token bytes).
 After the final token: can_end == True, eos in the mask, finish() OK,
 the document is valid per the mini-validator and jsonschema (if installed).
@@ -26,7 +26,7 @@ import corpora
 import reference as ref
 from conftest import assert_masks_equal, backend_available  # noqa: E402
 
-_ok, _why = backend_available(os.environ.get("ZG_TEST_BACKEND", "auto"))
+_ok, _why = backend_available(os.environ.get("BLG_TEST_BACKEND", "auto"))
 if not _ok:
     pytest.skip(f"core unavailable: {_why}", allow_module_level=True)
 

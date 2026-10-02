@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Числа и integer, включая числовые enum с нормализацией",
+  "title": "Numbers and integer, including numeric enums with normalization",
   "type": "object",
   "properties": {
     "int_plain": {"type": "integer"},

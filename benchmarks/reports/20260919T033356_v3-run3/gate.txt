@@ -1,0 +1,137 @@
+# summary benchmarks/results/20260919T023623_v3-run1 + benchmarks/results/20260919T030501_v3-run2 + benchmarks/results/20260919T033356_v3-run3
+
+## uniform load (same tokenizer/schema/trace)
+schema=big_enum_64 trace='{"symbol":"sym_42","weight":0.5}' len=14
+| engine | mask p50 us | mask p95 us | mask p99 us | accept p50 us | accept p99 us | cold compile p50 us | first mask p50 us | warm compile p50 us |
+|---|---|---|---|---|---|---|---|---|
+| zig_lazy | 8.68 | 251.57 | 260.32 | 0.36 | 0.64 | 120.57 | 423.18 | 52.94 |
+| zig_adaptive | 0.5 | 0.73 | 0.81 | 0.31 | 0.48 | 124.6 | 474.24 | 0.98 |
+| xgrammar | 0.81 | 3.93 | 4.24 | 0.6 | 0.9 | 1183.09 | 445.36 | 2.02 |
+| llguidance | 15.45 | 39.16 | 41.71 | 0.7 | 1.75 | 651.05 | 8042.34 | 1.76 |
+
+## B1: 30 independent processes
+| engine | ok | compile p50 ms | first mask p50 ms | total cold p50 s | peak RSS p50 MiB |
+|---|---|---|---|---|---|
+| zig_adaptive | 30 | 0.17 | 0.50 | 2.00 | 756 |
+| xgrammar | 30 | 1.18 | 0.42 | 2.17 | 758 |
+| llguidance | 30 | 0.27 | 1.31 | 2.13 | 772 |
+
+## B7: constrained vs constrained-baseline (medians over repeats)
+| schema | batch | mode | total s | tok/s | ITL p50 ms | valid | lens |
+|---|---|---|---|---|---|---|
+| s1_flat_enum | 1 | xgrammar_constrained | 0.21 | 75.2 | 13.1 | 1/1 | 16 |
+| s1_flat_enum | 1 | zig_constrained | 0.21 | 75.3 | 13.1 | 1/1 | 16 |
+| s1_flat_enum | 8 | xgrammar_constrained | 0.32 | 404.8 | 15.7 | 8/8 | 14..18 |
+| s1_flat_enum | 8 | zig_constrained | 0.33 | 399.6 | 15.9 | 8/8 | 14..18 |
+| s1_flat_enum | 32 | xgrammar_constrained | 0.51 | 1020.0 | 20.9 | 32/32 | 14..18 |
+| s1_flat_enum | 32 | zig_constrained | 0.52 | 1002.3 | 21.3 | 32/32 | 14..18 |
+| s2_nested_arrays | 1 | xgrammar_constrained | 0.59 | 75.2 | 13.2 | 1/1 | 44 |
+| s2_nested_arrays | 1 | zig_constrained | 0.58 | 75.4 | 13.2 | 1/1 | 44 |
+| s2_nested_arrays | 8 | xgrammar_constrained | 0.94 | 359.2 | 16.2 | 8/8 | 34..55 |
+| s2_nested_arrays | 8 | zig_constrained | 0.94 | 357.6 | 16.3 | 8/8 | 34..55 |
+| s2_nested_arrays | 32 | xgrammar_constrained | 1.57 | 855.7 | 24.3 | 32/32 | 34..55 |
+| s2_nested_arrays | 32 | zig_constrained | 1.55 | 867.5 | 24.4 | 32/32 | 34..55 |
+| s3_optional_bounded | 1 | xgrammar_constrained | 0.61 | 69.3 | 13.6 | 1/1 | 42 |
+| s3_optional_bounded | 1 | zig_constrained | 0.38 | 72.8 | 13.6 | 1/1 | 28 |
+| s3_optional_bounded | 8 | xgrammar_constrained | 0.98 | 255.3 | 16.9 | 8/8 | 26..42 |
+| s3_optional_bounded | 8 | zig_constrained | 0.54 | 411.9 | 16.9 | 8/8 | 26..29 |
+| s3_optional_bounded | 32 | xgrammar_constrained | 2.08 | 479.8 | 24.1 | 32/32 | 26..42 |
+| s3_optional_bounded | 32 | zig_constrained | 0.90 | 988.0 | 24.3 | 32/32 | 26..29 |
+| s4_batch_jobs | 1 | xgrammar_constrained | 0.56 | 71.7 | 13.8 | 1/1 | 40 |
+| s4_batch_jobs | 1 | zig_constrained | 0.56 | 71.4 | 13.9 | 1/1 | 40 |
+| s4_batch_jobs | 8 | xgrammar_constrained | 0.75 | 332.2 | 17.4 | 8/8 | 27..40 |
+| s4_batch_jobs | 8 | zig_constrained | 0.76 | 326.6 | 17.8 | 8/8 | 27..40 |
+| s4_batch_jobs | 32 | xgrammar_constrained | 1.18 | 841.7 | 24.9 | 32/32 | 27..40 |
+| s4_batch_jobs | 32 | zig_constrained | 1.21 | 822.4 | 25.0 | 32/32 | 27..40 |
+
+e2e guard (total_s medians over repeats, threshold 5%):
+  s1_flat_enum b1: zig 0.22s vs xg 0.21s (+0.1%; worst zig 0.23s, best xg 0.21s; n=(8, 8))
+  s1_flat_enum b8: zig 0.34s vs xg 0.33s (+0.7%; worst zig 0.36s, best xg 0.32s; n=(8, 8))
+  s1_flat_enum b32: zig 0.56s vs xg 0.55s (+1.2%; worst zig 0.61s, best xg 0.51s; n=(8, 8))
+  s2_nested_arrays b1: zig 0.60s vs xg 0.60s (-0.1%; worst zig 0.62s, best xg 0.58s; n=(8, 8))
+  s2_nested_arrays b8: zig 1.00s vs xg 0.99s (+0.5%; worst zig 1.06s, best xg 0.93s; n=(8, 8))
+  s2_nested_arrays b32: zig 1.62s vs xg 1.60s (+0.7%; worst zig 1.68s, best xg 1.54s; n=(8, 8))
+  s3_optional_bounded b1: zig 0.39s vs xg 0.61s (-36.7%; worst zig 0.40s, best xg 0.60s; n=(8, 8))
+  s3_optional_bounded b8: zig 0.55s vs xg 0.99s (-44.5%; worst zig 0.59s, best xg 0.97s; n=(8, 8))
+  s3_optional_bounded b32: zig 0.90s vs xg 2.11s (-57.2%; worst zig 0.96s, best xg 2.08s; n=(8, 8))
+  s4_batch_jobs b1: zig 0.56s vs xg 0.56s (+0.1%; worst zig 0.56s, best xg 0.56s; n=(8, 8))
+  s4_batch_jobs b8: zig 0.76s vs xg 0.75s (+2.0%; worst zig 0.78s, best xg 0.74s; n=(8, 8))
+  s4_batch_jobs b32: zig 1.21s vs xg 1.18s (+2.2%; worst zig 1.25s, best xg 1.17s; n=(8, 8))
+
+## B5/B8: long-run generation
+  64 MiB: steps=90072 cycles=11112 errors={'ResourceLimit': 0, 'other': 0, 'compile_errors': []} p99 plateau ratio=0.981 rss ratio=1.0 cache hits=99993 evictions=0
+  128 MiB: steps=90072 cycles=11112 errors={'ResourceLimit': 0, 'other': 0, 'compile_errors': []} p99 plateau ratio=0.964 rss ratio=1.0 cache hits=99993 evictions=0
+  256 MiB: steps=90072 cycles=11112 errors={'ResourceLimit': 0, 'other': 0, 'compile_errors': []} p99 plateau ratio=0.98 rss ratio=1.0 cache hits=99993 evictions=0
+
+## B3: schema switch
+  JSB-100: ok 1, unsupported 84, invalid 15; corpus schemas supported: 16
+  lazy: unique compile p50 33.13 us, repeat p50 29.23 us, cache hits/misses/evictions 0/0/0
+  adaptive: unique compile p50 31.62 us, repeat p50 7.64 us, cache hits/misses/evictions 0/0/0
+  session phase: schemas 11, rounds 3, fill_mask p50 6.28 us, p99 90.87 us
+
+## B6: tokenizers
+  gpt2 (byte-level BPE): vocab=50257 prepare=52.5 ms compile=0.1 ms mask p50=0.46 us core tok mem=34.3 MiB
+  qwen2.5-1.5b (byte-level BPE): vocab=151665 prepare=186.7 ms compile=0.1 ms mask p50=0.79 us core tok mem=134.6 MiB
+  tinyllama-sp (SentencePiece byte_fallback (Llama)): vocab=32000 prepare=24.9 ms compile=0.1 ms mask p50=0.46 us core tok mem=18.5 MiB
+    sp_shim_verify: {'status': 'OK', 'pairs': 400, 'exact': 199, 'first_token_space_rule': 198, 'lossy_utf8_reference': 3, 'bad': []}
+  synthetic_32768 (synthetic byte vocab): vocab=32768 prepare=0.0 ms compile=0.1 ms mask p50=0.46 us core tok mem=39.6 MiB
+  synthetic_131072 (synthetic byte vocab): vocab=131072 prepare=0.0 ms compile=0.1 ms mask p50=0.73 us core tok mem=134.5 MiB
+  synthetic_262144 (synthetic byte vocab): vocab=262144 prepare=0.0 ms compile=0.1 ms mask p50=1.1 us core tok mem=287.0 MiB
+
+## GPU mask intervals (build / H2D / apply / full), p50 us
+| engine | build | H2D+unpack | apply | full |
+|---|---|---|---|---|
+| zig_adaptive | 4.95 | 23.62 | 18.73 | 47.26 |
+| xgrammar | 6.95 | 16.36 | 33.44 | 56.7 |
+| llguidance | 31.23 | 20.34 | 72.41 | 126.26 |
+
+## Final acceptance per the fixed protocol (audit e6a87b5 E1)
+protocol: acceptance_protocol_v3; fixed_at: 2026-09-19T09:28:45Z, before the tenth run (audit e6a87b5 E1-E3, item 5); thresholds 20%/10%/5% unchanged; pinned by a commit BEFORE the first measurement - collections run on the committed bytes, revision is recorded in environment.txt of each collection; collections: ['v3-run1', 'v3-run2', 'v3-run3']
+
+## Gate §10.6 (single, audits R7+A5+d84f992)
+collections: 3; merge: worst zig / best competitor over all sources; protocol: cold repeats ≥1000, e2e - balanced AB/BA order and paired median
+primary scenario: uniform, sources 3; zig - worst source, competitors - best (audit A5, d84f992 D2)
+primary scenario: primary metric fill_mask_ns p99: zig 0.81 us vs 3.04 us for xgrammar (+73.5% better at threshold +20%)
+primary scenario: other latencies vs xgrammar: all ≤ +10% - OK
+secondary holdout: uniform, sources 3; zig - worst source, competitors - best (audit A5, d84f992 D2)
+secondary holdout: primary metric fill_mask_ns p99: zig 1.02 us vs 358.68 us for llguidance (+99.7% better at threshold +20%)
+secondary holdout: other latencies vs llguidance: all ≤ +10% - OK
+e2e guard (required: full matrix from manifest, errors and invalid outputs block GO; decision - median of PAIRED ratios in blocks (file x repeat), zig and xg adjacent in time, AB/BA order, bootstrap CI):
+  s1_flat_enum b1: -0.1% OK (zig 0.22s vs xg 0.22s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=0.9987, CI95=[0.9979; 1.0001]; pooled medians: -0.2%; per collection: 20260919T023623_v3-run1: 0.999, 20260919T030501_v3-run2: 0.998, 20260919T033356_v3-run3: 0.998
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.212533186, 0.212318501, 0.212441849, 0.21235944], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [0.217631615, 0.218750284, 0.219084457, 0.233114685], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.21910661, 0.218769599, 0.218995873, 0.219164161], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [0.223012579, 0.222995439, 0.224557657, 0.225187637], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.21837076, 0.218341774, 0.218287474, 0.219887878], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [0.221269457, 0.224428353, 0.224231593, 0.226706999]} (first request published separately)
+  s1_flat_enum b8: +1.0% OK (zig 0.35s vs xg 0.34s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=1.0103, CI95=[1.0060; 1.0129]; pooled medians: +2.8%; per collection: 20260919T023623_v3-run1: 1.012, 20260919T030501_v3-run2: 1.002, 20260919T033356_v3-run3: 1.009
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.324919745, 0.325280596, 0.326239211, 0.325306051], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [0.344709139, 0.353810722, 0.352325742, 0.364249483], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.353876476, 0.332186661, 0.334378521, 0.335702438], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [0.349412158, 0.356655775, 0.351717615, 0.364612125], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.333983504, 0.335553114, 0.331655335, 0.331923152], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [0.362428177, 0.355669745, 0.361354384, 0.378241088]} (first request published separately)
+  s1_flat_enum b32: +1.7% OK (zig 0.57s vs xg 0.56s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=1.0165, CI95=[1.0131; 1.0183]; pooled medians: +1.0%; per collection: 20260919T023623_v3-run1: 1.016, 20260919T030501_v3-run2: 1.019, 20260919T033356_v3-run3: 1.014
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.517740572, 0.520372137, 0.518601262, 0.519017923], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [0.610170155, 0.600115092, 0.602872502, 0.596532906], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.534140855, 0.535627709, 0.533533511, 0.53527587], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [0.618217001, 0.619932054, 0.605725924, 0.617261607], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.532768456, 0.533972749, 0.533096548, 0.533826969], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [0.64895057, 0.607680906, 0.604108122, 0.619364656]} (first request published separately)
+  s2_nested_arrays b1: -0.1% OK (zig 0.61s vs xg 0.61s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=0.9985, CI95=[0.9958; 1.0019]; pooled medians: -0.5%; per collection: 20260919T023623_v3-run1: 0.998, 20260919T030501_v3-run2: 1.002, 20260919T033356_v3-run3: 0.998
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.585777268, 0.583136392, 0.582683822, 0.58391936], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [0.618967425, 0.614944328, 0.618309953, 0.618491666], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.602501767, 0.60150288, 0.60034599, 0.600327859], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [0.63833661, 0.638060629, 0.635372435, 0.638393535], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.602749022, 0.598901048, 0.599797376, 0.600892725], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [0.633029649, 0.633237142, 0.634944053, 0.632919526]} (first request published separately)
+  s2_nested_arrays b8: +0.5% OK (zig 1.00s vs xg 1.00s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=1.0051, CI95=[1.0028; 1.0087]; pooled medians: +0.3%; per collection: 20260919T023623_v3-run1: 1.005, 20260919T030501_v3-run2: 1.005, 20260919T033356_v3-run3: 1.006
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.935155696, 0.936268647, 0.942939875, 0.948833054], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [1.042639529, 1.048145828, 1.054829128, 1.063241329], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.962573894, 0.962666418, 0.964453655, 0.965877827], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [1.062590251, 1.066304531, 1.072525375, 1.071718068], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.955685394, 0.958424123, 0.961732726, 0.965423214], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [1.069052703, 1.069567309, 1.065874806, 1.06780705]} (first request published separately)
+  s2_nested_arrays b32: +0.1% OK (zig 1.62s vs xg 1.62s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=1.0014, CI95=[0.9909; 1.0086]; pooled medians: +0.3%; per collection: 20260919T023623_v3-run1: 0.998, 20260919T030501_v3-run2: 1.003, 20260919T033356_v3-run3: 1.000
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [1.518254317, 1.552288841, 1.546346639, 1.585357639], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [1.647481091, 1.648961227, 1.650206962, 1.677411176], '20260919T030501_v3-run2/bench_e2e_constrained.json': [1.525586735, 1.569754345, 1.578620174, 1.595054602], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [1.696197098, 1.685478835, 1.745658592, 1.704797074], '20260919T033356_v3-run3/bench_e2e_constrained.json': [1.5228014, 1.55064095, 1.5759416, 1.599138821], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [1.685366449, 1.659077578, 1.693770362, 1.669430561]} (first request published separately)
+  s3_optional_bounded b1: -36.8% OK (zig 0.40s vs xg 0.63s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=0.6324, CI95=[0.6310; 0.6349]; pooled medians: -36.1%; per collection: 20260919T023623_v3-run1: 0.633, 20260919T030501_v3-run2: 0.638, 20260919T033356_v3-run3: 0.631
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.380138308, 0.386106231, 0.384154078, 0.384665825], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [0.386093754, 0.390243434, 0.392290937, 0.402142951], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.404079278, 0.40458499, 0.412420278, 0.402948775], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [0.404787268, 0.402805458, 0.40304942, 0.40324841], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.388801361, 0.393393034, 0.394843114, 0.39725084], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [0.399878381, 0.401815314, 0.402205556, 0.401894048]} (first request published separately)
+  s3_optional_bounded b8: -44.6% OK (zig 0.56s vs xg 1.00s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=0.5543, CI95=[0.5399; 0.5611]; pooled medians: -44.6%; per collection: 20260919T023623_v3-run1: 0.553, 20260919T030501_v3-run2: 0.563, 20260919T033356_v3-run3: 0.548
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.516042219, 0.555867634, 0.532404879, 0.545781267], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [0.532433881, 0.561231022, 0.569199077, 0.592817586], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.528847815, 0.57542749, 0.555806461, 0.5618069], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [0.554826958, 0.583763972, 0.590464765, 0.585363193], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.543293155, 0.546614471, 0.55455323, 0.574333676], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [0.534405368, 0.556210933, 0.555985006, 0.554381812]} (first request published separately)
+  s3_optional_bounded b32: -56.9% OK (zig 0.93s vs xg 2.14s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=0.4312, CI95=[0.4269; 0.4357]; pooled medians: -56.7%; per collection: 20260919T023623_v3-run1: 0.431, 20260919T030501_v3-run2: 0.431, 20260919T033356_v3-run3: 0.431
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.922044842, 0.897292405, 0.87764789, 0.900244481], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [0.893271562, 0.942454846, 0.902001712, 0.955083278], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.948943314, 0.928628125, 0.926431256, 0.928410484], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [0.964268252, 0.92796242, 0.913902481, 0.91575096], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.949315775, 0.917778499, 0.898148606, 0.932063118], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [0.936537379, 0.920846256, 0.954229946, 0.948708278]} (first request published separately)
+  s4_batch_jobs b1: +0.3% OK (zig 0.58s vs xg 0.58s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=1.0027, CI95=[0.9953; 1.0040]; pooled medians: +0.2%; per collection: 20260919T023623_v3-run1: 1.003, 20260919T030501_v3-run2: 0.999, 20260919T033356_v3-run3: 1.003
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.560881367, 0.557154421, 0.560351819, 0.561422691], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [0.561898416, 0.563567827, 0.564127163, 0.563269174], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.577057973, 0.579580008, 0.578472676, 0.5775338], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [0.579674051, 0.581333308, 0.579499887, 0.582218276], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.577248832, 0.576053211, 0.577248776, 0.57735135], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [0.578763179, 0.576237475, 0.581952845, 0.58029602]} (first request published separately)
+  s4_batch_jobs b8: +1.0% OK (zig 0.78s vs xg 0.77s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=1.0096, CI95=[1.0036; 1.0167]; pooled medians: +1.0%; per collection: 20260919T023623_v3-run1: 1.017, 20260919T030501_v3-run2: 1.006, 20260919T033356_v3-run3: 1.008
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [0.759704725, 0.757905185, 0.758826473, 0.76467598], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [0.778265616, 0.770013018, 0.778294276, 0.764628264], '20260919T030501_v3-run2/bench_e2e_constrained.json': [0.778098671, 0.782166675, 0.763198141, 0.777469962], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [0.789859507, 0.787192275, 0.793266512, 0.793840973], '20260919T033356_v3-run3/bench_e2e_constrained.json': [0.779904726, 0.773104682, 0.762383867, 0.77215481], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [0.779308194, 0.874113927, 0.779745971, 0.784131642]} (first request published separately)
+  s4_batch_jobs b32: +1.4% OK (zig 1.22s vs xg 1.21s; n=24/24)
+    paired blocks: n=24, median zig/xg ratio=1.0138, CI95=[1.0085; 1.0301]; pooled medians: +1.3%; per collection: 20260919T023623_v3-run1: 1.020, 20260919T030501_v3-run2: 1.006, 20260919T033356_v3-run3: 1.023
+    zig repeats per source: {'20260919T023623_v3-run1/bench_e2e_constrained.json': [1.204348531, 1.208124467, 1.213101709, 1.194444362], '20260919T023623_v3-run1/bench_e2e_constrained_repeat.json': [1.209725668, 1.251272709, 1.197924764, 1.235632995], '20260919T030501_v3-run2/bench_e2e_constrained.json': [1.22970747, 1.22825843, 1.236544487, 1.212504274], '20260919T030501_v3-run2/bench_e2e_constrained_repeat.json': [1.242934976, 1.220368013, 1.220042257, 1.311199578], '20260919T033356_v3-run3/bench_e2e_constrained.json': [1.320618992, 1.308033813, 1.193515819, 1.209557607], '20260919T033356_v3-run3/bench_e2e_constrained_repeat.json': [1.244150122, 1.268900218, 1.217254216, 1.227039615]} (first request published separately)
+
+VERDICT control scenario: GO

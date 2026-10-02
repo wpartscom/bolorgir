@@ -1,9 +1,9 @@
 """Schema corpus for parity/edge tests.
 
-SMALL — small schemas for exhaustive prefix enumeration (byte-level
+SMALL - small schemas for exhaustive prefix enumeration (byte-level
 tokenizer; depth bounds the trace length in tokens).
-TRACE — larger schemas for the trace test (dict tokenizer).
-LITERALS — sets for FR-3.
+TRACE - larger schemas for the trace test (dict tokenizer).
+LITERALS - sets for FR-3.
 """
 
 
@@ -48,7 +48,7 @@ NESTED = obj(
 
 ENUM_NUMBERS = {"type": "number", "enum": [1, 2.5, 100]}
 
-ENUM_UNICODE = {"type": "string", "enum": ["héllo", "мир"]}
+ENUM_UNICODE = {"type": "string", "enum": ["héllo", "日本"]}
 
 REF_SCHEMA = {
     "$defs": {"pos": {"type": "integer"}},
@@ -97,5 +97,5 @@ TRACE = [
 LITERALS = [
     {"name": "lits_basic", "strings": ["", "a", "ab", "b"]},
     {"name": "lits_prefix", "strings": ["buy", "buyer", "sell"]},
-    {"name": "lits_unicode", "strings": ["héllo", "мир", ""]},
+    {"name": "lits_unicode", "strings": ["héllo", "日本", ""]},
 ]

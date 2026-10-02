@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
   schedule:
     # Weekly, Monday 04:17 UTC
     - cron: "17 4 * * 1"
@@ -44,7 +45,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        # 3.10-3.13 verified locally with abi3 wheels (3.13 added after
+        # the matrix smoke passed).
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
@@ -56,41 +59,231 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Build core library (ReleaseSafe)
-        run: zig build -Drelease=true
+      - name: Build core library (ReleaseSafe, portable CPU)
+        # baseline CPU: the wheel must keep working on machines older than
+        # the runner (no native -mcpu tuning).
+        run: zig build -Drelease=true -Dcpu=baseline
 
       - name: Install build/test tooling
-        run: python3 -m pip install --upgrade pip setuptools wheel pytest
+        # pip>=24 is required for PEP 621 metadata (pip 22 under build isolation
+        # silently produced UNKNOWN-0.0.0 wheels).
+        run: python3 -m pip install --upgrade "pip>=24" "setuptools>=77" wheel pytest numpy jsonschema transformers
 
       - name: Build Python extension in place
         working-directory: python
+        env:
+          # Reuse the freshly built core library; setup.py copies it from
+          # zig-out/lib into _lib (the skip flag used to leave a stale stub
+          # in place and the clean CI build failed).
+          BLG_SKIP_ZIG: "1"
         run: python3 setup.py build_ext --inplace
 
+      - name: Verify _lib matches zig-out
+        run: cmp python/bolorgir/_lib/libbolorgir.so.0.1.0 zig-out/lib/libbolorgir.so.0.1.0
+
       - name: pytest (ctypes backend)
-        run: PYTHONPATH=python ZG_TEST_BACKEND=ctypes python3 -m pytest tests/ python/tests/ -q
+        run: PYTHONPATH=python BLG_TEST_BACKEND=ctypes python3 -m pytest tests/ python/tests/ -q
 
       - name: pytest (package backend)
-        run: PYTHONPATH=python ZG_TEST_BACKEND=package python3 -m pytest tests/ python/tests/ -q
+        run: PYTHONPATH=python BLG_TEST_BACKEND=package python3 -m pytest tests/ python/tests/ -q
 
       - name: Build wheel
         working-directory: python
+        env:
+          BLG_SKIP_ZIG: "1"
         run: python3 -m pip wheel . --no-deps -w dist
 
       - name: Smoke-install wheel in clean venv without torch
         run: |
-          python3 -m venv /tmp/zg-smoke-venv
-          /tmp/zg-smoke-venv/bin/pip install --no-index --find-links=python/dist zig-constraints
-          /tmp/zg-smoke-venv/bin/python - <<'EOF'
-          from zig_constraints import Engine, TokenizerBundle
+          python3 -m venv /tmp/bolorgir-smoke-venv
+          /tmp/bolorgir-smoke-venv/bin/pip install --no-index --find-links=python/dist bolorgir
+          /tmp/bolorgir-smoke-venv/bin/python - <<'EOF'
+          from bolorgir import Engine, TokenizerBundle
 
           tokens = [bytes([i]) for i in range(256)] + [b"\x00", b""]
           bundle = TokenizerBundle.from_token_bytes(
               tokens, eos_ids=[256], special_ids=[257])
           with Engine(mode="lazy") as engine:
-              constraint = engine.compile_literals(["yes", "no"], tokenizer=bundle)
-              with constraint.create_session() as session:
-                  ids = session.allowed_token_ids()
-                  assert ids, "empty initial mask"
-                  session.accept_token(ids[0])
+              # Constraints must be closed before the Engine: the native
+              # context refuses to die with live grammars.
+              with engine.compile_literals(["yes", "no"], tokenizer=bundle) as constraint:
+                  with constraint.create_session() as session:
+                      ids = session.allowed_token_ids()
+                      assert ids, "empty initial mask"
+                      session.accept_token(ids[0])
           print("wheel smoke OK")
           EOF
+
+  clean-build:
+    # Build from a clean git archive (without ignored artifacts zig-out/ and
+    # _lib/*.so). Both paths are exercised: BLG_SKIP_ZIG with a copy of the
+    # fresh library and a full build_ext that builds the core itself.
+    name: Clean build (git archive)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build tooling
+        # Direct setup.py calls below do not resolve [build-system] requires;
+        # setuptools/wheel must be present before the first setup.py run.
+        run: python3 -m pip install --upgrade "pip>=24" "setuptools>=77" wheel
+
+      - name: Print tool versions
+        run: |
+          python3 --version
+          python3 -m pip --version
+          python3 -m pip show setuptools wheel
+          zig version
+
+      - name: Export pristine tree
+        run: |
+          mkdir -p "$RUNNER_TEMP/clean"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/clean"
+
+      - name: "Sanity: no prebuilt artifacts in the archive"
+        run: |
+          test ! -e "$RUNNER_TEMP/clean/zig-out"
+          test ! -e "$RUNNER_TEMP/clean/python/bolorgir/_lib/libbolorgir.so.0.1.0"
+
+      - name: Build core (baseline)
+        working-directory: ${{ runner.temp }}/clean
+        run: zig build -Drelease=true -Dcpu=baseline
+
+      - name: BLG_SKIP_ZIG copies the fresh library (the former failure case)
+        working-directory: ${{ runner.temp }}/clean/python
+        env:
+          BLG_SKIP_ZIG: "1"
+        run: |
+          python3 setup.py build_ext --inplace
+          cmp bolorgir/_lib/libbolorgir.so.0.1.0 ../zig-out/lib/libbolorgir.so.0.1.0
+
+      - name: Full build_ext with BLG_ZIG_ARGS (builds the core itself)
+        # Separate fresh extraction: no zig-out/ or _lib artifacts from the
+        # BLG_SKIP_ZIG pass above may leak into this build.
+        run: |
+          mkdir -p "$RUNNER_TEMP/clean-full"
+          git archive HEAD | tar -x -C "$RUNNER_TEMP/clean-full"
+          cd "$RUNNER_TEMP/clean-full/python"
+          BLG_ZIG_ARGS="-Dcpu=baseline" python3 setup.py build_ext --inplace
+          ls bolorgir/_core.*.so
+          cmp bolorgir/_lib/libbolorgir.so.0.1.0 ../zig-out/lib/libbolorgir.so.0.1.0
+
+      - name: Wheel + smoke in a clean venv
+        working-directory: ${{ runner.temp }}/clean/python
+        env:
+          BLG_SKIP_ZIG: "1"
+        run: |
+          python3 -m pip wheel . --no-deps -w dist
+          DIST="$RUNNER_TEMP/clean/python/dist"
+          VENV="$RUNNER_TEMP/bolorgir-clean-venv"
+          SMOKE_DIR="$RUNNER_TEMP/bolorgir-smoke"
+          mkdir -p "$SMOKE_DIR"
+          python3 -m venv "$VENV"
+          "$VENV/bin/pip" install --upgrade "pip>=24"
+          "$VENV/bin/pip" install --no-index --find-links="$DIST" bolorgir
+          cd "$SMOKE_DIR"
+          "$VENV/bin/python" -I - <<'EOF'
+          import sys
+
+          import bolorgir
+          import bolorgir._core
+          from bolorgir import Engine, TokenizerBundle
+
+          for mod in (bolorgir, bolorgir._core):
+              assert mod.__file__.startswith(sys.prefix), (
+                  f"{mod.__name__} loaded from {mod.__file__}, "
+                  f"outside venv {sys.prefix}")
+
+          tokens = [bytes([i]) for i in range(256)] + [b"<eos>"]
+          bundle = TokenizerBundle.from_token_bytes(tokens, eos_ids=[256])
+          with Engine(mode="lazy", tokenizer=bundle) as engine:
+              with engine.compile_literals(["ok"]) as constraint:
+                  with constraint.create_session() as session:
+                      assert session.allowed_token_ids()
+          print("clean-build smoke OK")
+          EOF
+
+  hf-integration:
+    # The HF integration must actually run (not skip): a dedicated job with
+    # CPU torch and an expected-skips check.
+    name: HF integration (CPU torch)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build core library (ReleaseSafe, portable CPU)
+        run: zig build -Drelease=true -Dcpu=baseline
+
+      - name: Install CPU torch and pinned test deps
+        run: |
+          python3 -m pip install --upgrade pip "setuptools>=77" wheel
+          python3 -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install pytest numpy jsonschema "transformers==5.17.0" "tokenizers==0.23.2"
+
+      - name: Build Python extension in place
+        working-directory: python
+        env:
+          BLG_SKIP_ZIG: "1"
+        run: python3 setup.py build_ext --inplace
+
+      - name: HF adapter tests (no unexpected skips)
+        run: |
+          PYTHONPATH=python python3 -m pytest python/tests/test_hf_adapters.py -q --junit-xml=/tmp/hf.xml
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET
+
+          root = ET.parse("/tmp/hf.xml").getroot()
+          suite = root.find("testsuite")
+          tests = int(suite.get("tests", 0))
+          skipped = int(suite.get("skipped", 0))
+          failures = int(suite.get("failures", 0))
+          errors = int(suite.get("errors", 0))
+          print(f"tests={tests} skipped={skipped} failures={failures} errors={errors}")
+          assert failures == 0 and errors == 0
+          assert skipped == 0, "HF integration must not skip"
+          assert tests >= 30, tests
+          EOF
+
+      - name: Full Python suites on CPU torch
+        run: |
+          PYTHONPATH=python BLG_TEST_BACKEND=ctypes python3 -m pytest tests/ python/tests/ -q
+          PYTHONPATH=python BLG_TEST_BACKEND=package python3 -m pytest tests/ python/tests/ -q
+
+  fuzz:
+    # The weekly run adds what the regular jobs do not: a full seeded Zig
+    # fuzz campaign with the report kept as an artifact.
+    name: Zig fuzz (seeded)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Fuzz campaign (seed 424242)
+        run: zig build fuzz -Drelease=true -- --seed 424242
+
+      - name: Upload fuzz report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zig-fuzz-report
+          path: tests/fuzz/artifacts/zig_fuzz_report.json
+          if-no-files-found: error

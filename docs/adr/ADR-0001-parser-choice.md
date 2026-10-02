@@ -1,99 +1,100 @@
-# ADR-0001: Выбор парсера — детерминированный стековый автомат с ограниченным набором threads (NFA-симуляция)
+# ADR-0001: Parser choice - a deterministic stack automaton with a bounded thread set (NFA simulation)
 
-- Статус: **accepted**
-- Дата: 2026-09-14
-- Контекст: ТЗ FR-5 (выбор парсера оформляется ADR), docs/DESIGN.md §3, docs/API.md (src/parser.zig)
+- Status: **accepted**
+- Date: 2026-09-14
+- Context: spec FR-5 (parser choice is documented in an ADR), docs/DESIGN.md §3, src/parser.zig
 
-## Контекст
+## Context
 
-Ядру нужен инкрементный парсер языка canonical-v1: на каждом шаге генерации
-строится маска допустимых токенов, между шагами хранится состояние, позволяющее
-продолжить разбор без перечитывания истории. Требования к решению:
+The core needs an incremental parser for the canonical-v1 language: at each
+generation step a mask of allowed tokens is built, and state is kept between
+steps so parsing can continue without re-reading history. Requirements:
 
-- точность: токен разрешён ⟺ его байты принимаются языком и префикс продолжим
-  до валидного документа (без приближённых фильтров);
-- предсказуемая стоимость шага (p99 важнее среднего, ТЗ §10);
-- ограниченная и учитываемая память состояния (FR-7, FR-10);
-- детерминизм: повторный запрос маски на том же состоянии — побитово тот же
-  результат; результат не зависит от числа потоков;
-- простота независимой проверки эталоном (T1/T2).
+- exactness: a token is allowed ⟺ its bytes are accepted by the language and the prefix can be continued
+  to a valid document (no approximate filters);
+- predictable step cost (p99 matters more than the mean, spec §10);
+- bounded and accounted state memory (FR-7, FR-10);
+- determinism: a repeated mask query on the same state - the same result
+  bit-for-bit; the result does not depend on the number of threads;
+- ease of independent verification with an oracle (T1/T2).
 
-## Решение
+## Decision
 
-Использовать **стековый автомат с ограниченным набором параллельных threads** —
-симуляцию недетерминированного автомата (NFA-симуляция), где каждый thread —
-POD-стек frames фиксированной ёмкости (`MAX_DEPTH_CAP = 64`), а состояние —
-массив threads ёмкостью `MAX_THREADS_CAP = 64`:
+Use a **stack automaton with a bounded set of parallel threads** -
+a nondeterministic automaton simulation (NFA simulation), where each thread is a
+POD stack of frames of fixed capacity (`MAX_DEPTH_CAP = 64`), and state is an
+array of threads of capacity `MAX_THREADS_CAP = 64`:
 
 - `State` = { threads[64], n, max_threads }; `Thread` = { frames[64], len }.
-  Копирование — побитовое, без аллокаций на шаг.
-- Недетерминизм возникает только в точках выбора с общими префиксами:
-  `choice` (альтернативы enum/const, буквальные наборы FR-3) и кандидаты ключей
-  объекта (semantics.md §5). В этих точках порождается по thread'у на
-  альтернативу; каждая ветвь расходится со siblings за считаные байты — как
-  только прочитан отличающий байт, неподходящие ветви отбрасываются.
-- Посимвольный цикл thread'а — детерминированные переходы по вершине стека
-  (literal/str/числа/repeat/object; ленивое завершение числа; каскад
-  after_child_done). Ошибка байта — отбрасывание thread'а; отсутствие живых
-  threads — Parse.
-- Превышение `max_threads` — ошибка ResourceLimit, а не молчаливое
-  отбрасывание ветвей: полнота языка важнее (ТЗ §3.2).
-- `canEnd` — существование thread'а, завершимого без байтов (пустой стек или
-  виртуальное схлопывание complete-числа).
+  Copying is bitwise, with no per-step allocations.
+- Nondeterminism arises only at choice points with common prefixes:
+  `choice` (enum/const alternatives, FR-3 literal sets) and object key
+  candidates (semantics.md §5). At these points one thread is spawned per
+  alternative; each branch diverges from its siblings within a few bytes - as
+  soon as the distinguishing byte is read, mismatching branches are dropped.
+- The per-byte thread loop - deterministic transitions on the top of the stack
+  (literal/str/numbers/repeat/object; lazy number completion; the
+  after_child_done cascade). A byte mismatch drops the thread; no live
+  threads - Parse.
+- Exceeding `max_threads` - a ResourceLimit error, not silent branch
+  dropping: language completeness wins (spec §3.2).
+- `canEnd` - the existence of a thread completable without bytes (empty stack or
+  virtual collapsing of a complete number).
 
-## Обоснование
+## Rationale
 
-1. **canonical-v1 почти детерминирован.** Это не произвольная CFG: профиль
-   фиксирует порядок ключей, запрещает пробелы и альтернативные сериализации.
-   В любой позиции документа множество допустимых следующих байтов обычно
-   однозначно; неоднозначность локализована в точках выбора с общими
-   префиксами и исчерпывается конечным числом альтернатив. Общий механизм
-   произвольных контекстно-свободных грамматик здесь избыточен.
-2. **Неоднозначность устраняется за считаные байты.** Ветви живут не дольше,
-   чем совпадают их префиксы; число одновременно живых threads ограничено
-   числом альтернатив выбора (enum, кандидаты ключей), а не растёт от длины
-   входа. Отсюда предсказуемая память: состояние — O(threads × depth) POD,
-   без кучи на шаг.
-3. **Сложность и стоимость поддержки.** Посимвольный switch по union Frame —
-   небольшой объём кода, легко проверяется независимым эталоном (перечисление
-   языка + prefix-oracle) и fuzz'ом; отсутствие кучи в горячем пути упрощает
-   учёт памяти и fault injection.
-4. **Предсказуемая задержка.** Стоимость шага пропорциональна сумме длин живых
-   threads (ограничены), без аллокаций после прогрева и без непредсказуемых
-   фаз (нет closure/построения таблиц на каждый токен).
+1. **canonical-v1 is almost deterministic.** It is not an arbitrary CFG: the
+   profile fixes key order and forbids whitespace and alternative
+   serializations. At any document position the set of allowed next bytes is
+   usually unambiguous; ambiguity is confined to choice points with common
+   prefixes and is exhausted by a finite number of alternatives. A general
+   arbitrary-context-free-grammar mechanism is overkill here.
+2. **Ambiguity is resolved within a few bytes.** Branches live no longer than
+   their prefixes coincide; the number of simultaneously live threads is bounded
+   by the number of choice alternatives (enum, key candidates) and does not grow
+   with input length. Hence predictable memory: state is O(threads × depth) POD,
+   with no per-step heap.
+3. **Complexity and maintenance cost.** A per-byte switch over the Frame union is
+   a small amount of code, easily checked by an independent oracle (language
+   enumeration + prefix oracle) and by fuzzing; no heap in the hot path
+   simplifies memory accounting and fault injection.
+4. **Predictable latency.** Step cost is proportional to the summed lengths of live
+   threads (bounded), with no allocations after warm-up and no unpredictable
+   phases (no closure/table building per token).
 
-## Рассмотренные альтернативы
+## Considered alternatives
 
-| Альтернатива | Почему отклонена для MVP |
+| Alternative | Why rejected for the MVP |
 |---|---|
-| **Earley (как llguidance)** | Универсальный алгоритм для произвольных CFG: O(n³)/O(n²) худший случай по длине префикса при инкрементальном использовании требует хранения chart/терапии состояний; состояние между шагами тяжелее (множества items по позициям), сложнее сериализация для кэша и проверка коллизий. Для почти детерминированного языка — избыточная общность и худшая предсказуемость p99. Остаётся исследуемым вариантом, если язык вырастет до CFG. |
-| **PDA с полным GLR** | Общий детерминистический pushdown-автомат для canonical-v1 не существует из-за точек выбора; GLR справляется через graph-structured stack, который аллоцирует и ветвится на каждой неоднозначности, — та же NFA-симуляция, но с кучей и сборкой мусора в горячем пути. Проигрывает по памяти и простоте при тех же выразительных возможностях для нашего языка. |
-| **Предварительно вычисленный DFA (как XGrammar)** | Полная детерминизация/предвычисление масок по состояниям даёт минимальную стоимость тёплого шага, но: число состояний для вложенных объектов/массивов со счётчиками и длинных строк комбинаторно; холодный запуск и память таблиц противоречат целям «небольшая подготовка для новых схем» и «управляемая память». Идея частично переносится режимом adaptive: LRU-кэш масок по хэшу состояния — это ленивая, бюджетированная форма предвычисления, дающая побитово тот же результат. Отдельный режим precompute реализован поверх adaptive как ограниченный BFS-прогрев масок при компиляции (supported_features.md §4; уточнено 2026-09-15 — в исходной редакции ADR он значился экспериментальным алиасом adaptive). |
+| **Earley (like llguidance)** | A universal algorithm for arbitrary CFGs: O(n³)/O(n²) worst case in prefix length; incremental use requires storing a chart/sets of states; state between steps is heavier (item sets by position), serialization for the cache and collision checking are harder. For an almost deterministic language - excessive generality and worse p99 predictability. Remains an option to explore if the language grows to CFG. |
+| **PDA with full GLR** | A general deterministic pushdown automaton for canonical-v1 does not exist because of choice points; GLR copes via a graph-structured stack, which allocates and branches on every ambiguity - the same NFA simulation, but with heap and garbage collection in the hot path. Loses on memory and simplicity at the same expressive power for our language. |
+| **Precomputed DFA (like XGrammar)** | Full determinization/precomputation of masks by state gives minimal warm-step cost, but: the number of states for nested objects/arrays with counters and long strings is combinatorial; cold start and table memory contradict the goals of "small preparation for new schemas" and "controlled memory". The idea is partially carried over by the adaptive mode: an LRU mask cache keyed by state hash - a lazy, budgeted form of precomputation yielding the same result bit-for-bit. A separate precompute mode is implemented on top of adaptive as a bounded BFS mask warm-up at compile (supported_features.md §4; clarified 2026-09-15 - in the original ADR text it was listed as an experimental alias of adaptive). |
 
-## Последствия
+## Consequences
 
-- Плюсы: точный контракт маски без эвристик; состояние копируется побитово и
-  сериализуется для кэша; отсутствие аллокаций на тёплом шаге; прямая
-  проверяемость эталоном.
-- Минусы: стоимость шага масштабируется с числом живых threads (смягчается
-  обходом trie словаря при построении маски — ошибка байта отсекает всё
-  поддерево — и кэшем); язык, выходящий за canonical-v1, потребует пересмотра.
-- Границы: `max_threads` и `max_depth` — публичные лимиты; их превышение —
-  штатная ошибка, а не деградация полноты.
+- Pros: an exact mask contract with no heuristics; state copies bitwise and
+  serializes for the cache; no allocations on a warm step; directly verifiable
+  by an oracle.
+- Cons: step cost scales with the number of live threads (mitigated by walking
+  the vocabulary trie when building the mask - a byte mismatch cuts the whole
+  subtree - and by the cache); a language beyond canonical-v1 will require a
+  revisit.
+- Boundaries: `max_threads` and `max_depth` are public limits; exceeding them is
+  a normal error, not a completeness degradation.
 
-## Критерии пересмотра
+## Revisit criteria
 
-ADR пересматривается, если:
+The ADR is revisited if:
 
-1. расширение языка 1.1 (пользовательские CFG/EBNF или regex по ТЗ §4)
-   сделает множество одновременно живых ветвей неограниченным по конструкции —
-   тогда ограниченный набор threads перестанет покрывать язык без
-   ResourceLimit, и потребуется Earley/GLR либо компиляция regex в DFA;
-2. измерения этапа 2 покажут, что p99 построения маски упирается в число
-   threads на реальном корпусе даже при работающем кэше;
-3. появятся конструкции с неразрешимой за считаные байты неоднозначностью
-   (ветви, совпадающие на сколь угодно длинных префиксах).
+1. the language extension 1.1 (user CFG/EBNF or regex per spec §4)
+   makes the set of simultaneously live branches unbounded by construction -
+   then the bounded thread set stops covering the language without
+   ResourceLimit, and Earley/GLR or regex-to-DFA compilation will be needed;
+2. stage-2 measurements show that p99 mask construction is bounded by the number
+   of threads on a real corpus even with a working cache;
+3. constructs appear whose ambiguity is not resolvable within a few bytes
+   (branches coinciding on arbitrarily long prefixes).
 
-Пересмотр оформляется новым ADR с измерением времени, памяти и сложности
-поддержки (ТЗ FR-5); смена парсера не должна менять семантику canonical-v1
-(docs/semantics.md).
+A revisit is documented as a new ADR with measurements of time, memory and
+maintenance complexity (spec FR-5); a parser change must not alter canonical-v1
+semantics (docs/semantics.md).
