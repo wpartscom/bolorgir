@@ -1,5 +1,5 @@
 {
- "about": "Composition of the 0.2.0 release line (rework spec C7): the core and the C/Python bindings of the working tree, pinned per file by git blob id in core.manifest and bindings.manifest, the packaging and acceptance tooling, and none of the wave-2 features (T9, T12, T13, T14), which stay for a later line. Read by .github/scripts/release_gate.py; the sources check needs no git history: every pinned file must be present with the pinned content, no extra file may sit under the core paths, and no path of later_line_absent may be present. docs/release/v0.2.0-composition.md explains the line. 2026-10-10: squashed onto v0.1.0 for the public preview; the manifest replaced the base-revision comparison. 2026-10-11: repinned for the Zig 0.17.0 migration and the CPython 3.12-3.15 preparation (Py_LIMITED_API 0x030C0000, abi3 floor cp312); the R6 verdict on record names the earlier core 6e62e0d1 only, so the release gate stays closed until the next acceptance names the core of these sources.",
+ "about": "Composition of the 0.2.0 release line (rework spec C7): the core and the C/Python bindings of the working tree, pinned per file by git blob id in core.manifest and bindings.manifest, the packaging and acceptance tooling, and none of the wave-2 features (T9, T12, T13, T14), which stay for a later line. Read by .github/scripts/release_gate.py; the sources check needs no git history: every pinned file must be present with the pinned content, no extra file may sit under the core paths, and no path of later_line_absent may be present. docs/release/v0.2.0-composition.md explains the line. 2026-10-10: squashed onto v0.1.0 for the public preview; the manifest replaced the base-revision comparison. 2026-10-11: repinned for the Zig 0.17.0 migration and the CPython 3.12-3.15 preparation (Py_LIMITED_API 0x030C0000, abi3 floor cp312); the R6 verdict on record names the earlier core 6e62e0d1 only, so the release gate stays closed until the next acceptance names the core of these sources. Later on 2026-10-11: python/bolorgir/_core.c repinned for the explicit (PyObject *) casts of the limited-API build under GCC 14 (manylinux_2_28).",
  "version": "0.2.0",
  "core": {
   "paths": ["build.zig", "src", "include"],
@@ -38,7 +38,7 @@
  },
  "bindings": {
   "manifest": {
-   "python/bolorgir/_core.c": "a1f5d193c5eb7dbf11a4c919d2261238b35755d1",
+   "python/bolorgir/_core.c": "8e444d3e00dafdd56179c81911b50f743739b696",
    "python/bolorgir/tokenizers.py": "b87d1162f6ebe6d623da78dc8b527bbc466434d5"
   }
  },

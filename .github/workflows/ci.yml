@@ -143,6 +143,19 @@ jobs:
       - name: Verify _lib matches zig-out
         run: cmp python/bolorgir/_lib/libbolorgir.so.0.1.0 zig-out/lib/libbolorgir.so.0.1.0
 
+      - name: Strict compile of the bindings (limited API, GCC 14 diagnostics)
+        # Py_LIMITED_API >= 0x030B0000 turns Py_INCREF/Py_XDECREF/Py_TYPE into
+        # functions without the implicit cast of the old macros; compile the
+        # file the way GCC 14 (manylinux_2_28) does, where
+        # -Wincompatible-pointer-types is an error by default.
+        if: matrix.python-version == '3.12'
+        run: |
+          inc="$(python3 -c 'import sysconfig; print(sysconfig.get_paths()["include"])')"
+          gcc -c python/bolorgir/_core.c -o /tmp/_core.strict.o \
+            -Wall -fPIC -DPy_LIMITED_API=0x030C0000 \
+            -Werror=incompatible-pointer-types \
+            -Ipython/bolorgir/include -I"$inc"
+
       - name: pytest (ctypes backend)
         run: PYTHONPATH=python BLG_TEST_BACKEND=ctypes python3 -m pytest tests/ python/tests/ -q
 

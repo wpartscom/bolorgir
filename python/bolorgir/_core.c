@@ -23,6 +23,11 @@
 #include <string.h>
 #include "bolorgir.h"
 
+/* Py_LIMITED_API >= 0x030B0000 turns Py_INCREF, Py_XDECREF and Py_TYPE into
+ * inline functions without the old macros' implicit cast; the typed object
+ * pointers below are cast to PyObject * explicitly (GCC 14 rejects
+ * incompatible pointer types by default, as in the manylinux_2_28 image). */
+
 _Static_assert(sizeof(blg_token_entry) == 24, "blg_token_entry layout");
 _Static_assert(BLG_ERROR_MESSAGE_CAP == 256, "error cap");
 
@@ -254,7 +259,7 @@ static void Context_dealloc(ContextObject *self) {
         PyEval_RestoreThread(save);
         self->ctx = NULL;
     }
-    PyTypeObject *tp = Py_TYPE(self);
+    PyTypeObject *tp = Py_TYPE((PyObject *)self);
     freefunc tp_free = (freefunc)PyType_GetSlot(tp, Py_tp_free);
     tp_free(self);
     Py_DECREF(tp);
@@ -313,7 +318,7 @@ static PyObject *Context_compile(ContextObject *self, PyObject *args, PyObject *
     obj = (GrammarObject *)PyType_GenericAlloc((PyTypeObject *)GrammarType, 0);
     if (!obj) { blg_grammar_release(g); return NULL; }
     obj->grammar = g;
-    Py_INCREF(self);
+    Py_INCREF((PyObject *)self);
     obj->context = self;
     return (PyObject *)obj;
 }
@@ -356,9 +361,9 @@ static PyObject *Context_create_session(ContextObject *self, PyObject *arg) {
         Py_DECREF(obj);
         return PyErr_NoMemory();
     }
-    Py_INCREF(self);
+    Py_INCREF((PyObject *)self);
     obj->context = self;
-    Py_INCREF(g);
+    Py_INCREF((PyObject *)g);
     obj->grammar = g;
     return (PyObject *)obj;
 }
@@ -425,7 +430,7 @@ static PyObject *Context_stats(ContextObject *self, PyObject *Py_UNUSED(ign)) {
 }
 
 static PyObject *Context_enter(ContextObject *self, PyObject *Py_UNUSED(ign)) {
-    Py_INCREF(self);
+    Py_INCREF((PyObject *)self);
     return (PyObject *)self;
 }
 
@@ -502,7 +507,7 @@ static void Grammar_dealloc(GrammarObject *self) {
         self->grammar = NULL;
     }
     Py_CLEAR(self->context);
-    PyTypeObject *tp = Py_TYPE(self);
+    PyTypeObject *tp = Py_TYPE((PyObject *)self);
     freefunc tp_free = (freefunc)PyType_GetSlot(tp, Py_tp_free);
     tp_free(self);
     Py_DECREF(tp);
@@ -547,7 +552,7 @@ static PyObject *Grammar_create_session(GrammarObject *self, PyObject *Py_UNUSED
 }
 
 static PyObject *Grammar_enter(GrammarObject *self, PyObject *Py_UNUSED(ign)) {
-    Py_INCREF(self);
+    Py_INCREF((PyObject *)self);
     return (PyObject *)self;
 }
 
@@ -624,7 +629,7 @@ static void Session_dealloc(SessionObject *self) {
     }
     Py_CLEAR(self->grammar);
     Py_CLEAR(self->context);
-    PyTypeObject *tp = Py_TYPE(self);
+    PyTypeObject *tp = Py_TYPE((PyObject *)self);
     freefunc tp_free = (freefunc)PyType_GetSlot(tp, Py_tp_free);
     tp_free(self);
     Py_DECREF(tp);
@@ -734,7 +739,7 @@ static PyObject *Session_enter(SessionObject *self, PyObject *Py_UNUSED(ign)) {
         PyErr_SetString(ExcTable[BLG_ERR_WRONG_STATE], "session is closed");
         return NULL;
     }
-    Py_INCREF(self);
+    Py_INCREF((PyObject *)self);
     return (PyObject *)self;
 }
 
@@ -815,7 +820,7 @@ static void free_batch(PyObject **bufs, SessionObject **robjs, blg_session **ses
         PyMem_Free(bufs);
     }
     if (robjs) {
-        for (i = 0; i < n; i++) Py_XDECREF(robjs[i]);
+        for (i = 0; i < n; i++) Py_XDECREF((PyObject *)robjs[i]);
         PyMem_Free(robjs);
     }
     PyMem_Free(sess);
@@ -889,7 +894,7 @@ static PyObject *mod_fill_masks_batch(PyObject *Py_UNUSED(m), PyObject *arg) {
         bufs[i] = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)(mw * 4));
         if (!bufs[i]) goto fail;
         /* Strong ref: `fast` is not touched after the GIL is released. */
-        Py_INCREF(s);
+        Py_INCREF((PyObject *)s);
         robjs[i] = s;
         sess[i] = s->session;
         masks[i] = (uint32_t *)PyBytes_AsString(bufs[i]);
