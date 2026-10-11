@@ -1,8 +1,8 @@
-"""FR-1 support table: positive and negative cases with exact blg_status.
+"""canonical-v1 support table: positive and negative cases with exact blg_status.
 
 Runs through a backend (bolorgir package -> exception mapped to a code;
 ctypes fallback -> code directly). Expected codes follow DESIGN §1.7/§10 and
-TZ FR-1.
+the canonical-v1 support table.
 
 Contested spec points (decisions fixed):
 - $schema of another dialect -> UNSUPPORTED_FEATURE;

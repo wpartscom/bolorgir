@@ -7,7 +7,7 @@
 - also: grammar compile/release cycles.
 
 The criterion is a plateau under fixed load and no accumulation after
-create/destroy cycles (NFR-2), not the absolute absence of RSS growth.
+create/destroy cycles, not the absolute absence of RSS growth.
 """
 
 import argparse

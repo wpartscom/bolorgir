@@ -1,18 +1,18 @@
-// Compile-time tokenizer-coverage check (TZ 3.1, FR-6): every literal the
-// grammar can emit must be segmentable into a sequence of vocabulary tokens,
-// and every open class (string/integer/number) plus structural syntax must
-// have a producible completion. Otherwise the constraint is rejected at
-// compile time with UNSUPPORTED_TOKENIZER instead of allowing dead-end
-// tokens at generation time.
+// Compile-time tokenizer-coverage check: every literal the grammar can emit
+// must be segmentable into a sequence of vocabulary tokens, and every open
+// class (string/integer/number) plus structural syntax must have a
+// producible completion. Otherwise the constraint is rejected at compile
+// time with UNSUPPORTED_TOKENIZER instead of allowing dead-end tokens at
+// generation time.
 //
 // The check is conservative: token boundaries are required to align with
 // grammar-node boundaries. A vocabulary that covers a construct only via
 // tokens spanning into the neighbouring construct is rejected as
-// unsupported, per TZ 3.1 ("insufficient coverage is refused before
-// generation"). Byte-complete vocabularies (all 256 single-byte tokens)
-// always pass.
+// unsupported (insufficient coverage is refused before generation).
+// Byte-complete vocabularies (all 256 single-byte tokens) always pass.
 
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 const tokenizer = @import("tokenizer.zig");
 const work_mod = @import("work.zig");
@@ -130,7 +130,7 @@ fn nudgedInRange(out: *std.ArrayListUnmanaged(u8), a: std.mem.Allocator, b: gram
     // upper. Raising the magnitude moves a positive value up, a negative
     // one down.
     const mag_up = (lower and !b.neg) or (!lower and b.neg);
-    var digits: std.ArrayListUnmanaged(u8) = .{};
+    var digits: std.ArrayListUnmanaged(u8) = .empty;
     defer digits.deinit(a);
     if (mag_up) {
         // digits x 10 + 1 at exp10 - 1 == value + 10^(exp10-1).
@@ -166,7 +166,7 @@ fn midpointSample(out: *std.ArrayListUnmanaged(u8), a: std.mem.Allocator, lo: gr
     var s = try Managed.initSet(a, 0);
     defer s.deinit();
     inline for (.{ lo, hi }) |nc| {
-        var digits: std.ArrayListUnmanaged(u8) = .{};
+        var digits: std.ArrayListUnmanaged(u8) = .empty;
         defer digits.deinit(a);
         if (nc.digits.len > 0) {
             try digits.appendSlice(a, nc.digits);
@@ -221,7 +221,7 @@ fn midpointSample(out: *std.ArrayListUnmanaged(u8), a: std.mem.Allocator, lo: gr
 pub const Error = error{ OutOfMemory, Cancelled, ResourceLimit };
 
 pub fn checkCoverage(a: std.mem.Allocator, g: *const grammar.Grammar, tok: *const tokenizer.Tokenizer, w: *work_mod.Work) Error!bool {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     defer arena.deinit();
     // Node coverage is a pure per-node property; memoizing keeps DAG-shaped
     // grammars (spec-v1 AnyJSON unrolling shares the inner levels) linear
@@ -345,7 +345,7 @@ const Checker = struct {
                 // a value nudged inside an exclusive bound, the midpoint of
                 // two exclusive bounds); the first in-range candidate is
                 // the sample, exactly like num_const's own-digits sample.
-                var buf: std.ArrayListUnmanaged(u8) = .{};
+                var buf: std.ArrayListUnmanaged(u8) = .empty;
                 defer buf.deinit(self.a);
                 const w = try numRangeWitness(&buf, self.a, nr);
                 if (w == null) return false; // no producible value in range
@@ -359,7 +359,7 @@ const Checker = struct {
             .num_const => |nc| {
                 // The constant's own digits must be segmentable: sampling a
                 // generic digit would hide a dead-end inside the constant.
-                var buf: std.ArrayListUnmanaged(u8) = .{};
+                var buf: std.ArrayListUnmanaged(u8) = .empty;
                 defer buf.deinit(self.a);
                 try numConstSample(&buf, self.a, nc);
                 return self.segmentable(buf.items);
@@ -390,13 +390,13 @@ const Checker = struct {
     // domain, so any padding keeps the string accepted). No witness within
     // MAX_STR_SAMPLE means no producible string: not covered.
     fn strPatCovered(self: *Checker, sp: grammar.StrPat) !bool {
-        var path: std.ArrayListUnmanaged(u21) = .{};
+        var path: std.ArrayListUnmanaged(u21) = .empty;
         const d_min = (try sp.dfa.shortestAccept(self.a, &path)) orelse return false;
         var l: u32 = @max(d_min, sp.min_len);
         if (sp.max_len != grammar.UNBOUNDED and l > sp.max_len) return false;
         if (l > MAX_STR_SAMPLE) l = MAX_STR_SAMPLE;
         if (l < d_min) return false;
-        var sample: std.ArrayListUnmanaged(u8) = .{};
+        var sample: std.ArrayListUnmanaged(u8) = .empty;
         try sample.append(self.a, '"');
         for (path.items) |cp| try appendSampleCp(&sample, self.a, cp);
         var i: u32 = d_min;
@@ -458,14 +458,14 @@ fn cov(a: std.mem.Allocator, g: *const grammar.Grammar, tk: *const tokenizer.Tok
 }
 
 fn litGrammar(a: std.mem.Allocator, s: []const u8) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addLiteralNode(s);
     return b.finish(arena, .literal_set, root, .{});
 }
 
 fn choiceGrammar(a: std.mem.Allocator, alts: []const []const u8) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const ids = try aa.alloc(grammar.NodeId, alts.len);
@@ -475,7 +475,7 @@ fn choiceGrammar(a: std.mem.Allocator, alts: []const []const u8) !grammar.Gramma
 }
 
 fn objGrammar(a: std.mem.Allocator) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const int_node = try b.addNode(.{ .int_v = {} });
@@ -487,7 +487,7 @@ fn objGrammar(a: std.mem.Allocator) !grammar.Grammar {
 }
 
 fn strGrammar(a: std.mem.Allocator, min: u32, max: u32) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addNode(.{ .str = .{ .min_len = min, .max_len = max } });
     return b.finish(arena, .json_schema, root, .{});
@@ -575,7 +575,7 @@ test "coverage: string content must be producible up to min_len" {
 
 test "coverage: integer needs a digit token" {
     const a = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addNode(.{ .int_v = {} });
     var g = try b.finish(arena, .json_schema, root, .{});

@@ -1,0 +1,100 @@
+# R10 (stage D): maxProperties reproducers - de7/probe_d.sh (probe.py: every fill_mask from the
+# document start while the prefix is fed byte by byte, then the mask at its end; byte tokenizer,
+# spec-v1). MASKED = the prefix byte at 'at' is not in the mask; RESOURCE_LIMIT = a fill_mask failed.
+# Libraries: 50cbd80e (frozen T3 candidate), ea54be1b (R9 candidate), 6e62e0d1 (stage-D candidate).
+# library 50cbd80e874eac5d
+## review example: {"type":"object","maxProperties":1}
+'{"x":1' -> {"status": "OK", "allowed": ",.0123456789Ee}", "eos": false}
+'{"x":1,' -> {"status": "OK", "allowed": "\"", "eos": false}
+'{"x":1}' -> {"status": "OK", "allowed": "", "eos": true}
+## maxProperties 0
+'{' -> {"status": "OK", "allowed": "\"}", "eos": false}
+'{"' -> {"status": "OK", "allowed": "146 bytes", "eos": false}
+## maxProperties 3, at the cap and below
+'{"a":1,"b":2' -> {"status": "OK", "allowed": ",.0123456789Ee}", "eos": false}
+'{"a":1,"b":2,"c":3' -> {"status": "OK", "allowed": ".0123456789Ee}", "eos": false}
+'{"a":1,"b":2,"c":3,' -> {"status": "MASKED", "at": 18, "byte": ",", "allowed": ".0123456789Ee}"}
+## maxProperties 1 + required a
+'{"' -> {"status": "RESOURCE_LIMIT"}
+'{"b' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+'{"a":1' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+## maxProperties 2 + required a,b
+'{"' -> {"status": "RESOURCE_LIMIT"}
+'{"b":1,"' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+'{"b":1,"c' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+## maxProperties 2 + declared a,b,c, required c
+'{"a":1,"' -> {"status": "RESOURCE_LIMIT"}
+'{"a":1,"b' -> {"status": "RESOURCE_LIMIT", "at": 8, "prefix": "{\"a\":1,\""}
+## maxProperties 2 + required r, dependentRequired r->s
+'{"' -> {"status": "RESOURCE_LIMIT"}
+'{"s":1,"' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+## maxProperties 2 + dependentRequired a->b, b->c
+'{"a' -> {"status": "RESOURCE_LIMIT"}
+'{"b":1,"' -> {"status": "RESOURCE_LIMIT"}
+## minProperties = maxProperties = 2
+'{"a":1' -> {"status": "OK", "allowed": ",.0123456789Ee", "eos": false}
+'{"a":1,"b":2' -> {"status": "OK", "allowed": ".0123456789Ee}", "eos": false}
+# library ea54be1b497feefa
+## review example: {"type":"object","maxProperties":1}
+'{"x":1' -> {"status": "OK", "allowed": ",.0123456789Ee}", "eos": false}
+'{"x":1,' -> {"status": "OK", "allowed": "\"", "eos": false}
+'{"x":1}' -> {"status": "OK", "allowed": "", "eos": true}
+## maxProperties 0
+'{' -> {"status": "OK", "allowed": "\"}", "eos": false}
+'{"' -> {"status": "OK", "allowed": "146 bytes", "eos": false}
+## maxProperties 3, at the cap and below
+'{"a":1,"b":2' -> {"status": "OK", "allowed": ",.0123456789Ee}", "eos": false}
+'{"a":1,"b":2,"c":3' -> {"status": "OK", "allowed": ".0123456789Ee}", "eos": false}
+'{"a":1,"b":2,"c":3,' -> {"status": "MASKED", "at": 18, "byte": ",", "allowed": ".0123456789Ee}"}
+## maxProperties 1 + required a
+'{"' -> {"status": "RESOURCE_LIMIT"}
+'{"b' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+'{"a":1' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+## maxProperties 2 + required a,b
+'{"' -> {"status": "RESOURCE_LIMIT"}
+'{"b":1,"' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+'{"b":1,"c' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+## maxProperties 2 + declared a,b,c, required c
+'{"a":1,"' -> {"status": "RESOURCE_LIMIT"}
+'{"a":1,"b' -> {"status": "RESOURCE_LIMIT", "at": 8, "prefix": "{\"a\":1,\""}
+## maxProperties 2 + required r, dependentRequired r->s
+'{"' -> {"status": "RESOURCE_LIMIT"}
+'{"s":1,"' -> {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+## maxProperties 2 + dependentRequired a->b, b->c
+'{"a' -> {"status": "RESOURCE_LIMIT"}
+'{"b":1,"' -> {"status": "RESOURCE_LIMIT"}
+## minProperties = maxProperties = 2
+'{"a":1' -> {"status": "OK", "allowed": ",.0123456789Ee", "eos": false}
+'{"a":1,"b":2' -> {"status": "OK", "allowed": ".0123456789Ee}", "eos": false}
+# library 6e62e0d1526c6e53
+## review example: {"type":"object","maxProperties":1}
+'{"x":1' -> {"status": "OK", "allowed": ".0123456789Ee}", "eos": false}
+'{"x":1,' -> {"status": "MASKED", "at": 6, "byte": ",", "allowed": ".0123456789Ee}"}
+'{"x":1}' -> {"status": "OK", "allowed": "", "eos": true}
+## maxProperties 0
+'{' -> {"status": "OK", "allowed": "}", "eos": false}
+'{"' -> {"status": "MASKED", "at": 1, "byte": "\"", "allowed": "}"}
+## maxProperties 3, at the cap and below
+'{"a":1,"b":2' -> {"status": "OK", "allowed": ",.0123456789Ee}", "eos": false}
+'{"a":1,"b":2,"c":3' -> {"status": "OK", "allowed": ".0123456789Ee}", "eos": false}
+'{"a":1,"b":2,"c":3,' -> {"status": "MASKED", "at": 18, "byte": ",", "allowed": ".0123456789Ee}"}
+## maxProperties 1 + required a
+'{"' -> {"status": "OK", "allowed": "a", "eos": false}
+'{"b' -> {"status": "MASKED", "at": 2, "byte": "b", "allowed": "a"}
+'{"a":1' -> {"status": "OK", "allowed": ".0123456789Ee}", "eos": false}
+## maxProperties 2 + required a,b
+'{"' -> {"status": "OK", "allowed": "ab", "eos": false}
+'{"b":1,"' -> {"status": "OK", "allowed": "a", "eos": false}
+'{"b":1,"c' -> {"status": "MASKED", "at": 8, "byte": "c", "allowed": "a"}
+## maxProperties 2 + declared a,b,c, required c
+'{"a":1,"' -> {"status": "OK", "allowed": "c", "eos": false}
+'{"a":1,"b' -> {"status": "MASKED", "at": 8, "byte": "b", "allowed": "c"}
+## maxProperties 2 + required r, dependentRequired r->s
+'{"' -> {"status": "OK", "allowed": "rs", "eos": false}
+'{"s":1,"' -> {"status": "OK", "allowed": "r", "eos": false}
+## maxProperties 2 + dependentRequired a->b, b->c
+'{"a' -> {"status": "OK", "allowed": "146 bytes", "eos": false}
+'{"b":1,"' -> {"status": "OK", "allowed": "c", "eos": false}
+## minProperties = maxProperties = 2
+'{"a":1' -> {"status": "OK", "allowed": ",.0123456789Ee", "eos": false}
+'{"a":1,"b":2' -> {"status": "OK", "allowed": ".0123456789Ee}", "eos": false}

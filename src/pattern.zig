@@ -109,6 +109,7 @@
 //! Sigma* over scalar values with L's anchors interpreted at the edges.
 
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 
 pub const Error = error{ Invalid, Unsupported, OutOfMemory };
 
@@ -130,6 +131,9 @@ pub const Limits = struct {
 pub const Options = struct {
     mode: Mode = .search,
     limits: Limits = .{},
+    /// Parse and subset-construction scratch, released before compile
+    /// returns; null takes it from the result allocator.
+    scratch: ?std.mem.Allocator = null,
 };
 
 /// Inclusive codepoint range, as yielded by RangeIter for mask generation.
@@ -152,9 +156,9 @@ pub fn readRunState(in: *const [run_state_bytes]u8) RunState {
 pub fn compile(child_allocator: std.mem.Allocator, pattern: []const u8, options: Options) Error!Dfa {
     const lim = &options.limits;
     if (pattern.len > lim.max_pattern_bytes) return error.Unsupported;
-    var arena = std.heap.ArenaAllocator.init(child_allocator);
-    errdefer arena.deinit();
-    const a = arena.allocator();
+    var work = Arena.init(options.scratch orelse child_allocator);
+    defer work.deinit();
+    const a = work.allocator();
 
     var p = Parser{ .a = a, .src = pattern, .lim = lim };
     const root = try p.parseRoot();
@@ -178,8 +182,26 @@ pub fn compile(child_allocator: std.mem.Allocator, pattern: []const u8, options:
         },
     }
 
-    const states = try determinize(a, nb.states.items, seed[0..1], lim);
+    const work_states = try determinize(a, nb.states.items, seed[0..1], lim);
+    var arena = Arena.init(child_allocator);
+    errdefer arena.deinit();
+    const states = try copyStates(arena.allocator(), work_states);
     return .{ .arena = arena, .states = states };
+}
+
+fn copyStates(a: std.mem.Allocator, src: []const Dfa.State) error{OutOfMemory}![]const Dfa.State {
+    var n: usize = 0;
+    for (src) |st| n += st.trans.len;
+    const trans = try a.alloc(Dfa.Trans, n);
+    const states = try a.alloc(Dfa.State, src.len);
+    var off: usize = 0;
+    for (src, states) |st, *d| {
+        const t = trans[off..][0..st.trans.len];
+        @memcpy(t, st.trans);
+        d.* = .{ .trans = t, .accept = st.accept };
+        off += st.trans.len;
+    }
+    return states;
 }
 
 /// JSON Schema `pattern` / `patternProperties`: ECMA-262 unanchored search
@@ -189,7 +211,7 @@ pub fn compileJsonSchema(child_allocator: std.mem.Allocator, pattern: []const u8
 }
 
 pub const Dfa = struct {
-    arena: std.heap.ArenaAllocator,
+    arena: Arena,
     /// Index 0 is the dead state, index 1 is the start state.
     states: []const State,
 
@@ -294,9 +316,9 @@ pub const Dfa = struct {
         defer a.free(via);
         @memset(prev, unvisited);
         prev[start_state] = start_state;
-        var frontier: std.ArrayListUnmanaged(u32) = .{};
+        var frontier: std.ArrayListUnmanaged(u32) = .empty;
         defer frontier.deinit(a);
-        var upcoming: std.ArrayListUnmanaged(u32) = .{};
+        var upcoming: std.ArrayListUnmanaged(u32) = .empty;
         defer upcoming.deinit(a);
         try frontier.append(a, start_state);
         var depth: u32 = 0;
@@ -440,7 +462,7 @@ fn computeStateLenDescr(a: std.mem.Allocator, dfa: *const Dfa, s0: RunState, bud
     cur[s0 / 64] |= @as(u64, 1) << @intCast(s0 % 64);
     var next = try a.alloc(u64, words);
     var seen: std.HashMapUnmanaged([]const u64, u32, SubsetKeyCtx, 75) = .{};
-    var accept_bits: std.ArrayListUnmanaged(u64) = .{};
+    var accept_bits: std.ArrayListUnmanaged(u64) = .empty;
     var nbits: u64 = 0;
     var step: u32 = 0;
     while (true) : (step += 1) {
@@ -570,7 +592,7 @@ fn rangeLess(_: void, x: Range32, y: Range32) bool {
 /// Sort and merge overlapping or adjacent ranges.
 fn normRanges(a: std.mem.Allocator, items: []Range32) Error![]Range32 {
     std.mem.sort(Range32, items, {}, rangeLess);
-    var out: std.ArrayListUnmanaged(Range32) = .{};
+    var out: std.ArrayListUnmanaged(Range32) = .empty;
     for (items) |r| {
         if (out.items.len > 0) {
             const last = &out.items[out.items.len - 1];
@@ -586,7 +608,7 @@ fn normRanges(a: std.mem.Allocator, items: []Range32) Error![]Range32 {
 
 /// Complement of a normalized range set within the scalar-value domain.
 fn complementRanges(a: std.mem.Allocator, rs: []const Range32) Error![]Range32 {
-    var out: std.ArrayListUnmanaged(Range32) = .{};
+    var out: std.ArrayListUnmanaged(Range32) = .empty;
     for (scalar_domain) |dom| {
         var cur = dom.lo;
         for (rs) |r| {
@@ -652,7 +674,7 @@ const Parser = struct {
     }
 
     fn parseAlt(self: *Parser) Error!*Node {
-        var branches: std.ArrayListUnmanaged(*Node) = .{};
+        var branches: std.ArrayListUnmanaged(*Node) = .empty;
         while (true) {
             try branches.append(self.a, try self.parseConcat());
             if (self.peekByte() == '|') {
@@ -666,7 +688,7 @@ const Parser = struct {
     }
 
     fn parseConcat(self: *Parser) Error!*Node {
-        var items: std.ArrayListUnmanaged(*Node) = .{};
+        var items: std.ArrayListUnmanaged(*Node) = .empty;
         while (self.peekByte()) |c| {
             if (c == '|' or c == ')') break;
             try items.append(self.a, try self.parseRepeat());
@@ -847,7 +869,7 @@ const Parser = struct {
             negate = true;
             self.pos += 1;
         }
-        var list: std.ArrayListUnmanaged(Range32) = .{};
+        var list: std.ArrayListUnmanaged(Range32) = .empty;
         while (true) {
             const c = self.peekByte() orelse return error.Invalid; // unterminated
             if (c == ']') {
@@ -1037,8 +1059,8 @@ fn hexVal(c: u8) ?u32 {
 const Cond = enum { always, bos, eos };
 
 const NState = struct {
-    trans: std.ArrayListUnmanaged(NTrans) = .{},
-    eps: std.ArrayListUnmanaged(NEps) = .{},
+    trans: std.ArrayListUnmanaged(NTrans) = .empty,
+    eps: std.ArrayListUnmanaged(NEps) = .empty,
     accept: bool = false,
 };
 const NTrans = struct { lo: u32, hi: u32, to: u32 };
@@ -1049,7 +1071,7 @@ const NEps = struct { to: u32, cond: Cond };
 const NfaBuilder = struct {
     a: std.mem.Allocator,
     lim: *const Limits,
-    states: std.ArrayListUnmanaged(NState) = .{},
+    states: std.ArrayListUnmanaged(NState) = .empty,
 
     fn newState(self: *NfaBuilder) Error!u32 {
         if (self.states.items.len >= self.lim.max_nfa_states) return error.Unsupported;
@@ -1138,7 +1160,7 @@ const Det = struct {
     a: std.mem.Allocator,
     nfa: []const NState,
     mark: []u32,
-    stack: std.ArrayListUnmanaged(u32) = .{},
+    stack: std.ArrayListUnmanaged(u32) = .empty,
     gen: u32 = 0,
 
     /// With `out` set: appends the sorted-unique closure (bos/eos select
@@ -1190,13 +1212,13 @@ fn determinize(
     lim: *const Limits,
 ) Error![]const Dfa.State {
     const DTmp = struct {
-        trans: std.ArrayListUnmanaged(Dfa.Trans) = .{},
+        trans: std.ArrayListUnmanaged(Dfa.Trans) = .empty,
         accept: bool = false,
     };
     var map: std.HashMapUnmanaged([]const u32, u32, SubsetCtx, 75) = .{};
-    var subsets: std.ArrayListUnmanaged([]const u32) = .{};
-    var tmp: std.ArrayListUnmanaged(DTmp) = .{};
-    var worklist: std.ArrayListUnmanaged(u32) = .{};
+    var subsets: std.ArrayListUnmanaged([]const u32) = .empty;
+    var tmp: std.ArrayListUnmanaged(DTmp) = .empty;
+    var worklist: std.ArrayListUnmanaged(u32) = .empty;
 
     var det = Det{
         .a = a,
@@ -1212,7 +1234,7 @@ fn determinize(
         try tmp.append(a, .{});
     }
     { // state 1: start, with the bos-gated edges enabled
-        var out: std.ArrayListUnmanaged(u32) = .{};
+        var out: std.ArrayListUnmanaged(u32) = .empty;
         _ = try det.walk(seed, true, false, &out);
         std.mem.sort(u32, out.items, {}, std.sort.asc(u32));
         try map.put(a, out.items, 1);
@@ -1225,8 +1247,8 @@ fn determinize(
         const subset = subsets.items[id];
         // Accept iff the end-of-string closure reaches the NFA accept state.
         const accept = try det.walk(subset, false, true, null);
-        var trans: std.ArrayListUnmanaged(Dfa.Trans) = .{};
-        var bounds: std.ArrayListUnmanaged(u32) = .{};
+        var trans: std.ArrayListUnmanaged(Dfa.Trans) = .empty;
+        var bounds: std.ArrayListUnmanaged(u32) = .empty;
         for (subset) |s| {
             for (nfa[s].trans.items) |t| {
                 try bounds.append(a, t.lo);
@@ -1242,14 +1264,14 @@ fn determinize(
             const hi_bound: u32 = if (bi + 1 < bounds.items.len) bounds.items[bi + 1] else 0x110000;
             if (hi_bound == lo) continue; // duplicate boundary
             const hi = hi_bound - 1;
-            var raw: std.ArrayListUnmanaged(u32) = .{};
+            var raw: std.ArrayListUnmanaged(u32) = .empty;
             for (subset) |s| {
                 for (nfa[s].trans.items) |t| {
                     if (t.lo <= lo and lo <= t.hi) try raw.append(a, t.to);
                 }
             }
             if (raw.items.len == 0) continue; // gap: feeding leads to dead
-            var out: std.ArrayListUnmanaged(u32) = .{};
+            var out: std.ArrayListUnmanaged(u32) = .empty;
             _ = try det.walk(raw.items, false, false, &out);
             std.mem.sort(u32, out.items, {}, std.sort.asc(u32));
             const gop = try map.getOrPut(a, out.items);
@@ -1413,7 +1435,7 @@ test "shortestAccept: BFS length and witness" {
     for (cases) |c| {
         var d = try compileJsonSchema(a, c.pat);
         defer d.deinit();
-        var path: std.ArrayListUnmanaged(u21) = .{};
+        var path: std.ArrayListUnmanaged(u21) = .empty;
         defer path.deinit(a);
         const got = try d.shortestAccept(a, &path);
         try std.testing.expectEqual(c.want, got);

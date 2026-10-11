@@ -3,7 +3,7 @@ Token table preparation for the core (blg_tokenizer_desc).
 
 TokenizerBundle is an immutable description: exact bytes of every token,
 eos_ids, special_ids, vocab_size. from_hf extracts bytes from HF
-tokenizers of the supported families (FR-6):
+tokenizers of the supported families:
 - byte-level BPE (GPT-2 / Qwen / Llama-3 style);
 - SentencePiece with byte_fallback=True (U+2581 -> space, <0xNN> -> byte).
 Added tokens go through the same decoder as regular tokens (Ġ/▁ ->
@@ -86,7 +86,7 @@ def _detect_scheme(vocab: Dict[str, int], byte_fallback: bool) -> Optional[str]:
 
 
 class _DecoderProfile(NamedTuple):
-    """What the backend decoder does to token text (FR-6).
+    """What the backend decoder does to token text.
 
     byte_level: the byte-level BPE reverse table applies to every token;
     byte_fallback: a token matching <0xNN> decodes to that single byte;
@@ -102,9 +102,9 @@ class _DecoderProfile(NamedTuple):
     strip_first_space: bool = False
 
 
-# Three distinct reasons why the decoder state may be unavailable: they
-# used to collapse into a single None, and a fast backend with
-# decoder=None wrongly enabled the ByteLevel heuristic.
+# Three distinct reasons why the decoder state may be unavailable, kept
+# apart so that a fast backend with decoder=None cannot wrongly enable
+# the ByteLevel heuristic.
 _DECODER_NO_BACKEND = "no_backend"  # no inspectable backend (slow / fake)
 _DECODER_MISSING = "missing"        # fast backend present, decoder missing
 _DECODER_UNREADABLE = "unreadable"  # decoder present, state unreadable
@@ -142,9 +142,9 @@ def _decoder_state(tokenizer: Any) -> Tuple[str, Optional[dict]]:
 def _decoder_profile(kind: str, state: Optional[dict], scheme: str) -> Optional[_DecoderProfile]:
     """Validates the backend decoder against the supported families.
 
-    None means unsupported and the caller refuses the tokenizer (FR-6:
-    no approximation for decoders whose output depends on context in
-    ways the adapter does not model)."""
+    None means unsupported and the caller refuses the tokenizer: no
+    approximation for decoders whose output depends on context in ways
+    the adapter does not model."""
     if kind == _DECODER_NO_BACKEND:
         # No inspectable backend (slow tokenizer / test fake): the
         # inherited attribute-based rules. The generic permissive fallback
@@ -241,7 +241,7 @@ def _hf_fingerprint(tokenizer: Any, vocab: Dict[str, int]) -> str:
     h.update(repr(getattr(tokenizer, "eos_token_id", None)).encode())
     h.update(repr(sorted(getattr(tokenizer, "all_special_ids", []) or [])).encode())
     # The backend decoder changes the byte image of every token, so it is
-    # part of the identity (FR-6: vocab + byte mapping + decoder settings).
+    # part of the identity (vocab + byte mapping + decoder settings).
     h.update(repr(_decoder_state(tokenizer)).encode("utf-8"))
     added = getattr(tokenizer, "added_tokens_decoder", {}) or {}
     h.update(
@@ -306,7 +306,7 @@ class TokenizerBundle:
 
     @classmethod
     def from_hf(cls, tokenizer: Any, *, use_cache: bool = True) -> "TokenizerBundle":
-        """Extract exact token bytes from an HF tokenizer (FR-6).
+        """Extract exact token bytes from an HF tokenizer.
 
         Supported families: byte-level BPE (GPT-2/Qwen/Llama-3 style; vocab
         strings map to bytes via the inverse bytes_to_unicode table) and
@@ -464,7 +464,7 @@ class TokenizerBundle:
     def strip_first_space(self) -> bool:
         """True when the decoder drops one leading space of the whole
         text (HF SentencePiece Strip(" ", start=1, stop=0)); the kernel
-        then models the decoded text (FR-6)."""
+        then models the decoded text."""
         return self._strip_first_space
 
     @property

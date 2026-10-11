@@ -1,5 +1,5 @@
 {
- "lib": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/zig-out/lib/libbolorgir.so",
+ "lib": "zig-out/lib/libbolorgir.so",
  "files": [
   "BFCL_java_6",
   "BFCL_java_10",

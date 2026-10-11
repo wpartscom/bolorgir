@@ -1,4 +1,5 @@
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 
 const parser = @import("parser.zig");
 const alloc = @import("alloc.zig");
@@ -84,14 +85,14 @@ pub fn MaskCache(comptime StateT: type, comptime eqlFn: fn (*const StateT, []con
         };
         const WMap = std.HashMapUnmanaged(WKey, *WEntry, WKeyContext, std.hash_map.default_max_load_percentage);
 
-        // Cheap pre-cache admission counters for the adaptive policy (FR-9):
-        // how often a state had to be computed. Bounded and inside the same
+        // Cheap pre-cache admission counters for the adaptive policy: how
+        // often a state had to be computed. Bounded and inside the same
         // hard budget as the entries themselves.
         const SEEN_MAX: u32 = 8192;
 
         // All entry/map allocations go through `lim`, so the budget is hard:
-        // bytes charged never exceed it (FR-10). `a` is kept only for deinit
-        // of the map backing storage via the same limited allocator.
+        // bytes charged never exceed it. `a` is kept only for deinit of the
+        // map backing storage via the same limited allocator.
         lim: alloc.Limited,
         budget: u64,
         map: Map = .{},
@@ -481,8 +482,8 @@ test "cache: entry bigger than budget is not stored" {
     defer c.deinit();
 
     const st: TestState = .{ .tag = 1, .value = 1 };
-    const mask = [_]u32{0} ** 64;
-    var out = [_]u32{0} ** 64;
+    const mask: [64]u32 = @splat(0);
+    var out: [64]u32 = @splat(0);
 
     c.put(testKey(1), &st, "", &mask);
     try std.testing.expect(!c.get(testKey(1), &st, "", &out));
@@ -578,7 +579,7 @@ test "cache: no leak under injected allocation failure" {
 // must never be exceeded by the bytes actually charged.
 test "cache: hard budget never exceeded" {
     const grammar = @import("grammar.zig");
-    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    var arena = Arena.init(std.testing.allocator);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addLiteralNode("a");
     var g = try b.finish(arena, .literal_set, root, .{});
@@ -659,7 +660,7 @@ test "cache: widened entries share the hard budget and LRU accounting" {
     defer c2.deinit();
     const st: TestState = .{ .tag = 1, .value = 1 };
     c2.put(testKey(1), &st, "", &m);
-    const big = [_]u32{0} ** 64;
+    const big: [64]u32 = @splat(0);
     c2.putWidened(testWKey(9), &big); // does not fit even after evictions
     try std.testing.expect(c2.usedBytes() <= one);
     try std.testing.expect(!c2.getWidened(testWKey(9), @constCast(&big)));

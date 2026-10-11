@@ -25,7 +25,7 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.17.0
 
       - name: Check formatting
         run: zig fmt --check build.zig src
@@ -39,21 +39,81 @@ jobs:
       - name: Run C example
         run: LD_LIBRARY_PATH=zig-out/lib zig-out/bin/c_client
 
+  num-cert:
+    name: Numeric certificate cross-check (test hooks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Release library has no test hooks
+        run: |
+          zig build -Drelease=true
+          if nm -D zig-out/lib/libbolorgir.so.0.1.0 | grep blg_test_; then echo "blg_test_* exported by the release library"; exit 1; fi
+
+      - name: Build the core with test hooks
+        run: zig build -Drelease=true -Dtest_hooks=true --prefix zig-out/test-hooks
+
+      - name: Install tooling
+        run: python3 -m pip install --upgrade pip pytest jsonschema
+
+      - name: Certificate vs reference and bounded search (fast mode)
+        run: BLG_LIB_PATH=zig-out/test-hooks/lib/libbolorgir.so.0.1.0 python3 tests/numconj_cert_check.py --jobs 4
+
+  text-rules:
+    name: Text rules (U+2014, Cyrillic in code)
+    runs-on: ubuntu-latest
+    env:
+      # Byte patterns: in a UTF-8 locale git grep -P reads \xE2 as U+00E2.
+      LC_ALL: C
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patterns match their targets
+        run: |
+          printf 'a\xe2\x80\x94b\n' > probe-dash.txt
+          printf 'x = "\xd0\xba"\n' > probe-cyr.py
+          git grep --no-index -qP '\xE2\x80\x94' -- probe-dash.txt
+          git grep --no-index -qP '[\xD0-\xD3][\x80-\xBF]' -- probe-cyr.py
+          rm probe-dash.txt probe-cyr.py
+
+      - name: No em-dash (U+2014) in tracked files
+        # -I: compressed reports may hold these bytes by chance.
+        run: |
+          if git grep -nIP '\xE2\x80\x94'; then echo "U+2014 found"; exit 1; fi
+
+      - name: No Cyrillic in code files
+        # Unicode test payloads are exempt: these files carry Cyrillic bytes
+        # on purpose (multibyte keys and non-ascii paths), and the frozen
+        # core file keeps its reviewed content. Keep the list minimal.
+        run: |
+          if git grep -nP '[\xD0-\xD3][\x80-\xBF]' -- '*.zig' '*.h' '*.c' '*.py' \
+              ':!src/complete.zig' ':!tests/completion_reference.py' \
+              ':!tests/test_open_object_dead_ends.py' \
+              ':!tests/test_r6_release_tools.py'; then echo "Cyrillic in code"; exit 1; fi
+
   python:
     name: Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        # 3.10-3.13 verified locally with abi3 wheels (3.13 added after
-        # the matrix smoke passed).
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        # The abi3 floor is 3.12: 3.10 reached EOL in October 2026 and was
+        # dropped together with 3.11 (numpy 2.5 already requires >= 3.12).
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v4
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.17.0
 
       - uses: actions/setup-python@v5
         with:
@@ -67,14 +127,16 @@ jobs:
       - name: Install build/test tooling
         # pip>=24 is required for PEP 621 metadata (pip 22 under build isolation
         # silently produced UNKNOWN-0.0.0 wheels).
-        run: python3 -m pip install --upgrade "pip>=24" "setuptools>=77" wheel pytest numpy jsonschema transformers
+        # regress: 2025.10.1 builds through PyO3 0.26, which rejects Python
+        # 3.15; 2026.9.1 is the first release with a cp315 wheel.
+        run: python3 -m pip install --upgrade "pip>=24" "setuptools>=77" wheel pytest numpy jsonschema "regress==${{ matrix.python-version == '3.15' && '2026.9.1' || '2025.10.1' }}" transformers
 
       - name: Build Python extension in place
         working-directory: python
         env:
           # Reuse the freshly built core library; setup.py copies it from
-          # zig-out/lib into _lib (the skip flag used to leave a stale stub
-          # in place and the clean CI build failed).
+          # zig-out/lib into _lib (without that sync the skip flag leaves
+          # a stale stub in _lib).
           BLG_SKIP_ZIG: "1"
         run: python3 setup.py build_ext --inplace
 
@@ -125,7 +187,7 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.17.0
 
       - uses: actions/setup-python@v5
         with:
@@ -211,30 +273,97 @@ jobs:
           print("clean-build smoke OK")
           EOF
 
-  hf-integration:
-    # The HF integration must actually run (not skip): a dedicated job with
-    # CPU torch and an expected-skips check.
-    name: HF integration (CPU torch)
+  sdist:
+    name: sdist with the bundled core
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.17.0
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
+      - name: Build core (release flags) and the sdist
+        env:
+          BLG_SKIP_ZIG: "1"
+        run: |
+          zig build -Drelease=true -Dstrip=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=baseline
+          sha256sum zig-out/lib/libbolorgir.so.0.1.0   # the core of the release recipe
+          python3 -m pip install --upgrade "pip>=24" build
+          python3 -m build --sdist --outdir dist python
+          tar -tzf dist/*.tar.gz | grep '_lib/libbolorgir.so'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ci-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  sdist-no-zig:
+    # A user without Zig installs the sdist.
+    name: sdist install without Zig
+    needs: sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ci-sdist
+          path: dist
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the sdist and run the release smoke test
+        run: |
+          if command -v zig; then echo "zig must not be on PATH"; exit 1; fi
+          python3 -m venv /tmp/v
+          /tmp/v/bin/pip install --upgrade "pip>=24"
+          /tmp/v/bin/pip install dist/*.tar.gz
+          cd /tmp && /tmp/v/bin/python "$GITHUB_WORKSPACE/tests/release/smoke_release.py"
+
+  hf-integration:
+    # The HF integration must actually run (not skip), on both ends of the
+    # supported range: a dedicated job with CPU torch and an expected-skips
+    # check.
+    name: HF integration (CPU torch, Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
       - name: Build core library (ReleaseSafe, portable CPU)
         run: zig build -Drelease=true -Dcpu=baseline
 
+      - name: Build core with test hooks (probe and fail_row tests)
+        # The probe and fail_row tests need -Dtest_hooks=true; zig-out/lib
+        # stays the hook-free release library (checked in the num-cert job).
+        run: zig build -Drelease=true -Dcpu=baseline -Dtest_hooks=true --prefix zig-out/test-hooks
+
       - name: Install CPU torch and pinned test deps
+        # regress: 2025.10.1 builds through PyO3 0.26, which rejects Python
+        # 3.15; 2026.9.1 is the first release with a cp315 wheel.
         run: |
           python3 -m pip install --upgrade pip "setuptools>=77" wheel
           python3 -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-          python3 -m pip install pytest numpy jsonschema "transformers==5.17.0" "tokenizers==0.23.2"
+          python3 -m pip install pytest numpy jsonschema "regress==${{ matrix.python-version == '3.15' && '2026.9.1' || '2025.10.1' }}" "transformers==5.17.0" "tokenizers==0.23.2"
 
       - name: Build Python extension in place
         working-directory: python
@@ -242,7 +371,27 @@ jobs:
           BLG_SKIP_ZIG: "1"
         run: python3 setup.py build_ext --inplace
 
+      - name: Probe and fail_row hook tests (must run, not skip)
+        env:
+          BLG_TEST_HOOKS_LIB: ${{ github.workspace }}/zig-out/test-hooks/lib/libbolorgir.so.0.1.0
+        run: |
+          PYTHONPATH=python python3 -m pytest -q --junit-xml=/tmp/hooks.xml \
+            tests/test_probe.py::test_probe_found_and_inconclusive_with_hooks \
+            python/tests/test_hf_adapters.py::test_fail_row_with_unknown_forced_by_the_test_hook
+          python3 - <<'EOF'
+          import xml.etree.ElementTree as ET
+
+          suite = ET.parse("/tmp/hooks.xml").getroot().find("testsuite")
+          print(dict(suite.attrib))
+          assert int(suite.get("tests", 0)) >= 2
+          assert suite.get("skipped", "0") == "0", "hook tests must not skip"
+          assert suite.get("failures", "0") == "0"
+          assert suite.get("errors", "0") == "0"
+          EOF
+
       - name: HF adapter tests (no unexpected skips)
+        env:
+          BLG_TEST_HOOKS_LIB: ${{ github.workspace }}/zig-out/test-hooks/lib/libbolorgir.so.0.1.0
         run: |
           PYTHONPATH=python python3 -m pytest python/tests/test_hf_adapters.py -q --junit-xml=/tmp/hf.xml
           python3 - <<'EOF'
@@ -261,6 +410,8 @@ jobs:
           EOF
 
       - name: Full Python suites on CPU torch
+        env:
+          BLG_TEST_HOOKS_LIB: ${{ github.workspace }}/zig-out/test-hooks/lib/libbolorgir.so.0.1.0
         run: |
           PYTHONPATH=python BLG_TEST_BACKEND=ctypes python3 -m pytest tests/ python/tests/ -q
           PYTHONPATH=python BLG_TEST_BACKEND=package python3 -m pytest tests/ python/tests/ -q
@@ -276,7 +427,7 @@ jobs:
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.17.0
 
       - name: Fuzz campaign (seed 424242)
         run: zig build fuzz -Drelease=true -- --seed 424242

@@ -1,0 +1,2591 @@
+{
+ "rounds": 3,
+ "results": 27,
+ "same_path": 27,
+ "noise": 0.029078357606684646,
+ "threshold": 0.029078357606684646,
+ "ratios": {
+  "target": {
+   "median": 1.0957151478575737,
+   "min": 1.0240636678944963,
+   "max": 1.1263628777411454,
+   "above_1": 27,
+   "n": 27,
+   "difference": true
+  },
+  "code": {
+   "median": 0.993116553492884,
+   "min": 0.953801406044164,
+   "max": 1.0246575342465754,
+   "above_1": 10,
+   "n": 27,
+   "difference": false
+  },
+  "cand/7345490f": {
+   "median": 1.095263250572284,
+   "min": 0.8483641227308061,
+   "max": 1.1730031875086617,
+   "above_1": 26,
+   "n": 27,
+   "difference": true
+  },
+  "cand/dbc5eeb": {
+   "median": 1.0962926776312216,
+   "min": 0.859974506054812,
+   "max": 1.2439335053398217,
+   "above_1": 26,
+   "n": 27,
+   "difference": true
+  },
+  "50cbd80e/7345490f": {
+   "median": 1.0093679031037093,
+   "min": 0.769451049430701,
+   "max": 1.1892333040760072,
+   "above_1": 23,
+   "n": 27,
+   "difference": false
+  }
+ },
+ "attribution": "the release CPU target (-Dcpu=baseline)",
+ "completes_at_10s": {
+  "cand": [
+   26,
+   26,
+   26
+  ],
+  "native": [
+   26,
+   26,
+   26
+  ],
+  "50cbd80e": [
+   26,
+   26,
+   26
+  ],
+  "7345490f": [
+   26,
+   26,
+   26
+  ],
+  "dbc5eeb": [
+   26,
+   26,
+   26
+  ]
+ },
+ "problems": [],
+ "items": [
+  {
+   "snapshot": "repo",
+   "file": "calculate_area_4c8e9fd1.json",
+   "tokenizer": "byte",
+   "d4": null,
+   "c_star": 48,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 7.6176,
+     "M_rounds": [
+      7.5499,
+      7.7437,
+      7.6176
+     ],
+     "spread": 0.02566921416177692,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 158.17229166666667
+    },
+    "native": {
+     "M": 7.4386,
+     "M_rounds": [
+      7.4106,
+      7.5575,
+      7.4386
+     ],
+     "spread": 0.019822956305832307,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 154.46937499999999
+    },
+    "50cbd80e": {
+     "M": 7.723,
+     "M_rounds": [
+      7.7983,
+      7.6964,
+      7.723
+     ],
+     "spread": 0.0132399563432255,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 160.4075
+    },
+    "7345490f": {
+     "M": 6.4941,
+     "M_rounds": [
+      6.4941,
+      6.56,
+      6.4128
+     ],
+     "spread": 0.022954091816367317,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 134.82666666666665
+    },
+    "dbc5eeb": {
+     "M": 6.1238,
+     "M_rounds": [
+      6.123,
+      6.2604,
+      6.1238
+     ],
+     "spread": 0.02243998040176387,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 127.14979166666667
+    }
+   },
+   "ratios": {
+    "target": 1.0240636678944963,
+    "code": 0.9631749320212353,
+    "cand/7345490f": 1.1730031875086617,
+    "cand/dbc5eeb": 1.2439335053398217,
+    "50cbd80e/7345490f": 1.1892333040760072
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Glaiveai2K---generate_invoice_1c946d60.json",
+   "tokenizer": "gpt2",
+   "d4": null,
+   "c_star": 32,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 7.9342,
+     "M_rounds": [
+      7.9609,
+      7.727,
+      7.9342
+     ],
+     "spread": 0.030270480134592992,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 247.86625
+    },
+    "native": {
+     "M": 7.4904,
+     "M_rounds": [
+      7.4904,
+      7.615,
+      7.3664
+     ],
+     "spread": 0.03374782797567333,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 233.9940625
+    },
+    "50cbd80e": {
+     "M": 7.3554,
+     "M_rounds": [
+      7.3698,
+      7.3554,
+      7.2839
+     ],
+     "spread": 0.011793132799736261,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 229.7721875
+    },
+    "7345490f": {
+     "M": 7.4464,
+     "M_rounds": [
+      7.8095,
+      7.3673,
+      7.4464
+     ],
+     "spread": 0.06002198905976397,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 232.6146875
+    },
+    "dbc5eeb": {
+     "M": 7.3428,
+     "M_rounds": [
+      7.368,
+      7.3428,
+      7.1438
+     ],
+     "spread": 0.03138385733083249,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 229.383125
+    }
+   },
+   "ratios": {
+    "target": 1.0592491722738437,
+    "code": 1.0183538624683905,
+    "cand/7345490f": 1.0655081650193383,
+    "cand/dbc5eeb": 1.0805414828130957,
+    "50cbd80e/7345490f": 0.9877793296089387
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Glaiveai2K---generate_resume_d9ba16a3.json",
+   "tokenizer": "gpt2",
+   "d4": null,
+   "c_star": 48,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.5687,
+     "M_rounds": [
+      8.9804,
+      8.5687,
+      8.5443
+     ],
+     "spread": 0.05103987453624059,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 178.43895833333335
+    },
+    "native": {
+     "M": 8.0818,
+     "M_rounds": [
+      8.1381,
+      7.8111,
+      8.0818
+     ],
+     "spread": 0.041863501939547465,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 168.29395833333334
+    },
+    "50cbd80e": {
+     "M": 7.8879,
+     "M_rounds": [
+      7.9264,
+      7.8879,
+      7.7074
+     ],
+     "spread": 0.028414251239069044,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 164.26229166666667
+    },
+    "7345490f": {
+     "M": 7.8566,
+     "M_rounds": [
+      8.4085,
+      7.8566,
+      7.8097
+     ],
+     "spread": 0.07667387991856267,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 163.60833333333332
+    },
+    "dbc5eeb": {
+     "M": 8.0053,
+     "M_rounds": [
+      8.1172,
+      8.0053,
+      7.9977
+     ],
+     "spread": 0.014941795766282961,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 166.69291666666666
+    }
+   },
+   "ratios": {
+    "target": 1.0602464797446114,
+    "code": 1.0245819546393842,
+    "cand/7345490f": 1.0906371712954712,
+    "cand/dbc5eeb": 1.0703783743270083,
+    "50cbd80e/7345490f": 1.0039839116157117
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "kb_1008_Normalized.json",
+   "tokenizer": "gpt2",
+   "d4": null,
+   "c_star": 32,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 7.9314,
+     "M_rounds": [
+      7.9314,
+      7.8169,
+      8.1229
+     ],
+     "spread": 0.039145952999270595,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 247.76875
+    },
+    "native": {
+     "M": 7.5174,
+     "M_rounds": [
+      7.5174,
+      7.6433,
+      7.4167
+     ],
+     "spread": 0.030552671673385712,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 234.83375
+    },
+    "50cbd80e": {
+     "M": 7.3365,
+     "M_rounds": [
+      7.3365,
+      7.1373,
+      7.4182
+     ],
+     "spread": 0.03935661944993196,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 229.18375
+    },
+    "7345490f": {
+     "M": 7.4334,
+     "M_rounds": [
+      7.3967,
+      7.5177,
+      7.4334
+     ],
+     "spread": 0.0163586464234049,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 232.2046875
+    },
+    "dbc5eeb": {
+     "M": 7.2978,
+     "M_rounds": [
+      7.376,
+      7.2378,
+      7.2978
+     ],
+     "spread": 0.019094199894995834,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 227.9759375
+    }
+   },
+   "ratios": {
+    "target": 1.0550722324207837,
+    "code": 1.0246575342465754,
+    "cand/7345490f": 1.0669949148438131,
+    "cand/dbc5eeb": 1.0868206856860971,
+    "50cbd80e/7345490f": 0.9869642424731617
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "o41283.json",
+   "tokenizer": "gpt2",
+   "d4": "D4-13",
+   "c_star": 48,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.3417,
+     "M_rounds": [
+      8.3417,
+      8.4163,
+      8.3282
+     ],
+     "spread": 0.010578516366081425,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 173.71291666666667
+    },
+    "native": {
+     "M": 7.625,
+     "M_rounds": [
+      7.625,
+      7.6406,
+      7.5776
+     ],
+     "spread": 0.00831397804054057,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 158.77541666666667
+    },
+    "50cbd80e": {
+     "M": 7.6584,
+     "M_rounds": [
+      8.0793,
+      7.6584,
+      7.4726
+     ],
+     "spread": 0.08118994727404116,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 159.47708333333333
+    },
+    "7345490f": {
+     "M": 7.6144,
+     "M_rounds": [
+      7.6144,
+      7.7958,
+      7.5269
+     ],
+     "spread": 0.03572519895308823,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 158.556875
+    },
+    "dbc5eeb": {
+     "M": 7.632,
+     "M_rounds": [
+      7.7015,
+      7.632,
+      7.5188
+     ],
+     "spread": 0.024299090280363922,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 158.92895833333333
+    }
+   },
+   "ratios": {
+    "target": 1.0939934426229507,
+    "code": 0.9956387757233887,
+    "cand/7345490f": 1.0955163899978986,
+    "cand/dbc5eeb": 1.092990041928721,
+    "50cbd80e/7345490f": 1.0057785249001892
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Github_easy---o1008.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.1445,
+     "M_rounds": [
+      8.2636,
+      8.0337,
+      8.1445
+     ],
+     "spread": 0.028616951093518583,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 508.936875
+    },
+    "native": {
+     "M": 7.3672,
+     "M_rounds": [
+      7.3672,
+      7.3706,
+      7.3337
+     ],
+     "spread": 0.005031566603487914,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 460.364375
+    },
+    "50cbd80e": {
+     "M": 7.5273,
+     "M_rounds": [
+      7.5273,
+      7.4728,
+      7.5411
+     ],
+     "spread": 0.009139813724440504,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 470.37625
+    },
+    "7345490f": {
+     "M": 7.4527,
+     "M_rounds": [
+      7.5907,
+      7.3725,
+      7.4527
+     ],
+     "spread": 0.029596473380807176,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 465.705625
+    },
+    "dbc5eeb": {
+     "M": 7.4686,
+     "M_rounds": [
+      7.1558,
+      7.5004,
+      7.4686
+     ],
+     "spread": 0.048156739987143204,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 466.691875
+    }
+   },
+   "ratios": {
+    "target": 1.105508198501466,
+    "code": 0.9787307533909901,
+    "cand/7345490f": 1.0928254189756734,
+    "cand/dbc5eeb": 1.0904988886806095,
+    "50cbd80e/7345490f": 1.0100097951078133
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Github_easy---o13688.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.0722,
+     "M_rounds": [
+      8.2883,
+      8.0722,
+      8.0541
+     ],
+     "spread": 0.029078357606684646,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 504.396875
+    },
+    "native": {
+     "M": 7.5637,
+     "M_rounds": [
+      7.5637,
+      7.2467,
+      7.6341
+     ],
+     "spread": 0.0534588157368181,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 472.65125
+    },
+    "50cbd80e": {
+     "M": 7.414,
+     "M_rounds": [
+      7.4322,
+      7.2507,
+      7.414
+     ],
+     "spread": 0.02503206586950224,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 463.296875
+    },
+    "7345490f": {
+     "M": 7.392,
+     "M_rounds": [
+      7.5369,
+      7.3509,
+      7.392
+     ],
+     "spread": 0.025303024119495587,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 461.919375
+    },
+    "dbc5eeb": {
+     "M": 7.5899,
+     "M_rounds": [
+      7.6187,
+      7.4815,
+      7.5899
+     ],
+     "spread": 0.018338568468889926,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 474.28625
+    }
+   },
+   "ratios": {
+    "target": 1.0672290016790724,
+    "code": 1.0201915295387105,
+    "cand/7345490f": 1.0920183982683982,
+    "cand/dbc5eeb": 1.0635449742420848,
+    "50cbd80e/7345490f": 1.0029761904761905
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Github_easy---o48800.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.2118,
+     "M_rounds": [
+      8.22,
+      8.2118,
+      8.21
+     ],
+     "spread": 0.0012180267965895553,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 513.156875
+    },
+    "native": {
+     "M": 7.4684,
+     "M_rounds": [
+      7.3463,
+      7.4684,
+      7.581
+     ],
+     "spread": 0.03194805548371282,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 466.69125
+    },
+    "50cbd80e": {
+     "M": 7.6252,
+     "M_rounds": [
+      7.6252,
+      7.2517,
+      7.6839
+     ],
+     "spread": 0.05959981797371672,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 476.49125
+    },
+    "7345490f": {
+     "M": 7.4048,
+     "M_rounds": [
+      7.6183,
+      7.4048,
+      7.3538
+     ],
+     "spread": 0.035967798961081376,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 462.71375
+    },
+    "dbc5eeb": {
+     "M": 7.4994,
+     "M_rounds": [
+      7.3421,
+      7.5887,
+      7.4994
+     ],
+     "spread": 0.03358712085098259,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 468.615
+    }
+   },
+   "ratios": {
+    "target": 1.099539392640994,
+    "code": 0.9794366049415096,
+    "cand/7345490f": 1.1089833621434746,
+    "cand/dbc5eeb": 1.0949942662079635,
+    "50cbd80e/7345490f": 1.0297644770959378
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Github_medium---o32493.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.099,
+     "M_rounds": [
+      8.214,
+      7.9019,
+      8.099
+     ],
+     "spread": 0.03949682987635894,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 506.10625
+    },
+    "native": {
+     "M": 7.2973,
+     "M_rounds": [
+      7.3778,
+      7.2973,
+      7.2888
+     ],
+     "spread": 0.012210514762375002,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 456.0025
+    },
+    "50cbd80e": {
+     "M": 7.4669,
+     "M_rounds": [
+      7.4678,
+      7.4669,
+      7.319
+     ],
+     "spread": 0.02033064626315073,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 466.593125
+    },
+    "7345490f": {
+     "M": 7.3976,
+     "M_rounds": [
+      7.8778,
+      7.3976,
+      7.3727
+     ],
+     "spread": 0.068509501268192,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 462.246875
+    },
+    "dbc5eeb": {
+     "M": 7.3623,
+     "M_rounds": [
+      7.3534,
+      7.3623,
+      7.5059
+     ],
+     "spread": 0.020738705904751464,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 460.059375
+    }
+   },
+   "ratios": {
+    "target": 1.1098625519027585,
+    "code": 0.9772864240849616,
+    "cand/7345490f": 1.0948145344436033,
+    "cand/dbc5eeb": 1.100063838746044,
+    "50cbd80e/7345490f": 1.0093679031037093
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Github_trivial---o84263.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.3014,
+     "M_rounds": [
+      8.0688,
+      8.3014,
+      8.3281
+     ],
+     "spread": 0.03213612928812215,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 518.758125
+    },
+    "native": {
+     "M": 7.4298,
+     "M_rounds": [
+      7.6629,
+      7.2756,
+      7.4298
+     ],
+     "spread": 0.053232723074385646,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 464.279375
+    },
+    "50cbd80e": {
+     "M": 7.4301,
+     "M_rounds": [
+      7.9014,
+      7.4301,
+      7.3784
+     ],
+     "spread": 0.07088257616827498,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 464.30125
+    },
+    "7345490f": {
+     "M": 7.3763,
+     "M_rounds": [
+      7.6414,
+      7.3763,
+      7.3649
+     ],
+     "spread": 0.03754294016212034,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 460.93625
+    },
+    "dbc5eeb": {
+     "M": 7.3124,
+     "M_rounds": [
+      7.5939,
+      7.2501,
+      7.3124
+     ],
+     "spread": 0.04742003558571595,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 456.9525
+    }
+   },
+   "ratios": {
+    "target": 1.117311367735336,
+    "code": 0.999959623692817,
+    "cand/7345490f": 1.1254151810528312,
+    "cand/dbc5eeb": 1.1352497128165855,
+    "50cbd80e/7345490f": 1.0072936295974948
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Glaiveai2K---calculate_distance_51b4a417.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.3572,
+     "M_rounds": [
+      8.4792,
+      7.9108,
+      8.3572
+     ],
+     "spread": 0.07185114021337924,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 522.23875
+    },
+    "native": {
+     "M": 7.5142,
+     "M_rounds": [
+      7.352,
+      7.5142,
+      7.5521
+     ],
+     "spread": 0.027217083786724716,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 469.54
+    },
+    "50cbd80e": {
+     "M": 7.4881,
+     "M_rounds": [
+      7.4881,
+      7.5097,
+      7.4302
+     ],
+     "spread": 0.01069957740033911,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 467.918125
+    },
+    "7345490f": {
+     "M": 7.4207,
+     "M_rounds": [
+      7.4984,
+      7.4036,
+      7.4207
+     ],
+     "spread": 0.012804581554919148,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 463.71
+    },
+    "dbc5eeb": {
+     "M": 7.3821,
+     "M_rounds": [
+      7.3454,
+      7.4608,
+      7.3821
+     ],
+     "spread": 0.015710512701827106,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 461.306875
+    }
+   },
+   "ratios": {
+    "target": 1.1121875914934392,
+    "code": 1.0034855303748613,
+    "cand/7345490f": 1.1262010322476317,
+    "cand/dbc5eeb": 1.132089784749597,
+    "50cbd80e/7345490f": 1.009082701092889
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Kubernetes---kb_1154_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": "D4-2",
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 14.8423,
+     "M_rounds": [
+      14.7406,
+      14.8423,
+      15.2271
+     ],
+     "spread": 0.03300408395859056,
+     "completes_at_10s": [
+      false,
+      false,
+      false
+     ],
+     "fill_ms_before_c": 927.529375
+    },
+    "native": {
+     "M": 13.6277,
+     "M_rounds": [
+      13.6886,
+      13.6277,
+      13.4053
+     ],
+     "spread": 0.0211334322991652,
+     "completes_at_10s": [
+      false,
+      false,
+      false
+     ],
+     "fill_ms_before_c": 851.62
+    },
+    "50cbd80e": {
+     "M": 13.4617,
+     "M_rounds": [
+      13.9448,
+      13.4617,
+      13.4333
+     ],
+     "spread": 0.03807701756083781,
+     "completes_at_10s": [
+      false,
+      false,
+      false
+     ],
+     "fill_ms_before_c": 841.244375
+    },
+    "7345490f": {
+     "M": 17.4952,
+     "M_rounds": [
+      17.8059,
+      17.0914,
+      17.4952
+     ],
+     "spread": 0.04180465029195979,
+     "completes_at_10s": [
+      false,
+      false,
+      false
+     ],
+     "fill_ms_before_c": 1093.3425
+    },
+    "dbc5eeb": {
+     "M": 17.259,
+     "M_rounds": [
+      17.2173,
+      17.4684,
+      17.259
+     ],
+     "spread": 0.014584168249377027,
+     "completes_at_10s": [
+      false,
+      false,
+      false
+     ],
+     "fill_ms_before_c": 1078.574375
+    }
+   },
+   "ratios": {
+    "target": 1.089127292206315,
+    "code": 1.0123312805960614,
+    "cand/7345490f": 0.8483641227308061,
+    "cand/dbc5eeb": 0.859974506054812,
+    "50cbd80e/7345490f": 0.769451049430701
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Kubernetes---kb_231_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.2336,
+     "M_rounds": [
+      8.249,
+      8.1657,
+      8.2336
+     ],
+     "spread": 0.010201207489866304,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 514.49
+    },
+    "native": {
+     "M": 7.3099,
+     "M_rounds": [
+      7.3099,
+      7.2854,
+      7.487
+     ],
+     "spread": 0.0276717819200043,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 456.774375
+    },
+    "50cbd80e": {
+     "M": 7.4646,
+     "M_rounds": [
+      7.761,
+      7.4646,
+      7.3525
+     ],
+     "spread": 0.055559333560013524,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 466.45437499999997
+    },
+    "7345490f": {
+     "M": 7.4501,
+     "M_rounds": [
+      7.6767,
+      7.4079,
+      7.4501
+     ],
+     "spread": 0.03628558700846396,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 465.54625
+    },
+    "dbc5eeb": {
+     "M": 7.38,
+     "M_rounds": [
+      7.3773,
+      7.5743,
+      7.38
+     ],
+     "spread": 0.026703536524202542,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 461.161875
+    }
+   },
+   "ratios": {
+    "target": 1.1263628777411454,
+    "code": 0.9792755137582724,
+    "cand/7345490f": 1.1051663736057233,
+    "cand/dbc5eeb": 1.1156639566395663,
+    "50cbd80e/7345490f": 1.0019462826002334
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Kubernetes---kb_379_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 9.1077,
+     "M_rounds": [
+      9.1077,
+      8.9774,
+      9.1698
+     ],
+     "spread": 0.021431594893844608,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 569.136875
+    },
+    "native": {
+     "M": 8.3923,
+     "M_rounds": [
+      8.3923,
+      8.7511,
+      8.1563
+     ],
+     "spread": 0.072925223446906,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 524.42125
+    },
+    "50cbd80e": {
+     "M": 8.4038,
+     "M_rounds": [
+      8.4038,
+      8.5358,
+      8.4022
+     ],
+     "spread": 0.01590059746256922,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 525.15
+    },
+    "7345490f": {
+     "M": 8.2149,
+     "M_rounds": [
+      8.2149,
+      8.1689,
+      8.2696
+     ],
+     "spread": 0.012327241121815602,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 513.33625
+    },
+    "dbc5eeb": {
+     "M": 8.2883,
+     "M_rounds": [
+      8.3832,
+      8.2883,
+      8.1726
+     ],
+     "spread": 0.025769033110638162,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 517.92875
+    }
+   },
+   "ratios": {
+    "target": 1.0852448077404286,
+    "code": 0.9986315714319712,
+    "cand/7345490f": 1.1086805682357666,
+    "cand/dbc5eeb": 1.098862251607688,
+    "50cbd80e/7345490f": 1.022994802127841
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Kubernetes---kb_576_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.2012,
+     "M_rounds": [
+      8.2012,
+      8.1734,
+      8.3012
+     ],
+     "spread": 0.015636087796999876,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 512.475
+    },
+    "native": {
+     "M": 7.3127,
+     "M_rounds": [
+      7.3127,
+      7.6896,
+      7.2648
+     ],
+     "spread": 0.05847373637264619,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 456.96125
+    },
+    "50cbd80e": {
+     "M": 7.6669,
+     "M_rounds": [
+      7.6669,
+      7.7837,
+      7.2792
+     ],
+     "spread": 0.06930706671062747,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 479.099375
+    },
+    "7345490f": {
+     "M": 7.3125,
+     "M_rounds": [
+      7.4673,
+      7.2807,
+      7.3125
+     ],
+     "spread": 0.025629403766121328,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 456.9475
+    },
+    "dbc5eeb": {
+     "M": 7.4029,
+     "M_rounds": [
+      7.2937,
+      7.5322,
+      7.4029
+     ],
+     "spread": 0.03269945295254795,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 462.571875
+    }
+   },
+   "ratios": {
+    "target": 1.1215009504013564,
+    "code": 0.953801406044164,
+    "cand/7345490f": 1.121531623931624,
+    "cand/dbc5eeb": 1.1078361182779721,
+    "50cbd80e/7345490f": 1.0484649572649574
+   }
+  },
+  {
+   "snapshot": "maskbench",
+   "file": "Kubernetes---kb_613_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 7.8905,
+     "M_rounds": [
+      7.8672,
+      7.8905,
+      8.4039
+     ],
+     "spread": 0.06821995118974988,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 493.07875
+    },
+    "native": {
+     "M": 7.41,
+     "M_rounds": [
+      7.3418,
+      7.6634,
+      7.41
+     ],
+     "spread": 0.043803971778038076,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 463.05
+    },
+    "50cbd80e": {
+     "M": 7.4788,
+     "M_rounds": [
+      7.4525,
+      7.491,
+      7.4788
+     ],
+     "spread": 0.005166051660516535,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 467.341875
+    },
+    "7345490f": {
+     "M": 7.2871,
+     "M_rounds": [
+      7.5459,
+      7.2871,
+      7.2349
+     ],
+     "spread": 0.04298608135565107,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 455.36
+    },
+    "dbc5eeb": {
+     "M": 7.419,
+     "M_rounds": [
+      7.6032,
+      7.2204,
+      7.419
+     ],
+     "spread": 0.05301645338208427,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 463.6075
+    }
+   },
+   "ratios": {
+    "target": 1.0648448043184886,
+    "code": 0.9908006632080013,
+    "cand/7345490f": 1.0828038588739006,
+    "cand/dbc5eeb": 1.0635530394931934,
+    "50cbd80e/7345490f": 1.0263067612630539
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "kb_1057_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.1408,
+     "M_rounds": [
+      8.2964,
+      8.0354,
+      8.1408
+     ],
+     "spread": 0.032481270378574845,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 508.716875
+    },
+    "native": {
+     "M": 7.3307,
+     "M_rounds": [
+      7.3307,
+      7.273,
+      7.3556
+     ],
+     "spread": 0.011357074109720866,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 458.0775
+    },
+    "50cbd80e": {
+     "M": 7.6796,
+     "M_rounds": [
+      7.7276,
+      7.594,
+      7.6796
+     ],
+     "spread": 0.017592836449828786,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 479.88687500000003
+    },
+    "7345490f": {
+     "M": 7.3375,
+     "M_rounds": [
+      7.3673,
+      7.2416,
+      7.3375
+     ],
+     "spread": 0.017358042421564246,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 458.49625
+    },
+    "dbc5eeb": {
+     "M": 7.373,
+     "M_rounds": [
+      7.373,
+      7.3591,
+      7.4048
+     ],
+     "spread": 0.006209998505251946,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 460.725625
+    }
+   },
+   "ratios": {
+    "target": 1.1105078641875947,
+    "code": 0.9545679462472004,
+    "cand/7345490f": 1.1094787052810904,
+    "cand/dbc5eeb": 1.1041367150413672,
+    "50cbd80e/7345490f": 1.0466235093696763
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "kb_1088_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": "D4-14",
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.091,
+     "M_rounds": [
+      8.1714,
+      8.0363,
+      8.091
+     ],
+     "spread": 0.016811219093363805,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 505.605625
+    },
+    "native": {
+     "M": 7.5539,
+     "M_rounds": [
+      7.5539,
+      7.7128,
+      7.5036
+     ],
+     "spread": 0.027879950956874122,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 472.028125
+    },
+    "50cbd80e": {
+     "M": 7.5337,
+     "M_rounds": [
+      7.5337,
+      7.5973,
+      7.4652
+     ],
+     "spread": 0.017695440175748756,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 470.780625
+    },
+    "7345490f": {
+     "M": 7.4372,
+     "M_rounds": [
+      7.4372,
+      7.4002,
+      7.4421
+     ],
+     "spread": 0.005662009134888235,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 464.74375
+    },
+    "dbc5eeb": {
+     "M": 7.5235,
+     "M_rounds": [
+      7.5235,
+      7.4469,
+      7.698
+     ],
+     "spread": 0.03371872859847724,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 470.138125
+    }
+   },
+   "ratios": {
+    "target": 1.0711023444843062,
+    "code": 1.0026812854241607,
+    "cand/7345490f": 1.08790942827946,
+    "cand/dbc5eeb": 1.0754303183358809,
+    "50cbd80e/7345490f": 1.0129753132899477
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "kb_1123_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.0788,
+     "M_rounds": [
+      8.0594,
+      8.1555,
+      8.0788
+     ],
+     "spread": 0.011923964563118838,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 504.85
+    },
+    "native": {
+     "M": 7.194,
+     "M_rounds": [
+      7.194,
+      7.1761,
+      7.3888
+     ],
+     "spread": 0.02964005518317747,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 449.5325
+    },
+    "50cbd80e": {
+     "M": 7.5395,
+     "M_rounds": [
+      8.0376,
+      7.4992,
+      7.5395
+     ],
+     "spread": 0.07179432472797087,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 471.14187499999997
+    },
+    "7345490f": {
+     "M": 7.383,
+     "M_rounds": [
+      7.4092,
+      7.383,
+      7.3399
+     ],
+     "spread": 0.009441545525143313,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 461.33625
+    },
+    "dbc5eeb": {
+     "M": 7.3692,
+     "M_rounds": [
+      7.3692,
+      7.5655,
+      7.1438
+     ],
+     "spread": 0.05903020801254244,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 460.496875
+    }
+   },
+   "ratios": {
+    "target": 1.1229913817069779,
+    "code": 0.9541746800185689,
+    "cand/7345490f": 1.0942435324393878,
+    "cand/dbc5eeb": 1.0962926776312216,
+    "50cbd80e/7345490f": 1.0211973452526073
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "kb_157_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.1702,
+     "M_rounds": [
+      8.1702,
+      8.2808,
+      8.0831
+     ],
+     "spread": 0.024458437975529046,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 510.56
+    },
+    "native": {
+     "M": 7.4565,
+     "M_rounds": [
+      7.4565,
+      7.5615,
+      7.4489
+     ],
+     "spread": 0.015116325900468519,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 465.935625
+    },
+    "50cbd80e": {
+     "M": 7.3374,
+     "M_rounds": [
+      7.6113,
+      7.3374,
+      7.286
+     ],
+     "spread": 0.044647268734559376,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 458.505
+    },
+    "7345490f": {
+     "M": 7.3768,
+     "M_rounds": [
+      7.3768,
+      7.3198,
+      7.4413
+     ],
+     "spread": 0.016598814175250665,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 460.9525
+    },
+    "dbc5eeb": {
+     "M": 7.3717,
+     "M_rounds": [
+      7.239,
+      7.3717,
+      7.595
+     ],
+     "spread": 0.049178063268407124,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 460.628125
+    }
+   },
+   "ratios": {
+    "target": 1.0957151478575737,
+    "code": 1.0162319077602422,
+    "cand/7345490f": 1.1075534106929832,
+    "cand/dbc5eeb": 1.1083196548964283,
+    "50cbd80e/7345490f": 0.9946589307016592
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "kb_199_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.1004,
+     "M_rounds": [
+      8.1004,
+      8.0087,
+      8.1103
+     ],
+     "spread": 0.012686203753418335,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 506.191875
+    },
+    "native": {
+     "M": 7.4923,
+     "M_rounds": [
+      7.7074,
+      7.4887,
+      7.4923
+     ],
+     "spread": 0.02920400069437945,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 468.189375
+    },
+    "50cbd80e": {
+     "M": 7.6347,
+     "M_rounds": [
+      7.5162,
+      7.6347,
+      7.6384
+     ],
+     "spread": 0.016258215587663827,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 477.074375
+    },
+    "7345490f": {
+     "M": 7.4171,
+     "M_rounds": [
+      7.1709,
+      7.4864,
+      7.4171
+     ],
+     "spread": 0.04399726673081483,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 463.4825
+    },
+    "dbc5eeb": {
+     "M": 7.3592,
+     "M_rounds": [
+      7.3448,
+      7.3592,
+      7.4341
+     ],
+     "spread": 0.012158261627273736,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 459.85125
+    }
+   },
+   "ratios": {
+    "target": 1.081163327683088,
+    "code": 0.9813483175501331,
+    "cand/7345490f": 1.0921249544970408,
+    "cand/dbc5eeb": 1.1007174692901402,
+    "50cbd80e/7345490f": 1.0293376117350448
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "kb_396_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.1274,
+     "M_rounds": [
+      8.1503,
+      8.1274,
+      8.1141
+     ],
+     "spread": 0.0044613697144475495,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 507.831875
+    },
+    "native": {
+     "M": 7.4552,
+     "M_rounds": [
+      7.39,
+      7.494,
+      7.4552
+     ],
+     "spread": 0.014073071718538666,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 465.8625
+    },
+    "50cbd80e": {
+     "M": 7.4506,
+     "M_rounds": [
+      8.0248,
+      7.3271,
+      7.4506
+     ],
+     "spread": 0.0952218476614215,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 465.576875
+    },
+    "7345490f": {
+     "M": 7.4302,
+     "M_rounds": [
+      7.4957,
+      7.4302,
+      7.28
+     ],
+     "spread": 0.02962912087912084,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 464.30375
+    },
+    "dbc5eeb": {
+     "M": 7.3703,
+     "M_rounds": [
+      7.2572,
+      7.4996,
+      7.3703
+     ],
+     "spread": 0.03340131180069439,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 460.551875
+    }
+   },
+   "ratios": {
+    "target": 1.0901652537825948,
+    "code": 1.0006173999409445,
+    "cand/7345490f": 1.0938332750127857,
+    "cand/dbc5eeb": 1.1027230913259976,
+    "50cbd80e/7345490f": 1.0027455519366908
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "kb_480_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.3223,
+     "M_rounds": [
+      8.149,
+      8.4234,
+      8.3223
+     ],
+     "spread": 0.03367284329365594,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 520.061875
+    },
+    "native": {
+     "M": 7.465,
+     "M_rounds": [
+      7.4193,
+      7.6055,
+      7.465
+     ],
+     "spread": 0.02509670723653179,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 466.4775
+    },
+    "50cbd80e": {
+     "M": 7.6224,
+     "M_rounds": [
+      7.9626,
+      7.6224,
+      7.3843
+     ],
+     "spread": 0.07831480302804605,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 476.309375
+    },
+    "7345490f": {
+     "M": 7.3037,
+     "M_rounds": [
+      7.3037,
+      7.4434,
+      7.2811
+     ],
+     "spread": 0.022290587960610342,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 456.381875
+    },
+    "dbc5eeb": {
+     "M": 7.3657,
+     "M_rounds": [
+      7.5764,
+      7.3657,
+      7.3162
+     ],
+     "spread": 0.03556491074601564,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 460.271875
+    }
+   },
+   "ratios": {
+    "target": 1.1148425987943738,
+    "code": 0.979350335852225,
+    "cand/7345490f": 1.1394635595656997,
+    "cand/dbc5eeb": 1.1298722456792973,
+    "50cbd80e/7345490f": 1.043635417665019
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "kb_576_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.1422,
+     "M_rounds": [
+      8.0407,
+      8.2394,
+      8.1422
+     ],
+     "spread": 0.024711778825226682,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 508.795
+    },
+    "native": {
+     "M": 7.4735,
+     "M_rounds": [
+      7.3964,
+      7.6157,
+      7.4735
+     ],
+     "spread": 0.029649559245038093,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 467.00375
+    },
+    "50cbd80e": {
+     "M": 7.5253,
+     "M_rounds": [
+      7.5253,
+      7.6126,
+      7.519
+     ],
+     "spread": 0.012448463891474804,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 470.24
+    },
+    "7345490f": {
+     "M": 7.4574,
+     "M_rounds": [
+      7.4895,
+      7.1991,
+      7.4574
+     ],
+     "spread": 0.04033837563028708,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 465.995625
+    },
+    "dbc5eeb": {
+     "M": 7.4379,
+     "M_rounds": [
+      7.5892,
+      7.4019,
+      7.4379
+     ],
+     "spread": 0.025304313757278374,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 464.78749999999997
+    }
+   },
+   "ratios": {
+    "target": 1.0894761490600122,
+    "code": 0.993116553492884,
+    "cand/7345490f": 1.0918282511331028,
+    "cand/dbc5eeb": 1.094690705709945,
+    "50cbd80e/7345490f": 1.0091050500174323
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "o43083.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.086,
+     "M_rounds": [
+      8.0264,
+      8.086,
+      8.0873
+     ],
+     "spread": 0.007587461377454474,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 505.293125
+    },
+    "native": {
+     "M": 7.3293,
+     "M_rounds": [
+      7.3293,
+      7.4528,
+      7.2722
+     ],
+     "spread": 0.024834300486785255,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 458.00375
+    },
+    "50cbd80e": {
+     "M": 7.5372,
+     "M_rounds": [
+      7.5372,
+      7.6082,
+      7.2838
+     ],
+     "spread": 0.044537192124989744,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 470.98625
+    },
+    "7345490f": {
+     "M": 7.3827,
+     "M_rounds": [
+      7.1743,
+      7.4553,
+      7.3827
+     ],
+     "spread": 0.039167584293938074,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 461.33
+    },
+    "dbc5eeb": {
+     "M": 7.5246,
+     "M_rounds": [
+      7.2571,
+      7.6568,
+      7.5246
+     ],
+     "spread": 0.05507709691198959,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 470.2025
+    }
+   },
+   "ratios": {
+    "target": 1.1032431473674158,
+    "code": 0.972416812609457,
+    "cand/7345490f": 1.095263250572284,
+    "cand/dbc5eeb": 1.0746086170693459,
+    "50cbd80e/7345490f": 1.0209273030192207
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "o44130.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.1565,
+     "M_rounds": [
+      8.1565,
+      8.1404,
+      8.4274
+     ],
+     "spread": 0.035256252763992135,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 509.70375
+    },
+    "native": {
+     "M": 7.3286,
+     "M_rounds": [
+      7.3286,
+      7.3386,
+      7.2123
+     ],
+     "spread": 0.017511750759119815,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 457.9525
+    },
+    "50cbd80e": {
+     "M": 7.5178,
+     "M_rounds": [
+      7.2618,
+      7.5946,
+      7.5178
+     ],
+     "spread": 0.04582885785893298,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 469.71625
+    },
+    "7345490f": {
+     "M": 7.4052,
+     "M_rounds": [
+      7.5232,
+      7.2046,
+      7.4052
+     ],
+     "spread": 0.04422174721705585,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 462.74375
+    },
+    "dbc5eeb": {
+     "M": 7.2686,
+     "M_rounds": [
+      7.512,
+      7.2686,
+      7.2147
+     ],
+     "spread": 0.041207534616823915,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 454.20875
+    }
+   },
+   "ratios": {
+    "target": 1.1129683704936821,
+    "code": 0.9748330628641357,
+    "cand/7345490f": 1.101455733808675,
+    "cand/dbc5eeb": 1.1221555732878408,
+    "50cbd80e/7345490f": 1.0152055312483121
+   }
+  },
+  {
+   "snapshot": "repo",
+   "file": "search_product_67f0c7b7.json",
+   "tokenizer": "llama-3.1",
+   "d4": null,
+   "c_star": 16,
+   "same_path": true,
+   "documents": 1,
+   "per_library": {
+    "cand": {
+     "M": 8.182,
+     "M_rounds": [
+      8.0627,
+      8.3979,
+      8.182
+     ],
+     "spread": 0.04157416250139545,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 511.28375
+    },
+    "native": {
+     "M": 7.4285,
+     "M_rounds": [
+      7.4285,
+      7.54,
+      7.3494
+     ],
+     "spread": 0.025934089857675424,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 464.1875
+    },
+    "50cbd80e": {
+     "M": 7.4195,
+     "M_rounds": [
+      7.4195,
+      7.7019,
+      7.4068
+     ],
+     "spread": 0.03984176702489606,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 463.630625
+    },
+    "7345490f": {
+     "M": 7.3899,
+     "M_rounds": [
+      7.3525,
+      7.3899,
+      7.5326
+     ],
+     "spread": 0.02449506970418236,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 461.78375
+    },
+    "dbc5eeb": {
+     "M": 7.4731,
+     "M_rounds": [
+      7.8078,
+      7.3478,
+      7.4731
+     ],
+     "spread": 0.06260377255777239,
+     "completes_at_10s": [
+      true,
+      true,
+      true
+     ],
+     "fill_ms_before_c": 466.98375
+    }
+   },
+   "ratios": {
+    "target": 1.1014336676314196,
+    "code": 1.0012130197452658,
+    "cand/7345490f": 1.107186836087092,
+    "cand/dbc5eeb": 1.0948602320322223,
+    "50cbd80e/7345490f": 1.004005466921068
+   }
+  }
+ ]
+}

@@ -1,0 +1,47 @@
+{
+ "cwd": "benchmarks/local/release-0.2.0/benchmarks/external/jsonschemabench-maskbench/maskbench",
+ "cmd": [
+  "nice",
+  "-n",
+  "19",
+  "benchmarks/local/release-0.2.0/benchmarks/local/t8a-6e62e0d1/venv-pinned/bin/python",
+  "-u",
+  "-m",
+  "diag_runner",
+  "--multi",
+  "--blg",
+  "--compact",
+  "--tokenizer",
+  "benchmarks/local/hf-cache/hub/models--unsloth--Meta-Llama-3.1-8B-Instruct/snapshots/a2856192dd7c25b842431f39c179a6c2c2f627d1",
+  "--num-threads",
+  "1",
+  "--output",
+  "benchmarks/local/release-0.2.0/benchmarks/local/t8a-diag-6e62e0d1/Github_easy---o89710/out",
+  "data/Github_easy---o89710.json"
+ ],
+ "env": {
+  "PYTHONPATH": "benchmarks/local/release-0.2.0/benchmarks/maskbench/t8a:benchmarks/local/release-0.2.0/benchmarks/external/jsonschemabench-maskbench/maskbench:benchmarks/local/t3/de7/t8a-diag",
+  "T8A_SERIALIZER": "bolorgir",
+  "BOLORGIR_PROFILE": "spec-v1",
+  "BOLORGIR_SERIALIZER": "1",
+  "HF_HOME": "benchmarks/local/hf-cache",
+  "HF_HUB_OFFLINE": "1",
+  "PYTHONDONTWRITEBYTECODE": "1"
+ },
+ "checks": {
+  "paired_runner.py": "5c646c2180fc08d8435f56e04a6db85957a2ebb2e78c1d2a35dc15a3fb5124b6",
+  "t8a_streams.py": "1547fc20b243fdba2dc26e1e9dd1a18d4b3a12c6096247e2c9148adb4fbcc3a6",
+  "maskbench_code_files": 12,
+  "corpus_file": "b36e6c9692967bc6bb38013334885f2b915356cbd68b9d5c3177c7677dbd71f2",
+  "tokenizer_revision": "a2856192dd7c25b842431f39c179a6c2c2f627d1",
+  "core_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+  "wheel_sha256": "e5bb3f5bf7e5b19b21f96b1ff3ee4e74dad3490fcd95c7c9f082ccc9c39fd2b6",
+  "diag_runner.py": "be92c1db1786ff114f951abb9030732779a86cd239e6118af056f6d1cebf4fab",
+  "diag.py": "2ded72fb46f33b6a8d05acf7a4edd7f7062da299a64b0f66e3227e1f39456a9f"
+ },
+ "run_dir": "benchmarks/local/release-0.2.0/benchmarks/local/t8a-6e62e0d1",
+ "run_dir_before": {
+  "files": 63065,
+  "digest": "9da98e50df80ffb2e5d359d95080f3ab75125c7807deaa3cb26e319cc7d6f439"
+ }
+}

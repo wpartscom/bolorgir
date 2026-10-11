@@ -47,7 +47,16 @@ returned as `bytes` of `mask_words * 4` bytes in little-endian word order.
   smaller `struct_size` and gets documented defaults for the fields it does
   not know about. The library never writes beyond the caller's
   `struct_size`. Accepted legacy sizes: `blg_error` 268,
-  `blg_context_config` 56 and 88, `blg_stats` 208, `blg_compile_request` 32.
+  `blg_context_config` 56 to 104 (any earlier tail), `blg_stats` 208 and
+  264, `blg_compile_request` 32 and 48.
+- **ABI evolution.** `BLG_ABI_VERSION` is 1 and is checked for exact
+  equality, so raising it breaks every existing client; changes are
+  additive and keep the version. New struct fields go only to the tail of a
+  struct with `struct_size`; the value 0 of a new field means the earlier
+  behavior, and an unknown nonzero value (an unknown flag bit) is
+  `INVALID_ARGUMENT`. New functions are new exported symbols; a client
+  checks that they exist when it loads the library. Incompatible changes
+  are not made within ABI version 1.
 - **Diagnostics** go to a caller-provided `blg_error` (code, byte offset in
   the schema or `UINT32_MAX`, a NUL-terminated UTF-8 message of up to 256
   bytes, and an RFC 6901 `json_pointer` to the failing schema node, `""`
@@ -104,7 +113,7 @@ value `0` selects the default.
 | `version` | - | Must be `BLG_ABI_VERSION`. |
 | `mode` | `BLG_MODE_LAZY` (0) | `LAZY`: no mask cache. `ADAPTIVE`: mask cache with an admission policy. `PRECOMPUTE` (experimental): adaptive plus a bounded mask warm-up at compile time. All modes produce bit-identical masks. |
 | `max_depth` | 64 | Structural depth. Hard cap 64; larger values are `INVALID_ARGUMENT`. |
-| `max_threads_per_state` | 128 | Parse branches per state (not CPU threads). Hard cap 128. |
+| `max_threads_per_state` | 128 | Distinct live parse branches per state, counted after each byte (not CPU threads). Hard cap 128. |
 | `memory_limit_bytes` | 256 MiB | Total budget of the context. |
 | `cache_limit_bytes` | `0` = cache off | `BLG_CACHE_DEFAULT` (`UINT64_MAX`) selects 64 MiB. Must not exceed `memory_limit_bytes`. |
 | `session_limit_bytes` | 8 MiB | Per session. |
@@ -115,6 +124,8 @@ value `0` selects the default.
 | `precompute_max_states` | 4096 | Warm-up bound in `PRECOMPUTE` mode. Exhausting it is not an error. |
 | `mask_fast_path` | enabled | `1` enabled, `2` disabled. The environment variable `BLG_MASK_FAST_PATH=0` forces it off. Masks are identical either way. |
 | `max_workers` | 1 | CPU workers for mask classification. Masks do not depend on the worker count. |
+| `probe_max_states` | 256 | Visited states of the compile-time probe (section 2.4). |
+| `probe_max_work` | 16M | Work ops of the probe; independent of `work_limit_ops`. The probe's memory counts against `memory_limit_bytes`. |
 
 **`blg_tokenizer_desc`.** The token table is passed once and copied.
 
@@ -145,6 +156,7 @@ working.
 blg_status blg_compile(blg_context *ctx, const blg_compile_request *request,
                        blg_grammar **out_grammar, blg_error *err);
 void       blg_grammar_release(blg_grammar *grammar);
+blg_status blg_grammar_probe_status(const blg_grammar *grammar, uint32_t *out_status);
 ```
 
 **`blg_compile_request`:**
@@ -155,6 +167,7 @@ void       blg_grammar_release(blg_grammar *grammar);
 | `profile` | `"canonical-v1"` (also `NULL`), or `"spec-v1"`. Any other value is `UNSUPPORTED_FEATURE`. Literal sets use `NULL`. |
 | `data`, `data_len` | The schema as UTF-8 JSON, or a JSON array of strings for a literal set. |
 | `registry_data`, `registry_data_len` | Optional, `spec-v1` only: an immutable snapshot of external schemas, `{"version": "...", "documents": {"<uri>": <schema>, ...}}`. An external `$ref` whose base URI matches a `documents` key resolves inside that document; the engine never accesses the network. Without a registry every external `$ref` is `UNSUPPORTED_FEATURE`. |
+| `flags` | `0`, or `BLG_COMPILE_PROBE` / `BLG_COMPILE_PROBE_STRICT` (below). Unknown bits are `INVALID_ARGUMENT`. |
 
 Behavior:
 
@@ -172,6 +185,26 @@ Behavior:
   `cache_limit_bytes`; eviction never affects live grammars or sessions.
 - `blg_grammar_release` drops the caller's reference. Sessions hold their own
   reference, so a grammar may be released while its sessions are alive.
+
+**Compile-time probe** ([ADR-0012](adr/ADR-0012-generatability-probe.md)).
+With `BLG_COMPILE_PROBE` the compile also searches, breadth first, the
+parser states reachable by tokens the mask allows and computes each state's
+mask on the context vocabulary, within `probe_max_states` and
+`probe_max_work`:
+
+| Outcome | Compile | `blg_grammar_probe_status` | Guarantee |
+|---|---|---|---|
+| found: a reachable state whose mask fails with `RESOURCE_LIMIT` | `RESOURCE_LIMIT`; the message carries the token path to the state, `json_pointer` the subschema of the undecided frame | (no handle) | a real counterexample: a session that accepts the path fails the next `fill_mask` |
+| inconclusive: a budget ran out | succeeds; `RESOURCE_LIMIT` "probe inconclusive" with `BLG_COMPILE_PROBE_STRICT` | `BLG_PROBE_INCONCLUSIVE` | nothing about the states not visited |
+| proven: every reachable state was visited | succeeds | `BLG_PROBE_PROVEN` | no completion check of this grammar is undecided for this vocabulary and these limits; memory and work limits and cancellation can still fail a call |
+
+`proven` is reachable only when the set of exact parser states is finite:
+literal and enum languages over strings, booleans and null, and closed
+objects and fixed arrays of them. Unbounded strings, numbers, open objects
+and unbounded arrays end `inconclusive`. The verdict is kept with the
+cached artifact together with the budgets; a cache hit reuses it for equal
+budgets and probes again otherwise. A grammar compiled without the flag
+reports `BLG_PROBE_NOT_RUN` unless its cached artifact was probed.
 
 ### 2.5. Sessions
 
@@ -280,8 +313,8 @@ blg_status blg_get_stats_session(const blg_session *session, blg_stats *out_stat
 memory used and peak per category (`BLG_MEM_TOKENIZER`, `_GRAMMAR`,
 `_SESSION`, `_CACHE`, `_TEMP`, `_TOTAL`), the effective mode, error
 counters (`errors_total`, `errors_resource_limit`, `errors_cancelled`),
-masks skipped by the cache admission policy, warm-up states and work
-operations charged.
+masks skipped by the cache admission policy, warm-up states, work
+operations charged and probe searches run (`probe_runs`).
 
 ### 2.8. Diagnostics
 
@@ -309,7 +342,7 @@ pip install "bolorgir[transformers]"    # + Hugging Face adapter
 ```
 
 The package imports without torch, numpy or transformers. The bridge is a
-CPython extension built against the Limited API (abi3, CPython 3.10+); the
+CPython extension built against the Limited API (abi3, CPython 3.12+); the
 GIL is released during native calls.
 
 ### 3.1. TokenizerBundle
@@ -348,7 +381,8 @@ tokenizer (requires `transformers`):
 Engine(*, mode="adaptive", memory_limit_mb=256, cache_limit_mb=64,
        session_limit_mb=8, schema_limit_mb=1, max_depth=64, max_threads=64,
        work_limit_ops=0, adaptive_min_hits=0, adaptive_min_cost_ns=0,
-       precompute_max_states=0, tokenizer=None)
+       precompute_max_states=0, probe_max_states=0, probe_max_work=0,
+       tokenizer=None)
 ```
 
 Wraps a context. Parameters map to `blg_context_config` (section 2.3);
@@ -366,7 +400,7 @@ for another tokenizer.
 
 | Member | Description |
 |---|---|
-| `compile(schema, tokenizer=None, profile="canonical-v1") -> Constraint` | `schema` is a `dict`, JSON `str` or `bytes`; `profile` is `"canonical-v1"` or `"spec-v1"`. |
+| `compile(schema, tokenizer=None, profile="canonical-v1", probe=None) -> Constraint` | `schema` is a `dict`, JSON `str` or `bytes`; `profile` is `"canonical-v1"` or `"spec-v1"`. `probe="probe"` or `"strict"` runs the compile-time probe of section 2.4; a found state raises `ResourceLimitError` with the token path and the subschema pointer in the message. |
 | `compile_literals(literals, tokenizer=None) -> Constraint` | A non-empty list of strings; the answer is exactly one of them. |
 | `stats() -> dict` | Context statistics: the timing and cache counters of section 2.7 plus `mem_used` / `mem_peak` dicts keyed by category name. |
 | `mode`, `vocab_size`, `mask_words`, `eos_ids` | Read-only properties. |
@@ -383,6 +417,7 @@ Not exposed in Python: the external-reference registry, `mask_fast_path`
 
 ```python
 constraint.create_session() -> Session
+constraint.probe_status    # "not_run" | "inconclusive" | "proven" (section 2.4)
 constraint.close()
 
 session.fill_mask() -> bytes                  # mask_words * 4 bytes, uint32 LE
@@ -432,11 +467,13 @@ version of the loaded core.
 from bolorgir.transformers import constrained_generate
 
 result = constrained_generate(model, tokenizer, constraint, inputs,
-                              max_new_tokens=128, do_sample=False, **gen_kwargs)
+                              max_new_tokens=128, do_sample=False,
+                              on_constraint_error="raise", **gen_kwargs)
 result.sequences     # torch.Tensor [batch, total_len]
 result.completed     # list[bool]
-result.stop_reason   # list[str]: "eos" | "length" | "dead_end" | "error"
+result.stop_reason   # list[str]: "eos" | "length" | "dead_end" | "error" | "constraint_error"
 result.sessions      # list[Session | None]
+result.errors        # list[str | None]: engine error text of a failed row
 ```
 
 Supported setup: decoder-only models, a single process and device, greedy
@@ -462,11 +499,18 @@ decoding or sampling, a fixed batch with left padding. `constraint` is one
   instead of sampling silently.
 - If the model's logit width exceeds the tokenizer vocabulary (a padded
   `lm_head`), the extra positions are always masked.
+- `on_constraint_error="raise"` (default) propagates an engine error of any
+  row (for example `ResourceLimitError` from a mask, see
+  [supported_features.md section 6](supported_features.md)) and stops the
+  batch. `"fail_row"` marks that row failed: from then on only its EOS is
+  allowed, the other rows continue, and the result reports
+  `completed=False`, `stop_reason="constraint_error"` and the error text in
+  `errors[i]`. The tokens of a failed row are not a valid document.
 
 Lower-level building blocks: `ConstraintLogitsProcessor(sessions,
-prompt_len, eos_ids=(), eos_ids_per_row=None)` for use with
-`model.generate`, and `MaskGpuUnpacker`, which transfers compact mask words
-to the device and expands them there.
+prompt_len, eos_ids=(), eos_ids_per_row=None, on_constraint_error="raise")`
+for use with `model.generate`, and `MaskGpuUnpacker`, which transfers
+compact mask words to the device and expands them there.
 
 ### 3.7. spec-v1 serializer
 

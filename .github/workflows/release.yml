@@ -1,77 +1,645 @@
 name: Release
 
+# A tag vX.Y.ZrcN creates a draft GitHub pre-release (a public preview)
+# and uploads nothing to a package index; a final tag
+# vX.Y.Z publishes to PyPI and creates the GitHub Release. A manual run
+# builds and checks the packages and publishes to
+# TestPyPI only when asked.
+#
+# Preview (job `preview`, composition block `preview`): the core this run
+# builds must be the candidate of the committed, admitted R6 review verdict;
+# the wheel is installed in a clean python:3.x-slim container for every
+# supported CPython (job `wheel-smoke`); the draft carries the wheel, the
+# sdist, SHA256SUMS and notes naming the commit and the core sha256. The
+# owner publishes the draft after checking its files. No T8a is asked for.
+#
+# Release line (docs/release/v<version>-composition.json):
+# a tag or a TestPyPI upload needs the core and the bindings pinned by the
+# composition manifest (job `line`; no git history is read); every build
+# checks that the bindings call only the functions the built core exports
+# (job `core`); a final tag also needs the
+# gate evidence named in the composition - the admitted R6 verdict and the
+# accepted T8a report of the very core this run builds (job `gate`); the
+# PyPI upload waits for the wheel install checks (job `wheel-smoke`), the
+# GitHub Release waits for the PyPI install checks (job `smoke-pypi`) and
+# carries SHA256SUMS with the build identity. A
+# manual or rc build is preliminary and says so in its core artifact.
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish the built packages"
+        type: choice
+        options: ["none", "testpypi"]
+        default: "none"
 
 permissions:
-  contents: write
+  contents: read
+
+env:
+  ZIG_VERSION: 0.17.0
+  # Release flags of the core; the T3/T8a candidate must be built
+  # with the same flags for its measurements to apply to the shipped library.
+  # -Dstrip=true drops the debug sections, which embed absolute source and
+  # cache paths: only then are two builds of the same sources byte-identical,
+  # so the core this workflow builds can be the very bytes the gate names.
+  CORE_FLAGS: -Drelease=true -Dstrip=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=baseline
 
 jobs:
-  build:
-    name: Build sdist and wheel
+  version:
+    name: Version check
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      prerelease: ${{ steps.v.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - id: v
+        run: |
+          python3 .github/scripts/release_version.py --ref "$GITHUB_REF" >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
+
+      - name: Release notes are complete (final tags)
+        if: github.event_name == 'push' && steps.v.outputs.prerelease == 'false'
+        run: |
+          python3 .github/scripts/changelog_section.py "${{ steps.v.outputs.version }}" > notes.md
+          if grep -n 'FILL:' notes.md; then echo "release notes still have FILL markers"; exit 1; fi
+
+      - name: Preview notes are complete (rc tags)
+        if: github.event_name == 'push' && steps.v.outputs.prerelease == 'true'
+        run: |
+          notes="docs/release/v${{ steps.v.outputs.version }}.md"
+          [ -f "$notes" ] || { echo "no preview notes $notes"; exit 1; }
+          if grep -n 'FILL:' "$notes"; then echo "preview notes still have FILL markers"; exit 1; fi
+
+  line:
+    # The tree is the release line: the core and the bindings pinned by the
+    # composition manifest, no later-line paths. No git history is read.
+    # Strict for tags and TestPyPI uploads; a manual build without upload
+    # only reports (it is preliminary anyway).
+    name: Release line sources
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Core and bindings of the composition manifest
+        env:
+          STRICT: ${{ github.event_name == 'push' || inputs.publish == 'testpypi' }}
+        run: |
+          comp="docs/release/v${{ needs.version.outputs.version }}-composition.json"
+          comp="$(echo "$comp" | sed -E 's/(rc|a|b)[0-9]+-composition/-composition/')"
+          [ -f "$comp" ] || { echo "no composition $comp"; exit 1; }
+          rc=0
+          python3 .github/scripts/release_gate.py sources --composition "$comp" || rc=$?
+          python3 .github/scripts/release_gate.py abi --base-only --composition "$comp" || rc=$?
+          if [ "$rc" != 0 ] && [ "$STRICT" != true ]; then
+            echo "::warning::not the release line; this manual build is preliminary"
+            rc=0
+          fi
+          exit "$rc"
+
+  core:
+    name: Core library (release flags)
+    needs: version
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: ${{ env.ZIG_VERSION }}
+
+      - name: Build
+        run: zig build $CORE_FLAGS
+
+      - name: No test hooks, glibc symbols, hash
+        run: |
+          lib=zig-out/lib/libbolorgir.so.0.1.0
+          if nm -D "$lib" | grep blg_test_; then echo "blg_test_* exported"; exit 1; fi
+          objdump -T "$lib" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1 | tee glibc-max.txt || true
+          sha256sum "$lib" | tee core.sha256
+
+      - name: The bindings call only exported functions
+        run: |
+          comp="$(ls docs/release/v*-composition.json | sort -V | tail -n 1)"
+          python3 .github/scripts/release_gate.py abi --composition "$comp" \
+            --lib zig-out/lib/libbolorgir.so.0.1.0
+
+      - name: Release status of this build
+        # Only a final tag that passes the gate job is a release build.
+        env:
+          PRERELEASE: ${{ needs.version.outputs.prerelease }}
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = push ] && [ "$PRERELEASE" = false ]; then
+            echo "final tag build; released only after the gate job" > release-status.txt
+          else
+            echo "PRELIMINARY: rc or manual build, not gated by the R6 verdict and the T8a report" \
+              > release-status.txt
+          fi
+          cat release-status.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core
+          path: |
+            zig-out/lib/libbolorgir.so.0.1.0
+            core.sha256
+            glibc-max.txt
+            release-status.txt
+          if-no-files-found: error
+
+  gate:
+    # Gate for a final tag: the composition names the committed R6 review
+    # verdict and T8a report; both must be positive and name the core built
+    # above. A hand-written hash is not evidence.
+    name: Release gate (final tags)
+    needs: [version, core, line]
+    if: github.event_name == 'push' && needs.version.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core
+          path: core
+
+      - name: R6 verdict and T8a report of the built core
+        run: |
+          python3 .github/scripts/release_gate.py gate \
+            --composition "docs/release/v${{ needs.version.outputs.version }}-composition.json" \
+            --core-sha "$(cut -d' ' -f1 core/core.sha256)"
+
+  preview:
+    # Preview of an rc tag: the built core is the candidate of the committed,
+    # admitted R6 verdict the composition names (not a hand-written hash).
+    name: Preview core (rc tags)
+    needs: [version, core]
+    if: github.event_name == 'push' && needs.version.outputs.prerelease == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core
+          path: core
+
+      - name: The built core is the R6-admitted candidate
+        run: |
+          comp="docs/release/v${{ needs.version.outputs.version }}-composition.json"
+          comp="$(echo "$comp" | sed -E 's/(rc|a|b)[0-9]+-composition/-composition/')"
+          python3 .github/scripts/release_gate.py preview --composition "$comp" \
+            --core-sha "$(cut -d' ' -f1 core/core.sha256)"
+
+  wheel:
+    name: Wheel (manylinux_2_28, abi3)
+    needs: core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core
+          path: core
+
+      - name: Place the core library
+        run: |
+          mkdir -p zig-out/lib
+          cp core/zig-out/lib/libbolorgir.so.0.1.0 zig-out/lib/
+          ln -s libbolorgir.so.0.1.0 zig-out/lib/libbolorgir.so.0
+          ln -s libbolorgir.so.0 zig-out/lib/libbolorgir.so
+
+      - uses: pypa/cibuildwheel@v3.1.4
+        with:
+          package-dir: python
+          output-dir: wheelhouse
+        env:
+          CIBW_BUILD: cp312-manylinux_x86_64
+          CIBW_ARCHS_LINUX: x86_64
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_ENVIRONMENT_LINUX: BLG_SKIP_ZIG=1
+          # auditwheel>=6 widens the tag set to the lower policies the wheel
+          # also satisfies; keep the single documented manylinux_2_28 tag.
+          CIBW_REPAIR_WHEEL_COMMAND_LINUX: >-
+            auditwheel show {wheel} &&
+            auditwheel repair --plat manylinux_2_28_x86_64 --only-plat -w {dest_dir} {wheel}
+          CIBW_TEST_COMMAND: python {project}/tests/release/smoke_release.py
+
+      - name: auditwheel show of the repaired wheel
+        run: |
+          python3 -m pip install "auditwheel>=6"
+          auditwheel show wheelhouse/*.whl | tee wheelhouse/auditwheel-show.txt
+          grep -q 'manylinux_2_28_x86_64' wheelhouse/auditwheel-show.txt
+          ls wheelhouse/*-cp312-abi3-manylinux_2_28_x86_64.whl
+
+      - name: The wheel carries the released core
+        run: |
+          python3 - <<'EOF'
+          import glob, hashlib, zipfile
+          whl = glob.glob("wheelhouse/*.whl")[0]
+          want = open("core/core.sha256").read().split()[0]
+          with zipfile.ZipFile(whl) as z:
+              libs = [n for n in z.namelist() if "libbolorgir.so" in n]
+              got = {n: hashlib.sha256(z.read(n)).hexdigest() for n in libs}
+          print(got)
+          assert libs and all(h == want for h in got.values()), "core in the wheel differs"
+          EOF
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheel
+          path: |
+            wheelhouse/*.whl
+            wheelhouse/auditwheel-show.txt
+          if-no-files-found: error
+
+  sdist:
+    name: sdist
+    needs: core
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core
+          path: core
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Build core (portable CPU)
-        run: zig build -Drelease=true -Dcpu=baseline
+      - name: Place the core library
+        run: |
+          mkdir -p zig-out/lib
+          cp core/zig-out/lib/libbolorgir.so.0.1.0 zig-out/lib/
+          ln -s libbolorgir.so.0.1.0 zig-out/lib/libbolorgir.so.0
+          ln -s libbolorgir.so.0 zig-out/lib/libbolorgir.so
 
-      - name: Build sdist and wheel
-        working-directory: python
+      - name: Build the sdist with the released core
         env:
           BLG_SKIP_ZIG: "1"
         run: |
-          python3 -m pip install --upgrade "pip>=24" "setuptools>=77" wheel build
-          python3 -m build --no-isolation
-
-      - name: Smoke-test the wheel
-        run: |
-          python3 -m venv /tmp/bolorgir-release-venv
-          /tmp/bolorgir-release-venv/bin/pip install --upgrade "pip>=24"
-          /tmp/bolorgir-release-venv/bin/pip install python/dist/*.whl
-          /tmp/bolorgir-release-venv/bin/python - <<'EOF'
-          from bolorgir import Engine, TokenizerBundle
-
-          tokens = [bytes([i]) for i in range(256)] + [b"<eos>"]
-          bundle = TokenizerBundle.from_token_bytes(tokens, eos_ids=[256])
-          with Engine(mode="lazy", tokenizer=bundle) as engine:
-              with engine.compile_literals(["ok"]) as constraint:
-                  with constraint.create_session() as session:
-                      assert session.allowed_token_ids()
-          print("release smoke OK")
-          EOF
+          python3 -m pip install --upgrade "pip>=24" build
+          python3 -m build --sdist --outdir dist python
+          tar -tzf dist/*.tar.gz | grep '_lib/libbolorgir.so'
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dist
-          path: python/dist/*
+          name: sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
 
-  release:
-    name: Publish GitHub Release
-    needs: build
+  sdist-install:
+    # The sdist installs without Zig: the core is bundled.
+    name: sdist install without Zig (Python ${{ matrix.python-version }})
+    needs: sdist
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install and run the smoke test
+        run: |
+          if command -v zig; then echo "zig must not be on PATH"; exit 1; fi
+          python3 -m venv /tmp/v
+          /tmp/v/bin/pip install --upgrade "pip>=24"
+          /tmp/v/bin/pip install dist/*.tar.gz
+          cd /tmp && /tmp/v/bin/python "$GITHUB_WORKSPACE/tests/release/smoke_release.py"
+
+  wheel-smoke:
+    # The built wheel, before any upload, in a clean container per supported
+    # CPython: version, the core inside the installed package, the release
+    # smoke test and the README quickstart (no model download).
+    name: Wheel install, python:${{ matrix.python-version }}-slim
+    needs: [version, core, wheel]
+    runs-on: ubuntu-latest
+    container: python:${{ matrix.python-version }}-slim
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core
+          path: core
+
+      - name: Install the wheel and run the checks
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          python -m venv /tmp/v
+          /tmp/v/bin/pip install --upgrade "pip>=24"
+          /tmp/v/bin/pip install --no-cache-dir dist/*.whl
+          cd /tmp
+          /tmp/v/bin/python - <<'EOF'
+          import glob, hashlib, os, bolorgir
+          want = open(os.path.join(os.environ["GITHUB_WORKSPACE"], "core", "core.sha256")).read().split()[0]
+          assert bolorgir.__version__ == os.environ["VERSION"], bolorgir.__version__
+          libs = glob.glob(os.path.join(os.path.dirname(bolorgir.__file__), "_lib", "libbolorgir.so*"))
+          got = {os.path.basename(p): hashlib.sha256(open(p, "rb").read()).hexdigest() for p in libs}
+          print(bolorgir.__version__, got)
+          assert got and all(h == want for h in got.values()), "installed core differs"
+          EOF
+          /tmp/v/bin/python "$GITHUB_WORKSPACE/tests/release/smoke_release.py"
+          /tmp/v/bin/python "$GITHUB_WORKSPACE/examples/quickstart.py"
+
+  publish-testpypi:
+    # Manual only: an rc tag goes to the GitHub preview, not to TestPyPI.
+    name: Publish to TestPyPI
+    needs: [version, line, wheel, sdist, sdist-install]
+    if: github.event_name == 'workflow_dispatch' && inputs.publish == 'testpypi'
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/bolorgir
+    permissions:
+      id-token: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: dist
+          name: wheel
           path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - run: rm -f dist/auditwheel-show.txt && ls -l dist
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  smoke-testpypi:
+    name: TestPyPI install, python:${{ matrix.python-version }}-slim
+    needs: [version, publish-testpypi]
+    runs-on: ubuntu-latest
+    container: python:${{ matrix.python-version }}-slim
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install from TestPyPI and run the smoke test
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          python -m venv /tmp/v
+          /tmp/v/bin/pip install --upgrade "pip>=24"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            /tmp/v/bin/pip install --no-cache-dir --only-binary bolorgir \
+              --index-url https://test.pypi.org/simple/ \
+              --extra-index-url https://pypi.org/simple/ "bolorgir==$VERSION" && break
+            echo "not on the index yet, retry $i"; sleep 30
+          done
+          /tmp/v/bin/python -c "import bolorgir; assert bolorgir.__version__ == '$VERSION', bolorgir.__version__"
+          cd /tmp && /tmp/v/bin/python "$GITHUB_WORKSPACE/tests/release/smoke_release.py"
+
+  publish-pypi:
+    # Only a final tag, after the release gate, the wheel install
+    # checks on every supported CPython and the owner's consent; a failed
+    # (or skipped) wheel-smoke job skips this job too. The pypi
+    # environment carries the required reviewers.
+    name: Publish to PyPI
+    needs: [version, line, gate, wheel, sdist, sdist-install, wheel-smoke]
+    if: github.event_name == 'push' && needs.version.outputs.prerelease == 'false'
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/bolorgir
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - run: rm -f dist/auditwheel-show.txt && ls -l dist
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  smoke-pypi:
+    # The published wheel, in a clean container per supported CPython:
+    # version, the core inside the installed package (as wheel-smoke), the
+    # release smoke test. A failed (or skipped) job skips the GitHub
+    # Release.
+    name: PyPI install, python:${{ matrix.python-version }}-slim
+    needs: [version, core, publish-pypi]
+    runs-on: ubuntu-latest
+    container: python:${{ matrix.python-version }}-slim
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14", "3.15"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core
+          path: core
+
+      - name: Install from PyPI and run the checks
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          python -m venv /tmp/v
+          /tmp/v/bin/pip install --upgrade "pip>=24"
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            /tmp/v/bin/pip install --no-cache-dir "bolorgir==$VERSION" && break
+            echo "not on the index yet, retry $i"; sleep 30
+          done
+          cd /tmp
+          /tmp/v/bin/python - <<'EOF'
+          import glob, hashlib, os, bolorgir
+          want = open(os.path.join(os.environ["GITHUB_WORKSPACE"], "core", "core.sha256")).read().split()[0]
+          assert bolorgir.__version__ == os.environ["VERSION"], bolorgir.__version__
+          libs = glob.glob(os.path.join(os.path.dirname(bolorgir.__file__), "_lib", "libbolorgir.so*"))
+          got = {os.path.basename(p): hashlib.sha256(open(p, "rb").read()).hexdigest() for p in libs}
+          print(bolorgir.__version__, got)
+          assert got and all(h == want for h in got.values()), "installed core differs"
+          EOF
+          /tmp/v/bin/python "$GITHUB_WORKSPACE/tests/release/smoke_release.py"
+
+  github-release:
+    # Only after the PyPI upload and its install checks: a failed (or
+    # skipped) smoke-pypi job skips this job too. The release attaches
+    # SHA256SUMS; its notes name the tag, the commit and the core.
+    name: GitHub Release
+    needs: [version, publish-pypi, smoke-pypi]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core
+          path: core
+
+      - name: SHA256SUMS and the notes with the build identity
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          rm -f dist/auditwheel-show.txt
+          (cd dist && sha256sum *.whl *.tar.gz > SHA256SUMS && cat SHA256SUMS)
+          python3 .github/scripts/changelog_section.py "$VERSION" > notes.md
+          if grep -n 'FILL:' notes.md; then echo "release notes still have FILL markers"; exit 1; fi
+          comp="docs/release/v$VERSION-composition.json"
+          r6="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['gate']['r6_acceptance'])" "$comp")"
+          t8a="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['gate']['t8a_report'])" "$comp")"
+          {
+            printf '\n## Build identity\n\n'
+            printf -- '- Tag: `%s`, source commit: `%s`\n' "$GITHUB_REF_NAME" "$(git rev-parse HEAD)"
+            printf -- '- Core library sha256: `%s`\n' "$(cut -d' ' -f1 core/core.sha256)"
+            printf -- '- R6 verdict (admitted) of this core: `%s`\n' "$r6"
+            printf -- '- T8a report (accepted) of this core: `%s`\n' "$t8a"
+            printf -- '- Built by the workflow run %s/%s/actions/runs/%s\n' \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+            printf '\nSHA256SUMS:\n\n```\n'
+            cat dist/SHA256SUMS
+            printf '```\n'
+          } >> notes.md
+          cat notes.md
 
       - uses: softprops/action-gh-release@v2
         with:
-          files: dist/*
-          generate_release_notes: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
+          body_path: notes.md
+          fail_on_unmatched_files: true
 
-      # PyPI publishing (optional): configure trusted publishing for this
-      # repository on PyPI and uncomment the step below.
-      #
-      # - name: Publish to PyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
+  github-prerelease:
+    # Preview of an rc tag: a DRAFT pre-release with the checked wheel, the
+    # sdist and SHA256SUMS; no package index. Never replaces the files of an
+    # existing release of the tag (a new preview takes the next rc).
+    name: GitHub pre-release (rc tags, draft)
+    needs: [version, line, core, preview, wheel, sdist, sdist-install, wheel-smoke]
+    if: github.event_name == 'push' && needs.version.outputs.prerelease == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: wheel
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core
+          path: core
+
+      - name: No release of this tag yet (drafts included)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          found="$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq ".[] | select(.tag_name == \"$GITHUB_REF_NAME\") | .id")"
+          if [ -n "$found" ]; then echo "a release of $GITHUB_REF_NAME exists: $found"; exit 1; fi
+
+      - name: The wheel carries the R6-admitted core
+        run: |
+          python3 - <<'EOF'
+          import glob, hashlib, zipfile
+          want = open("core/core.sha256").read().split()[0]
+          whl = glob.glob("dist/*.whl")
+          assert len(whl) == 1, whl
+          with zipfile.ZipFile(whl[0]) as z:
+              got = {n: hashlib.sha256(z.read(n)).hexdigest() for n in z.namelist()
+                     if "libbolorgir.so" in n}
+          print(got)
+          assert got and all(h == want for h in got.values()), "core in the wheel differs"
+          EOF
+
+      - name: SHA256SUMS and the notes with the build identity
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          rm -f dist/auditwheel-show.txt
+          (cd dist && sha256sum *.whl *.tar.gz > SHA256SUMS && cat SHA256SUMS)
+          comp="$(echo "docs/release/v$VERSION-composition.json" | sed -E 's/(rc|a|b)[0-9]+-composition/-composition/')"
+          verdict="$(python3 -c "import json,sys; print(json.load(open(sys.argv[1]))['preview']['r6_acceptance'])" "$comp")"
+          {
+            cat "docs/release/v$VERSION.md"
+            printf '\n## Build identity\n\n'
+            printf -- '- Tag: `%s`, source commit: `%s`\n' "$GITHUB_REF_NAME" "$GITHUB_SHA"
+            printf -- '- Core library sha256: `%s`\n' "$(cut -d' ' -f1 core/core.sha256)"
+            printf -- '- R6 verdict (admitted) of this core: `%s`\n' "$verdict"
+            printf -- '- Built by the workflow run %s/%s/actions/runs/%s\n' \
+              "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID"
+            printf '\nSHA256SUMS:\n\n```\n'
+            cat dist/SHA256SUMS
+            printf '```\n'
+          } > notes.md
+          cat notes.md
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Bolorgir ${{ needs.version.outputs.version }} (preview)
+          body_path: notes.md
+          draft: true
+          prerelease: true
+          make_latest: false
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS

@@ -3,7 +3,7 @@
 SMALL - small schemas for exhaustive prefix enumeration (byte-level
 tokenizer; depth bounds the trace length in tokens).
 TRACE - larger schemas for the trace test (dict tokenizer).
-LITERALS - sets for FR-3.
+LITERALS - sets for the literal-language tests.
 """
 
 

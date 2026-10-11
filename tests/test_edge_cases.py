@@ -1,4 +1,4 @@
-"""T3: edge cases (mandatory list from TZ section 11).
+"""T3: edge cases (the mandatory boundary-case list).
 
 Core access via the backend factory (bolorgir package or ctypes
 fallback). Tests requiring exact blg_status codes / raw buffers use blg_ctypes
@@ -510,14 +510,15 @@ def test_accept_forbidden_token_keeps_state(byte_ctx, byte_tok):
 
 
 # ---------------------------------------------------------------------------
-# TZ 3.1: dead-end tokens must not be allowed
+# Dead-end tokens must not be allowed
 # ---------------------------------------------------------------------------
 
 def test_dead_end_token_excluded_on_partial_vocab():
     """[ab, a, <eos>] with literal "ab": "a" is byte-legal but nothing can
-    finish the literal afterwards, so TZ 3.1 forbids it. The core mask must
-    match the independent oracle at every step, accepting "a" must fail
-    with invalid_token and leave the state unchanged. All modes."""
+    finish the literal afterwards, so the completion rule forbids it. The
+    core mask must match the independent oracle at every step, accepting
+    "a" must fail with invalid_token and leave the state unchanged. All
+    modes."""
     spec = ref.TokenizerSpec(tokens=(b"ab", b"a", b""), eos_ids=(2,)).validate()
     oracle = ref.PrefixOracle({b"ab"})
     for mode in (zg.BLG_MODE_LAZY, zg.BLG_MODE_ADAPTIVE, zg.BLG_MODE_PRECOMPUTE):
@@ -541,7 +542,7 @@ def test_dead_end_token_excluded_on_partial_vocab():
 
 def test_dead_end_token_excluded_json_schema_object():
     """Finite literal JSON object on a partial vocabulary: tokens that
-    cannot reach the closing brace are excluded (same TZ 3.1 rule)."""
+    cannot reach the closing brace are excluded (same completion rule)."""
     spec = ref.TokenizerSpec(
         tokens=(b'{"a":', b'"x"', b"}", b"{", b"\"a\":", b'"', b"x", b"a", b"", b""),
         eos_ids=(8,), special_ids=(9,),

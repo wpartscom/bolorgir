@@ -1,16 +1,18 @@
-// Experimental compile-time precompute (FR-9): bounded BFS over parser
+// Experimental compile-time precompute: bounded BFS over parser
 // states reachable from the initial state, computing and caching masks
 // ahead of time. Full enumeration is not required; exhausting the state
 // budget, the temp memory or the work budget simply stops the walk and
 // generation continues lazily. Only an explicit cancel signal propagates.
 
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 const tokenizer = @import("tokenizer.zig");
 const parser = @import("parser.zig");
 const mask = @import("mask.zig");
 const cache = @import("cache.zig");
 const work_mod = @import("work.zig");
+const io_mod = @import("io.zig");
 
 pub const Error = error{Cancelled};
 
@@ -228,12 +230,12 @@ pub fn run(
     g: *const grammar.Grammar,
     tok: *const tokenizer.Tokenizer,
     c: *cache.Cache,
-    mu: *std.Thread.Mutex,
+    mu: *io_mod.Mutex,
     max_threads: u16,
     max_states: u64,
     w: *work_mod.Work,
 ) Error!u64 {
-    var arena = std.heap.ArenaAllocator.init(tmp_a);
+    var arena = Arena.init(tmp_a);
     defer arena.deinit();
     const a = arena.allocator();
 
@@ -241,7 +243,7 @@ pub fn run(
     var buf = mask.MaskBuf.init(a, a);
 
     var visited: std.AutoHashMapUnmanaged(u64, void) = .{};
-    var queue: std.ArrayListUnmanaged(parser.State) = .{};
+    var queue: std.ArrayListUnmanaged(parser.State) = .empty;
 
     var side = parser.Side.init(a);
     defer side.deinit();

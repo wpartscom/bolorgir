@@ -1,0 +1,18 @@
+{
+ "published": {},
+ "generatable": {
+  "D": 1491
+ },
+ "instances": {
+  "D": 2
+ },
+ "transitions": {},
+ "unclassified": [],
+ "n_unclassified": 0,
+ "accepted_exceptions": [],
+ "class_d_without_deviation": [],
+ "gate": {
+  "build": "t3-6e62e0d1",
+  "unclassified": []
+ }
+}

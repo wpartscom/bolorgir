@@ -1,0 +1,967 @@
+{
+ "about": "The owner's D4 decisions for the candidate 6e62e0d1 (record of the owner's answer): the executor's draft (one accept per entry of benchmarks/t3/d4_proposals.json with candidate_rows, the candidate's sha256 and the entry's candidate_rows) accepted as drafted, all 36 entries, by the owner's direct answer of 2026-10-10 (\"accept all 36\", by = \"owner\"); the executor recorded the answer and changed nothing else. benchmarks/local/t3/de7/d4e/owner_decisions.py apply wrote from it the decided list that review-3 of benchmarks/coverage/spec-v1/t3-6e62e0d1 used (review-3/evidence/d4.json, sha256 a36cd35dc59a0442edf722e44499624bedc04efb28c7c9299b15c34c696c018d); the tracked d4_proposals.json keeps owner_decision null.",
+ "d4_list_sha256": "8016b0f9f685470b8096fd54ad0b37e04b72dac85e4a81ced48ffaa1e6a9bdee",
+ "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+ "decisions": [
+  {
+   "id": "D4-2",
+   "group": "expensive_pass1",
+   "file": "Kubernetes---kb_1154_Normalized.json",
+   "proposal": "accept as a documented availability residual of an expensive path, as before (D4-2); the cause of the line's historical completion of pass 1 is not established",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_1154_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "documented availability residual of an expensive path; the cause of 7345490f's historical completion of pass 1 is not established; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-3",
+   "group": "engine_unavailable",
+   "file": "tye-schema.json",
+   "proposal": "accept as a documented limitation; group-certificate work is future scope",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "tye-schema.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "documented limitation (R11-C, R11-B); group-certificate work is future scope; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-3m",
+   "group": "engine_unavailable",
+   "file": "JsonSchemaStore---tye-schema.json",
+   "proposal": "accept as a documented limitation; group-certificate work is future scope",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "JsonSchemaStore---tye-schema.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "documented limitation (R11-C, R11-B); group-certificate work is future scope; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-4",
+   "group": "engine_unavailable",
+   "file": "Github_hard---o32934.json",
+   "proposal": "accept as a documented limitation; group-certificate work is future scope",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o32934.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "documented limitation (R11-C, R11-B); group-certificate work is future scope; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-5",
+   "group": "engine_unavailable",
+   "file": "JsonSchemaStore---cryproj.53.schema.json",
+   "proposal": "accept as a documented limitation",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "JsonSchemaStore---cryproj.53.schema.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "documented limitation (R11-C, R11-B); group-certificate work is future scope; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-6",
+   "group": "invalid_document",
+   "file": "*",
+   "proposal": "accept as the documented class D deviation, only for rows whose T2c triage on the candidate is class D with every invalid document checked; any other class reopens the row",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o21330.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o21780.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o3905.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o41323.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o54559.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o61027.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o68416.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o25781.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o55596.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o61004.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o62963.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o71266.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_trivial---o14485.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_trivial---o66073.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_ultra---o18644.json",
+      "tokenizer": "gpt2",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "JsonSchemaStore---vercel.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "bozr.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o14485.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o21330.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o21780.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41197.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41278.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41290.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41303.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41800.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o47116.json",
+      "tokenizer": "gpt2",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o48422.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o5327.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o61004.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o61027.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o66073.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o69733.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o71266.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o74556.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "the class D rule: draft-04 integer spelling, every invalid document checked in the T2c triage of the candidate; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-10",
+   "group": "engine_unavailable",
+   "file": "o31351.json",
+   "proposal": "accept as a documented limitation (as D4-3); group-certificate work is future scope",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "o31351.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "documented limitation (R11-C, R11-B); group-certificate work is future scope; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-11",
+   "group": "engine_unavailable",
+   "file": "bigquery-table.json",
+   "proposal": "accept as a documented limitation (as D4-4); group-certificate work is future scope",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "bigquery-table.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "documented limitation (R11-C, R11-B); group-certificate work is future scope; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-11m",
+   "group": "engine_unavailable",
+   "file": "JsonSchemaStore---bigquery-table.json",
+   "proposal": "accept as a documented limitation (as D4-11); group-certificate work is future scope",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "JsonSchemaStore---bigquery-table.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "documented limitation (R11-C, R11-B); group-certificate work is future scope; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-12",
+   "group": "engine_unavailable",
+   "file": "cryproj.dev.schema.json",
+   "proposal": "accept as a documented limitation (as D4-5, the MaskBench cryproj.53 schema)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "cryproj.dev.schema.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "documented limitation (R11-C, R11-B); group-certificate work is future scope; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-13",
+   "group": "pass1_budget_edge",
+   "file": "o41283.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "o41283.json",
+      "tokenizer": "gpt2",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-14",
+   "group": "pass1_budget_edge",
+   "file": "kb_1088_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_1088_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-15",
+   "group": "pass1_series_slowdown",
+   "file": "calculate_area_4c8e9fd1.json",
+   "proposal": "decide separately from the CPU-target group: accept as a timing transition at the pass-1 budget edge with the recorded slowdown of the series on this schema (byte pass 1 about 17 % slower than on 7345490f, not caused by the CPU target). The alternative is to find and remove the slowdown: a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "calculate_area_4c8e9fd1.json",
+      "tokenizer": "byte",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition at the pass-1 budget edge with the recorded slowdown of the series on this schema (byte pass 1 about 17 % slower than on 7345490f; not the CPU target); confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-16",
+   "group": "pass1_budget_edge",
+   "file": "kb_1008_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_1008_Normalized.json",
+      "tokenizer": "gpt2",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-17",
+   "group": "pass1_budget_edge",
+   "file": "kb_1057_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_1057_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-18",
+   "group": "pass1_budget_edge",
+   "file": "kb_1123_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_1123_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-19",
+   "group": "pass1_budget_edge",
+   "file": "kb_157_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_157_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-20",
+   "group": "pass1_budget_edge",
+   "file": "kb_199_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_199_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-21",
+   "group": "pass1_budget_edge",
+   "file": "kb_396_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_396_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-22",
+   "group": "pass1_budget_edge",
+   "file": "kb_480_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_480_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-23",
+   "group": "pass1_budget_edge",
+   "file": "kb_576_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_576_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-24",
+   "group": "pass1_budget_edge",
+   "file": "o43083.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "o43083.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-25",
+   "group": "pass1_budget_edge",
+   "file": "o44130.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "o44130.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-26",
+   "group": "pass1_budget_edge",
+   "file": "search_product_67f0c7b7.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "search_product_67f0c7b7.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-27",
+   "group": "pass1_budget_edge",
+   "file": "Github_easy---o1008.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_easy---o1008.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-28",
+   "group": "pass1_budget_edge",
+   "file": "Github_easy---o13688.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_easy---o13688.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-29",
+   "group": "pass1_budget_edge",
+   "file": "Github_easy---o48800.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_easy---o48800.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-30",
+   "group": "pass1_budget_edge",
+   "file": "Github_medium---o32493.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o32493.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-31",
+   "group": "pass1_budget_edge",
+   "file": "Github_trivial---o84263.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_trivial---o84263.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-32",
+   "group": "pass1_budget_edge",
+   "file": "Glaiveai2K---calculate_distance_51b4a417.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Glaiveai2K---calculate_distance_51b4a417.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-33",
+   "group": "pass1_budget_edge",
+   "file": "Glaiveai2K---generate_invoice_1c946d60.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Glaiveai2K---generate_invoice_1c946d60.json",
+      "tokenizer": "gpt2",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-34",
+   "group": "pass1_budget_edge",
+   "file": "Glaiveai2K---generate_resume_d9ba16a3.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Glaiveai2K---generate_resume_d9ba16a3.json",
+      "tokenizer": "gpt2",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-35",
+   "group": "pass1_budget_edge",
+   "file": "Kubernetes---kb_231_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_231_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-36",
+   "group": "pass1_budget_edge",
+   "file": "Kubernetes---kb_379_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_379_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-37",
+   "group": "pass1_budget_edge",
+   "file": "Kubernetes---kb_576_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_576_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  },
+  {
+   "id": "D4-38",
+   "group": "pass1_budget_edge",
+   "file": "Kubernetes---kb_613_Normalized.json",
+   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_613_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "owner",
+    "date": "2026-10-10",
+    "note": "timing transition of the portable release target (-Dcpu=baseline), measured on the current revision (R11-A); full masks not compared; confirmed by the owner's answer of 2026-10-10 (accept all 36 as drafted)"
+   }
+  }
+ ],
+ "review": {
+  "set": "benchmarks/coverage/spec-v1/t3-6e62e0d1",
+  "review": "review-3",
+  "d4_sha256": "a36cd35dc59a0442edf722e44499624bedc04efb28c7c9299b15c34c696c018d",
+  "verdict": "admitted"
+ }
+}

@@ -1,8 +1,8 @@
 """T4: C/Python boundary - negative ABI fuzz over really existing buffers.
 
-Rules (TZ T4): never dereference arbitrary addresses - only NULL or live
-ctypes buffers; wrong sizes (struct_size, mask_words, data_len, entry_count)
-are fed on really allocated structs/buffers.
+Rules: never dereference arbitrary addresses - only NULL or live ctypes
+buffers; wrong sizes (struct_size, mask_words, data_len, entry_count) are
+fed on really allocated structs/buffers.
 
 Each iteration checks that the kernel returns the expected blg_status (rather
 than crashing): any segfault kills the pytest process and counts as a

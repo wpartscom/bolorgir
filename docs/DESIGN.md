@@ -14,7 +14,7 @@ file in the same change.
 
 **Conventions**
 
-- Toolchain: Zig 0.15.2 (the version pinned in CI), Python 3.10+, a C
+- Toolchain: Zig 0.17.0 (the version pinned in CI), Python 3.12+, a C
   compiler for the Python extension. Formatting: `zig fmt`.
 - Core sources live in `src/`; the C ABI is declared in
   `include/bolorgir.h`.
@@ -252,7 +252,7 @@ of the implementation:
 ## 8. Python bridge (`python/`)
 
 - `bolorgir._core` is a C extension built against the Limited API
-  (`Py_LIMITED_API=0x030A0000`, abi3). It links against `libbolorgir.so`
+  (`Py_LIMITED_API=0x030C0000`, abi3). It links against `libbolorgir.so`
   shipped in the package (`rpath $ORIGIN/_lib`); see ADR-0002 (Python
   bridge).
 - The GIL is released around native calls. Each session has a lock; a batch

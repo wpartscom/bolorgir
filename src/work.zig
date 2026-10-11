@@ -1,6 +1,6 @@
 const std = @import("std");
 
-/// Per-call work budget and cancellation signal (NFR-2). One Work value is
+/// Per-call work budget and cancellation signal. One Work value is
 /// created per public API call (compile/fill_mask); loops between bounded
 /// work portions call charge(). The cancel flag is a caller-owned atomic
 /// byte registered via blg_cancel_flag_set; it must outlive the call.

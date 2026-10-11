@@ -1,4 +1,5 @@
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const pattern = @import("pattern.zig");
 const witset = @import("witset.zig");
 
@@ -140,6 +141,11 @@ pub const OpenObjNode = struct {
     // of regex metacharacters). Mutually exclusive with pattern_lit; the
     // decoded key is matched by DFA search at dispatch.
     pattern_dfa: ?*const pattern.Dfa = null,
+    // Declared properties may arrive in any order (each at most once, the
+    // required ones checked at close). Set on the copies of the subgraphs
+    // whose verdict is a value predicate (schema.zig orderFreeVerdicts):
+    // there a key-order rejection would miscount a matching value.
+    any_order: bool = false,
     ann_slots: u16 = 0,
 };
 
@@ -151,6 +157,16 @@ pub const NumConst = struct { neg: bool, digits: []const u8, exp10: i64 };
 /// Sentinel branch slot of an ifelse comb node: the then/else applicator is
 /// absent (verdict `true`).
 pub const COMB_NONE: NodeId = std.math.maxInt(u32);
+
+pub const ByteSet = std.StaticBitSet(256);
+
+/// First bytes of a JSON number: '-' and the digits.
+pub const number_first: ByteSet = blk: {
+    var bs = ByteSet.empty;
+    bs.set('-');
+    for ('0'..'9' + 1) |c| bs.set(c);
+    break :blk bs;
+};
 /// Boolean-combinator node kind (spec-v1 P3). `anyOf` needs no node: it is
 /// a plain union and compiles to choice/lit_trie. The others parse every
 /// branch in parallel NFA threads tagged with one instance id; the verdict
@@ -344,10 +360,10 @@ pub const Node = union(enum) {
 pub const Identity = struct { lo: u64 = 0, hi: u64 = 0 };
 
 pub fn identityOf(kind: GrammarKind, bytes: []const u8) Identity {
-    var lo = fnv1a64(&[_]u8{@intFromEnum(kind)});
+    var lo = fnv1a64(&[_]u8{@backingInt(kind)});
     lo = fnv1a64Update(lo, bytes);
     var hi = std.hash.Wyhash.init(0);
-    hi.update(&[_]u8{@intFromEnum(kind)});
+    hi.update(&[_]u8{@backingInt(kind)});
     hi.update(bytes);
     return .{ .lo = lo, .hi = hi.final() };
 }
@@ -358,12 +374,12 @@ pub fn identityOf(kind: GrammarKind, bytes: []const u8) Identity {
 pub fn identityOf2(kind: GrammarKind, bytes: []const u8, extra: []const u8) Identity {
     var lenbuf: [8]u8 = undefined;
     std.mem.writeInt(u64, &lenbuf, bytes.len, .little);
-    var lo = fnv1a64(&[_]u8{@intFromEnum(kind)});
+    var lo = fnv1a64(&[_]u8{@backingInt(kind)});
     lo = fnv1a64Update(lo, &lenbuf);
     lo = fnv1a64Update(lo, bytes);
     lo = fnv1a64Update(lo, extra);
     var hi = std.hash.Wyhash.init(0);
-    hi.update(&[_]u8{@intFromEnum(kind)});
+    hi.update(&[_]u8{@backingInt(kind)});
     hi.update(&lenbuf);
     hi.update(bytes);
     hi.update(extra);
@@ -387,7 +403,8 @@ pub const Grammar = struct {
     /// whose live prefixes can dead-end even on a byte-complete vocabulary
     /// (comb verdicts at value boundaries, pattern DFA states the search
     /// wrapper keeps alive past the last completable prefix, bounded
-    /// str_excl strings, value-constrained number machines). Such grammars
+    /// str_excl strings, value-constrained number machines, arrays with
+    /// contains or uniqueItems). Such grammars
     /// run the residual-reachability filter of src/complete.zig for every
     /// mask/accept; canonical-v1 grammars never set it and keep the
     /// unfiltered fast path bit for bit.
@@ -408,7 +425,11 @@ pub const Grammar = struct {
     /// without search. yes/no are exact; unknown defers to the budgeted
     /// search, never guesses.
     nonempty: []const u8 = &.{},
-    arena: std.heap.ArenaAllocator,
+    /// RFC 6901 pointer of the subschema each node was compiled from (empty
+    /// unless compiled with schema.Options.record_pointers; "" for nodes
+    /// without one).
+    node_ptrs: []const []const u8 = &.{},
+    arena: Arena,
 
     pub fn deinit(self: *Grammar) void {
         self.arena.deinit();
@@ -420,6 +441,49 @@ pub const Grammar = struct {
 
     pub fn literalBytes(self: *const Grammar, lit: Literal) []const u8 {
         return self.literal_pool[lit.off .. lit.off + lit.len];
+    }
+
+    /// Bytes a value of node `id` can start with: every byte when the shape
+    /// is not analyzed, none for an empty language. Values never start with
+    /// whitespace (compact language).
+    pub fn firstBytes(self: *const Grammar, id: NodeId, depth: u32) ByteSet {
+        const all = ByteSet.full;
+        if (depth > 32 or id == COMB_NONE) return all;
+        var out = ByteSet.empty;
+        switch (self.nodes[id]) {
+            .literal => |lit| {
+                if (lit.len == 0) return all;
+                out.set(self.literalBytes(lit)[0]);
+            },
+            .lit_trie => |lt| {
+                const root = lt.nodes[0];
+                if (root.terminal) return all;
+                for (lt.edges[root.edge_off..][0..root.edge_len]) |e| out.set(e.byte);
+            },
+            .str => |sc| if (sc.min_len <= sc.max_len) out.set('"'),
+            .str_excl, .str_pat => out.set('"'),
+            .int_v, .num_v, .int_num, .num_const, .not_int_num, .num_excl, .num_range, .num_mult => out.setUnion(number_first),
+            .object, .open_obj => out.set('{'),
+            .repeat => out.set('['),
+            .choice => |alts| for (alts) |a| out.setUnion(self.firstBytes(a, depth + 1)),
+            .seq => |parts| {
+                if (parts.len == 0) return all;
+                return switch (self.nodes[parts[0]]) {
+                    .literal => |lit| if (lit.len == 0) all else self.firstBytes(parts[0], depth + 1),
+                    else => all,
+                };
+            },
+            .comb => |cb| switch (cb.kind) {
+                .oneof => for (cb.branches) |b| out.setUnion(self.firstBytes(b, depth + 1)),
+                .allof => {
+                    out = all;
+                    for (cb.branches) |b| out.setIntersection(self.firstBytes(b, depth + 1));
+                },
+                // (if and then) or (not if and else): within then or else.
+                .ifelse => for (cb.branches[1..3]) |b| out.setUnion(self.firstBytes(b, depth + 1)),
+            },
+        }
+        return out;
     }
 
     /// Runtime structural equality of two nodes of this grammar (spec-v1):
@@ -495,10 +559,17 @@ fn isFiniteLiteral(nodes: []const Node, root: NodeId, a: std.mem.Allocator) !boo
 }
 
 /// True when a node reachable from the root defers part of its acceptance
-/// verdict to the confirmed value boundary (spec-v1): a token mask derived
+/// verdict to the confirmed value boundary or the element close (spec-v1):
+/// a token mask derived
 /// from pure prefix legality would then admit dead-end prefixes, so mask and
 /// accept must run the completion-reachability filter (ADR-0005). These
 /// grammars are never on the finite-literal fast path.
+/// The compiled form of `false` at string positions (schema.zig
+/// isEmptyNode), e.g. the undeclared value of additionalProperties: false.
+fn isEmptyStr(n: Node) bool {
+    return n == .str and n.str.min_len > n.str.max_len;
+}
+
 fn needsReachability(nodes: []const Node, root: NodeId, a: std.mem.Allocator) !bool {
     const state = try a.alloc(u8, nodes.len);
     defer a.free(state);
@@ -518,14 +589,14 @@ fn needsReachability(nodes: []const Node, root: NodeId, a: std.mem.Allocator) !b
                     return false;
                 },
                 .repeat => |r| {
+                    // contains and uniqueItems judge each element at its
+                    // close (the tap reparse and the seen set), so a
+                    // started element can already be doomed.
+                    if (r.contains != null or r.unique) return true;
                     for (r.prefix) |c| {
                         if (visit(ns, st, c)) return true;
                     }
-                    if (visit(ns, st, r.item)) return true;
-                    if (r.contains) |c| {
-                        if (visit(ns, st, c)) return true;
-                    }
-                    return false;
+                    return visit(ns, st, r.item);
                 },
                 .object => |o| {
                     for (o.props) |p| {
@@ -534,6 +605,25 @@ fn needsReachability(nodes: []const Node, root: NodeId, a: std.mem.Allocator) !b
                     return false;
                 },
                 .open_obj => |o| {
+                    // A constrained key (pattern, propertyNames, no
+                    // undeclared value) can be typed past every
+                    // dispatchable spelling: the parser refuses only the
+                    // closing quote, so key prefixes need the filter.
+                    if (o.pattern_lit != null or o.pattern_dfa != null or o.prop_names != null or
+                        o.names_forbidden or isEmptyStr(ns[o.value])) return true;
+                    // A dependentRequired entry can leave an obligation
+                    // undischargeable (a dependency name skipped in schema
+                    // order) while fresh undeclared keys keep the prefix
+                    // typable forever: the parser refuses only at dispatch
+                    // or close.
+                    for (o.deps) |d| {
+                        if (d.kind == .required) return true;
+                    }
+                    // A count cap: with max_props keys seen the parser
+                    // still takes the comma and refuses only the next
+                    // dispatch, so a prefix past the cap stays typable
+                    // forever.
+                    if (o.max_props != UNBOUNDED) return true;
                     for (o.props) |p| {
                         if (visit(ns, st, p.value)) return true;
                     }
@@ -700,7 +790,7 @@ const EqCtx = struct {
                 const y = nb.open_obj;
                 if (x.min_props != y.min_props or x.max_props != y.max_props or
                     x.track_keys != y.track_keys or x.capture != y.capture or
-                    x.names_forbidden != y.names_forbidden or
+                    x.names_forbidden != y.names_forbidden or x.any_order != y.any_order or
                     x.key_min_len != y.key_min_len or x.key_max_len != y.key_max_len or
                     x.pattern_dfa != y.pattern_dfa) break :blk false;
                 if (!try self.propsEquiv(x.props, y.props)) break :blk false;
@@ -726,10 +816,10 @@ const EqCtx = struct {
     }
 };
 
-fn computeNonempty(nodes: []const Node, pool: []const u8, a: std.mem.Allocator) ![]u8 {
+fn computeNonempty(nodes: []const Node, pool: []const u8, a: std.mem.Allocator, scratch: std.mem.Allocator) ![]u8 {
     const st = try a.alloc(u8, nodes.len);
     @memset(st, 0); // 0 unvisited, then NE_*, 4 in progress
-    var eqc = EqCtx{ .ns = nodes, .pool = pool, .a = a };
+    var eqc = EqCtx{ .ns = nodes, .pool = pool, .a = scratch };
     defer eqc.deinit();
 
     const S = struct {
@@ -842,14 +932,29 @@ fn computeNonempty(nodes: []const Node, pool: []const u8, a: std.mem.Allocator) 
                         }
                     }
                     if (o.min_props > 0 or o.extra_required.len > 0) {
-                        // Undeclared keys are needed: unbounded key length
-                        // guarantees fresh keys; the fallback value schema
-                        // must be non-empty.
-                        if (o.key_max_len != UNBOUNDED) break :blk NE_UNKNOWN;
-                        switch (try visit(ns, pl, ne, eqx, o.value)) {
+                        // Fresh undeclared keys need an unbounded key length
+                        // and a non-empty fallback value schema.
+                        const fb: u8 = if (o.key_max_len != UNBOUNDED) NE_UNKNOWN else try visit(ns, pl, ne, eqx, o.value);
+                        if (o.extra_required.len > 0) switch (fb) {
                             NE_NO => break :blk NE_NO,
                             NE_UNKNOWN => unknown = true,
                             else => {},
+                        };
+                        if (o.min_props > 0 and fb != NE_YES) {
+                            // Without fresh keys the count comes from the
+                            // declared props, one distinct key each.
+                            var yes: u32 = 0;
+                            var maybe: u32 = 0;
+                            for (o.props) |p| switch (try visit(ns, pl, ne, eqx, p.value)) {
+                                NE_YES => {
+                                    yes += 1;
+                                    maybe += 1;
+                                },
+                                NE_NO => {},
+                                else => maybe += 1,
+                            };
+                            if (fb == NE_NO and maybe < o.min_props) break :blk NE_NO;
+                            if (yes < o.min_props) unknown = true;
                         }
                     }
                     break :blk if (unknown) NE_UNKNOWN else NE_YES;
@@ -921,7 +1026,7 @@ fn computeNonempty(nodes: []const Node, pool: []const u8, a: std.mem.Allocator) 
         }
     };
     for (0..nodes.len) |id| _ = try S.visit(nodes, pool, st, &eqc, @intCast(id));
-    improveNonemptyFixpoint(nodes, pool, st, a);
+    improveNonemptyFixpoint(nodes, pool, st, scratch);
     return st;
 }
 
@@ -1020,9 +1125,21 @@ fn monotonePasses(ns: []const Node, ne: []u8) void {
                         if (ne[p.value] != NE_YES) all_yes = false;
                     }
                     if (o.min_props > 0 or o.extra_required.len > 0) {
-                        if (o.key_max_len != UNBOUNDED) break :blk 0;
-                        if (ne[o.value] == NE_NO) break :blk NE_NO;
-                        if (ne[o.value] != NE_YES) break :blk 0;
+                        const fb: u8 = if (o.key_max_len != UNBOUNDED) 0 else ne[o.value];
+                        if (o.extra_required.len > 0) {
+                            if (fb == NE_NO) break :blk NE_NO;
+                            if (fb != NE_YES) all_yes = false;
+                        }
+                        if (o.min_props > 0 and fb != NE_YES) {
+                            var yes: u32 = 0;
+                            var maybe: u32 = 0;
+                            for (o.props) |p| {
+                                if (ne[p.value] == NE_YES) yes += 1;
+                                if (ne[p.value] != NE_NO) maybe += 1;
+                            }
+                            if (fb == NE_NO and maybe < o.min_props) break :blk NE_NO;
+                            if (yes < o.min_props) all_yes = false;
+                        }
                     }
                     break :blk if (all_yes) NE_YES else 0;
                 },
@@ -1080,7 +1197,7 @@ fn monotonePasses(ns: []const Node, ne: []u8) void {
 /// the witness verifications, so a single sweep suffices. Allocations are
 /// compile-time scratch in one arena; OOM downgrades to NE_UNKNOWN.
 fn witnessSweep(ns: []const Node, pool: []const u8, ne: []u8, a: std.mem.Allocator) void {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     defer arena.deinit();
     const aa = arena.allocator();
     const g = witset.View{ .ns = ns, .pool = pool };
@@ -1150,8 +1267,8 @@ pub fn fnv1a64Update(h: u64, bytes: []const u8) u64 {
 
 pub const Builder = struct {
     a: std.mem.Allocator,
-    nodes: std.ArrayListUnmanaged(Node) = .{},
-    pool: std.ArrayListUnmanaged(u8) = .{},
+    nodes: std.ArrayListUnmanaged(Node) = .empty,
+    pool: std.ArrayListUnmanaged(u8) = .empty,
 
     pub fn init(a: std.mem.Allocator) Builder {
         return .{ .a = a };
@@ -1201,7 +1318,7 @@ pub const Builder = struct {
 
     const TmpTrieEdge = struct { byte: u8, child: u32 };
     const TmpTrieNode = struct {
-        edges: std.ArrayListUnmanaged(TmpTrieEdge) = .{},
+        edges: std.ArrayListUnmanaged(TmpTrieEdge) = .empty,
         terminal: bool = false,
     };
 
@@ -1214,7 +1331,7 @@ pub const Builder = struct {
     /// spec-v1 P3 str_excl node (forbidden quoted strings of `not`).
     pub fn buildTrie(self: *Builder, lits: []const Literal) !LitTrie {
         const a = self.alloc();
-        var tmp: std.ArrayListUnmanaged(TmpTrieNode) = .{};
+        var tmp: std.ArrayListUnmanaged(TmpTrieNode) = .empty;
         errdefer {
             for (tmp.items) |*tn| tn.edges.deinit(a);
             tmp.deinit(a);
@@ -1278,7 +1395,7 @@ pub const Builder = struct {
         return .{ .lit_trie = try self.buildTrie(lits) };
     }
 
-    pub fn finish(self: *Builder, arena: std.heap.ArenaAllocator, kind: GrammarKind, root: NodeId, ident: Identity) !Grammar {
+    pub fn finish(self: *Builder, arena: Arena, kind: GrammarKind, root: NodeId, ident: Identity) !Grammar {
         // The memoization buffer must come from the arena that is stored in
         // the grammar (allocations through `self.a` would land in the
         // caller's local arena copy and leak).
@@ -1290,7 +1407,9 @@ pub const Builder = struct {
         @memset(pat_len, null);
         var nonempty: []const u8 = &.{};
         if (reach) {
-            nonempty = try computeNonempty(self.nodes.items, self.pool.items, aa);
+            // Scratch goes to the backing allocator: freed space inside the
+            // arena is not reused.
+            nonempty = try computeNonempty(self.nodes.items, self.pool.items, aa, arena_mut.child);
             var by_dfa: std.AutoHashMapUnmanaged(usize, ?*const pattern.PatLenDescr) = .{};
             for (self.nodes.items, 0..) |n, id| {
                 const dfa: *const pattern.Dfa = switch (n) {

@@ -1,0 +1,5 @@
+# Show product languages; exclude tests and development tooling.
+benchmarks/**      linguist-detectable=false
+tests/**           linguist-detectable=false
+python/tests/**    linguist-detectable=false
+.github/scripts/** linguist-detectable=false

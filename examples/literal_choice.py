@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example: literal choice (FR-3) without Hugging Face.
+Example: literal choice without Hugging Face.
 
 Mini-tokenizer is assembled by hand: ids 0..255 are single-byte tokens,
 id 256 is EOS. The "model" samples uniformly among allowed tokens with a

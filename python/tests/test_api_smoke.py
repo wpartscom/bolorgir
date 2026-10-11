@@ -253,7 +253,7 @@ def test_fill_mask_shape_and_batch():
 
 
 # ----------------------------------------------------------------------
-# NFR-2: cancellation API and the work/adaptive budgets
+# Cancellation API and the work/adaptive budgets
 # ----------------------------------------------------------------------
 
 @pytest.mark.skipif(CORE_IS_STUB, reason="stub core does not compute masks")

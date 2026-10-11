@@ -43,6 +43,8 @@ published benchmark reports are under [benchmarks/](../benchmarks/).
 | [0008](adr/ADR-0008-recursion.md) | Recursive `$ref` by bounded unrolling | accepted |
 | [0009](adr/ADR-0009-unevaluated.md) | `unevaluated*` by compile-time scenario synthesis | accepted |
 | [0010](adr/ADR-0010-dynamic-refs.md) | `content*` annotations, URI resolution, dynamic references | accepted |
+| [0011](adr/ADR-0011-numeric-conjunction.md) | Closed-form certificates for numeric conjunctions | accepted |
+| [0012](adr/ADR-0012-generatability-probe.md) | Compile-time generatability probe | proposed |
 
 Two records share the number 0002; other documents cite them as
 "ADR-0002 (literal trie)" and "ADR-0002 (Python bridge)", or by context.
@@ -58,6 +60,8 @@ Two records share the number 0002; other documents cite them as
   [ROADMAP.md](../ROADMAP.md). "R1"-"R4" are correctness fixes listed in the
   [CHANGELOG](../CHANGELOG.md). "D1", "D2", ... are numbered decisions inside
   an ADR (for example "ADR-0005 D3").
+- **Follow-up work.** Agent integration and evaluation (T9/T10, A1-A3) are
+  future work; mentions of them do not indicate completed implementation.
 - **Build names.** "final3", "final4", "fix1", "fix2", "fix3" (with
   sub-runs such as "fix3g") identify successive measured builds; their
   identities and outcomes are in [RUN_HISTORY.md](RUN_HISTORY.md) and

@@ -5,13 +5,13 @@ Build order (from the python/ directory):
 
     # Full build: zig build ReleaseSafe -> copy .so into _lib -> abi3 extension
     python3 setup.py build_ext --inplace          # for development
-    python3 -m pip wheel . --no-deps              # abi3 wheel (cp310)
+    python3 -m pip wheel . --no-deps              # abi3 wheel (cp312)
 
 Environment variables:
     ZIG             path to zig (default: zig from PATH)
     BLG_SKIP_ZIG=1  skip `zig build`, but sync _lib from BLG_CORE_LIB or
-                    zig-out/lib if present (a clean CI used to fail: a
-                    fresh .so sat in zig-out while _lib kept the stub)
+                    zig-out/lib if present (otherwise a fresh .so would
+                    sit in zig-out while _lib keeps the stub)
     BLG_CORE_LIB     directory with a ready libbolorgir.so* to copy
                     into _lib when BLG_SKIP_ZIG=1
     BLG_SKIP_COPY=1  never touch _lib (sdist mode: the library is already
@@ -33,8 +33,8 @@ declares preferred_optimize_mode, so its CLI is `-Drelease=true`
 back to that one, then to a plain `zig build`.
 
 The bolorgir._core extension is built with the Limited API
-(Py_LIMITED_API=0x030A0000) and linked against libbolorgir from
-python/bolorgir/_lib with rpath $ORIGIN/_lib -> abi3 wheel cp310.
+(Py_LIMITED_API=0x030C0000) and linked against libbolorgir from
+python/bolorgir/_lib with rpath $ORIGIN/_lib -> abi3 wheel cp312.
 """
 
 import filecmp
@@ -55,12 +55,18 @@ LIB_DIR = os.path.join(PKG_DIR, "_lib")
 DEFAULT_ZIG = "zig"
 
 
+def _is_core_lib(name):
+    # Linux: libbolorgir.so[.0[.1.0]]; macOS: libbolorgir[.0[.1.0]].dylib.
+    return name.startswith("libbolorgir.so") or (
+        name.startswith("libbolorgir.") and name.endswith(".dylib"))
+
+
 def _copy_core_lib(src=None):
     src = src or os.path.join(ROOT, "zig-out", "lib")
     os.makedirs(LIB_DIR, exist_ok=True)
     copied = []
     for name in sorted(os.listdir(src)):
-        if not name.startswith("libbolorgir.so"):
+        if not _is_core_lib(name):
             continue
         sp = os.path.join(src, name)
         dp = os.path.join(LIB_DIR, name)
@@ -82,10 +88,7 @@ def _copy_core_lib(src=None):
 def _core_lib_present():
     if not os.path.isdir(LIB_DIR):
         return False
-    return any(
-        name.startswith("libbolorgir.so")
-        for name in os.listdir(LIB_DIR)
-    )
+    return any(_is_core_lib(name) for name in os.listdir(LIB_DIR))
 
 
 def _copy_available_core_lib():
@@ -106,8 +109,7 @@ def _copy_available_core_lib():
         return _copy_core_lib(explicit)
     default_src = os.path.join(ROOT, "zig-out", "lib")
     if os.path.isdir(default_src) and any(
-        name.startswith("libbolorgir.so")
-        for name in os.listdir(default_src)
+        _is_core_lib(name) for name in os.listdir(default_src)
     ):
         return _copy_core_lib(default_src)
     return []
@@ -261,7 +263,8 @@ ext_modules = [
         library_dirs=[LIB_DIR],
         libraries=["bolorgir"],
         runtime_library_dirs=["$ORIGIN/_lib"] if sys.platform != "darwin" else [],
-        define_macros=[("Py_LIMITED_API", "0x030A0000")],
+        extra_link_args=["-Wl,-rpath,@loader_path/_lib"] if sys.platform == "darwin" else [],
+        define_macros=[("Py_LIMITED_API", "0x030C0000")],
         py_limited_api=True,
     )
 ]
@@ -270,5 +273,5 @@ setup(
     ext_modules=ext_modules,
     cmdclass={"build_py": BolorgirBuildPy, "build_ext": ZigBuildExt,
               "sdist": BolorgirSdist},
-    options={"bdist_wheel": {"py_limited_api": "cp310"}},
+    options={"bdist_wheel": {"py_limited_api": "cp312"}},
 )

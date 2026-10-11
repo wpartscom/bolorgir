@@ -34,10 +34,13 @@
 //!  - in-flight keys mid-escape or mid-UTF-8, completed through the
 //!    canonical escape table;
 //!  - closed objects, seq tails, repeat element obligations.
-//! Anything else (mid-string str_excl, mid-value num_const, ifelse combs,
-//! schema-kind deps in force, ...) fails the candidate, not the state.
+//! oneOf and if/then/else combs are not merged: a candidate carries the
+//! obligations of the thread's own branch, and the sim verifies the vote.
+//! Anything else (mid-string str_excl, mid-value num_const, schema-kind
+//! deps in force, ...) fails the candidate, not the state.
 
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 const parser = @import("parser.zig");
 const pattern = @import("pattern.zig");
@@ -67,8 +70,11 @@ const Ctx = struct {
     value_boundary: ?usize = null,
     /// 0: intersect group-sibling constraints at a value boundary (exact
     /// when sibling groups are fresh there, over-constrained when a sibling
-    /// oneOf is mid-outer-value); 1: merged-chain pendings only. Both are
-    /// tried; the sim arbitrates.
+    /// oneOf is mid-outer-value); 1: merged-chain pendings only; 2: as 1,
+    /// and allof siblings whose branch sits under a oneOf or
+    /// if/then/else are not merged (the first thread of such a branch may
+    /// be a rival alternative or an if condition whose declared values
+    /// would pin the emission). All are tried; the sim arbitrates.
     group_mode: u8 = 0,
     /// Selects which live alternative of a oneOf-nested allof sibling
     /// branch contributes obligations to a merged emission (0 = first).
@@ -81,6 +87,25 @@ const Ctx = struct {
     /// The walk's upper bound in the thread (value_boundary + 1, else
     /// t.len): frames above are emitted by the walk / skipped pristine.
     walk_top: usize = 0,
+    /// 0: the witness of each emitted value; k > 0: VALUE_POOL[k - 1]
+    /// wherever every schema of that value accepts it. Under oneOf and
+    /// if/then/else the default witness may satisfy a rival branch too; a
+    /// value of another type can fail it (e.g. a non-string for a key one
+    /// branch types as string). The sim arbitrates.
+    value_choice: u8 = 0,
+    /// aliveBySim phase: 0 the base axes (if/then/else combs refuse the
+    /// candidate); 1 also if/then/else and group_mode 2; 2 also the
+    /// value_choice axis.
+    phase: u8 = 0,
+};
+
+const VALUE_POOL = [_]witset.Val{
+    .nul,
+    .{ .num = .{ .neg = false, .digits = "", .exp10 = 0 } },
+    .{ .boolean = true },
+    .{ .str = "" },
+    .{ .obj = &.{} },
+    .{ .arr = &.{} },
 };
 
 /// Heuristic thread progress for candidate ordering: typed keys / values /
@@ -109,7 +134,7 @@ fn threadProgress(side: *const parser.Side, t: *const parser.Thread) u32 {
 /// Attempt an exact alive certificate by concrete completion. True only
 /// when a synthesized suffix was fed to a state copy and reached canEnd.
 pub fn aliveBySim(g: *const grammar.Grammar, st: *const parser.State, side: *parser.Side) bool {
-    var arena = std.heap.ArenaAllocator.init(side.a);
+    var arena = Arena.init(side.a);
     defer arena.deinit();
     const a = arena.allocator();
     // Most-progressed stacks first, deepest as tiebreak: progress tracks
@@ -132,61 +157,79 @@ pub fn aliveBySim(g: *const grammar.Grammar, st: *const parser.State, side: *par
             return c.s.threads[x].len > c.s.threads[y].len;
         }
     }.lt);
+    // Phase 0 runs the base axes over every thread within MAX_SIMS; the
+    // later phases (if/then/else candidates and group_mode 2, then other
+    // witness values) get MAX_SIMS more and run only when phase 0 found
+    // nothing, so they never take budget from it.
     var sims: usize = 0;
-    var tried: usize = 0;
-    var failed: std.ArrayListUnmanaged([]const u8) = .{};
-    thread_loop: for (order[0..n]) |ti| {
-        const t = &st.threads[ti];
-        if (t.len == 0) continue;
-        // Only candidate-producing threads count against the budget: a
-        // thread whose synthesis fails outright is cheap and common (deep
-        // oneOf variant branches with unmeetable obligations).
-        var counted = false;
-        const kc_max: u8 = if (hasKeyStrFrame(t)) 3 else 1;
-        var gm: u8 = 0;
-        while (gm <= 1) : (gm += 1) {
-            if (gm == 1 and !hasCombFrame(t)) break;
-            var trial: u8 = 0;
-            while (trial <= MAX_TRIAL) : (trial += 1) {
-                if (trial > 0 and !hasTrialFrame(g, t)) break;
-                var kc: u8 = 0;
-                while (kc < kc_max) : (kc += 1) {
-                    var alt: u8 = 0;
-                    while (alt <= MAX_ALT) : (alt += 1) {
-                        if (alt > 0 and !hasCombFrame(t)) break;
-                        var out: std.ArrayListUnmanaged(u8) = .{};
-                        var ctx: Ctx = .{ .g = g, .st = st, .side = side, .a = a, .out = &out, .trial = trial, .key_choice = kc, .group_mode = gm, .alt = alt };
-                        if (!synthThread(&ctx, t)) {
-                            if (!ctx.alt_seen) break;
-                            continue;
-                        }
-                        if (out.items.len == 0 or out.items.len > MAX_SYNTH_BYTES) continue;
-                        if (!counted) {
-                            if (tried >= MAX_THREADS_TRIED) break :thread_loop;
-                            tried += 1;
-                            counted = true;
-                        }
-                        // A byte-identical candidate fails the same way; skip it.
-                        var dup = false;
-                        for (failed.items) |fb| {
-                            if (std.mem.eql(u8, fb, out.items)) {
-                                dup = true;
-                                break;
+    var failed: std.ArrayListUnmanaged([]const u8) = .empty;
+    var yielded: [parser.MAX_THREADS_CAP]bool = @splat(false);
+    var phase: u8 = 0;
+    while (phase <= 2) : (phase += 1) {
+        const sim_cap: usize = if (phase == 0) MAX_SIMS else 2 * MAX_SIMS;
+        var tried: usize = 0;
+        thread_loop: for (order[0..n]) |ti| {
+            const t = &st.threads[ti];
+            if (t.len == 0) continue;
+            if (phase == 1 and !hasCombFrame(t)) continue;
+            if (phase == 2 and (!yielded[ti] or !hasBranchingComb(g, t))) continue;
+            // Only candidate-producing threads count against the budget: a
+            // thread whose synthesis fails outright is cheap and common (deep
+            // oneOf variant branches with unmeetable obligations).
+            var counted = false;
+            const kc_max: u8 = if (hasKeyStrFrame(t)) 3 else 1;
+            const gm_max: u8 = if (phase == 0) 1 else 2;
+            var vc: u8 = if (phase == 2) 1 else 0;
+            const vc_max: u8 = if (phase == 2) VALUE_POOL.len else 0;
+            while (vc <= vc_max) : (vc += 1) {
+                var gm: u8 = 0;
+                while (gm <= gm_max) : (gm += 1) {
+                    if (gm >= 1 and !hasCombFrame(t)) break;
+                    var trial: u8 = 0;
+                    while (trial <= MAX_TRIAL) : (trial += 1) {
+                        if (trial > 0 and !hasTrialFrame(g, t)) break;
+                        var kc: u8 = 0;
+                        while (kc < kc_max) : (kc += 1) {
+                            var alt: u8 = 0;
+                            while (alt <= MAX_ALT) : (alt += 1) {
+                                if (alt > 0 and !hasCombFrame(t)) break;
+                                var out: std.ArrayListUnmanaged(u8) = .empty;
+                                var ctx: Ctx = .{ .g = g, .st = st, .side = side, .a = a, .out = &out, .trial = trial, .key_choice = kc, .group_mode = gm, .alt = alt, .value_choice = vc, .phase = phase };
+                                if (!synthThread(&ctx, t)) {
+                                    if (!ctx.alt_seen) break;
+                                    continue;
+                                }
+                                if (out.items.len == 0 or out.items.len > MAX_SYNTH_BYTES) continue;
+                                yielded[ti] = true;
+                                if (!counted) {
+                                    if (tried >= MAX_THREADS_TRIED) break :thread_loop;
+                                    tried += 1;
+                                    counted = true;
+                                }
+                                // A byte-identical candidate fails the same way; skip it.
+                                var dup = false;
+                                for (failed.items) |fb| {
+                                    if (std.mem.eql(u8, fb, out.items)) {
+                                        dup = true;
+                                        break;
+                                    }
+                                }
+                                if (dup) {
+                                    if (!ctx.alt_seen) break;
+                                    continue;
+                                }
+                                if (sims >= sim_cap) break :thread_loop;
+                                sims += 1;
+                                if (simAccepts(g, st, side, out.items)) return true;
+                                failed.append(a, out.items) catch return false;
+                                if (!ctx.alt_seen) break;
                             }
                         }
-                        if (dup) {
-                            if (!ctx.alt_seen) break;
-                            continue;
-                        }
-                        if (sims >= MAX_SIMS) return false;
-                        sims += 1;
-                        if (simAccepts(g, st, side, out.items)) return true;
-                        failed.append(a, out.items) catch return false;
-                        if (!ctx.alt_seen) break;
                     }
                 }
             }
         }
+        if (phase == 0) sims = @max(sims, MAX_SIMS);
     }
     return false;
 }
@@ -228,9 +271,11 @@ fn hasTrialFrame(g: *const grammar.Grammar, t: *const parser.Thread) bool {
     return false;
 }
 
+/// A key in flight or a mandatory key after a comma: both have several
+/// candidate spellings (key_choice).
 fn hasKeyStrFrame(t: *const parser.Thread) bool {
     for (t.frames[0..t.len]) |*f| {
-        if (f.* == .open_obj and f.open_obj.phase == .key_str) return true;
+        if (f.* == .open_obj and (f.open_obj.phase == .key_str or f.open_obj.phase == .key_after_comma)) return true;
     }
     return false;
 }
@@ -238,6 +283,15 @@ fn hasKeyStrFrame(t: *const parser.Thread) bool {
 fn hasCombFrame(t: *const parser.Thread) bool {
     for (t.frames[0..t.len]) |*f| {
         if (f.* == .comb) return true;
+    }
+    return false;
+}
+
+/// The thread sits in a oneOf or if/then/else, whose verdict a rival
+/// branch can flip.
+fn hasBranchingComb(g: *const grammar.Grammar, t: *const parser.Thread) bool {
+    for (t.frames[0..t.len]) |*f| {
+        if (f.* == .comb and g.node(f.comb.node).comb.kind != .allof) return true;
     }
     return false;
 }
@@ -551,8 +605,8 @@ fn patBfs(ctx: *Ctx, dfa: *const pattern.Dfa, start: pattern.RunState) ?[]u21 {
     const via = ctx.a.alloc(u21, n) catch return null;
     @memset(prev, unvisited);
     prev[start] = start;
-    var frontier: std.ArrayListUnmanaged(u32) = .{};
-    var upcoming: std.ArrayListUnmanaged(u32) = .{};
+    var frontier: std.ArrayListUnmanaged(u32) = .empty;
+    var upcoming: std.ArrayListUnmanaged(u32) = .empty;
     frontier.append(ctx.a, start) catch return null;
     var depth: u32 = 0;
     while (frontier.items.len > 0 and depth < n) : (depth += 1) {
@@ -563,7 +617,7 @@ fn patBfs(ctx: *Ctx, dfa: *const pattern.Dfa, start: pattern.RunState) ?[]u21 {
                 prev[t.to] = s;
                 via[t.to] = @intCast(t.lo);
                 if (dfa.isAccept(t.to)) {
-                    var path: std.ArrayListUnmanaged(u21) = .{};
+                    var path: std.ArrayListUnmanaged(u21) = .empty;
                     var cur = t.to;
                     while (cur != start) {
                         path.append(ctx.a, via[cur]) catch return null;
@@ -724,8 +778,8 @@ fn emitPatSuffixMerged(ctx: *Ctx, t: *const parser.Thread, d: usize, fr: *const 
     @memset(prev, unvisited);
     var start_idx: u64 = 0;
     for (0..n) |i| start_idx += runs[i] * radix[i];
-    var frontier: std.ArrayListUnmanaged(u32) = .{};
-    var upcoming: std.ArrayListUnmanaged(u32) = .{};
+    var frontier: std.ArrayListUnmanaged(u32) = .empty;
+    var upcoming: std.ArrayListUnmanaged(u32) = .empty;
     frontier.append(ctx.a, @intCast(start_idx)) catch return false;
     prev[@intCast(start_idx)] = @intCast(start_idx);
     var depth: u32 = 0;
@@ -798,7 +852,7 @@ fn emitPatSuffixMerged(ctx: *Ctx, t: *const parser.Thread, d: usize, fr: *const 
     }
     if (goal == unvisited) return emitPatSuffix(ctx, fr);
     // Reconstruct (reversed).
-    var path: std.ArrayListUnmanaged(u21) = .{};
+    var path: std.ArrayListUnmanaged(u21) = .empty;
     var cur = goal;
     while (cur != @as(u32, @intCast(start_idx))) {
         path.append(ctx.a, via[cur]) catch return false;
@@ -918,7 +972,22 @@ fn objDeclaredIdx(g: *const grammar.Grammar, on: *const grammar.ObjectNode, name
 /// to per-node emission, and any incompatibility fails the candidate - the
 /// sim would reject the bytes anyway.
 fn emitClosedObjMerged(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32) bool {
-    const fr = &t.frames[d].object;
+    const fr0 = &t.frames[d].object;
+    if (fr0.phase != .key_lit) return emitClosedObjMergedAt(ctx, t, d, fr0, depth);
+    // Mid-key: try every property still possible for the key bytes read.
+    const props = ctx.g.node(fr0.node).object.props;
+    const mark = ctx.out.items.len;
+    var c: ?u32 = fr0.cur;
+    while (c) |j| : (c = parser.nextKeyCandidate(ctx.g, props, j, fr0.idx, null)) {
+        var fr = fr0.*;
+        fr.cur = j;
+        if (emitClosedObjMergedAt(ctx, t, d, &fr, depth)) return true;
+        ctx.out.shrinkRetainingCapacity(mark);
+    }
+    return false;
+}
+
+fn emitClosedObjMergedAt(ctx: *Ctx, t: *const parser.Thread, d: usize, fr: *const @FieldType(parser.Frame, "object"), depth: u32) bool {
     var self_from: u32 = 0;
     var first_key = false;
     var lead_comma = false;
@@ -930,7 +999,10 @@ fn emitClosedObjMerged(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32)
         },
         .key_lit => {
             if (fr.idx == 0) return emitClosedObj(ctx, fr, depth);
+            // The in-flight key is props[cur]; obligations continue from it
+            // (earlier keys of the object were emitted already).
             first_key = true;
+            self_from = fr.cur;
         },
         .key_after_comma => self_from = fr.idx,
         .value => {
@@ -946,6 +1018,9 @@ fn emitClosedObjMerged(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32)
         return emitClosedObj(ctx, fr, depth);
     const g = ctx.g;
     const on0 = &g.node(fr.node).object;
+    // Without declared properties the object can only close; there is no
+    // key to merge.
+    if (fr.cur >= on0.props.len) return emitClosedObj(ctx, fr, depth);
     const kl0 = g.literalBytes(on0.props[fr.cur].key);
     const name0 = propName(g, on0.props[fr.cur]);
     var nodes: [MAX_SET]grammar.NodeId = undefined; // closed facets
@@ -953,7 +1028,7 @@ fn emitClosedObjMerged(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32)
     nodes[0] = fr.node;
     froms[0] = self_from;
     var nn: usize = 1;
-    var openrefs: std.ArrayListUnmanaged(ObjRef) = .{};
+    var openrefs: std.ArrayListUnmanaged(ObjRef) = .empty;
     var visited: [MAX_SET]u32 = undefined;
     var nv: usize = 0;
     var j = d;
@@ -962,8 +1037,12 @@ fn emitClosedObjMerged(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32)
         const cf = &t.frames[j].comb;
         const cn = &g.node(cf.node).comb;
         switch (cn.kind) {
-            .ifelse => return false,
+            // Vote combs are not merged; the sim verifies their verdict.
             .oneof => continue,
+            .ifelse => {
+                if (ctx.phase == 0) return false;
+                continue;
+            },
             .allof => {},
         }
         var known = false;
@@ -1017,7 +1096,7 @@ fn emitClosedObjMerged(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32)
                         },
                         .key_lit => blk: {
                             if (!first_key or of2.idx == 0) return false;
-                            break :blk 0;
+                            break :blk of2.cur;
                         },
                         .key_after_comma => blk: {
                             if (fr.phase != .key_after_comma) return false;
@@ -1099,7 +1178,7 @@ fn emitClosedObjMerged(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32)
             ns += 1;
         }
     }
-    var onames: std.ArrayListUnmanaged([]const u8) = .{};
+    var onames: std.ArrayListUnmanaged([]const u8) = .empty;
     if (openrefs.items.len > 0) {
         if (!collectObligations(ctx, openrefs.items, &.{}, &onames)) return false;
         for (onames.items) |nm| {
@@ -1373,9 +1452,9 @@ fn combIdxIn(t: *const parser.Thread, inst: u32) ?usize {
 /// value at (t, d) must satisfy: t's own frame plus, walking down the
 /// contiguous comb chain below d, every allof sibling branch's leaf object
 /// (recursively through nested comb chains). oneOf siblings must REJECT
-/// the value, so they are excluded (the sim checks that). Returns false on
-/// any shape outside the covered family (non-object leaves, ifelse combs,
-/// phase misalignment). At a value boundary (boundary=true, phase .value)
+/// the value and if/then/else branches vote by the condition, so they are
+/// excluded (the sim checks that). Returns false on any shape outside the
+/// covered family (non-object leaves, phase misalignment). At a value boundary (boundary=true, phase .value)
 /// every collected frame's value machine above must be pristine: the
 /// boundary emission spells the whole pending value, so any typed value
 /// byte would falsify it.
@@ -1410,8 +1489,12 @@ fn collectObjSet(ctx: *Ctx, t: *const parser.Thread, d: usize, lo: usize, bounda
         visited.append(ctx.a, inst) catch return false;
         const cn = &ctx.g.node(cf.comb.node).comb;
         switch (cn.kind) {
+            // Vote combs: the thread's own branch carries its obligations;
+            // whether the emission settles the vote (exactly one oneOf
+            // branch; the if condition with then, or its failure with
+            // else) is for the sim to verify.
             .oneof => {},
-            .ifelse => return false,
+            .ifelse => if (ctx.phase == 0) return false,
             .allof => {
                 for (cn.branches, 0..) |br, bi| {
                     if (br == grammar.COMB_NONE) continue;
@@ -1419,8 +1502,12 @@ fn collectObjSet(ctx: *Ctx, t: *const parser.Thread, d: usize, lo: usize, bounda
                     const t2 = findBranchThread(ctx.st, inst, @intCast(bi)) orelse return false;
                     const cidx = combIdxIn(t2, inst) orelse return false;
                     var k = cidx + 1;
-                    while (k < t2.len and t2.frames[k] == .comb) k += 1;
+                    var under_vote = false;
+                    while (k < t2.len and t2.frames[k] == .comb) : (k += 1) {
+                        if (ctx.g.node(t2.frames[k].comb.node).comb.kind != .allof) under_vote = true;
+                    }
                     if (k >= t2.len) return false; // branch completed early
+                    if (under_vote and ctx.group_mode == 2) continue;
                     const f2 = &t2.frames[k];
                     if (f2.* == .object) {
                         // Closed facet at the same value position: its
@@ -1539,6 +1626,18 @@ fn collectObligations(ctx: *Ctx, set: []const ObjRef, closed: []const ClosedRef,
             if (!addName(ctx, names, propName(ctx.g, p))) return false;
         }
     }
+    if (!closeRequiredDeps(ctx, set, names)) return false;
+    // names_forbidden (propertyNames false) admits only the empty object.
+    for (set) |fr| {
+        const on = &ctx.g.node(fr.node).open_obj;
+        if (on.names_forbidden and names.items.len > 0) return false;
+    }
+    return true;
+}
+
+/// Adds the names of required deps whose trigger is seen or planned, to a
+/// fixpoint (8 rounds); a banned trigger present bails the candidate.
+fn closeRequiredDeps(ctx: *Ctx, set: []const ObjRef, names: *std.ArrayListUnmanaged([]const u8)) bool {
     var round: u32 = 0;
     while (round < 8) : (round += 1) {
         var changed = false;
@@ -1563,12 +1662,7 @@ fn collectObligations(ctx: *Ctx, set: []const ObjRef, closed: []const ClosedRef,
                 }
             }
         }
-        if (!changed) break;
-    }
-    // names_forbidden (propertyNames false) admits only the empty object.
-    for (set) |fr| {
-        const on = &ctx.g.node(fr.node).open_obj;
-        if (on.names_forbidden and names.items.len > 0) return false;
+        if (!changed) return true;
     }
     return true;
 }
@@ -1622,21 +1716,30 @@ fn appendAlloc(ctx: *Ctx, s: []const u8) ?[]const u8 {
     return ctx.a.dupe(u8, s) catch null;
 }
 
+/// Declared prop p is still available to the frame: in schema order every
+/// prop from next_idx is; on an order-free node only an unseen one.
+fn propOpen(ctx: *Ctx, self: ObjRef, on: *const grammar.OpenObjNode, p: grammar.Prop) bool {
+    return !on.any_order or !seenContains(ctx.side, self.seen, propName(ctx.g, p));
+}
+
 /// Pick completions of the in-flight key, best first (up to 3): an exact
 /// declared match of the typed prefix, then a required declared extension,
 /// an optional declared extension, an exact/extended extra_required name,
+/// an exact/extended owed name (a dependency name the object still has
+/// to take: under maxProperties the in-flight key may have to be it),
 /// the typed prefix (plus its escape completion) as an undeclared key, and
 /// finally a one-char undeclared extension of it (the prefix may spell an
 /// already-dispatched - hence unavailable - declared key, while the real
 /// key is a longer undeclared one, e.g. "evidence " next to a declared
 /// "evidence"). The alternates let the sim try each when the prefix is
 /// simultaneously a full key and a strict prefix of a longer one.
-fn chooseKeyCompletions(ctx: *Ctx, self: ObjRef, kb: []const u8, esc: []const u8, out: *[3][]const u8) usize {
+fn chooseKeyCompletions(ctx: *Ctx, self: ObjRef, kb: []const u8, esc: []const u8, owed: []const []const u8, out: *[3][]const u8) usize {
     var n: usize = 0;
     const on = &ctx.g.node(self.node).open_obj;
     const from = @min(self.next_idx, @as(u32, @intCast(on.props.len)));
     if (kb.len > 0) {
         for (on.props[from..]) |p| {
+            if (!propOpen(ctx, self, on, p)) continue;
             const nm = propName(ctx.g, p);
             if (std.mem.eql(u8, nm, kb)) {
                 out[n] = nm;
@@ -1646,7 +1749,7 @@ fn chooseKeyCompletions(ctx: *Ctx, self: ObjRef, kb: []const u8, esc: []const u8
         }
     }
     for (on.props[from..]) |p| {
-        if (!p.required) continue;
+        if (!p.required or !propOpen(ctx, self, on, p)) continue;
         const nm = propName(ctx.g, p);
         if (nm.len > kb.len and std.mem.startsWith(u8, nm, kb) and (n == 0 or !std.mem.eql(u8, out[0], nm))) {
             out[n] = nm;
@@ -1656,6 +1759,7 @@ fn chooseKeyCompletions(ctx: *Ctx, self: ObjRef, kb: []const u8, esc: []const u8
     }
     if (n < 3) {
         for (on.props[from..]) |p| {
+            if (!propOpen(ctx, self, on, p)) continue;
             const nm = propName(ctx.g, p);
             if (nm.len > kb.len and std.mem.startsWith(u8, nm, kb) and (n == 0 or !std.mem.eql(u8, out[0], nm))) {
                 out[n] = nm;
@@ -1675,6 +1779,16 @@ fn chooseKeyCompletions(ctx: *Ctx, self: ObjRef, kb: []const u8, esc: []const u8
             }
         }
     }
+    if (n < 3) {
+        for (owed) |nm| {
+            if (nm.len < kb.len or !std.mem.startsWith(u8, nm, kb)) continue;
+            if (nm.len == kb.len and esc.len != 0) continue;
+            if (nameIn(out[0..n], nm)) continue;
+            out[n] = nm;
+            n += 1;
+            break;
+        }
+    }
     if (n < 3 and kb.len > 0) {
         // An undeclared key spelled by the typed prefix itself, completed
         // out of any in-flight escape / partial UTF-8 character.
@@ -1688,14 +1802,20 @@ fn chooseKeyCompletions(ctx: *Ctx, self: ObjRef, kb: []const u8, esc: []const u8
         }
         n += 1;
     }
-    if (n < 3 and kb.len > 0 and esc.len == 0) {
+    if (n < 3 and kb.len > 0) {
         // A one-char undeclared extension: the prefix may spell an
-        // already-dispatched (hence unavailable) declared key while the
-        // real key is longer. 'a' only collides with validateSeq-legit
-        // spellings; the sim arbitrates.
-        const ext = ctx.a.alloc(u8, kb.len + 1) catch return n;
+        // already-dispatched (hence unavailable) declared key, or with its
+        // pending character completed a key already seen, while the real
+        // key is longer. The first letter giving a key the object has not
+        // seen; the sim arbitrates.
+        const ext = ctx.a.alloc(u8, kb.len + esc.len + 1) catch return n;
         @memcpy(ext[0..kb.len], kb);
-        ext[kb.len] = 'a';
+        @memcpy(ext[kb.len .. kb.len + esc.len], esc);
+        var c: u8 = 'a';
+        while (true) : (c += 1) {
+            ext[kb.len + esc.len] = c;
+            if (c == 'z' or !seenContains(ctx.side, self.seen, ext)) break;
+        }
         if (n == 0 or !std.mem.eql(u8, out[0], ext)) {
             if (n < 2 or !std.mem.eql(u8, out[1], ext)) {
                 out[n] = ext;
@@ -1720,6 +1840,10 @@ fn validateSeq(ctx: *Ctx, set: []const ObjRef, names: []const []const u8) bool {
                 if (dep.kind == .ban and std.mem.eql(u8, ctx.g.literalBytes(dep.trigger), nm)) return false;
             }
             if (declaredIdx(ctx.g, on, nm)) |i| {
+                if (on.any_order) {
+                    if (seenContains(ctx.side, fr.seen, nm)) return false;
+                    continue;
+                }
                 if (i < cur) return false;
                 cur = @intCast(i + 1);
             } else {
@@ -1733,6 +1857,24 @@ fn validateSeq(ctx: *Ctx, set: []const ObjRef, names: []const []const u8) bool {
         }
     }
     return true;
+}
+
+/// Stable sort of names[fixed..] by declared index in `fr`'s node
+/// (undeclared names last); a no-op for an order-free node.
+fn orderNames(ctx: *Ctx, fr: ObjRef, names: [][]const u8, fixed: usize) void {
+    const on = &ctx.g.node(fr.node).open_obj;
+    if (on.any_order or names.len <= fixed + 1) return;
+    const C = struct {
+        g: *const grammar.Grammar,
+        on: *const grammar.OpenObjNode,
+        fn key(c: @This(), nm: []const u8) usize {
+            return declaredIdx(c.g, c.on, nm) orelse std.math.maxInt(usize);
+        }
+        fn lt(c: @This(), a: []const u8, b: []const u8) bool {
+            return c.key(a) < c.key(b);
+        }
+    };
+    std.sort.insertion([]const u8, names[fixed..], C{ .g = ctx.g, .on = on }, C.lt);
 }
 
 /// Key length bounds apply to undeclared keys only, counted in decoded
@@ -1795,7 +1937,37 @@ fn nameOkEverywhere(ctx: *Ctx, set: []const ObjRef, names: []const []const u8, n
     return true;
 }
 
-/// min_props padding with fresh undeclared keys; max_props caps the total.
+/// The frame takes no undeclared key: its fallback value schema is the
+/// empty language (a closed object).
+fn fallbackEmpty(ctx: *Ctx, on: *const grammar.OpenObjNode) bool {
+    return switch (ctx.g.node(on.value).*) {
+        .str => |sc| sc.min_len > sc.max_len,
+        else => false,
+    };
+}
+
+/// An optional declared prop of the primary frame still available, after
+/// every declared name already planned when the frame keeps schema order.
+fn optionalDeclared(ctx: *Ctx, set: []const ObjRef, names: []const []const u8) ?[]const u8 {
+    const self = set[0];
+    const on = &ctx.g.node(self.node).open_obj;
+    var from: usize = @min(self.next_idx, @as(u32, @intCast(on.props.len)));
+    if (!on.any_order) {
+        for (names) |nm| {
+            if (declaredIdx(ctx.g, on, nm)) |i| from = @max(from, i + 1);
+        }
+    }
+    for (on.props[from..]) |p| {
+        if (p.required or !propOpen(ctx, self, on, p)) continue;
+        const nm = propName(ctx.g, p);
+        if (nameIn(names, nm)) continue;
+        return nm;
+    }
+    return null;
+}
+
+/// min_props padding with fresh undeclared keys (optional declared props
+/// when the object is closed); max_props caps the total.
 fn padMinProps(ctx: *Ctx, set: []const ObjRef, names: *std.ArrayListUnmanaged([]const u8)) bool {
     var need: u32 = 0;
     for (set) |fr| {
@@ -1813,8 +1985,9 @@ fn padMinProps(ctx: *Ctx, set: []const ObjRef, names: *std.ArrayListUnmanaged([]
         const typed = seenCount(ctx.side, fr.seen);
         if (typed + @as(u32, @intCast(names.items.len)) + need > on.max_props) return false;
     }
+    const closed = fallbackEmpty(ctx, &ctx.g.node(set[0].node).open_obj);
     while (need > 0) : (need -= 1) {
-        const nm = freshName(ctx, set, names.items) orelse return false;
+        const nm = (if (closed) optionalDeclared(ctx, set, names.items) else freshName(ctx, set, names.items)) orelse return false;
         names.append(ctx.a, nm) catch return false;
     }
     return true;
@@ -1838,6 +2011,13 @@ fn dispatchUndeclared(ctx: *Ctx, on: *const grammar.OpenObjNode, nm: []const u8)
 /// plus acceptsValue cross-checks (exact per-node validation).
 fn intersectWitness(ctx: *Ctx, schemas: []const grammar.NodeId) ?witset.Val {
     const view = witset.viewOf(ctx.g);
+    if (ctx.value_choice > 0) pool: {
+        const v = VALUE_POOL[ctx.value_choice - 1];
+        for (schemas) |s| {
+            if (witset.acceptsValue(view, ctx.a, s, v) != .yes) break :pool;
+        }
+        return v;
+    }
     outer: for (schemas) |s| {
         const v = witset.witness(view, ctx.a, s) orelse continue;
         for (schemas) |s2| {
@@ -2029,7 +2209,9 @@ fn virtualizableDep(ctx: *Ctx, node: grammar.NodeId) ?grammar.NodeId {
 fn mkVirtualRef(ctx: *Ctx, node: grammar.NodeId, host: ObjRef) ?ObjRef {
     const on2 = &ctx.g.node(node).open_obj;
     var next_idx: u32 = 0;
-    if (host.seen != 0) {
+    // An order-free target keeps no cursor: its unseen required props stay
+    // obligations wherever they appear.
+    if (host.seen != 0 and !on2.any_order) {
         const items = ctx.side.chunkAt(host.seen).payload.items;
         if (items.len >= 4) {
             const count = std.mem.readInt(u32, items[0..4], .little);
@@ -2077,11 +2259,11 @@ fn emitOpenObj(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32) bool {
     const of = &t.frames[d].open_obj;
     if (of.phase == .open) return emitValue(ctx, of.node, depth);
     const boundary = ctx.value_boundary != null and ctx.value_boundary.? == d and of.phase == .value;
-    var set: std.ArrayListUnmanaged(ObjRef) = .{};
-    var closed: std.ArrayListUnmanaged(ClosedRef) = .{};
-    var visited: std.ArrayListUnmanaged(u32) = .{};
+    var set: std.ArrayListUnmanaged(ObjRef) = .empty;
+    var closed: std.ArrayListUnmanaged(ClosedRef) = .empty;
+    var visited: std.ArrayListUnmanaged(u32) = .empty;
     if (!collectObjSet(ctx, t, d, 0, boundary, &set, &closed, &visited)) return false;
-    var names: std.ArrayListUnmanaged([]const u8) = .{};
+    var names: std.ArrayListUnmanaged([]const u8) = .empty;
     // Schema-kind deps in force merge their target open_obj as a virtual
     // facet; its obligations may themselves plan dep triggers, so facet
     // creation and obligation collection iterate to a bounded fixpoint.
@@ -2123,7 +2305,7 @@ fn emitOpenObj(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32) bool {
         kb = ctx.side.chunkAt(of.key).payload.items;
         const esc = escapeCompletion(ctx, set.items[0]) orelse return false;
         var kc: [3][]const u8 = undefined;
-        var nkc = chooseKeyCompletions(ctx, set.items[0], kb, esc, &kc);
+        var nkc = chooseKeyCompletions(ctx, set.items[0], kb, esc, names.items, &kc);
         if (nkc == 0) {
             // Nothing typed and no declared/extra match: a fresh undeclared
             // key (free-form map bodies dispatch every key to on.value).
@@ -2149,6 +2331,8 @@ fn emitOpenObj(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32) bool {
             std.mem.copyBackwards([]const u8, names.items[1 .. pos + 1], names.items[0..pos]);
             names.items[0] = tmp;
         }
+        // The in-flight key may trigger required deps of its own.
+        if (!closeRequiredDeps(ctx, set.items, &names)) return false;
         // Sibling in-flight prefixes must spell the same bytes.
         for (set.items[1..]) |fr| {
             if (fr.virtual) continue; // no in-flight key on a dep facet
@@ -2157,22 +2341,34 @@ fn emitOpenObj(ctx: *Ctx, t: *const parser.Thread, d: usize, depth: u32) bool {
         }
     }
     // A key is mandatory after a comma: emit an optional declared prop or a
-    // fresh undeclared key when nothing is outstanding.
+    // fresh undeclared key when nothing is outstanding. key_choice picks
+    // the candidate (the available optional props in schema order, then a
+    // fresh name): under oneOf one of them may complete a second branch.
     if (of.phase == .key_after_comma and names.items.len == 0) {
         const on = &ctx.g.node(of.node).open_obj;
         const from = @min(of.next_idx, @as(u32, @intCast(on.props.len)));
         var added = false;
+        var k: u8 = 0;
         for (on.props[from..]) |p| {
-            if (p.required) continue;
+            if (p.required or !propOpen(ctx, objRefOf(of), on, p)) continue;
+            if (k < ctx.key_choice) {
+                k += 1;
+                continue;
+            }
             if (!addName(ctx, &names, propName(ctx.g, p))) return false;
             added = true;
             break;
         }
         if (!added) {
+            if (k < ctx.key_choice) return false;
             const nm = freshName(ctx, set.items, names.items) orelse return false;
             names.append(ctx.a, nm) catch return false;
         }
+        if (!closeRequiredDeps(ctx, set.items, &names)) return false;
     }
+    // Obligations come in collection order (dep name lists, facets); an
+    // ordered object takes them in declared order after the in-flight key.
+    orderNames(ctx, set.items[0], names.items, @intFromBool(of.phase == .key_str));
     if (!validateSeq(ctx, set.items, names.items)) {
         return false;
     }

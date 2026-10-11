@@ -17,6 +17,7 @@
 //! hitting one reports unknown/null, never a guess.
 
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 const json = @import("json.zig");
 const pattern = @import("pattern.zig");
@@ -426,7 +427,7 @@ pub fn parseNumBytes(a: std.mem.Allocator, bytes: []const u8) !?grammar.NumConst
     const int_start = i;
     while (i < bytes.len and std.ascii.isDigit(bytes[i])) i += 1;
     if (i == int_start) return null;
-    var digits = std.ArrayListUnmanaged(u8){};
+    var digits = std.ArrayListUnmanaged(u8).empty;
     defer digits.deinit(a);
     try digits.appendSlice(a, bytes[int_start..i]);
     var exp10: i64 = 0;
@@ -457,7 +458,7 @@ pub fn parseNumBytes(a: std.mem.Allocator, bytes: []const u8) !?grammar.NumConst
 
 /// Decode a canonical-escaped string body (the inverse of appendEscaped).
 pub fn decodeEscaped(a: std.mem.Allocator, s: []const u8) ![]const u8 {
-    var out = std.ArrayListUnmanaged(u8){};
+    var out = std.ArrayListUnmanaged(u8).empty;
     var i: usize = 0;
     while (i < s.len) {
         const b = s[i];
@@ -526,7 +527,7 @@ pub fn acceptsValue(g: View, a: std.mem.Allocator, node: grammar.NodeId, v: Val)
 }
 
 fn litSpellingEq(g: View, a: std.mem.Allocator, lit: grammar.Literal, v: Val) bool {
-    var out = std.ArrayListUnmanaged(u8){};
+    var out = std.ArrayListUnmanaged(u8).empty;
     defer out.deinit(a);
     spell(&out, a, v) catch return false;
     return std.mem.eql(u8, g.literalBytes(lit), out.items);
@@ -535,7 +536,7 @@ fn litSpellingEq(g: View, a: std.mem.Allocator, lit: grammar.Literal, v: Val) bo
 /// Trie membership of the value's canonical spelling (str_excl forbids the
 /// quoted spellings of its values; lit_trie admits them).
 fn trieSpells(trie: *const grammar.LitTrie, a: std.mem.Allocator, v: Val) bool {
-    var out = std.ArrayListUnmanaged(u8){};
+    var out = std.ArrayListUnmanaged(u8).empty;
     defer out.deinit(a);
     spell(&out, a, v) catch return false;
     var cur: u32 = 0;
@@ -692,7 +693,7 @@ fn acceptsSeqConst(g: View, a: std.mem.Allocator, ids: []const grammar.NodeId, v
 /// that shape.
 fn constSeqValue(g: View, a: std.mem.Allocator, ids: []const grammar.NodeId, depth: u32) ?Val {
     if (depth > MAX_DEPTH) return null;
-    var bytes = std.ArrayListUnmanaged(u8){};
+    var bytes = std.ArrayListUnmanaged(u8).empty;
     defer bytes.deinit(a);
     if (!constSeqBytes(g, a, ids, &bytes, depth)) return null;
     var err_off: u32 = 0;
@@ -708,7 +709,7 @@ fn constSeqBytes(g: View, a: std.mem.Allocator, ids: []const grammar.NodeId, out
         switch (g.node(id).*) {
             .literal => |l| out.appendSlice(a, g.literalBytes(l)) catch return false,
             .num_const => |nc| {
-                var tmp = std.ArrayListUnmanaged(u8){};
+                var tmp = std.ArrayListUnmanaged(u8).empty;
                 defer tmp.deinit(a);
                 spellNum(&tmp, a, nc) catch return false;
                 out.appendSlice(a, tmp.items) catch return false;
@@ -725,15 +726,18 @@ fn acceptsOpenObj(g: View, a: std.mem.Allocator, on: *const grammar.OpenObjNode,
     if (on.names_forbidden and v.obj.len != 0) return .no;
     if (v.obj.len < on.min_props or v.obj.len > on.max_props) return .no;
     var r: Tri = .yes;
-    // Keys are unique; declared props appear in increasing schema order.
+    // Keys are unique; declared props appear in increasing schema order
+    // unless the node is order-free.
     var last_decl: ?usize = null;
     for (v.obj, 0..) |e, ei| {
         for (v.obj[0..ei]) |prev| {
             if (std.mem.eql(u8, prev.key, e.key)) return .no;
         }
         if (declIndex(g, on.props, e.key)) |di| {
-            if (last_decl != null and di <= last_decl.?) return .no;
-            last_decl = di;
+            if (!on.any_order) {
+                if (last_decl != null and di <= last_decl.?) return .no;
+                last_decl = di;
+            }
             r = mergeTri(r, acceptsDepth(g, a, on.props[di].value, e.value, depth + 1), false);
         } else {
             // undeclared: prop_names (with its key length bounds), then
@@ -889,7 +893,7 @@ fn witnessDepth(g: View, a: std.mem.Allocator, node: grammar.NodeId, depth: u32)
             return null;
         },
         .str_pat => |sp| {
-            var path = std.ArrayListUnmanaged(u21){};
+            var path = std.ArrayListUnmanaged(u21).empty;
             defer path.deinit(a);
             const d = (try sp.dfa.shortestAccept(a, &path)) orelse return null;
             var len: u32 = d;
@@ -900,7 +904,7 @@ fn witnessDepth(g: View, a: std.mem.Allocator, node: grammar.NodeId, depth: u32)
                 len = sp.min_len;
             }
             if (len > sp.max_len) return null;
-            var out = std.ArrayListUnmanaged(u8){};
+            var out = std.ArrayListUnmanaged(u8).empty;
             for (path.items) |cp| {
                 var buf: [4]u8 = undefined;
                 const n = std.unicode.utf8Encode(cp, &buf) catch return null;
@@ -922,7 +926,7 @@ fn witnessDepth(g: View, a: std.mem.Allocator, node: grammar.NodeId, depth: u32)
             // discriminator variants, nested combs their own candidates),
             // each verified exactly against the vote rule; allof
             // additionally tries pairwise merges of object seeds.
-            var cands = std.ArrayListUnmanaged(Val){};
+            var cands = std.ArrayListUnmanaged(Val).empty;
             defer cands.deinit(a);
             try combCandidates(g, a, node, depth, &cands);
             if (cands.items.len > 0) return cands.items[0];
@@ -930,7 +934,7 @@ fn witnessDepth(g: View, a: std.mem.Allocator, node: grammar.NodeId, depth: u32)
         },
         .seq => |ids| return constSeqValue(g, a, ids, depth),
         .object => |on| {
-            var entries = std.ArrayListUnmanaged(Entry){};
+            var entries = std.ArrayListUnmanaged(Entry).empty;
             for (on.props) |p| {
                 if (!p.required) continue;
                 const pv = (try witnessDepth(g, a, p.value, depth + 1)) orelse return null;
@@ -961,6 +965,23 @@ fn collectSeeds(g: View, a: std.mem.Allocator, node: grammar.NodeId, depth: u32,
             }
         },
         .comb => try combCandidates(g, a, node, depth + 1, out),
+        .object => |on| {
+            if (try witnessDepth(g, a, node, depth + 1)) |v| {
+                if (acceptsDepth(g, a, node, v, depth + 1) == .yes) try out.append(a, v);
+            }
+            // Variants with one optional declared prop: the value a closed
+            // facet allows for a key that a sibling branch requires (an
+            // anyOf of required names beside the closed object).
+            var nvar: usize = 0;
+            for (on.props, 0..) |p, pi| {
+                if (p.required) continue;
+                if (nvar >= MAX_VARIANTS or out.items.len >= MAX_SEEDS) return;
+                if (try witnessClosedObj(g, a, &on, depth + 1, pi)) |v| {
+                    try out.append(a, v);
+                    nvar += 1;
+                }
+            }
+        },
         .open_obj => |on| {
             if (try witnessDepth(g, a, node, depth + 1)) |v| {
                 if (acceptsDepth(g, a, node, v, depth + 1) == .yes) try out.append(a, v);
@@ -1002,7 +1023,7 @@ fn collectSeeds(g: View, a: std.mem.Allocator, node: grammar.NodeId, depth: u32,
 fn combCandidates(g: View, a: std.mem.Allocator, node: grammar.NodeId, depth: u32, out: *std.ArrayListUnmanaged(Val)) error{OutOfMemory}!void {
     if (depth > MAX_DEPTH) return;
     const cb = g.node(node).comb;
-    var raw = std.ArrayListUnmanaged(Val){};
+    var raw = std.ArrayListUnmanaged(Val).empty;
     defer raw.deinit(a);
     for (cb.branches) |br| {
         if (br == grammar.COMB_NONE) continue;
@@ -1037,7 +1058,7 @@ fn combCandidates(g: View, a: std.mem.Allocator, node: grammar.NodeId, depth: u3
 /// Overlay two object values: base's entry order, values taken from over
 /// where the key exists in both, then over's fresh keys appended.
 fn overlayObjs(a: std.mem.Allocator, base: Val, over: Val) error{OutOfMemory}!Val {
-    var entries = std.ArrayListUnmanaged(Entry){};
+    var entries = std.ArrayListUnmanaged(Entry).empty;
     for (base.obj) |e| {
         const v = objGet(over.obj, e.key) orelse e.value;
         try entries.append(a, .{ .key = e.key, .value = v });
@@ -1090,9 +1111,9 @@ fn witnessAll(g: View, a: std.mem.Allocator, schemas: []const grammar.NodeId, de
 fn witnessAllOfObj(g: View, a: std.mem.Allocator, node: grammar.NodeId, cb: grammar.Comb, depth: u32, out: *std.ArrayListUnmanaged(Val)) error{OutOfMemory}!void {
     if (depth + 2 > MAX_DEPTH or out.items.len >= MAX_CAND) return;
     // Flatten nested allof branches.
-    var flat = std.ArrayListUnmanaged(grammar.NodeId){};
+    var flat = std.ArrayListUnmanaged(grammar.NodeId).empty;
     defer flat.deinit(a);
-    var stack = std.ArrayListUnmanaged(grammar.NodeId){};
+    var stack = std.ArrayListUnmanaged(grammar.NodeId).empty;
     defer stack.deinit(a);
     for (cb.branches) |b| try stack.append(a, b);
     while (stack.pop()) |b| {
@@ -1106,9 +1127,9 @@ fn witnessAllOfObj(g: View, a: std.mem.Allocator, node: grammar.NodeId, cb: gram
         }
         try flat.append(a, b);
     }
-    var objb = std.ArrayListUnmanaged(grammar.NodeId){};
+    var objb = std.ArrayListUnmanaged(grammar.NodeId).empty;
     defer objb.deinit(a);
-    var combs = std.ArrayListUnmanaged(grammar.NodeId){};
+    var combs = std.ArrayListUnmanaged(grammar.NodeId).empty;
     defer combs.deinit(a);
     for (flat.items) |b| {
         switch (g.node(b).*) {
@@ -1119,7 +1140,7 @@ fn witnessAllOfObj(g: View, a: std.mem.Allocator, node: grammar.NodeId, cb: gram
     }
     if (objb.items.len == 0) return;
     // Union of the mandatory key sets.
-    var keys = std.ArrayListUnmanaged([]const u8){};
+    var keys = std.ArrayListUnmanaged([]const u8).empty;
     defer keys.deinit(a);
     for (objb.items) |b| {
         switch (g.node(b).*) {
@@ -1157,9 +1178,9 @@ fn witnessAllOfObj(g: View, a: std.mem.Allocator, node: grammar.NodeId, cb: gram
         }
     }
     // Per-key values accepted by every branch's dispatch.
-    var entries = std.ArrayListUnmanaged(Entry){};
+    var entries = std.ArrayListUnmanaged(Entry).empty;
     for (keys.items) |k| {
-        var schemas = std.ArrayListUnmanaged(grammar.NodeId){};
+        var schemas = std.ArrayListUnmanaged(grammar.NodeId).empty;
         defer schemas.deinit(a);
         for (objb.items) |b| {
             switch (g.node(b).*) {
@@ -1183,7 +1204,7 @@ fn witnessAllOfObj(g: View, a: std.mem.Allocator, node: grammar.NodeId, cb: gram
     while (keys.items.len < want and tries < 256) : (tries += 1) {
         const k = try std.fmt.allocPrint(a, "k{d}", .{tries});
         if (hasName(keys.items, k)) continue;
-        var schemas = std.ArrayListUnmanaged(grammar.NodeId){};
+        var schemas = std.ArrayListUnmanaged(grammar.NodeId).empty;
         defer schemas.deinit(a);
         var ok = true;
         for (objb.items) |b| {
@@ -1246,7 +1267,7 @@ fn witnessAllOfObj(g: View, a: std.mem.Allocator, node: grammar.NodeId, cb: gram
     // The vote combs reject the plain object: overlay their verified
     // candidates (they carry the discriminating props) in both orders.
     for (combs.items) |cn| {
-        var cands = std.ArrayListUnmanaged(Val){};
+        var cands = std.ArrayListUnmanaged(Val).empty;
         defer cands.deinit(a);
         try combCandidates(g, a, cn, depth + 1, &cands);
         for (cands.items) |c| {
@@ -1270,7 +1291,7 @@ fn witnessAllOfObj(g: View, a: std.mem.Allocator, node: grammar.NodeId, cb: gram
 /// keys present in both take either side's value (up to 3 conflicts, 2^k
 /// variants). Returns the first variant verified against `node`.
 fn mergeAndVerify(g: View, a: std.mem.Allocator, node: grammar.NodeId, s1: Val, s2: Val, depth: u32) error{OutOfMemory}!?Val {
-    var cidx = std.ArrayListUnmanaged(usize){};
+    var cidx = std.ArrayListUnmanaged(usize).empty;
     defer cidx.deinit(a);
     for (s1.obj, 0..) |e1, ei| {
         if (objGet(s2.obj, e1.key) != null) try cidx.append(a, ei);
@@ -1279,7 +1300,7 @@ fn mergeAndVerify(g: View, a: std.mem.Allocator, node: grammar.NodeId, s1: Val, 
     const nvar = @as(u32, 1) << @intCast(cidx.items.len);
     var mask: u32 = 0;
     while (mask < nvar) : (mask += 1) {
-        var entries = std.ArrayListUnmanaged(Entry){};
+        var entries = std.ArrayListUnmanaged(Entry).empty;
         var ci: usize = 0;
         for (s1.obj, 0..) |e1, ei| {
             var val = e1.value;
@@ -1347,7 +1368,7 @@ fn hasName(keys: []const []const u8, k: []const u8) bool {
 /// extra_required, closed under required-kind dependencies (a present
 /// trigger forces its names). Null on OOM only.
 fn mandatoryKeys(g: View, a: std.mem.Allocator, on: *const grammar.OpenObjNode) !std.ArrayListUnmanaged([]const u8) {
-    var keys = std.ArrayListUnmanaged([]const u8){};
+    var keys = std.ArrayListUnmanaged([]const u8).empty;
     for (on.props) |p| {
         if (!p.required) continue;
         const k = propName(g, p.key);
@@ -1406,13 +1427,46 @@ pub fn openObjEmpty(g: View, a: std.mem.Allocator, on: *const grammar.OpenObjNod
 /// index) with constructed values - discriminator-prop variants of the
 /// object, needed to seed oneOf branches whose discriminators are not
 /// required.
+/// Closed object with its required props plus the optional prop `extra`,
+/// in declared order.
+fn witnessClosedObj(g: View, a: std.mem.Allocator, on: *const grammar.ObjectNode, depth: u32, extra: usize) error{OutOfMemory}!?Val {
+    if (depth > MAX_DEPTH) return null;
+    var entries = std.ArrayListUnmanaged(Entry).empty;
+    for (on.props, 0..) |p, pi| {
+        if (!p.required and pi != extra) continue;
+        const pv = (try witnessDepth(g, a, p.value, depth + 1)) orelse return null;
+        try entries.append(a, .{ .key = propName(g, p.key), .value = pv });
+    }
+    return Val{ .obj = entries.items };
+}
+
 fn witnessOpenObj(g: View, a: std.mem.Allocator, on: *const grammar.OpenObjNode, depth: u32, extra_mask: u64) error{OutOfMemory}!?Val {
     if (openObjEmpty(g, a, on)) return null;
     var keys = try mandatoryKeys(g, a, on);
     defer keys.deinit(a);
+    // A closed object (empty fallback) pads to min_props with optional
+    // declared props instead, in schema order, skipping dep triggers.
+    var pad_mask: u64 = 0;
+    const fallback_empty = switch (g.node(on.value).*) {
+        .str => |sc| sc.min_len > sc.max_len,
+        else => false,
+    };
+    if (fallback_empty) {
+        for (on.props, 0..) |p, pi| {
+            if (keys.items.len >= on.min_props or pi >= 64) break;
+            if (p.required or (extra_mask >> @intCast(pi)) & 1 == 1) continue;
+            var triggers = false;
+            for (on.deps) |d| {
+                if (std.mem.eql(u8, g.literalBytes(d.trigger), propName(g, p.key))) triggers = true;
+            }
+            if (triggers) continue;
+            pad_mask |= @as(u64, 1) << @intCast(pi);
+            try keys.append(a, propName(g, p.key));
+        }
+    }
     // Pad to min_props with fresh keys that trigger no dependency.
     var tries: u32 = 0;
-    while (keys.items.len < on.min_props and tries < 256) : (tries += 1) {
+    while (!fallback_empty and keys.items.len < on.min_props and tries < 256) : (tries += 1) {
         const k = try std.fmt.allocPrint(a, "k{d}", .{tries});
         if (hasName(keys.items, k)) continue;
         if (declIndex(g, on.props, k) != null) continue;
@@ -1433,10 +1487,10 @@ fn witnessOpenObj(g: View, a: std.mem.Allocator, on: *const grammar.OpenObjNode,
     }
     const extra_count: usize = @popCount(extra_mask);
     if (keys.items.len < on.min_props or keys.items.len + extra_count > on.max_props) return null;
-    var entries = std.ArrayListUnmanaged(Entry){};
+    var entries = std.ArrayListUnmanaged(Entry).empty;
     // Declared props first, in schema order (required plus masked extras).
     for (on.props, 0..) |p, pi| {
-        const is_extra = pi < 64 and (extra_mask >> @intCast(pi)) & 1 == 1;
+        const is_extra = pi < 64 and ((extra_mask | pad_mask) >> @intCast(pi)) & 1 == 1;
         if (!p.required and !is_extra) continue;
         const pv = (try witnessDepth(g, a, p.value, depth + 1)) orelse return null;
         try entries.append(a, .{ .key = propName(g, p.key), .value = pv });
@@ -1490,7 +1544,7 @@ fn witnessRepeat(g: View, a: std.mem.Allocator, r: *const grammar.Repeat, depth:
     var need: u32 = r.min;
     if (r.contains != null and r.min_contains > need) need = r.min_contains;
     if (need > r.max) return null;
-    var els = std.ArrayListUnmanaged(Val){};
+    var els = std.ArrayListUnmanaged(Val).empty;
     var contains_left: u32 = if (r.contains != null) r.min_contains else 0;
     var i: u32 = 0;
     while (i < need) : (i += 1) {
@@ -1760,7 +1814,7 @@ fn numEq(a: std.mem.Allocator, x: grammar.NumConst, want: []const u8) !bool {
 }
 
 test "numPlusPower: exact signed decimal addition" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    var arena = Arena.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     const two = (try parseNumBytes(a, "2")).?;
@@ -1775,7 +1829,7 @@ test "numPlusPower: exact signed decimal addition" {
 }
 
 test "ceilInt / floorInt: exact decimal rounding" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    var arena = Arena.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     try testing.expect(try numEq(a, try ceilInt(a, (try parseNumBytes(a, "2.1")).?), "3"));
@@ -1788,7 +1842,7 @@ test "ceilInt / floorInt: exact decimal rounding" {
 }
 
 test "intInRange: bounds and exclusivity" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    var arena = Arena.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     // [2, 4] -> 2
@@ -1819,7 +1873,7 @@ test "intInRange: bounds and exclusivity" {
 }
 
 test "acceptsValue: leaf and comb membership" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    var arena = Arena.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     var g = try compileV1(a, "{\"oneOf\":[{\"type\":\"integer\"},{\"minimum\":2}]}");
@@ -1837,7 +1891,7 @@ test "acceptsValue: leaf and comb membership" {
 }
 
 test "acceptsValue: open object with required, fallback, prop bounds" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    var arena = Arena.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     var g = try compileV1(a,
@@ -1859,7 +1913,7 @@ test "acceptsValue: open object with required, fallback, prop bounds" {
 }
 
 test "witness: verified members of common shapes" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    var arena = Arena.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     const cases = [_][]const u8{
@@ -1891,7 +1945,7 @@ test "witness: verified members of common shapes" {
 }
 
 test "disjoint: type partition, constants, discriminated objects" {
-    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    var arena = Arena.init(testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     // oneOf over discriminated objects: pairwise disjoint branches
@@ -1912,7 +1966,7 @@ test "disjoint: type partition, constants, discriminated objects" {
     // same branch is not disjoint from itself
     try testing.expectEqual(Tri.no, disjoint(v, a, cb.branches[0], cb.branches[0]));
 
-    var g2 = try compileV1(a, "{\"allOf\":[{\"type\":\"integer\"},{\"type\":\"string\"}]}");
+    var g2 = try compileV1(a, "{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"string\"}]}");
     defer g2.deinit();
     const v2 = viewOf(&g2);
     const cb2 = switch (g2.node(g2.root).*) {

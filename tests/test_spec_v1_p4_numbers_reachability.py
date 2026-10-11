@@ -178,3 +178,214 @@ def test_p4_numbers_boundary_mask(byte_ctx):
             s.destroy()
     finally:
         zg.grammar_release(g)
+
+
+# ---------------------------------------------------------------------------
+# Numeric conjunctions (ADR-0011): no runtime RESOURCE_LIMIT, no fallback
+# search on byte-complete vocabularies, exact masks on number bytes.
+# ---------------------------------------------------------------------------
+
+from exact_numbers import exact_is_valid  # noqa: E402
+from reference import NumConj, TokenizerSpec, numconj_reachable  # noqa: E402
+
+NUM_CONJ_SCHEMAS = [
+    {"type": "number", "minimum": 1, "maximum": 9},
+    {"minimum": 1, "maximum": 9},
+    {"type": "number", "maximum": 9},
+    {"type": "integer", "enum": [1, 2, 3]},
+    {"type": "integer", "minimum": 1, "maximum": 9},
+    {"type": "integer", "maximum": 9},
+    {"type": "number", "multipleOf": 1, "minimum": 1, "maximum": 9},
+    {"type": "integer", "minimum": 0, "maximum": 1},
+    {"type": "integer", "minimum": -9},
+    {"type": "number", "multipleOf": 0.5, "maximum": 2},
+    {"type": "integer", "not": {"const": 5}, "minimum": 1, "maximum": 9},
+    {"type": "integer", "minimum": 1},
+    {"type": "integer", "exclusiveMinimum": 0},
+]
+
+NUM_PREFIXES = [
+    ({"type": "integer", "minimum": -9}, ["-5", "-", "5", ""]),
+    ({"type": "number", "multipleOf": 0.5, "maximum": 2}, ["1", "", "1.", "1.5", "0.5e"]),
+    ({"type": "integer", "not": {"const": 5}, "minimum": 1, "maximum": 9}, ["", "5", "5.", "0.5e"]),
+    ({"type": "integer", "minimum": 1}, ["5", "0", "0.", "0.0"]),
+    ({"type": "integer", "exclusiveMinimum": 0}, ["", "0.", "-"]),
+    ({"type": "integer", "maximum": 9}, ["-", "5", "51", "9.0"]),
+    ({"type": "integer", "minimum": 0, "maximum": 1}, ["", "0", "1", "1.0e"]),
+    ({"type": "integer", "minimum": 1, "maximum": 9}, ["6", "60", "0.6e"]),
+]
+
+NUMBER_BYTES = b"0123456789.eE+-"
+WS_BYTES = b" \t\n\r"
+
+
+def _vocab(extra=()) -> TokenizerSpec:
+    tokens = tuple(bytes([i]) for i in range(256)) + tuple(extra) + (b"", b"")
+    n = len(tokens)
+    return TokenizerSpec(tokens=tokens, eos_ids=(n - 2,), special_ids=(n - 1,)).validate()
+
+
+BYTE_COMPLETE_VOCABS = {
+    "bytes": (),
+    "bytes+123": (b"123",),
+    "bytes+json": (b'{"', b'":', b'",', b'"}'),
+}
+
+
+def _compile_num(ctx, schema):
+    return zg.compile_schema(ctx, json.dumps(schema).encode(), profile=b"spec-v1")
+
+
+def test_num_conj_prefix_masks_match_reference(byte_ctx):
+    # Engine mask over the number bytes equals the exact reference verdict
+    # of each one-byte extension (tests/reference.py, numconj_reachable).
+    for schema, prefixes in NUM_PREFIXES:
+        conj = NumConj.from_schema(schema)
+        g = _compile_num(byte_ctx, schema)
+        try:
+            for prefix in prefixes:
+                zg.cert_stats_reset()
+                s = zg.Session(byte_ctx, g)
+                try:
+                    refused = None
+                    for i, b in enumerate(prefix.encode()):
+                        if s.accept(b) != zg.BLG_OK:
+                            refused = prefix[: i + 1]
+                            break
+                    if refused is not None:
+                        # A refused byte must start a dead prefix.
+                        ref = numconj_reachable(refused, conj)
+                        assert ref is None or not ref[0], (schema, refused)
+                        continue
+                    ids = s.fill_mask_ids()
+                    got = {b for b in NUMBER_BYTES if b in ids}
+                    want = set()
+                    for b in NUMBER_BYTES:
+                        ref = numconj_reachable(prefix + chr(b), conj)
+                        if ref is not None and ref[0]:
+                            want.add(b)
+                    assert got == want, (schema, prefix, bytes(sorted(got)), bytes(sorted(want)))
+                    assert zg.cert_stats()[zg.UND_SEARCH_ENTERED] == 0, (schema, prefix)
+                finally:
+                    s.destroy()
+        finally:
+            zg.grammar_release(g)
+
+
+CLOSERS = (b'"', b"]", b"}", b'"}')
+
+
+def _random_walk(ctx, g, spec, rng, max_steps=400) -> bytes:
+    # Uniform over the mask, with EOS taken early sometimes and always
+    # after 24 steps; past that point closing tokens are preferred so that
+    # strings and containers (untyped schemas) finish.
+    eos_ids = set(spec.eos_ids)
+    s = zg.Session(ctx, g)
+    try:
+        doc = b""
+        for step in range(max_steps):
+            ids = s.fill_mask_ids()
+            assert ids, f"dead end after {doc!r}"
+            rest = sorted(ids - eos_ids)
+            if ids & eos_ids and (not rest or step >= 24 or rng.random() < 0.2):
+                assert s.can_end(), doc
+                return doc
+            body = [t for t in rest if spec.tokens[t] not in WS_BYTES] or rest
+            closing = [t for t in rest if spec.tokens[t] in CLOSERS]
+            if step >= 24 and closing and rng.random() < 0.7:
+                t = rng.choice(closing)
+            else:
+                t = rng.choice(body if rng.random() < 0.95 else rest)
+            assert s.accept(t) == zg.BLG_OK, (doc, spec.tokens[t])
+            doc += spec.tokens[t]
+        raise AssertionError(f"no EOS within {max_steps} steps: {doc!r}")
+    finally:
+        s.destroy()
+
+
+WALKS_PER_CONFIG = 20  # x 3 vocabularies x 2 modes x 2 fast-path settings = 240 per schema
+
+
+@pytest.mark.parametrize("vocab", sorted(BYTE_COMPLETE_VOCABS))
+@pytest.mark.parametrize("mode", [zg.BLG_MODE_LAZY, zg.BLG_MODE_ADAPTIVE])
+@pytest.mark.parametrize("fast_path", [zg.BLG_MASK_FAST_PATH_ON, zg.BLG_MASK_FAST_PATH_OFF])
+def test_num_conj_random_walks_to_eos(vocab, mode, fast_path):
+    import random
+    spec = _vocab(BYTE_COMPLETE_VOCABS[vocab])
+    ctx = zg.Context(spec, mode, mask_fast_path=fast_path)
+    try:
+        for i, schema in enumerate(NUM_CONJ_SCHEMAS):
+            rng = random.Random(f"{vocab}/{mode}/{fast_path}/{i}")
+            g = _compile_num(ctx, schema)
+            try:
+                zg.cert_stats_reset()
+                for _ in range(WALKS_PER_CONFIG):
+                    doc = _random_walk(ctx, g, spec, rng)
+                    assert exact_is_valid(schema, doc), (schema, doc)
+                assert zg.cert_stats()[zg.UND_SEARCH_ENTERED] == 0, schema
+            finally:
+                zg.grammar_release(g)
+    finally:
+        ctx.destroy()
+
+
+def test_num_conj_incomplete_vocabulary():
+    # A vocabulary without full byte coverage: the numeric schemas either
+    # compile and generate valid documents, or are refused at compile time;
+    # never a runtime RESOURCE_LIMIT. (spec-v1 numbers have infinitely many
+    # spellings, so the core refuses them on such vocabularies.)
+    import random
+    tokens = tuple(bytes([b]) for b in NUMBER_BYTES) + (b"123", b"45", b"", b"")
+    n = len(tokens)
+    spec = TokenizerSpec(tokens=tokens, eos_ids=(n - 2,), special_ids=(n - 1,)).validate()
+    ctx = zg.Context(spec, zg.BLG_MODE_LAZY)
+    outcomes = {}
+    try:
+        for i, schema in enumerate(NUM_CONJ_SCHEMAS):
+            try:
+                g = _compile_num(ctx, schema)
+            except zg.CoreFailure as e:
+                assert e.status == zg.BLG_ERR_UNSUPPORTED_TOKENIZER, (schema, e.status)
+                outcomes[i] = "refused"
+                continue
+            outcomes[i] = "compiled"
+            try:
+                rng = random.Random(i)
+                for _ in range(40):
+                    doc = _random_walk(ctx, g, spec, rng)
+                    assert exact_is_valid(schema, doc), (schema, doc)
+            finally:
+                zg.grammar_release(g)
+    finally:
+        ctx.destroy()
+    assert outcomes
+
+
+NUM_CONJ_IN_CONTAINERS = [
+    ({"type": "array", "items": {"type": "integer", "minimum": 0, "maximum": 63}},
+     ["[6,7,8,9,10]", "[1,2,3,4,5,6,7,8,9]", "[63,0]"]),
+    ({"type": "object", "properties": {
+        "score": {"type": ["integer", "null"], "minimum": 0, "maximum": 990},
+        "user": {"type": "string"}}},
+     ['{"score":700,"user":"a"}', '{"score":990}', '{"score":null}']),
+]
+
+
+def test_num_conj_inside_containers(byte_ctx):
+    # A bounded integer followed by an element or member delimiter: every
+    # byte of each document is in the mask, never a RESOURCE_LIMIT.
+    for schema, docs in NUM_CONJ_IN_CONTAINERS:
+        g = _compile_num(byte_ctx, schema)
+        try:
+            for doc in docs:
+                assert exact_is_valid(schema, doc), (schema, doc)
+                s = zg.Session(byte_ctx, g)
+                try:
+                    for b in doc.encode():
+                        assert b in s.fill_mask_ids(), (schema, doc)
+                        assert s.accept(b) == zg.BLG_OK, (schema, doc)
+                    assert s.can_end() and s.finish() == zg.BLG_OK, (schema, doc)
+                finally:
+                    s.destroy()
+        finally:
+            zg.grammar_release(g)

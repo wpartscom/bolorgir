@@ -3,6 +3,8 @@
 Two backends: the bolorgir package (Engine/Constraint/Session) and a
 direct ctypes fallback to zig-out/lib/libbolorgir.so (tests/blg_ctypes.py).
 Selection: BLG_TEST_BACKEND = package | ctypes | auto (default auto).
+BLG_TEST_REQUIRE_BACKEND=1 (benchmarks/t3/isolated_tests.sh): a backend
+that is selected but unavailable fails the test instead of skipping it.
 """
 
 from __future__ import annotations
@@ -240,6 +242,17 @@ class PackageSession:
         self.raw.close()
 
 
+def backend_required() -> bool:
+    return os.environ.get("BLG_TEST_REQUIRE_BACKEND") == "1"
+
+
+def skip_or_fail(reason: str):
+    """Skip, or fail under BLG_TEST_REQUIRE_BACKEND=1."""
+    if backend_required():
+        pytest.fail(f"required backend unavailable: {reason}")
+    pytest.skip(reason)
+
+
 def backend_available(kind: str) -> tuple[bool, str]:
     if kind in ("package", "auto"):
         try:
@@ -265,14 +278,14 @@ def make_backend(spec: TokenizerSpec, mode: str = "lazy", kind: str | None = Non
         try:
             return PackageBackend(spec, mode)
         except ImportError:
-            pytest.skip("bolorgir package is not importable")
+            skip_or_fail("bolorgir package is not importable")
         except BackendUnavailable as e:
-            pytest.skip(f"bolorgir package is unusable for tests: {e}")
+            skip_or_fail(f"bolorgir package is unusable for tests: {e}")
     if kind == "ctypes":
         try:
             return CtypesBackend(spec, mode)
         except ImportError as e:
-            pytest.skip(f"ctypes backend unavailable: {e}")
+            skip_or_fail(f"ctypes backend unavailable: {e}")
     # auto: package -> ctypes
     try:
         return PackageBackend(spec, mode)
@@ -281,7 +294,7 @@ def make_backend(spec: TokenizerSpec, mode: str = "lazy", kind: str | None = Non
     try:
         return CtypesBackend(spec, mode)
     except ImportError as e:
-        pytest.skip(f"core unavailable (neither package nor .so): {e}")
+        skip_or_fail(f"core unavailable (neither package nor .so): {e}")
 
 
 @pytest.fixture
@@ -312,7 +325,7 @@ def any_mode(request) -> str:
 # ---------------------------------------------------------------------------
 
 def describe_ids(ids, spec: TokenizerSpec, limit: int = 16) -> str:
-    """ids -> readable rendering for mismatch messages (TZ T2)."""
+    """ids -> readable rendering for mismatch messages."""
     parts = []
     for i in sorted(ids)[:limit]:
         if i in spec.eos_ids:

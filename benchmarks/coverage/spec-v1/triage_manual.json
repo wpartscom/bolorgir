@@ -1,0 +1,214 @@
+{
+ "maskbench/Github_medium---o55595.json/valid_instance_rejected/1": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys of the oneOf branch (node_extract_step) ahead of the outer declared enabled, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the serializer now emits a linearization consistent with both orders and the final build accepts the instance; python/tests/test_serializer_combinators.py::test_oneof_branch_keys_respect_outer_order"
+ },
+ "maskbench/Github_hard---o77403.json/valid_instance_rejected/0": {
+  "class": "B",
+  "note": "fixed on final: a bounded integer (numeric conjunction) inside an array or object ended in RESOURCE_LIMIT at fill_mask on dbc5eeb (ADR-0011); tests/test_spec_v1_p4_numbers_reachability.py::test_num_conj_inside_containers"
+ },
+ "maskbench/Github_medium---o57617.json/valid_instance_rejected/0": {
+  "class": "B",
+  "note": "fixed on final: a bounded integer (numeric conjunction) inside an array or object ended in RESOURCE_LIMIT at fill_mask on dbc5eeb (ADR-0011); tests/test_spec_v1_p4_numbers_reachability.py::test_num_conj_inside_containers"
+ },
+ "maskbench/Github_medium---o57617.json/valid_instance_rejected/1": {
+  "class": "B",
+  "note": "fixed on final: a bounded integer (numeric conjunction) inside an array or object ended in RESOURCE_LIMIT at fill_mask on dbc5eeb (ADR-0011); tests/test_spec_v1_p4_numbers_reachability.py::test_num_conj_inside_containers"
+ },
+ "dbc5eeb/repo/o60144.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/repo/o60145.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/repo/o85194.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/maskbench/Github_hard---o52856.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/maskbench/Github_hard---o69190.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/repo/sp_376_Normalized.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/repo/sp_378_Normalized.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/repo/sp_379_Normalized.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/maskbench/Github_medium---o89218.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/maskbench/Github_trivial---o60129.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/maskbench/Github_trivial---o60144.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/maskbench/Github_trivial---o60145.json/byte": {
+  "class": "A",
+  "note": "fixed on final: a oneOf branch whose declared keys arrived out of schema order did not vote, so a document matching two branches was accepted (semantics-spec-v1 4.3, value verdicts); the final build refuses every recorded document of the case; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/maskbench/Snowplow---sp_343_Normalized.json/byte": {
+  "class": "A",
+  "note": "fixed on final: threads spawned while one byte was fed were stepped by index arithmetic, so one untyped anyOf branch missed a one-digit number and read the following \"\" as the whole value (the document holds \"error\":8\"\"); the final build masks byte 37 of the recorded document; src/parser.zig test \"untyped anyOf branches spawned on a number's first byte all see it\", tests/test_spec_v1_r1_residual.py::test_r1_spawned_threads_and_closed_min_properties"
+ },
+ "dbc5eeb/maskbench/Github_easy---o10011.json/valid_instance_rejected/0": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/Github_easy---o10011.json/valid_instance_rejected/1": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/Github_easy---o10013.json/valid_instance_rejected/0": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/Github_easy---o10013.json/valid_instance_rejected/1": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/Github_easy---o75096.json/valid_instance_rejected/0": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/Github_easy---o75096.json/valid_instance_rejected/1": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/Github_medium---o48619.json/valid_instance_rejected/0": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/Github_medium---o55595.json/valid_instance_rejected/6": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/JsonSchemaStore---asmdef.json/valid_instance_rejected/0": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/JsonSchemaStore---asmdef.json/valid_instance_rejected/1": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/JsonSchemaStore---pkg_schema.json/valid_instance_rejected/0": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/JsonSchemaStore---pkg_schema.json/valid_instance_rejected/1": {
+  "class": "B",
+  "note": "fixed on final in the serializer: python/bolorgir/serializer.py emitted the keys a oneOf/anyOf branch declares ahead of the outer object's own declared keys, against the outer declared order the engine enforces (semantics-spec-v1 4.3); the final build accepts the instance serialized by the fixed serializer; python/tests/test_serializer_combinators.py"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6343.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6350.json/valid_instance_rejected/0": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6350.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6351.json/valid_instance_rejected/5": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6352.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6354.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6357.json/valid_instance_rejected/0": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6361.json/valid_instance_rejected/0": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6362.json/valid_instance_rejected/0": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6362.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6363.json/valid_instance_rejected/3": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6364.json/valid_instance_rejected/4": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6365.json/valid_instance_rejected/5": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6367.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6369.json/valid_instance_rejected/0": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6369.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6371.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6373.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6374.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6375.json/valid_instance_rejected/0": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/Github_ultra---o6375.json/valid_instance_rejected/1": {
+  "class": "C",
+  "note": "availability: under the harness cap of 64 parser threads the final build fails the mask with RESOURCE_LIMIT at the first array element (with 128 threads the instance is accepted); dbc5eeb dropped the '{' from the mask instead, the thread-cap defect fixed on final (tests/test_spec_v1_r1_residual.py::test_r1_thread_cap_never_drops_a_token)"
+ },
+ "dbc5eeb/maskbench/JsonSchemaStore---codux.config.schema.json/invalid_instance_accepted/2": {
+  "class": "A",
+  "note": "fixed on final: the instance matches both oneOf branches of ConfiguredScript, and a branch whose declared keys arrived out of schema order did not vote (semantics-spec-v1 4.3, value verdicts); the final build does not accept it; tests/test_spec_v1_p3.py::test_value_verdicts_ignore_key_order"
+ },
+ "dbc5eeb/repo/o21284.json/byte": {
+  "exception": "historical evidence gap on dbc5eeb, admitted at acceptance (review of 2026-10-05); class not established: the document of pass 19 is not reproducible, and the equal pass records and the 14 other documents on the final build do not prove its content",
+  "library_sha256": "8ff970d46cce8b47248ab3e0b4ed5404bb127ec733b80e649bf1d46e80bb461f",
+  "schema_sha256": "8d336de8b7c9ff10902c95e5de2e7bc372e05cef8d7617260345d5968c2dff6f",
+  "missing_seeds": [
+   110200973690758
+  ]
+ }
+}

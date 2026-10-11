@@ -1,7 +1,7 @@
 """
 Hugging Face Transformers integration (extra [transformers]).
 
-Supported path (FR-14): decoder-only models, single process/device,
+Supported path: decoder-only models, single process/device,
 greedy and sampling (num_beams=1, num_return_sequences=1), fixed batch,
 left padding. Constraints are applied BEFORE top-k/top-p: in HF,
 LogitsProcessor runs before LogitsWarper (the order is fixed in the
@@ -136,18 +136,25 @@ class ConstrainedGenerateResult:
     """Result of constrained_generate.
 
     completed[i] is True only when row i accepted a permitted EOS and
-    session.finish() succeeded (§3.3, FR-14). Rows stopped by the length
-    limit without EOS report completed=False with stop_reason "length".
+    session.finish() succeeded. Rows stopped by the length limit without
+    EOS report completed=False with stop_reason "length".
+    With on_constraint_error="fail_row", a row whose constraint failed
+    (for example RESOURCE_LIMIT from fill_mask) reports completed=False,
+    stop_reason "constraint_error" and the error text in errors[i]; its
+    tokens are not a valid document.
     """
 
     sequences: Any  # torch.Tensor [batch, total_len]
     completed: List[bool]
-    stop_reason: List[str]  # "eos" | "length" | "dead_end" | "error"
+    stop_reason: List[str]  # "eos" | "length" | "dead_end" | "error" | "constraint_error"
     sessions: List[Optional[Session]] = field(default=None)  # type: ignore[assignment]
+    errors: List[Optional[str]] = field(default=None)  # type: ignore[assignment]
 
     def __post_init__(self) -> None:
         if self.sessions is None:
             self.sessions = [None] * len(self.completed)
+        if self.errors is None:
+            self.errors = [None] * len(self.completed)
 
 
 class ConstraintLogitsProcessor(LogitsProcessor):
@@ -173,6 +180,11 @@ class ConstraintLogitsProcessor(LogitsProcessor):
     are undecodable dummy lm_head positions. Real EOS/pad ids lie inside
     vocab_size and are unaffected.
 
+    on_constraint_error: "raise" (default) propagates an engine error of
+    any row (fill_mask or accept_token, e.g. RESOURCE_LIMIT) and stops the
+    batch; "fail_row" marks that row failed (row_error[i] holds the text),
+    allows only its EOS from then on and lets the other rows continue.
+
     Per-step cost (hot path, eighth run): new tokens are fetched from
     input_ids with ONE batched D2H per call (a per-row int(cuda_scalar)
     pattern costs ~0.9 ms per step at batch 32 vs ~0.07 ms batched); masks
@@ -190,9 +202,15 @@ class ConstraintLogitsProcessor(LogitsProcessor):
         prompt_len: int,
         eos_ids: Sequence[int] = (),
         eos_ids_per_row: Optional[Sequence[Sequence[int]]] = None,
+        on_constraint_error: str = "raise",
     ) -> None:
         if not sessions:
             raise InvalidArgumentError("sessions: empty batch")
+        if on_constraint_error not in ("raise", "fail_row"):
+            raise InvalidArgumentError(
+                f"on_constraint_error: {on_constraint_error!r} is not 'raise' or 'fail_row'"
+            )
+        self.on_constraint_error = on_constraint_error
         self.sessions = list(sessions)
         self.prompt_len = int(prompt_len)
         if eos_ids_per_row is not None:
@@ -213,6 +231,7 @@ class ConstraintLogitsProcessor(LogitsProcessor):
         self.active = [s is not None for s in self.sessions]
         self.dead_end = [False] * len(self.sessions)
         self.eos_done = [False] * len(self.sessions)  # row finished by EOS
+        self.row_error: List[Optional[str]] = [None] * len(self.sessions)
         self._vocab_size = next(
             (s.vocab_size for s in self.sessions if s is not None), None
         )
@@ -245,32 +264,52 @@ class ConstraintLogitsProcessor(LogitsProcessor):
             self.seen[i] += 1
             if self.eos_done[i]:
                 continue  # pad after a finished row
-            sess.accept_token(tok)  # the core rejects EOS before document end
+            try:
+                sess.accept_token(tok)  # the core rejects EOS before document end
+            except ZigConstraintsError as e:
+                self._row_failed(i, e)
+                return
             if tok in self._row_eos[i]:
                 # the mask permits EOS only at the document boundary
                 sess.finish()
                 self.eos_done[i] = True
                 self.active[i] = False
 
-    def _fill_masks(self, rows: List[int]) -> List[bytes]:
-        """Masks of active rows in one core call (input order preserved).
+    def _row_failed(self, i: int, e: ZigConstraintsError) -> None:
+        """An engine error of row i: raise, or (fail_row) record it and
+        leave the row to EOS."""
+        if self.on_constraint_error == "raise":
+            raise e
+        self.row_error[i] = str(e)
+        self.active[i] = False
+
+    def _fill_masks(self, rows: List[int]) -> "tuple[List[int], List[bytes]]":
+        """Masks of active rows in one core call (input order preserved) ->
+        (rows that got a mask, their masks).
 
         The batched entry point takes per-session locks without the GIL
         inside one C call. A failing row is replayed by a single
-        fill_mask() so the raised exception stays the same typed error
-        with the core's original message.
+        fill_mask() so the error stays the same typed error with the
+        core's original message.
         """
         sessions = [self.sessions[i] for i in rows]
         raw = _zg_core.fill_masks_batch([s._s for s in sessions])
+        ok: List[int] = []
         masks: List[bytes] = []
         for pos, (code, mask) in enumerate(raw):
             if code != 0:
-                sessions[pos].fill_mask()  # raises the original typed error
-                raise ZigConstraintsError(
-                    f"row {rows[pos]}: mask unavailable (status {code})"
-                )
+                try:
+                    sessions[pos].fill_mask()  # raises the original typed error
+                    err = ZigConstraintsError(
+                        f"row {rows[pos]}: mask unavailable (status {code})"
+                    )
+                except ZigConstraintsError as e:
+                    err = e
+                self._row_failed(rows[pos], err)
+                continue
+            ok.append(rows[pos])
             masks.append(mask)
-        return masks
+        return ok, masks
 
     def _rows_index(self, rows: List[int], device: Any) -> Any:
         key = (tuple(rows), str(device))
@@ -312,8 +351,9 @@ class ConstraintLogitsProcessor(LogitsProcessor):
             # One compact H2D for the whole batch; bits unpack on the device
             # and land as FORBIDDEN flags directly in the persistent buffer
             # of the full-rows fast path. DeadEndError propagates explicitly
-            # (FR-15).
-            masks = self._fill_masks(rows)
+            # unless on_constraint_error="fail_row".
+            rows, masks = self._fill_masks(rows)
+        if rows:
             nwords = (v + 31) // 32
             forbid = self._forbid_buf
             if (
@@ -363,7 +403,7 @@ class ConstraintLogitsProcessor(LogitsProcessor):
                 m = mx[r]
                 if m != m or m == float("inf"):
                     # invalid scores among constraint-allowed candidates are an
-                    # explicit error, never a silent random sample (FR-15)
+                    # explicit error, never a silent random sample
                     self.dead_end[i] = True
                     self.active[i] = False
                     raise ZigConstraintsError(
@@ -378,6 +418,14 @@ class ConstraintLogitsProcessor(LogitsProcessor):
                         f"row {i}: no finite logits left after masking "
                         "(generation settings conflict)"
                     )
+        for i, err in enumerate(self.row_error):
+            if err is None or self.eos_done[i]:
+                continue
+            # A failed row may only stop.
+            keep = sorted(self._row_eos[i])
+            saved = target[i, keep].clone()
+            target[i].fill_(float("-inf"))
+            target[i, keep] = torch.where(torch.isfinite(saved), saved, torch.zeros_like(saved))
         if width != v:
             scores[:, v:] = float("-inf")
         return scores
@@ -388,12 +436,14 @@ class ConstraintLogitsProcessor(LogitsProcessor):
         The processor did not see the last sampled token; it is accepted
         here. Tokens after the first EOS (HF padding) are skipped.
         completed is True only when a permitted EOS was accepted and
-        finish() succeeded (§3.3, FR-14); without an EOS the row is not a
-        completed response, even when can_end() is true.
+        finish() succeeded; without an EOS the row is not a completed
+        response, even when can_end() is true.
         """
         sess = self.sessions[i]
         if sess is None:
             return True, "eos"
+        if self.row_error[i] is not None:
+            return False, "constraint_error"
         if self.eos_done[i]:
             # finished by EOS during generate; the tail is HF padding
             return True, "eos"
@@ -486,9 +536,9 @@ def _final_generation_config(
     separately.
 
     The same config object is used by the preflight, the HF stopping
-    criteria and the final generate call, so validation and the run can no
-    longer diverge (previously EOS was filtered only in the processor, and
-    explicit num_beams/num_return_sequences were dropped from kwargs).
+    criteria and the final generate call, so validation and the run cannot
+    diverge: EOS filtering only in the processor, or dropping an explicit
+    num_beams/num_return_sequences, would make them disagree.
     """
     import copy
 
@@ -508,7 +558,7 @@ def _final_generation_config(
 
 
 def _check_generation_conflicts(cfg: Any, runtime: Dict[str, Any]) -> None:
-    """Reject unsupported modes before generation, by effective values (FR-14/15)."""
+    """Reject unsupported modes before generation, by effective values."""
 
     def val(key: str, default: Any = None) -> Any:
         if key in runtime:
@@ -549,6 +599,7 @@ def constrained_generate(
     inputs: Optional[Any] = None,
     max_new_tokens: int = 128,
     do_sample: bool = False,
+    on_constraint_error: str = "raise",
     **gen_kwargs: Any,
 ) -> ConstrainedGenerateResult:
     """Wrapper around model.generate applying constraints (no monkey-patch).
@@ -567,7 +618,9 @@ def constrained_generate(
     termination sets are checked against each row's own engine. After
     generate, the last sampled token of each row (invisible to the
     processor) is accepted and the row is finalized ->
-    completed/stop_reason.
+    completed/stop_reason. on_constraint_error is passed to
+    ConstraintLogitsProcessor: "fail_row" keeps the batch running past a
+    row's engine error and reports it in errors[i].
     """
     cfg, runtime = _final_generation_config(model, gen_kwargs)
     _check_generation_conflicts(cfg, runtime)
@@ -629,7 +682,8 @@ def constrained_generate(
 
     sessions: List[Session] = [c.create_session() for c in constraints]
     processor = ConstraintLogitsProcessor(
-        sessions, prompt_len, eos_ids_per_row=row_eos
+        sessions, prompt_len, eos_ids_per_row=row_eos,
+        on_constraint_error=on_constraint_error,
     )
 
     cfg.max_new_tokens = int(max_new_tokens)
@@ -663,4 +717,5 @@ def constrained_generate(
         completed=completed,
         stop_reason=stop_reason,
         sessions=sessions,
+        errors=list(processor.row_error),
     )

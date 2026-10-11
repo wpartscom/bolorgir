@@ -312,8 +312,7 @@ def main():
     ap.add_argument("--corpus-dir", default=bc.CORPUS_DIR)
     ap.add_argument("--repeats", type=int, default=30)
     ap.add_argument("--min-observations", type=int, default=10000)
-    # SPEC 10.5: warm measurements - ≥10k observations per class for p99:
-    # warm compile used to give only 100 observations.
+    # SPEC 10.5: warm measurements - ≥10k observations per class for p99.
     ap.add_argument("--min-warm-observations", type=int, default=10000)
     ap.add_argument("--seed", type=int, default=bc.SEED)
     ap.add_argument("--tokenizer", default=TOKENIZER_NAME)

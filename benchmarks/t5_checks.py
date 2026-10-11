@@ -295,7 +295,7 @@ def t_conflict_std(ctx):
     #     not lift the constraint ban.
     # (b) min_new=12 on a tiny schema: after the end of the document the mask
     #     allows only EOS, while MinNewTokens forbids EOS -> an explicit
-    #     conflict error (FR-15), NOT a slip of an invalid token.
+    #     conflict error, NOT a slip of an invalid token.
     tok = ctx["tokenizer"]
 
     def extra_ok(prompt_len):

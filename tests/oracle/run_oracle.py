@@ -67,6 +67,7 @@ import argparse
 import ctypes
 import datetime
 import fnmatch
+import hashlib
 import importlib.metadata
 import importlib.util
 import json
@@ -156,6 +157,29 @@ def engine_commit() -> str | None:
         return out.stdout.strip() or None
     except Exception:
         return None
+
+
+def library_sha256(path) -> str | None:
+    """sha256 of the library under test; the T3 coverage control binds an
+    oracle report to its candidate by this value."""
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for block in iter(lambda: f.read(1 << 20), b""):
+                h.update(block)
+        return h.hexdigest()
+    except OSError:
+        return None
+
+
+def harness_sha256() -> dict:
+    """sha256 of the harness files that shape a row (this script, the
+    ctypes bindings, the reference checks, the serializer, the pin and the
+    known gaps), so that a report names the harness that made it."""
+    files = (os.path.abspath(__file__), os.path.join(_TESTS, "blg_ctypes.py"),
+             os.path.join(_TESTS, "reference.py"), SERIALIZER_PATH, PIN_PATH,
+             KNOWN_GAPS_PATH)
+    return {os.path.relpath(p, _ROOT): library_sha256(p) for p in files}
 
 
 def canonical_serialize(value) -> bytes:
@@ -570,7 +594,11 @@ def compile_schema(zg, ctx, data: bytes, profile: bytes,
     (canonical-v1 today, spec-v1 later) and exposes the refusal JSON
     pointer."""
     req = zg.ZgCompileRequest()
-    req.struct_size = ctypes.sizeof(zg.ZgCompileRequest)
+    # No compile flags: the request ends before them, with the registry
+    # fields, as in blg_ctypes.compile_grammar. A core older than the flags
+    # tail (dbc5eeb) refuses the full size ("bad compile request
+    # struct_size"), every core takes this one.
+    req.struct_size = zg.ZgCompileRequest.flags.offset
     req.kind = zg.BLG_CONSTRAINT_JSON_SCHEMA
     req.profile = profile
     buf = (ctypes.c_uint8 * max(len(data), 1)).from_buffer_copy(data or b"\0")
@@ -960,6 +988,8 @@ def run(drafts=DEFAULT_DRAFTS, include=None, exclude=None,
             .strftime("%Y-%m-%dT%H:%M:%SZ"),
             "engine_commit": engine_commit(),
             "library": zg.LIB._path,
+            "library_sha256": library_sha256(zg.LIB._path),
+            "harness_sha256": harness_sha256(),
             "profile": profile,
             "drafts": list(drafts),
             "dialect_selection": ("root $schema per suite directory "

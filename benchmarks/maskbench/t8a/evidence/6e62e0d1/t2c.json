@@ -1,0 +1,24 @@
+{
+ "about": "T2c classes of Bolorgir errors in T8a on the core 6e62e0d1 (t8a_report.py --t2c, run_t8a.sh T8A_T2C). The owner's decision of 2026-10-10 after the diagnosis of the two timeouts of the run benchmarks/local/t8a-6e62e0d1 (TZ_AUDIT_FIXES_HANDOFF.md, item 6). A class covers only its file with the exact outcome it names as status, under the T8a protocol of that run (wheel e5bb3f5b, Llama 3.1 revision a2856192, 900 s per file, one worker): the status timeout is a pending marker whose chunk ended with exit -14 (the runner's SIGALRM) while it ran the file; t8a_report.py applies the class only then, so a crash with another exit, a validation error or a marker without that chunk end stays open. The table status crash_or_timeout stays. A timeout of any other file is not covered and stays open. The causes inside the core are open. The protocol block states those limits in complete machine-readable form; t8a_report.py applies a class only when every required condition is present with the run's value, otherwise every case stays open.",
+ "core_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+ "decided": "2026-10-10, owner",
+ "protocol": {"threads": 1, "time_limit": 900, "mem_limit": 40,
+  "profile": "spec-v1", "serializer": "bolorgir", "compact": true,
+  "smoke_files": 0,
+  "tokenizer_revision": "a2856192dd7c25b842431f39c179a6c2c2f627d1",
+  "wheel_sha256": "e5bb3f5bf7e5b19b21f96b1ff3ee4e74dad3490fcd95c7c9f082ccc9c39fd2b6"},
+ "entries": {
+  "Github_medium---o65503.json": {
+   "class": "C",
+   "status": "timeout",
+   "note": "availability: the file exceeds the 900 s budget of T8a. In the repeat the completed mask calls took 899.450 s of the 899.556 s from the start of the file to the last event (commit_token 0.017 s); instances 0-2 finished (instance 2, invalid, rejected at token 266), SIGALRM came at instance 3, token 143, inside the native fill_mask. 877 steps with the prefix inside a JSON string took 899.4 s (median 1.03 s), the other 95 steps 0.1 s. Peak memory 692 MB.",
+   "evidence": "benchmarks/maskbench/t8a/evidence/6e62e0d1/diag/Github_medium---o65503/summary.json"
+  },
+  "Github_easy---o89710.json": {
+   "class": "C",
+   "status": "timeout",
+   "note": "availability: the first fill_mask call (instance 0, token 0, 0.425 s after the start of the file) did not return before SIGALRM, so it ran at least 899.5 s; the cause inside the core is unknown. compute_mask 0.0 s in the summary means no completed measured call; the unfinished call is not in the sum. RSS 681 MB without growth from 30 s on, peak 839 MB. T3 on the same core with the byte tokenizer: RESOURCE_LIMIT at fill_mask step 0.",
+   "evidence": "benchmarks/maskbench/t8a/evidence/6e62e0d1/diag/Github_easy---o89710/summary.json"
+  }
+ }
+}

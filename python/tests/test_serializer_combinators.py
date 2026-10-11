@@ -96,6 +96,50 @@ def test_anyof_first_fitting_branch_orders():
     assert serialize({"y": 1, "x": 2}, schema) == b'{"x":2,"y":1}'
 
 
+# The outer object declares `name` before `type` and the branch declares
+# `type` before `uom`: the engine enforces both orders, so the branch's
+# keys cannot simply lead (Github_easy/o75096.json).
+OUTER_AND_BRANCH = {
+    "type": "object",
+    "properties": {"name": {}, "type": {"type": "string"}},
+    "oneOf": [
+        {"properties": {"type": {"const": "q"}, "uom": {}}, "required": ["uom"]},
+        {"properties": {"type": {"const": "c"}}},
+    ],
+}
+
+
+def test_oneof_branch_keys_respect_outer_order():
+    assert serialize({"type": "q", "uom": "C", "name": "n"}, OUTER_AND_BRANCH) == \
+        b'{"name":"n","type":"q","uom":"C"}'
+
+
+def test_anyof_branch_keys_respect_outer_order():
+    schema = {"properties": {"a": {}, "b": {}},
+              "anyOf": [{"properties": {"b": {}, "c": {}}, "required": ["c"]}]}
+    assert serialize({"c": 1, "b": 2, "a": 3}, schema) == b'{"a":3,"b":2,"c":1}'
+
+
+def test_nested_branch_keys_respect_outer_order():
+    # Array items of a closed object whose oneOf branch declares a key
+    # the outer object declares after two required ones
+    # (Github_medium/o48619.json).
+    schema = {"type": "array", "items": {
+        "type": "object", "additionalProperties": False,
+        "properties": {"close": {}, "kind": {"type": "string"}, "id": {},
+                       "name": {}, "relation": {}, "since": {}},
+        "required": ["id", "name", "kind"],
+        "oneOf": [
+            {"properties": {"kind": {"enum": ["relative"]}, "relation": {"type": "string"}}},
+            {"properties": {"close": {"type": "boolean"}, "kind": {"enum": ["friend"]},
+                            "relation": {"type": "boolean"}}},
+        ]}}
+    value = [{"close": True, "kind": "friend", "relation": True, "id": 1,
+              "name": "x", "since": "s"}]
+    assert serialize(value, schema) == \
+        b'[{"close":true,"kind":"friend","id":1,"name":"x","relation":true,"since":"s"}]'
+
+
 def test_allof_nested_conjunction_flattens():
     # Regression: properties living in the allOf of an allOf member (a
     # $ref'd "common" base with its own allOf) were invisible, so the
@@ -173,9 +217,21 @@ def test_oneof_reordered_payload_accepted_by_engine():
     assert json.loads(payload) == value  # value preserved
 
     ctx = blg.Context(spec, mode=0, cache_limit_bytes=0)
-    grammar = blg.compile_schema(ctx, ONE_OF_SCHEMA, profile=b"spec-v1")
     try:
-        for doc in (payload, b'{"id":1,"params":1}'):
+        _feed_all(blg, ctx, ONE_OF_SCHEMA, (payload, b'{"id":1,"params":1}'))
+        value = {"type": "q", "uom": "C", "name": "n"}
+        payload = serialize(value, OUTER_AND_BRANCH)
+        assert json.loads(payload) == value
+        _feed_all(blg, ctx, OUTER_AND_BRANCH, (payload,))
+    finally:
+        ctx.destroy()
+
+
+def _feed_all(blg, ctx, schema, docs):
+    """Every byte of every doc is in the mask and the doc completes."""
+    grammar = blg.compile_schema(ctx, schema, profile=b"spec-v1")
+    try:
+        for doc in docs:
             session = blg.Session(ctx, grammar)
             try:
                 for i, b in enumerate(doc):
@@ -190,4 +246,3 @@ def test_oneof_reordered_payload_accepted_by_engine():
                 session.destroy()
     finally:
         blg.grammar_release(grammar)
-        ctx.destroy()

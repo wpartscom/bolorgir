@@ -20,10 +20,23 @@ diag_proc_step.py        per-step diagnostics of HF processor phases (not a scor
 diag_e2e_spike.py        first-request e2e spike localization (diagnostic, not scored)
 diag_cert_histogram.py   undecided-reason histogram of the strict-D3 residual
                          over oracle ENGINE_ERROR rows (diagnostic, not scored)
+diag_process_history.py  repeated compiles of one schema in fresh contexts of
+                         one process, with the context memory per round
+                         (T3 input, diagnostic, not scored)
 recheck_cert_residuals.py maintained recheck of the strict-D3 RESOURCE_LIMIT
                          residuals on MaskBench: the 26-case suite and the
                          126-instance valid-rejects suite with pinned counts
                          (see the module docstring)
+bench_jsb_coverage.py    JSONSchemaBench coverage reports: compile buckets,
+                         semantic checks, K-pass generatable outcomes
+                         (coverage/spec-v1/)
+recheck_semantic_counters.py replay of the correctness signals of a
+                         coverage report on a given library (evidence rows)
+recheck_invalid_documents.py the invalid generated documents of a
+                         coverage report that the draft-04 deviation does not
+                         explain, fed to a given library (evidence rows)
+triage_semantic.py       class A-E triage of the rechecked signals and the
+                         generatable outcomes (coverage/spec-v1/triage.md)
 bench_longrun.py         B5/B8: fair long-run generation, ~100k steps/limit
 bench_schemas_tokenizers.py B3 schema switching + B6 tokenizer matrix
 summarize_control.py     control run summary + recompute of the §10.6 GO rule
@@ -134,6 +147,52 @@ Next corpus steps:
 - MaskBench as a reproducible mask-density reference: adapter, upstream PR
   draft and full-corpus results in `maskbench/` (2026-09-20).
 
+spec-v1 coverage reports (`coverage/spec-v1/`, both snapshots; the
+pinned HF tokenizers must be in the HF cache, `HF_HOME`, the harness
+loads them offline):
+
+```sh
+zig build --release
+BOLORGIR_COVERAGE_PROFILE=spec-v1 PYTHONPATH=python \
+  python3 benchmarks/bench_jsb_coverage.py --snapshot both --semantic \
+  --generatable --passes 20 --hf-sample-every 20 --jobs 8 --chunk-size 100 \
+  --work-dir benchmarks/local/coverage-chunks --out-dir benchmarks/coverage/spec-v1
+```
+
+Committed reports are gzip-compressed; `coverage/README.md` describes the
+layout and the integrity records.
+
+Every pass of every schema runs unless `--schema-budget-seconds` caps
+the passes per schema. The published reports come from a run with a 30 s
+schema budget (about 9 h with 8 jobs on the manifest machine), completed
+with `--complete-from`: it ran the passes the budget skipped and replayed
+every invalid_document pass by its seed for the document (about 14 h for
+the final build and 15.5 h for `dbc5eeb` with 9 jobs each, both on the
+machine at once). Two more `--complete-from` runs on that result
+replayed only the passes still without a document: with a longer time
+limit and on a fresh context, then also alone in a child process
+(minutes each):
+
+```sh
+BOLORGIR_COVERAGE_PROFILE=spec-v1 PYTHONPATH=python \
+  python3 benchmarks/bench_jsb_coverage.py --snapshot both --generatable \
+  --passes 20 --hf-sample-every 20 --jobs 8 --chunk-size 100 \
+  --complete-from benchmarks/coverage/spec-v1 \
+  --work-dir benchmarks/local/complete-chunks --out-dir benchmarks/local/completed
+```
+
+`--jobs` resumes an interrupted run from the finished chunks in
+`--work-dir`. A chunk is reused only when its identity record (engine
+library, harness sources, parameters, corpus, packages) matches the run;
+a run with other inputs needs a new `--work-dir`. The inputs of
+`coverage/spec-v1/triage.md` are listed at its top; the class rules and
+the options of `triage_semantic.py` are in its docstring. As a gate it
+runs with `--gate-build final`: the final build has no unclassified row,
+and an unclassified row of an earlier build passes only as an accepted
+exception of `triage_manual.json`, listed at the top of `triage.md`.
+Without that option the triage of the whole history exits 1 while such
+an exception exists.
+
 ## Control run §10.6 / §13.2
 
 Translation note (2026-09-19): documents, gate messages and the v3 protocol
@@ -176,14 +235,14 @@ Third run: **2026-09-17, `results/20260917T193735_perf-fix3/REPORT.md`**
 (+ raw JSON, `environment.txt`, e2e guard repeat). Performed after a second
 wave of structural fixes:
 
-- `lit_trie` (ADR-0002): enum/const/FR-3/boolean compile into a shared trie
+- `lit_trie` (ADR-0002): enum/const/literal sets/boolean compile into a shared trie
   of literal-alternative prefixes; the common prefix is advanced by one
   parser thread instead of one thread per alternative. accept inside an
   enum window 2.07 µs → 0.46 µs (p99); the accept tail no longer depends on the
   number of alternatives;
-- coverage (FR-6) without an O(vocab) index: the segmentation DP enumerates
-  candidate tokens by walking the vocabulary trie (binary search); the
-  "first byte → token list" index is no longer built on every compile
+- coverage without an O(vocab) index: the segmentation DP enumerates
+  candidate tokens by walking the vocabulary trie (binary search), so no
+  "first byte → token list" index is built on every compile
   (~815 µs of ~1 ms on GPT-2). Cold compile (B1) 1.37 ms → **0.17 ms** -
   better than both competitors.
 
@@ -403,7 +462,7 @@ B5/B8 with no degradation,
 GPU path 47.26 µs. The gate checks composition/uniqueness/
 revision; incomplete data yields a structured result (not a crash);
 status=ERROR of a mandatory file - NO-GO; a single collection - analysis mode (exit 3).
-A gate audit then confirmed GO and required hardening the gate: uniqueness of
+A follow-up check then confirmed GO and required hardening the gate: uniqueness of
 records (file, engine, repeat), the exact set of repeats, positions
 {0,1}, consecutive times and total_s consistency are checked; the CLI does not
 crash on corrupted files. Saved collections were rechecked with the fixed gate -

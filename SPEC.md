@@ -132,7 +132,7 @@ If the generation profile narrows the set of representations, this is reflected 
 | Beam search, fork/rollback | No | 1.1 |
 | Speculative decoding | No | After correct fork/rollback |
 | Mixed free text and tool calling | No | After 1.0 |
-| Linux x86_64, Python 3.10+ with a regular GIL | Yes | Other platforms |
+| Linux x86_64, Python 3.12+ with a regular GIL | Yes | Other platforms |
 | macOS arm64, Windows x86_64, Linux aarch64 | Design without inherent x86 assumptions | Wheels after separate checks |
 | Mandatory runtime dependencies on XGrammar/llguidance | No | Only explicitly selected optional adapters |
 
@@ -349,7 +349,7 @@ The core validates sizes, overflows, and parameters. The C client still must pas
 
 Preferred MVP scheme: a Zig core with C ABI and a small CPython extension in C that manages Python objects and the GIL. C code does not duplicate mask-building algorithms. If another bridge is chosen, document an ADR with measured call and packing cost.
 
-- Use the Limited API with an abi3 target for Python 3.10+ if all required functions are available; this is verified by build and tests at stage 0.
+- Use the Limited API with an abi3 target for Python 3.12+ if all required functions are available; this is verified by build and tests at stage 0.
 - If a Limited API limitation is found, explicitly switch to per-version Python wheels and update the release matrix. An ordinary build must not be labeled abi3.
 - Release the GIL during native computation; hold objects and buffers until the call completes.
 - Working buffers are closed to concurrent writes from Python; one session serializes its operations.

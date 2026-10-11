@@ -4,11 +4,19 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
 
+    const test_hooks = b.option(bool, "test_hooks", "Export the test-only blg_test_* hooks (never in release artifacts)") orelse false;
+    const build_options = b.addOptions();
+    build_options.addOption(bool, "test_hooks", test_hooks);
+
+    const strip = b.option(bool, "strip", "Omit debug information from the library (release artifacts: reproducible bytes)") orelse false;
+
     const core_mod = b.createModule(.{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
+        .strip = strip,
     });
+    core_mod.addOptions("build_options", build_options);
 
     const lib = b.addLibrary(.{
         .linkage = .dynamic,
@@ -27,6 +35,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    test_mod.addOptions("build_options", build_options);
     const unit_tests = b.addTest(.{ .root_module = test_mod, .use_llvm = true });
     const run_tests = b.addRunArtifact(unit_tests);
     const test_step = b.step("test", "Run core unit tests");
@@ -36,12 +45,12 @@ pub fn build(b: *std.Build) void {
         .root_source_file = null,
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
     const c_example = b.addExecutable(.{ .name = "c_client", .root_module = exe_mod });
-    c_example.addCSourceFile(.{ .file = b.path("examples/c_client.c"), .flags = &.{"-std=c99"} });
-    c_example.addIncludePath(b.path("include"));
-    c_example.linkLibrary(lib);
-    c_example.linkLibC();
+    exe_mod.addCSourceFile(.{ .file = b.path("examples/c_client.c"), .flags = &.{"-std=c99"} });
+    exe_mod.addIncludePath(b.path("include"));
+    exe_mod.linkLibrary(lib);
     const example_step = b.step("example-c", "Build the C client example");
     example_step.dependOn(&b.addInstallArtifact(c_example, .{}).step);
 
@@ -50,12 +59,13 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    fuzz_mod.addOptions("build_options", build_options);
     const fuzz_exe = b.addExecutable(.{ .name = "blg_fuzz", .root_module = fuzz_mod, .use_llvm = true });
     const install_fuzz = b.addInstallArtifact(fuzz_exe, .{});
     const fuzz_build_step = b.step("fuzz-build", "Build the T4 fuzz runner");
     fuzz_build_step.dependOn(&install_fuzz.step);
     const run_fuzz = b.addRunArtifact(fuzz_exe);
-    if (b.args) |args| run_fuzz.addArgs(args);
+    run_fuzz.addPassthruArgs();
     const fuzz_step = b.step("fuzz", "Run the T4 fuzz campaigns");
     fuzz_step.dependOn(&run_fuzz.step);
 }

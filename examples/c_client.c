@@ -3,8 +3,8 @@
  *
  * The vocabulary is byte-complete: ids 0..255 are single bytes, 256..259 are
  * handy structural tokens, 260 EOS, 261 PAD (special). Full byte coverage
- * provably makes completion reachable for any schema (spec 3.1, FR-7):
- * with a partial vocabulary and an infinite language the compiler returns
+ * provably makes completion reachable for any schema: with a partial
+ * vocabulary and an infinite language the compiler returns
  * UNSUPPORTED_TOKENIZER and the example would be invalid.
  *
  * The action/amount schema from the spec example, a fill_mask -> accept loop

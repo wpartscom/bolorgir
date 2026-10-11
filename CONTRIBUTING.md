@@ -5,7 +5,7 @@ is English-only: code, comments, issues, pull requests, and commit messages.
 
 ## Development setup
 
-Requirements: Zig 0.15.2, Python 3.10+, a C toolchain (gcc/clang), `git`.
+Requirements: Zig 0.17.0, Python 3.12+, a C toolchain (gcc/clang), `git`.
 
 Build and test the core:
 

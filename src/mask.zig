@@ -1,4 +1,5 @@
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 const tokenizer = @import("tokenizer.zig");
 const parser = @import("parser.zig");
@@ -6,6 +7,7 @@ const complete = @import("complete.zig");
 const work_mod = @import("work.zig");
 const cache_mod = @import("cache.zig");
 const precompute = @import("precompute.zig");
+const io_mod = @import("io.zig");
 
 pub const Error = error{ DeadEnd, ResourceLimit, Cancelled, OutOfMemory };
 
@@ -19,10 +21,10 @@ const StackFrame = struct { node: u32, next_edge: u32 };
 /// itself exhaust the 8 MiB default session budget.
 pub const MaskBuf = struct {
     a: std.mem.Allocator,
-    states: std.ArrayListUnmanaged(parser.State) = .{},
-    frames: std.ArrayListUnmanaged(StackFrame) = .{},
+    states: std.ArrayListUnmanaged(parser.State) = .empty,
+    frames: std.ArrayListUnmanaged(StackFrame) = .empty,
     spare: parser.State = undefined,
-    blob: std.ArrayListUnmanaged(u8) = .{},
+    blob: std.ArrayListUnmanaged(u8) = .empty,
     completion: complete.Cache,
 
     pub fn init(a: std.mem.Allocator, completion_a: std.mem.Allocator) MaskBuf {
@@ -51,16 +53,16 @@ pub const MaskBuf = struct {
     }
 };
 
-/// Exact mask construction over the token trie (FR-6). Iterative DFS: each
+/// Exact mask construction over the token trie. Iterative DFS: each
 /// trie edge feeds one byte to the parser; a Parse error prunes the whole
 /// subtree, a terminal node sets the bit of every chained token id. A node
 /// with a single edge descends in place, so the stack depth is the branching
-/// depth, not the token length. Semantics match the former linear scan: EOS
-/// by can_end, special tokens skipped, ResourceLimit from a feed or the
-/// work budget fails the mask, DeadEnd when nothing is allowed. On a
-/// vocabulary without full byte coverage and a finite literal grammar
-/// (TZ 3.1), and on any vocabulary for a grammar with deferred value
-/// verdicts (grammar.needs_reachability, ADR-0005), a token whose state
+/// depth, not the token length. Semantics: EOS by can_end, special tokens
+/// skipped, ResourceLimit from a feed or the work budget fails the mask,
+/// DeadEnd when nothing is allowed. On a
+/// vocabulary without full byte coverage and a finite literal grammar,
+/// and on any vocabulary for a grammar with deferred value verdicts
+/// (grammar.needs_reachability, ADR-0005), a token whose state
 /// cannot reach a completed answer is filtered out (src/complete.zig); a
 /// reachability check that exhausts its budget/depth/memory is UNKNOWN, not
 /// alive, and fails the whole mask call with ResourceLimit (ADR-0005 D3).
@@ -69,13 +71,13 @@ pub fn fillMask(g: *const grammar.Grammar, tok: *const tokenizer.Tokenizer, st: 
     std.debug.assert(out.len >= mw);
     @memset(out[0..mw], 0);
 
-    // Completion filter (TZ 3.1; ADR-0005): partial vocabularies over
-    // finite literal languages, and any grammar with deferred value
-    // verdicts (needs_reachability) on any vocabulary.
+    // Completion filter (ADR-0005): partial vocabularies over finite
+    // literal languages, and any grammar with deferred value verdicts
+    // (needs_reachability) on any vocabulary.
     const filtered = (!tok.byte_complete and g.finite_literal) or g.needs_reachability;
     if (g.needs_reachability) {
         buf.completion.reset();
-        buf.completion.fill_budget = complete.FILL_SEARCH_BUDGET;
+        buf.completion.fill_budget = complete.fillBudget();
     }
     const trie = &tok.trie;
     try buf.ensure(trie.max_stack);
@@ -234,11 +236,11 @@ pub fn fillMaskFast(
     side: *parser.Side,
     fast: *const precompute.FastData,
     wc: ?*cache_mod.Cache,
-    mu: ?*std.Thread.Mutex,
+    mu: ?*io_mod.Mutex,
     max_workers: u32,
 ) Error!bool {
     const r_max = uniformStringResidual(g, st) orelse return false;
-    // The completion filter (TZ 3.1) needs per-token parser states, which
+    // The completion filter needs per-token parser states, which
     // the lemma does not provide; such pairs stay on the exact walk. (A
     // uniform string-content state implies a str node, hence
     // !g.finite_literal - this is a guard, not a load-bearing check.) The
@@ -336,7 +338,7 @@ fn contentWordsParallel(tok: *const tokenizer.Tokenizer, fast: *const precompute
     const mw = tok.maskWords();
     const n: usize = @intCast(@min(@as(u32, @intCast(mw)), max_workers));
     const chunk = (mw + n - 1) / n;
-    var handles: [parser.MAX_THREADS_CAP]?std.Thread = .{null} ** parser.MAX_THREADS_CAP;
+    var handles: [parser.MAX_THREADS_CAP]?std.Thread = @splat(null);
     var spawned: usize = 0;
     var range: usize = 0;
     while (range + 1 < n and spawned < handles.len) : (range += 1) {
@@ -439,8 +441,8 @@ fn setExactTokens(tok: *const tokenizer.Tokenizer, fast: *const precompute.FastD
 }
 
 /// Sets the mask bits of the token chain at `child`; with the completion
-/// filter active (TZ 3.1) a token whose state cannot reach a completed
-/// answer is skipped instead.
+/// filter active a token whose state cannot reach a completed answer is
+/// skipped instead.
 fn setNodeTokens(
     g: *const grammar.Grammar,
     tok: *const tokenizer.Tokenizer,
@@ -484,11 +486,11 @@ fn fillMaskBrute(g: *const grammar.Grammar, tok: *const tokenizer.Tokenizer, st:
     const filtered = (!tok.byte_complete and g.finite_literal) or g.needs_reachability;
     if (g.needs_reachability) {
         cache.reset();
-        cache.fill_budget = complete.FILL_SEARCH_BUDGET;
+        cache.fill_budget = complete.fillBudget();
     }
     var w = work_mod.Work{};
 
-    var first = [_]bool{false} ** 256;
+    var first: [256]bool = @splat(false);
     var b: usize = 0;
     while (b < 256) : (b += 1) {
         const byte = [1]u8{@as(u8, @intCast(b))};
@@ -546,14 +548,14 @@ fn fillMaskBrute(g: *const grammar.Grammar, tok: *const tokenizer.Tokenizer, st:
 const testing = std.testing;
 
 fn litGrammar(a: std.mem.Allocator, s: []const u8) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addLiteralNode(s);
     return b.finish(arena, .literal_set, root, .{});
 }
 
 fn objGrammar(a: std.mem.Allocator) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const str_node = try b.addNode(.{ .str = .{ .min_len = 0, .max_len = grammar.UNBOUNDED } });
@@ -567,7 +569,7 @@ fn objGrammar(a: std.mem.Allocator) !grammar.Grammar {
 }
 
 fn minLenStrObjGrammar(a: std.mem.Allocator, min_len: u32) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const str_node = try b.addNode(.{ .str = .{ .min_len = min_len, .max_len = grammar.UNBOUNDED } });
@@ -795,7 +797,8 @@ test "mask: first-byte filter is not the final decision" {
     var st = try initStateT(&g, 4);
     // "ax" fails mid-token (the first byte alone is not decisive) and "a"
     // is byte-legal but cannot be completed (no token provides "b"), so
-    // under TZ 3.1 nothing is allowed and the mask is a dead end.
+    // under the completion filter nothing is allowed and the mask is a dead
+    // end.
     try testing.expectError(error.DeadEnd, fill(alloc, &g, &tk, &st, &out));
 }
 
@@ -892,7 +895,7 @@ test "mask: trie walk equals linear scan on random vocabularies" {
         // has its own grammar and tokenizer, so start it clean.
         cache.reset();
         const n_tok = 64 + r.uintLessThan(usize, 200);
-        var toks: std.ArrayListUnmanaged([]const u8) = .{};
+        var toks: std.ArrayListUnmanaged([]const u8) = .empty;
         defer {
             for (toks.items) |t| alloc.free(t);
             toks.deinit(alloc);
@@ -907,7 +910,7 @@ test "mask: trie walk equals linear scan on random vocabularies" {
         const eos_id: u32 = @intCast(n_tok);
         try toks.append(alloc, try alloc.dupe(u8, ""));
         const vocab: u32 = @intCast(toks.items.len);
-        var special: std.ArrayListUnmanaged(u32) = .{};
+        var special: std.ArrayListUnmanaged(u32) = .empty;
         defer special.deinit(alloc);
         if (r.boolean()) try special.append(alloc, r.uintLessThan(u32, vocab - 1));
 
@@ -916,7 +919,7 @@ test "mask: trie walk equals linear scan on random vocabularies" {
 
         // Random literal set over the same alphabet.
         const n_lit = 1 + r.uintLessThan(usize, 6);
-        var arena = std.heap.ArenaAllocator.init(alloc);
+        var arena = Arena.init(alloc);
         var b = grammar.Builder.init(arena.allocator());
         const ids = try arena.allocator().alloc(grammar.NodeId, n_lit);
         for (ids) |*nid| {
@@ -984,7 +987,7 @@ test "mask: lit_trie grammar equals choice grammar on random vocabularies" {
     var case_i: usize = 0;
     while (case_i < 30) : (case_i += 1) {
         const n_tok = 64 + r.uintLessThan(usize, 200);
-        var toks: std.ArrayListUnmanaged([]const u8) = .{};
+        var toks: std.ArrayListUnmanaged([]const u8) = .empty;
         defer {
             for (toks.items) |t| alloc.free(t);
             toks.deinit(alloc);
@@ -1012,7 +1015,7 @@ test "mask: lit_trie grammar equals choice grammar on random vocabularies" {
             lit_slices[li] = lit_store[li][0..len];
         }
 
-        var arena_a = std.heap.ArenaAllocator.init(alloc);
+        var arena_a = Arena.init(alloc);
         const aa = arena_a.allocator();
         var ba = grammar.Builder.init(aa);
         const ids_a = try aa.alloc(grammar.NodeId, n_lit);
@@ -1021,7 +1024,7 @@ test "mask: lit_trie grammar equals choice grammar on random vocabularies" {
         var g_a = try ba.finish(arena_a, .literal_set, root_a, .{});
         defer g_a.deinit();
 
-        var arena_b = std.heap.ArenaAllocator.init(alloc);
+        var arena_b = Arena.init(alloc);
         const ab = arena_b.allocator();
         var bb = grammar.Builder.init(ab);
         const ids_b = try ab.alloc(grammar.NodeId, n_lit);
@@ -1081,7 +1084,7 @@ test "mask: lit_trie grammar equals choice grammar on random vocabularies" {
 // --- ADR-0007 fast-path tests ---
 
 fn strGrammarT(a: std.mem.Allocator, min: u32, max: u32) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addNode(.{ .str = .{ .min_len = min, .max_len = max } });
     return b.finish(arena, .json_schema, root, .{});
@@ -1288,7 +1291,7 @@ test "fast path: three-way differential on random string grammars" {
     while (case_i < 40) : (case_i += 1) {
         comp_cache.reset();
         const n_tok = 32 + r.uintLessThan(usize, 96);
-        var toks: std.ArrayListUnmanaged([]const u8) = .{};
+        var toks: std.ArrayListUnmanaged([]const u8) = .empty;
         defer {
             for (toks.items) |t| alloc.free(t);
             toks.deinit(alloc);
@@ -1296,7 +1299,7 @@ test "fast path: three-way differential on random string grammars" {
         var j: usize = 0;
         while (j < n_tok) : (j += 1) {
             const n_pieces = 1 + r.uintLessThan(usize, 4);
-            var t: std.ArrayListUnmanaged(u8) = .{};
+            var t: std.ArrayListUnmanaged(u8) = .empty;
             var p: usize = 0;
             while (p < n_pieces) : (p += 1) {
                 try t.appendSlice(alloc, pieces[r.uintLessThan(usize, pieces.len)]);

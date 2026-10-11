@@ -12,6 +12,8 @@ const cache = @import("cache.zig");
 const coverage = @import("coverage.zig");
 const work_mod = @import("work.zig");
 const precompute = @import("precompute.zig");
+const probe = @import("probe.zig");
+const io_mod = @import("io.zig");
 
 pub const ABI_VERSION: u32 = 1;
 pub const ERROR_MESSAGE_CAP = 256;
@@ -28,27 +30,11 @@ const DEFAULT_SCHEMA_LIMIT: u64 = 1 << 20;
 const DEFAULT_ADAPTIVE_MIN_HITS: u64 = 2;
 const DEFAULT_ADAPTIVE_MIN_COST_NS: u64 = 50_000;
 const DEFAULT_PRECOMPUTE_MAX_STATES: u64 = 4096;
-// ADR-0007: mask fast path is enabled by default; the config field or the
-// BLG_MASK_FAST_PATH=0 environment variable turns it off (kill switch).
 const MASK_FAST_PATH_OFF: u64 = 2;
 const MAX_WORKERS_CAP: u64 = 64;
 
-/// Root backing allocator for every kernel structure. `page_allocator` is
-/// not viable here: it mmaps a fresh VMA per allocation, so a long-lived
-/// process compiling thousands of schemas ends up at vm.max_map_count,
-/// where munmapping a page inside a kernel-merged VMA needs a VMA split,
-/// fails with ENOMEM, and std.posix.munmap panics on that (`unreachable`).
-/// SmpAllocator packs small allocations into 64 KiB slabs, so the engine
-/// adds O(slabs) VMAs instead of O(allocations). This reduces VMA pressure
-/// but does not eliminate the original mechanism in principle: the kernel
-/// can merge adjacent large mappings too, and unmapping part of a merged
-/// VMA still needs a split. Freed small blocks stay in free lists; slabs
-/// are not returned to the OS, and there is no trim/deinit API in 0.15.2,
-/// so RSS after a peak is retained by design.
 const root_allocator: std.mem.Allocator = std.heap.smp_allocator;
 
-/// Sentinel for blg_context_config.cache_limit_bytes: use the default
-/// (64 MiB). The value 0 disables the cache instead.
 pub const CACHE_DEFAULT: u64 = std.math.maxInt(u64);
 
 pub const Status = enum(c_int) {
@@ -76,9 +62,6 @@ pub const ZgError = extern struct {
     json_pointer: [JSON_POINTER_CAP]u8,
 };
 
-// Layout sizes of the v1 structs (before the tail fields were appended).
-// Callers built against the old header pass these in struct_size and get
-// defaults for everything they do not know about.
 const LEGACY_ERROR_SIZE: u32 = 268;
 
 comptime {
@@ -101,23 +84,17 @@ pub const ContextConfig = extern struct {
     adaptive_min_hits: u64,
     adaptive_min_cost_ns: u64,
     precompute_max_states: u64,
-    /// ADR-0007 mask fast path kill switch: 0 => default (enabled),
-    /// 1 => enabled, 2 => disabled (the plain trie walk). The
-    /// BLG_MASK_FAST_PATH=0 environment variable forces disabled.
-    /// The fast path is an equivalence optimization: masks are bit-for-bit
-    /// identical either way.
     mask_fast_path: u64,
-    /// ADR-0007 Decision 5: CPU workers for the mask classification;
-    /// 0/1 => single-threaded (default). Masks are bit-for-bit independent
-    /// of the worker count. Never repurpose max_threads_per_state for
-    /// this; it stays a semantic limit.
     max_workers: u64,
+    probe_max_states: u64 = 0,
+    probe_max_work: u64 = 0,
 };
 
 const LEGACY_CONFIG_SIZE: u32 = 56;
 
 comptime {
-    std.debug.assert(@sizeOf(ContextConfig) == 104);
+    std.debug.assert(@sizeOf(ContextConfig) == 120);
+    std.debug.assert(@offsetOf(ContextConfig, "probe_max_states") == 104);
     std.debug.assert(@offsetOf(ContextConfig, "work_limit_ops") == 56);
     std.debug.assert(@offsetOf(ContextConfig, "adaptive_min_hits") == 64);
     std.debug.assert(@offsetOf(ContextConfig, "adaptive_min_cost_ns") == 72);
@@ -160,11 +137,26 @@ pub const CompileRequest = extern struct {
     // snapshot bytes (see include/bolorgir.h). Absent in legacy requests.
     registry_data: ?[*]const u8 = null,
     registry_data_len: usize = 0,
+    // Tail-grown (ADR-0012): BLG_COMPILE_PROBE* bits.
+    flags: u32 = 0,
+    reserved1: u32 = 0,
 };
 
 /// Size of the pre-P5 blg_compile_request layout (no registry tail): a
 /// caller built against the old header passes it and gets "no registry".
 const LEGACY_COMPILE_REQUEST_SIZE: u32 = 32;
+/// Size of the layout with the registry tail and without flags.
+const REGISTRY_COMPILE_REQUEST_SIZE: u32 = 48;
+
+pub const COMPILE_PROBE: u32 = 1;
+pub const COMPILE_PROBE_STRICT: u32 = 2;
+const DEFAULT_PROBE_MAX_STATES: u64 = 256;
+const DEFAULT_PROBE_MAX_WORK: u64 = 1 << 24;
+
+comptime {
+    std.debug.assert(@offsetOf(CompileRequest, "flags") == REGISTRY_COMPILE_REQUEST_SIZE);
+    std.debug.assert(@sizeOf(CompileRequest) == 56);
+}
 
 pub const StatsC = extern struct {
     struct_size: u32,
@@ -188,12 +180,16 @@ pub const StatsC = extern struct {
     cache_adaptive_skips: u64,
     precompute_states: u64,
     work_ops_total: u64,
+    probe_runs: u64,
 };
 
 const LEGACY_STATS_SIZE: u32 = 208;
+/// Layout before probe_runs.
+const PRE_PROBE_STATS_SIZE: u32 = 264;
 
 comptime {
-    std.debug.assert(@sizeOf(StatsC) == 264);
+    std.debug.assert(@sizeOf(StatsC) == 272);
+    std.debug.assert(@offsetOf(StatsC, "probe_runs") == PRE_PROBE_STATS_SIZE);
     std.debug.assert(@offsetOf(StatsC, "mode") == LEGACY_STATS_SIZE);
     std.debug.assert(@offsetOf(StatsC, "errors_total") == 216);
     std.debug.assert(@offsetOf(StatsC, "errors_resource_limit") == 224);
@@ -259,6 +255,10 @@ pub const GrammarHandle = struct {
     g: grammar.Grammar,
     refcount: std.atomic.Value(u32),
     meter: GrammarMeter,
+    /// Last probe verdict kept with the artifact and the budgets it ran
+    /// under (ADR-0012): a cache hit reuses it only for equal budgets.
+    probe_status: probe.Status = .not_run,
+    probe_limits: probe.Limits = .{ .max_states = 0, .max_work = 0 },
 };
 
 /// Bounded cache of immutable compile artifacts (warm compile):
@@ -286,7 +286,7 @@ const GrammarArtifactCache = struct {
         cost: usize, // full retained cost of the entry, bytes
     };
 
-    entries: std.ArrayListUnmanaged(Entry) = .{},
+    entries: std.ArrayListUnmanaged(Entry) = .empty,
     total: usize = 0, // struct_bytes (capacity) + Σ cost
     struct_bytes: usize = 0, // entries list capacity, accounting bytes
     limit: usize = 0,
@@ -314,7 +314,7 @@ fn artifactCost(gh: *GrammarHandle, bytes_len: usize, registry_len: usize) usize
 
 fn artifactHash(kind: ConstraintKind, profile_key: u8, bytes: []const u8, registry: []const u8) u64 {
     var h = std.hash.Wyhash.init(0x9E3779B97F4A7C15);
-    h.update(&[_]u8{ @intFromEnum(kind), profile_key });
+    h.update(&[_]u8{ @backingInt(kind), profile_key });
     var lenbuf: [8]u8 = undefined;
     std.mem.writeInt(u64, &lenbuf, bytes.len, .little);
     h.update(&lenbuf);
@@ -447,7 +447,7 @@ fn artifactReset(ctx: *Context) void {
         ga.free(e.registry);
     }
     c.entries.deinit(ga);
-    c.entries = .{};
+    c.entries = .empty;
     c.total = 0;
     c.struct_bytes = 0;
     c.refs = 0;
@@ -466,6 +466,7 @@ pub const Context = struct {
     adaptive_min_hits: u64,
     adaptive_min_cost_ns: u64,
     precompute_max_states: u64,
+    probe_limits: probe.Limits,
     /// ADR-0007: fast-path tables of the tokenizer (null when the fast
     /// path is disabled or the tables could not be built - the exact walk
     /// is always a correct fallback).
@@ -484,7 +485,7 @@ pub const Context = struct {
     active_calls: u32,
     grammar_cache: GrammarArtifactCache,
     stats: stats.Stats,
-    mutex: std.Thread.Mutex,
+    mutex: io_mod.Mutex,
 };
 
 pub const Session = struct {
@@ -523,7 +524,7 @@ fn badErrBuf(err: ?*ZgError) bool {
 fn writeError(err: ?*ZgError, code: Status, offset: u32, msg: []const u8, pointer: []const u8) void {
     const e = err orelse return;
     if (!errBufValid(e)) return;
-    e.code = @intFromEnum(code);
+    e.code = @backingInt(code);
     e.schema_offset = offset;
     const n = @min(msg.len, ERROR_MESSAGE_CAP - 1);
     @memcpy(e.message[0..n], msg[0..n]);
@@ -563,8 +564,8 @@ fn recordCtxErr(ctx: *Context, code: Status) void {
     ctx.mutex.unlock();
 }
 
-fn startTimer() ?std.time.Timer {
-    return std.time.Timer.start() catch null;
+fn startTimer() ?std.Io.Clock.Timestamp {
+    return std.Io.Clock.Timestamp.now(io_mod.io(), .awake);
 }
 
 // Reads a tail u64 field only when the caller's struct_size covers it.
@@ -574,9 +575,11 @@ fn cfgU64(c: *const ContextConfig, comptime field: []const u8) ?u64 {
     return null;
 }
 
-fn elapsedNs(timer: *?std.time.Timer) u64 {
-    if (timer.*) |*t| return t.read();
-    return 0;
+fn elapsedNs(timer: *?std.Io.Clock.Timestamp) u64 {
+    const t = timer.* orelse return 0;
+    const d = t.untilNow(io_mod.io());
+    if (d.raw.nanoseconds <= 0) return 0;
+    return @intCast(d.raw.nanoseconds);
 }
 
 /// BLG_MASK_FAST_PATH=0 in the process environment forces the mask fast
@@ -584,10 +587,13 @@ fn elapsedNs(timer: *?std.time.Timer) u64 {
 /// library is statically linked (no libc environ pointer), so the block is
 /// read from /proc/self/environ; any read failure keeps the config value.
 fn envDisablesFastPath() bool {
-    const f = std.fs.openFileAbsolute("/proc/self/environ", .{}) catch return false;
-    defer f.close();
+    const io = io_mod.io();
+    const f = std.Io.Dir.openFileAbsolute(io, "/proc/self/environ", .{}) catch return false;
+    defer f.close(io);
+    var rbuf: [4096]u8 = undefined;
+    var r = f.readerStreaming(io, &rbuf);
     var buf: [16384]u8 = undefined;
-    const n = f.readAll(&buf) catch return false;
+    const n = r.interface.readSliceShort(&buf) catch return false;
     const data = buf[0..n];
     const needle = "BLG_MASK_FAST_PATH=";
     var i: usize = 0;
@@ -624,22 +630,22 @@ const CompileError = error{
     OutOfMemory,
 };
 
-fn compileGrammar(ctx: *Context, kind: ConstraintKind, bytes: []const u8, registry: []const u8, diag: *schema.Diagnostic, w: *work_mod.Work, ga: std.mem.Allocator, profile: schema.Profile) CompileError!grammar.Grammar {
+fn compileGrammar(ctx: *Context, kind: ConstraintKind, bytes: []const u8, registry: []const u8, diag: *schema.Diagnostic, w: *work_mod.Work, ga: std.mem.Allocator, profile: schema.Profile, record_pointers: bool) CompileError!grammar.Grammar {
     const strip = ctx.tok.strip_lead_space;
     var g: grammar.Grammar = switch (kind) {
-        .json_schema => try schema.compile(ga, bytes, ctx.max_depth, diag, w, strip, profile, registry),
+        .json_schema => try schema.compileWith(ga, bytes, ctx.max_depth, diag, w, strip, profile, registry, .{ .record_pointers = record_pointers }),
         .literal_set => try literals.compileLiterals(ga, bytes, ctx.max_depth, diag, w, strip),
     };
     errdefer g.deinit();
-    // Coverage gate (TZ 3.1, FR-6): refuse constraints the tokenizer cannot
-    // fully express instead of allowing dead-end tokens at generation time.
+    // Reject constraints the tokenizer cannot fully express instead of
+    // allowing dead-end tokens at generation time.
     const covered = coverage.checkCoverage(ctx.accounting.allocator(.temp), &g, &ctx.tok, w) catch |e| switch (e) {
         error.OutOfMemory => return error.OutOfMemory,
         error.Cancelled => return error.Cancelled,
         error.ResourceLimit => return error.ResourceLimit,
     };
     if (!covered) return error.UnsupportedTokenizer;
-    // Completion reachability (TZ 3.1, FR-7): with a partial
+    // Completion reachability: with a partial
     // vocabulary every allowed state must have a token path to a completed
     // document. That is proven exactly for byte-complete vocabularies (any
     // byte continuation is feedable one byte at a time) and for finite
@@ -703,7 +709,7 @@ fn fillMaskInner(s: *Session, mask_raw: [*]align(1) u32, mask_words: usize, err:
     ctx.mutex.unlock();
     var w = work_mod.Work.init(ctx.work_limit_ops, cancel);
     // A registered cancellation must win even when the answer would be a
-    // pure cache hit (NFR-2): charge(0) checks the flag only.
+    // pure cache hit: charge(0) checks the flag only.
     w.charge(0) catch |e| return maskFail(err, e);
     var timer = startTimer();
     const st = curState(s);
@@ -787,7 +793,7 @@ fn fillMaskInner(s: *Session, mask_raw: [*]align(1) u32, mask_words: usize, err:
                 mask.fillMask(g, &ctx.tok, key_state, out, &w, &s.mask_buf, &s.side) catch |e| return maskFail(err, e);
             }
             const compute_ns = elapsedNs(&timer);
-            // Adaptive admission (FR-9): cache masks of frequently hit or
+            // Adaptive admission: cache masks of frequently hit or
             // expensive states; cheap one-shot masks stay out of the cache.
             if (ctx.cache.budget > 0) {
                 ctx.mutex.lock();
@@ -845,6 +851,7 @@ pub export fn blg_context_create(
     var precompute_max_states: u64 = DEFAULT_PRECOMPUTE_MAX_STATES;
     var mask_fast_path: u64 = 0;
     var max_workers: u64 = 0;
+    var probe_limits: probe.Limits = .{ .max_states = DEFAULT_PROBE_MAX_STATES, .max_work = DEFAULT_PROBE_MAX_WORK };
     if (config) |c| {
         // Tail-grown versioning: a smaller struct_size of a known legacy
         // layout is accepted, the missing fields take defaults.
@@ -852,7 +859,7 @@ pub export fn blg_context_create(
             return fail(err, .invalid_argument, "bad config struct_size or version");
         if (c.mode > 2)
             return fail(err, .invalid_argument, "unknown mode");
-        mode = @enumFromInt(c.mode);
+        mode = @fromBackingInt(@intCast(c.mode));
         if (c.max_depth != 0) max_depth = c.max_depth;
         if (c.max_threads_per_state != 0) max_threads = c.max_threads_per_state;
         if (c.memory_limit_bytes != 0) memory_limit = c.memory_limit_bytes;
@@ -875,6 +882,12 @@ pub export fn blg_context_create(
         }
         if (cfgU64(c, "mask_fast_path")) |v| mask_fast_path = v;
         if (cfgU64(c, "max_workers")) |v| max_workers = v;
+        if (cfgU64(c, "probe_max_states")) |v| {
+            if (v != 0) probe_limits.max_states = v;
+        }
+        if (cfgU64(c, "probe_max_work")) |v| {
+            if (v != 0) probe_limits.max_work = v;
+        }
     }
     if (mask_fast_path > MASK_FAST_PATH_OFF)
         return fail(err, .invalid_argument, "unknown mask_fast_path value");
@@ -921,7 +934,7 @@ pub export fn blg_context_create(
     ctx.mutex = .{};
     ctx.accounting = alloc.Accounting.init(root_alloc, memory_limit);
     // The Context struct itself is kernel memory and must count towards
-    // memory_limit (FR-10); it is charged under the temp category.
+    // memory_limit; it is charged under the temp category.
     if (!ctx.accounting.chargeExternal(.temp, @sizeOf(Context)))
         return fail(err, .resource_limit, "context allocation exceeds memory limit");
     ctx_charged = true;
@@ -934,6 +947,7 @@ pub export fn blg_context_create(
     ctx.adaptive_min_hits = adaptive_min_hits;
     ctx.adaptive_min_cost_ns = adaptive_min_cost_ns;
     ctx.precompute_max_states = precompute_max_states;
+    ctx.probe_limits = probe_limits;
     ctx.max_workers = if (max_workers == 0) 1 else @intCast(max_workers);
     ctx.fast = null;
     ctx.cancel_flag = null;
@@ -981,9 +995,9 @@ pub export fn blg_context_create(
         error.UnsupportedTokenizer => return fail(err, .unsupported_tokenizer, "unsupported tokenizer table"),
         error.OutOfMemory => return fail(err, .resource_limit, "tokenizer memory limit exceeded"),
     };
-    // FR-6: the decoder mode is part of the tokenizer identity - a strip
-    // decoder accepts one extra leading space in the byte stream, so two
-    // contexts with and without the flag must never share cached grammar.
+    // The decoder mode is part of the tokenizer identity: a strip decoder
+    // accepts one extra leading space in the byte stream, so two contexts
+    // with and without the flag must never share cached grammar.
     ctx.tok.strip_lead_space = (tok_flags & 1) != 0;
     if (ctx.tok.strip_lead_space)
         ctx.tok.identity = grammar.fnv1a64Update(ctx.tok.identity, "strip-lead-space");
@@ -1085,19 +1099,22 @@ pub export fn blg_compile(
         }
     }
     const legacy_req = req.struct_size == LEGACY_COMPILE_REQUEST_SIZE;
-    if (!legacy_req and req.struct_size != @sizeOf(CompileRequest))
+    if (!legacy_req and req.struct_size != REGISTRY_COMPILE_REQUEST_SIZE and req.struct_size != @sizeOf(CompileRequest))
         return fail(err, .invalid_argument, "bad compile request struct_size");
-    // The registry tail must not be read from a legacy (shorter) caller
-    // buffer: snapshot the scalars before any validation.
+    // The tails must not be read from a shorter caller buffer: snapshot the
+    // scalars before any validation.
     var registry_ptr: ?[*]const u8 = null;
     var registry_len: usize = 0;
     if (!legacy_req) {
         registry_ptr = req.registry_data;
         registry_len = req.registry_data_len;
     }
+    const flags: u32 = if (req.struct_size == @sizeOf(CompileRequest)) req.flags else 0;
+    if (flags & ~(COMPILE_PROBE | COMPILE_PROBE_STRICT) != 0)
+        return fail(err, .invalid_argument, "unknown compile request flags");
     if (req.kind > 1)
         return fail(err, .invalid_argument, "unknown constraint kind");
-    const kind: ConstraintKind = @enumFromInt(req.kind);
+    const kind: ConstraintKind = @fromBackingInt(@intCast(req.kind));
     var profile: schema.Profile = .canonical_v1;
     if (req.profile) |p| {
         const ps = std.mem.span(p);
@@ -1153,6 +1170,14 @@ pub export fn blg_compile(
         ctx.stats.addWorkOps(w.ops);
         ctx.external_grammar_refs += 1;
         ctx.mutex.unlock();
+        if (flags != 0) {
+            const rc = probeHandle(ctx, gh_hit, flags, kind, profile, bytes, registry_bytes, cancel, err);
+            if (rc != .ok) {
+                dropExternalRef(gh_hit);
+                recordCtxErr(ctx, rc);
+                return rc;
+            }
+        }
         outp.* = gh_hit;
         clearError(err);
         return .ok;
@@ -1170,7 +1195,7 @@ pub export fn blg_compile(
         .refcount = std.atomic.Value(u32).init(1),
         .meter = .{ .child = ga },
     };
-    const g = compileGrammar(ctx, kind, bytes, registry_bytes, &diag, &w, h.meter.allocator(), profile) catch |e| {
+    const g = compileGrammar(ctx, kind, bytes, registry_bytes, &diag, &w, h.meter.allocator(), profile, flags != 0) catch |e| {
         ga.destroy(h);
         const ns = elapsedNs(&timer);
         ctx.mutex.lock();
@@ -1189,7 +1214,7 @@ pub export fn blg_compile(
     ctx.stats.addCompileNs(ns);
     ctx.mutex.unlock();
 
-    // Experimental precompute (FR-9): bounded BFS mask warm-up. The
+    // Experimental precompute: bounded BFS mask warm-up. The
     // warm-up has its OWN work account: it must not consume the
     // call's work_limit_ops; its bounds are precompute_max_states, the temp
     // memory budget and the cancel flag. Only cancel propagates.
@@ -1226,8 +1251,124 @@ pub export fn blg_compile(
     // The artifact enters the cache only after a successful warm-up: a
     // cancelled or failed compile must not leave an entry behind.
     artifactInsert(ctx, kind, profile_key, artifact_hash, bytes, registry_bytes, h);
+    if (flags != 0) {
+        const rc = probeHandle(ctx, h, flags, kind, profile, bytes, registry_bytes, cancel, err);
+        if (rc != .ok) {
+            dropExternalRef(h);
+            recordCtxErr(ctx, rc);
+            return rc;
+        }
+    }
     outp.* = h;
     clearError(err);
+    return .ok;
+}
+
+/// Undoes the external reference a compile took before failing late.
+fn dropExternalRef(h: *GrammarHandle) void {
+    const ctx = h.ctx;
+    ctx.mutex.lock();
+    ctx.external_grammar_refs -= 1;
+    ctx.mutex.unlock();
+    releaseGrammarRef(h);
+}
+
+/// ADR-0012: runs the probe on the artifact unless it already holds a
+/// verdict for the context's probe budgets. `found` fails the compile with
+/// RESOURCE_LIMIT, the witness prefix in the message and the subschema
+/// pointer; `inconclusive` fails it only under BLG_COMPILE_PROBE_STRICT.
+fn probeHandle(ctx: *Context, h: *GrammarHandle, flags: u32, kind: ConstraintKind, profile: schema.Profile, bytes: []const u8, registry: []const u8, cancel: ?*align(1) const u8, err: ?*ZgError) Status {
+    ctx.mutex.lock();
+    var status = h.probe_status;
+    const known = status != .not_run and std.meta.eql(h.probe_limits, ctx.probe_limits);
+    ctx.mutex.unlock();
+    if (!known) {
+        const tmp = ctx.accounting.allocator(.temp);
+        const out = probe.run(tmp, tmp, &h.g, &ctx.tok, ctx.max_threads, ctx.probe_limits, cancel) catch |e| switch (e) {
+            error.Cancelled => return fail(err, .cancelled, "operation cancelled"),
+            error.OutOfMemory => return fail(err, .resource_limit, "out of memory during probe"),
+        };
+        ctx.mutex.lock();
+        ctx.stats.probe_runs += 1;
+        ctx.mutex.unlock();
+        switch (out) {
+            .found => |f| {
+                defer tmp.free(f.prefix);
+                var ptr_buf: [JSON_POINTER_CAP]u8 = undefined;
+                const ptr = probePointer(ctx, h, f.node, kind, profile, bytes, registry, &ptr_buf);
+                var msg_buf: [ERROR_MESSAGE_CAP]u8 = undefined;
+                writeError(err, .resource_limit, NO_OFFSET, probeMessage(&msg_buf, f.prefix), ptr);
+                return .resource_limit;
+            },
+            .inconclusive => status = .inconclusive,
+            .proven => status = .proven,
+        }
+        ctx.mutex.lock();
+        h.probe_status = status;
+        h.probe_limits = ctx.probe_limits;
+        ctx.mutex.unlock();
+    }
+    if (flags & COMPILE_PROBE_STRICT != 0 and status == .inconclusive)
+        return fail(err, .resource_limit, "probe inconclusive");
+    return .ok;
+}
+
+/// "probe found ... prefix: <bytes>", non-printable bytes as \xNN,
+/// truncated to the message capacity.
+fn probeMessage(buf: *[ERROR_MESSAGE_CAP]u8, prefix: []const u8) []const u8 {
+    const head = "probe found a state whose mask is undecided after the prefix: ";
+    @memcpy(buf[0..head.len], head);
+    var n: usize = head.len;
+    for (prefix) |b| {
+        const printable = b >= 0x20 and b < 0x7f and b != '\\';
+        const need: usize = if (printable) 1 else 4;
+        if (n + need > ERROR_MESSAGE_CAP - 1) break;
+        if (printable) {
+            buf[n] = b;
+        } else {
+            _ = std.fmt.bufPrint(buf[n..][0..4], "\\x{x:0>2}", .{b}) catch unreachable;
+        }
+        n += need;
+    }
+    return buf[0..n];
+}
+
+/// Pointer of the probe's undecided node: the nearest preceding node with
+/// a recorded pointer. A cached artifact compiled without pointers is
+/// compiled once more to recover them (compiles are deterministic).
+fn probePointer(ctx: *Context, h: *const GrammarHandle, node: ?grammar.NodeId, kind: ConstraintKind, profile: schema.Profile, bytes: []const u8, registry: []const u8, out: *[JSON_POINTER_CAP]u8) []const u8 {
+    const id = node orelse return "";
+    if (kind != .json_schema) return "";
+    var tmp_g: ?grammar.Grammar = null;
+    defer if (tmp_g) |*tg| tg.deinit();
+    var ptrs = h.g.node_ptrs;
+    if (ptrs.len == 0) {
+        var diag: schema.Diagnostic = .{};
+        var w = work_mod.Work.init(0, null);
+        tmp_g = schema.compileWith(ctx.accounting.allocator(.temp), bytes, ctx.max_depth, &diag, &w, ctx.tok.strip_lead_space, profile, registry, .{ .record_pointers = true }) catch return "";
+        ptrs = tmp_g.?.node_ptrs;
+    }
+    if (ptrs.len == 0) return "";
+    var i: usize = @min(id, ptrs.len - 1);
+    while (true) : (i -= 1) {
+        if (ptrs[i].len != 0) {
+            const n = @min(ptrs[i].len, out.len - 1);
+            @memcpy(out[0..n], ptrs[i][0..n]);
+            return out[0..n];
+        }
+        if (i == 0) return "";
+    }
+}
+
+/// ADR-0012 probe status of the artifact behind a grammar handle:
+/// 0 not run, 1 inconclusive, 2 proven (a found counterexample fails the
+/// compile, so no handle carries it).
+pub export fn blg_grammar_probe_status(gh_opt: ?*const GrammarHandle, out_status: ?*u32) callconv(.c) Status {
+    const gh = gh_opt orelse return .invalid_argument;
+    const o = out_status orelse return .invalid_argument;
+    gh.ctx.mutex.lock();
+    defer gh.ctx.mutex.unlock();
+    o.* = @backingInt(gh.probe_status);
     return .ok;
 }
 
@@ -1379,7 +1520,7 @@ pub export fn blg_fill_masks_batch(
             const m = ms[i] orelse break :blk fail(&row_err, .invalid_argument, "null mask in batch");
             break :blk fillMaskImpl(s, m, mask_words_each, &row_err);
         };
-        sts[i] = @intFromEnum(rc);
+        sts[i] = @backingInt(rc);
         if (rc != .ok and first == .ok) {
             first = rc;
             first_diag = row_err;
@@ -1426,7 +1567,7 @@ fn acceptTokenInner(s: *Session, token_id: u32, err: ?*ZgError) Status {
             error.ResourceLimit => return fail(err, .resource_limit, "parser thread limit exceeded"),
             error.OutOfMemory => return fail(err, .resource_limit, "out of memory"),
         };
-        // TZ 3.1/FR-7: an accepted token must keep a completed answer
+        // An accepted token must keep a completed answer
         // reachable - exactly the mask bit. Only the completion-filtered
         // path (finite literal grammar without full byte coverage, or a
         // grammar with deferred value verdicts - ADR-0005) needs the
@@ -1439,7 +1580,7 @@ fn acceptTokenInner(s: *Session, token_id: u32, err: ?*ZgError) Status {
             // UNKNOWN, not alive (ADR-0005 D3): refuse with RESOURCE_LIMIT,
             // exactly as the mask call would have failed - admitting an
             // unproven token can dead-end the session irrecoverably.
-            s.mask_buf.completion.fill_budget = complete.FILL_SEARCH_BUDGET;
+            s.mask_buf.completion.fill_budget = complete.fillBudget();
             const alive = complete.stateAlive(&s.gh.g, tok, scratchState(s), &s.mask_buf.completion, &w, &s.side) catch |e| switch (e) {
                 error.ResourceLimit => return fail(err, .resource_limit, "completion check limit exceeded"),
                 error.OutOfMemory => return fail(err, .resource_limit, "completion check limit exceeded"),
@@ -1505,6 +1646,7 @@ fn statsCapacity(o: *const StatsC) ?usize {
     return switch (o.struct_size) {
         0 => @sizeOf(StatsC),
         LEGACY_STATS_SIZE => LEGACY_STATS_SIZE,
+        PRE_PROBE_STATS_SIZE => PRE_PROBE_STATS_SIZE,
         @sizeOf(StatsC) => @sizeOf(StatsC),
         else => null,
     };
@@ -1536,12 +1678,13 @@ pub export fn blg_get_stats(ctx_c: ?*const Context, out_stats: ?*StatsC) callcon
     full.cache_misses = ctx.cache.misses();
     full.cache_evictions = ctx.cache.evictions();
     stats.fillMemory(&ctx.accounting, full.mem_used[0..], full.mem_peak[0..]);
-    full.mode = @intFromEnum(ctx.mode);
+    full.mode = @backingInt(ctx.mode);
     full.errors_total = ctx.stats.errors_total;
     full.errors_resource_limit = ctx.stats.errors_resource_limit;
     full.errors_cancelled = ctx.stats.errors_cancelled;
     full.cache_adaptive_skips = ctx.stats.cache_adaptive_skips;
     full.precompute_states = ctx.stats.precompute_states;
+    full.probe_runs = ctx.stats.probe_runs;
     full.work_ops_total = ctx.stats.work_ops_total;
     writeStats(o, &full);
     return .ok;
@@ -1560,7 +1703,7 @@ pub export fn blg_get_stats_session(s_opt: ?*const Session, out_stats: ?*StatsC)
     full.mask_calls = s.stats.mask_calls;
     full.tokens_accepted = s.stats.tokens_accepted;
     full.mem_used[2] = s.account.usedBytes();
-    full.mode = @intFromEnum(s.ctx.mode);
+    full.mode = @backingInt(s.ctx.mode);
     writeStats(o, &full);
     return .ok;
 }
@@ -1578,7 +1721,9 @@ pub export fn blg_cancel_flag_set(ctx_opt: ?*Context, flag: ?*align(1) const u8)
 /// indexed by enum order) into `out` (up to `cap` entries); returns the
 /// full histogram length. The histogram counts, per state stateAlive
 /// could not settle (RESOURCE_LIMIT), why its frames stayed uncertified;
-/// it exists to prioritize certificate families by measured impact.
+/// it exists to prioritize certificate families by measured impact. The
+/// last entry (search_entered) counts every state handed to the budgeted
+/// search, whatever its outcome.
 pub export fn blg_cert_stats(out: ?[*]u64, cap: usize) callconv(.c) usize {
     if (out) |o| {
         const m = @min(cap, complete.UND_REASONS);
@@ -1665,9 +1810,12 @@ test "abi: version, context lifecycle, stats" {
 }
 
 fn countSelfMaps() !usize {
-    const f = try std.fs.openFileAbsolute("/proc/self/maps", .{});
-    defer f.close();
-    const data = try f.readToEndAlloc(std.testing.allocator, 64 << 20);
+    const io = io_mod.io();
+    const f = try std.Io.Dir.openFileAbsolute(io, "/proc/self/maps", .{});
+    defer f.close(io);
+    var fbuf: [4096]u8 = undefined;
+    var r = f.readerStreaming(io, &fbuf);
+    const data = try r.interface.allocRemaining(std.testing.allocator, .limited(64 << 20));
     defer std.testing.allocator.free(data);
     return std.mem.count(u8, data, "\n");
 }
@@ -1820,7 +1968,7 @@ test "abi: busy context" {
     try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
 }
 
-// Regression T4-fuzz (seed 0x5EED0001): concurrent compile/session/destroy
+// Regression (fuzz seed 0x5EED0001): concurrent compile/session/destroy
 // corrupted alloc.Accounting counters; with atomic counters the totals must
 // return to zero.
 test "abi: concurrent compile/session accounting stays exact" {
@@ -1866,7 +2014,7 @@ test "abi: concurrent compile/session accounting stays exact" {
                 std.debug.assert(blg_compile(c, &req, &gh, &e) == .ok);
                 var s: ?*Session = null;
                 std.debug.assert(blg_session_create(c, gh, &s, &e) == .ok);
-                var words = [_]u32{0} ** 9; // 261 tokens -> 9 words
+                var words: [9]u32 = @splat(0); // 261 tokens -> 9 words
                 std.debug.assert(blg_fill_mask(s, &words, words.len, &e) == .ok);
                 std.debug.assert(blg_accept_token(s, 0, &e) == .ok);
                 blg_session_destroy(s);
@@ -1923,8 +2071,8 @@ test "abi: integer schema and batch" {
     try std.testing.expectEqual(Status.ok, blg_session_create(ctx, gh, &s1, &err));
     try std.testing.expectEqual(Status.ok, blg_session_create(ctx, gh, &s2, &err));
 
-    var w1 = [_]u32{0} ** 9; // 260 tokens -> 9 words
-    var w2 = [_]u32{0} ** 9;
+    var w1: [9]u32 = @splat(0); // 260 tokens -> 9 words
+    var w2: [9]u32 = @splat(0);
     const ss = [_]?*Session{ s1, s2 };
     const ms = [_]?[*]align(1) u32{ &w1, &w2 };
     var sts = [_]c_int{ -1, -1 };
@@ -1940,7 +2088,7 @@ test "abi: integer schema and batch" {
     try std.testing.expectEqual(Status.ok, blg_accept_token(s1, 0, &err));
     try std.testing.expectEqual(Status.ok, blg_finish(s1, &err));
     try std.testing.expectEqual(Status.wrong_state, blg_fill_masks_batch(&ss, &ms, 9, &sts, 2, &err));
-    try std.testing.expectEqual(@as(c_int, @intFromEnum(Status.wrong_state)), sts[0]);
+    try std.testing.expectEqual(@as(c_int, @backingInt(Status.wrong_state)), sts[0]);
     try std.testing.expectEqual(@as(c_int, 0), sts[1]);
 
     blg_session_destroy(s1);
@@ -2059,10 +2207,9 @@ test "abi: partial vocabulary with an infinite language is refused" {
     try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx2));
 }
 
-// TZ 3.1: vocab [ab, a, <eos>] with literal "ab" - "a" is
-// byte-legal but leads to a dead end, so it must be neither in the mask
-// nor accepted (FR-7: invalid_token, state unchanged). Covers all modes,
-// including precompute.
+// Vocab [ab, a, <eos>] with literal "ab" - "a" is byte-legal but leads
+// to a dead end, so it must be neither in the mask nor accepted
+// (invalid_token, state unchanged). Covers all modes, including precompute.
 test "abi: dead-end token is neither masked nor accepted" {
     const tokens = [_][]const u8{ "ab", "a", "" };
     const eos = [_]u32{2};
@@ -2106,7 +2253,7 @@ test "abi: dead-end token is neither masked nor accepted" {
     }
 }
 
-// FR-6: HF SentencePiece decoders with Strip(" ", start=1, stop=0)
+// HF SentencePiece decoders with Strip(" ", start=1, stop=0)
 // drop one leading space of the whole text. With the strip flag the kernel
 // models the decoded text: literal " hello" is producible only as the
 // stream "  hello" (two spaces), so the token " hello" (one space) is not
@@ -2217,7 +2364,7 @@ test "abi: cache budget and accounting agree" {
     var st: StatsC = std.mem.zeroes(StatsC);
     st.struct_size = @sizeOf(StatsC);
     try std.testing.expectEqual(Status.ok, blg_get_stats(ctx, &st));
-    const cache_cat = @intFromEnum(alloc.Category.cache);
+    const cache_cat = @backingInt(alloc.Category.cache);
     try std.testing.expect(st.mem_used[cache_cat] <= budget);
     try std.testing.expect(st.mem_peak[cache_cat] <= budget);
     try std.testing.expectEqual(ctx.?.cache.usedBytes(), st.mem_used[cache_cat]);
@@ -2419,10 +2566,10 @@ test "abi: compile artifacts are cached and eviction keeps live sessions" {
     try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
 }
 
-// A live user handle must keep the context busy even
-// with the cache enabled (previously "refcount = cache + user" gave a false
-// live_grammars == cache.refs equality, destroy freed the context under a
-// live handle, and the next release crashed).
+// A live user handle must keep the context busy even with the cache
+// enabled: under a "refcount = cache + user" scheme live_grammars would
+// equal cache.refs while a user handle is still live, destroy would free
+// the context under that handle, and the next release would crash.
 test "abi: live grammar refs keep the context busy" {
     const tokens = [_][]const u8{ "\"a\"", "\"b\"", "", "<pad>" };
     const eos = [_]u32{2};
@@ -2831,7 +2978,7 @@ test "abi: legacy struct sizes are accepted with defaults" {
     };
     var gh: ?*GrammarHandle = null;
     try std.testing.expectEqual(Status.invalid_schema, blg_compile(ctx, &req, &gh, @ptrCast(&le)));
-    try std.testing.expectEqual(@as(i32, @intFromEnum(Status.invalid_schema)), le.code);
+    try std.testing.expectEqual(@as(i32, @backingInt(Status.invalid_schema)), le.code);
 
     // Legacy-size stats buffer: prefix is filled, struct_size preserved.
     var lst = std.mem.zeroes(LegacyStats);
@@ -3109,7 +3256,7 @@ test "abi: work_limit_ops bounds fill_mask and compile, zero is unlimited" {
     const compile_ops = st.work_ops_total;
     var s: ?*Session = null;
     try std.testing.expectEqual(Status.ok, blg_session_create(ctx, gh, &s, &err));
-    var words: [9]u32 = .{0} ** 9;
+    var words: [9]u32 = @splat(0);
     try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &words, mask_words, &err));
     st = std.mem.zeroes(StatsC);
     try std.testing.expectEqual(Status.ok, blg_get_stats(ctx, &st));
@@ -3121,7 +3268,7 @@ test "abi: work_limit_ops bounds fill_mask and compile, zero is unlimited" {
     ctx.?.work_limit_ops = mask_ops - 1;
     var s2: ?*Session = null;
     try std.testing.expectEqual(Status.ok, blg_session_create(ctx, gh, &s2, &err));
-    var words2: [9]u32 = .{0} ** 9;
+    var words2: [9]u32 = @splat(0);
     try std.testing.expectEqual(Status.resource_limit, blg_fill_mask(s2, &words2, mask_words, &err));
     st = std.mem.zeroes(StatsC);
     try std.testing.expectEqual(Status.ok, blg_get_stats(ctx, &st));
@@ -3319,8 +3466,8 @@ test "abi: fast path on/off bit-for-bit, fewer charged ops" {
         off.mask_fast_path = MASK_FAST_PATH_OFF;
 
         for ([_][]const u8{ "\"", "\"ab", "\"a\xc3\xa9" }) |prefix| {
-            var w_on = [_]u32{0} ** 9;
-            var w_off = [_]u32{0} ** 9;
+            var w_on: [9]u32 = @splat(0);
+            var w_off: [9]u32 = @splat(0);
             var ops_on: u64 = 0;
             var ops_off: u64 = 0;
             try maskAtStringState(&on, &desc, schema_json, prefix, &w_on, &ops_on);
@@ -3345,8 +3492,8 @@ test "abi: max_workers does not change the mask (1 vs 8)" {
     // maxLength 3 exercises the word-loop classification (R < CP_MAX is
     // impossible here: CP_MAX is 2, so bound R via maxLength 1).
     const schema_json = "{\"type\":\"string\",\"maxLength\":1}";
-    var w1 = [_]u32{0} ** 9;
-    var w8 = [_]u32{0} ** 9;
+    var w1: [9]u32 = @splat(0);
+    var w8: [9]u32 = @splat(0);
     var ops1: u64 = 0;
     var ops8: u64 = 0;
     var c1 = makeConfig(1);

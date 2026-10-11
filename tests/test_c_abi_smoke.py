@@ -110,7 +110,7 @@ def test_memory_returns_to_zero_after_children_destroyed(spec):
 
 
 def test_full_cycle_tz_example(spec):
-    """Schema from the TZ example: compile -> mask -> trace -> finish."""
+    """Schema from the spec example: compile -> mask -> trace -> finish."""
     ctx = zg.Context(spec, zg.BLG_MODE_LAZY)
     try:
         g = zg.compile_schema(ctx, SCHEMA_TZ)

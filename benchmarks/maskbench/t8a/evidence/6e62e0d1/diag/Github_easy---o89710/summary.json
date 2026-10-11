@@ -1,0 +1,63 @@
+{
+ "exit_code": -14,
+ "timeout": true,
+ "wall_s": 903.467,
+ "file_outcome": {
+  "pending_file": 1
+ },
+ "compile": {
+  "us": 419572
+ },
+ "instances": [
+  {
+   "i": 0,
+   "start_s": 0.42,
+   "n_tokens": 111,
+   "steps": 0,
+   "mask_us": 0,
+   "commit_us": 0,
+   "max_mask_us": 0,
+   "max_mask_k": null,
+   "masks_over_100ms": 0,
+   "masks_over_900ms": 0,
+   "rejected_at": null,
+   "serialize": {
+    "us": 2981,
+    "bytes": 382
+   }
+  }
+ ],
+ "steps": 0,
+ "mask_us_total": 0,
+ "commit_us_total": 0,
+ "slowest_masks": [],
+ "last_event": {
+  "e": "encode",
+  "t": 1.634564,
+  "i": 0,
+  "n": 111,
+  "bytes": 382
+ },
+ "file_ended": false,
+ "in_progress_at_end": "instance 0, token 0: compute_mask or commit_token",
+ "seconds_from_file_start_to_last_event": 0.425,
+ "memory": {
+  "ru_maxrss_children_kb": 838956,
+  "sampled_vmhwm_kb_max": 838956,
+  "samples": 1798
+ },
+ "stacks_at_alarm": "Current thread 0x0000727ccdec6000 (most recent call first):\n  File \"benchmarks/local/release-0.2.0/benchmarks/local/t8a-6e62e0d1/venv-pinned/lib/python3.10/site-packages/bolorgir/__init__.py\", line 425 in fill_mask\n  File \"benchmarks/external/jsonschemabench-maskbench/maskbench/maskbench/blg_engine.py\", line 231 in compute_mask\n  File \"benchmarks/local/t3/de7/t8a-diag/diag_runner.py\", line 105 in mask_d\n  File \"benchmarks/external/jsonschemabench-maskbench/maskbench/maskbench/runner.py\", line 109 in process_file\n  File \"benchmarks/local/release-0.2.0/benchmarks/maskbench/t8a/paired_runner.py\", line 149 in process_file\n  File \"benchmarks/local/t3/de7/t8a-diag/diag_runner.py\", line 138 in process_file\n  File \"benchmarks/external/jsonschemabench-maskbench/maskbench/maskbench/runner.py\", line 328 in main\n  File \"benchmarks/local/t3/de7/t8a-diag/diag_runner.py\", line 153 in <module>\n  File \"/usr/lib/python3.10/runpy.py\", line 86 in _run_code\n  File \"/usr/lib/python3.10/runpy.py\", line 196 in _run_module_as_main\n",
+ "file": "Github_easy---o89710.json",
+ "checks": {
+  "paired_runner.py": "5c646c2180fc08d8435f56e04a6db85957a2ebb2e78c1d2a35dc15a3fb5124b6",
+  "t8a_streams.py": "1547fc20b243fdba2dc26e1e9dd1a18d4b3a12c6096247e2c9148adb4fbcc3a6",
+  "maskbench_code_files": 12,
+  "corpus_file": "b36e6c9692967bc6bb38013334885f2b915356cbd68b9d5c3177c7677dbd71f2",
+  "tokenizer_revision": "a2856192dd7c25b842431f39c179a6c2c2f627d1",
+  "core_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+  "wheel_sha256": "e5bb3f5bf7e5b19b21f96b1ff3ee4e74dad3490fcd95c7c9f082ccc9c39fd2b6",
+  "diag_runner.py": "be92c1db1786ff114f951abb9030732779a86cd239e6118af056f6d1cebf4fab",
+  "diag.py": "2ded72fb46f33b6a8d05acf7a4edd7f7062da299a64b0f66e3227e1f39456a9f"
+ },
+ "run_dir_unchanged": true
+}

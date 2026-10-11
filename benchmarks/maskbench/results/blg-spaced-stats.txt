@@ -11,9 +11,9 @@
       "--multi",
       "--blg",
       "--output",
-      "/home/gm/maskbench-work/runs/full-blg-spaced"
+      "maskbench-work/runs/full-blg-spaced"
     ],
-    "info": "11306 files, timeout 900s, memory 40GB, output /home/gm/maskbench-work/runs/full-blg-spaced; 20 threads; cmd: python3 -m maskbench.runner --multi --blg --output /home/gm/maskbench-work/runs/full-blg-spaced"
+    "info": "11306 files, timeout 900s, memory 40GB, output maskbench-work/runs/full-blg-spaced; 20 threads; cmd: python3 -m maskbench.runner --multi --blg --output maskbench-work/runs/full-blg-spaced"
   },
   "ttfm_us": 277638,
   "max_ttfm_us": 9336,

@@ -230,7 +230,55 @@ jsonschema 4.26.0), profile `spec-v1`. The `tests/oracle/results/` reports
 cited below are local run outputs and are not versioned; regenerate them
 with the commands in `tests/oracle/README.md`.
 
-**Current acceptance: the 2026-09-30 `fix3g` runs** (strict ADR-0005
+**T3 candidate: the 2026-10-05 `t3` runs** (the runtime
+`RESOURCE_LIMIT` certificates of audit-fix task T3; lib sha256
+`d4e70303...`, docs/RUN_HISTORY.md, "T3: runtime RESOURCE_LIMIT").
+Reports: `tests/oracle/results/oracle-t3-<draft>-spec.json|.md` and
+`oracle-t3-draft2020-12-canonical.json|.md`. The full acceptance of this
+candidate (audit-fix spec rule 9) is still pending; these runs are its
+oracle part.
+
+| Dialect (suite dir) | Rows | PASS | SKIPPED | KNOWN_GAP | MISMATCH | ENGINE_ERROR |
+|---|---:|---:|---:|---:|---:|---:|
+| draft-04 (`draft4`) | 591 | 560 | 26 | 0 | 2 | 3 |
+| draft-06 (`draft6`) | 794 | 732 | 54 | 1 | 2 | 5 |
+| draft-07 (`draft7`) | 878 | 816 | 54 | 1 | 2 | 5 |
+| 2019-09 (`draft2019-09`) | 1195 | 1089 | 95 | 1 | 0 | 10 |
+| 2020-12 (`draft2020-12`) | 1218 | 1108 | 99 | 1 | 0 | 10 |
+
+Against the `adr0011` and `final` reports below, the only transitions
+are `ENGINE_ERROR -> PASS`, 148 rows; no row changed otherwise, and
+canonical-v1 is unchanged row for row (95 PASS / 1116 SKIPPED /
+7 KNOWN_GAP). The pinned residual shrank from 181 to 33 rows.
+
+**Current acceptance: the 2026-10-02 `adr0011` runs** (the joint
+numeric certificate of ADR-0011 on top of fix3g; build identity in
+docs/RUN_HISTORY.md, "ADR-0011 numeric conjunctions"). Reports:
+`tests/oracle/results/oracle-adr0011-<draft>-spec.json|.md` and
+`oracle-adr0011-draft2020-12-canonical.json|.md`.
+
+| Dialect (suite dir) | Rows | PASS | SKIPPED | KNOWN_GAP | MISMATCH | ENGINE_ERROR |
+|---|---:|---:|---:|---:|---:|---:|
+| draft-04 (`draft4`) | 591 | 539 | 26 | 0 | 2 | 24 |
+| draft-06 (`draft6`) | 794 | 705 | 54 | 1 | 2 | 32 |
+| draft-07 (`draft7`) | 878 | 787 | 54 | 1 | 2 | 34 |
+| 2019-09 (`draft2019-09`) | 1195 | 1054 | 95 | 1 | 0 | 45 |
+| 2020-12 (`draft2020-12`) | 1218 | 1072 | 99 | 1 | 0 | 46 |
+
+Frozen control: 2020-12 canonical-v1 **95 PASS / 1116 SKIPPED /
+7 KNOWN_GAP**, unchanged. Against fix3g the only transitions are
+`ENGINE_ERROR -> PASS` for 3 rows per dialect (`allOf.json` "allOf simple
+types" tests 0 and 1, `multipleOf.json` "float division = inf" test 0),
+15 in total; the pinned residual shrank from 196 to 181 rows. The rerun
+on the build with the `contains`/`uniqueItems` array residuals and the
+`\u` escape rule (`tests/oracle/results/oracle-t2a-*`, 2026-10-02) and
+the reruns on the final builds (`oracle-final-*`, last on lib sha256
+`7345490f...`, 2026-10-03, after the value verdicts of semantics-spec-v1
+4.3, the fixes of spawned parser threads and of the thread cap in the
+residual search, and the serializer key-order fix) match these reports
+row for row in every dialect and in canonical-v1.
+
+**Previous acceptance: the 2026-09-30 `fix3g` runs** (strict ADR-0005
 Decision 3 plus the closed-form certificate families; build identities in
 docs/RUN_HISTORY.md, "fix3 acceptance"). Reports:
 `tests/oracle/results/oracle-fix3g-<draft>-{spec,canonical}.json|.md`.
@@ -251,7 +299,7 @@ whose completion reachability the bounded search cannot settle fails the
 mask call instead of admitting a token that may dead-end. Compared with
 the fix1 runs below, the SKIPPED, KNOWN_GAP and MISMATCH counts are
 unchanged and the PASS count dropped by exactly the ENGINE_ERROR count.
-The 196 rows are pinned one by one in
+The residual rows (196 in fix3g, 181 since ADR-0011) are pinned one by one in
 `tests/oracle/engine_error_residual_spec_v1.json` and enforced by
 `tests/oracle/test_oracle_dialects.py::test_engine_error_residual_pinned`:
 a new or moved row fails the gate, and fixing a family must shrink the

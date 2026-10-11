@@ -1,4 +1,5 @@
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 const json = @import("json.zig");
 const pattern = @import("pattern.zig");
@@ -207,8 +208,9 @@ pub const Frame = union(enum) {
     // of canonical element signatures for uniqueItems (0 = none).
     repeat: struct { node: grammar.NodeId, count: u32, phase: RepeatPhase, ann: u32, matched: u32, tap: u32, seen: u32 },
     // In key_lit phase, idx temporarily holds the byte offset into the
-    // `"key":` literal of the selected property cur; the old idx is no
-    // longer needed and is restored as cur+1 on entering sep.
+    // `"key":` literal of cur, the first property still possible for the
+    // key bytes read (nextKeyCandidate yields the others); the old idx is
+    // no longer needed and is restored as cur+1 on entering sep.
     // ann is reserved (ADR-0006 D4), always 0 in P1.
     object: struct { node: grammar.NodeId, idx: u32, cur: u32, phase: ObjPhase, ann: u32 },
     open_obj: OpenObjFrame,
@@ -286,7 +288,7 @@ pub const Chunk = struct {
 /// store dies with its owner.
 pub const Side = struct {
     a: std.mem.Allocator,
-    chunks: std.ArrayListUnmanaged(?*Chunk) = .{},
+    chunks: std.ArrayListUnmanaged(?*Chunk) = .empty,
     /// Id issued to the next comb activation (spec-v1 P3). Monotonic per
     /// owner, never recycled: live comb groups never share an id.
     next_inst: u32 = 1,
@@ -331,13 +333,13 @@ pub const Side = struct {
         for (self.chunks.items, 0..) |mc, i| {
             if (mc == null) {
                 const c = try self.a.create(Chunk);
-                c.* = .{ .refs = 1, .kind = kind, .payload = .{} };
+                c.* = .{ .refs = 1, .kind = kind, .payload = .empty };
                 self.chunks.items[i] = c;
                 return @intCast(i + 1);
             }
         }
         const c = try self.a.create(Chunk);
-        c.* = .{ .refs = 1, .kind = kind, .payload = .{} };
+        c.* = .{ .refs = 1, .kind = kind, .payload = .empty };
         try self.chunks.append(self.a, c);
         return @intCast(self.chunks.items.len);
     }
@@ -453,8 +455,10 @@ fn newFrame(t: *Thread) error{ResourceLimit}!*Frame {
     return f;
 }
 
+/// Spawns up to the hard cap; the state's max_threads applies to the
+/// distinct live threads left after each byte (feedWork) and at init.
 fn spawnThread(side: *Side, st: *State, src_idx: usize) error{ResourceLimit}!usize {
-    if (st.n >= st.max_threads) return error.ResourceLimit;
+    if (st.n >= MAX_THREADS_CAP) return error.ResourceLimit;
     const idx = st.n;
     copyThreadRetain(side, &st.threads[idx], &st.threads[src_idx]);
     st.n += 1;
@@ -760,16 +764,37 @@ fn afterChild(g: *const grammar.Grammar, side: *Side, st: *State, t_idx: usize) 
     }
 }
 
+/// Feed b to the threads spawned at indices [from, st.n). spawnThread
+/// appends, so threads spawned while stepping one of them land past the
+/// range: their spawn site either stepped them already or they start after
+/// b, and they are not fed here.
 fn stepSpawned(g: *const grammar.Grammar, side: *Side, st: *State, dead: *[MAX_THREADS_CAP]bool, from: usize, b: u8) Error!void {
+    const end = st.n;
     var j = from;
-    while (j < st.n) {
-        const before = st.n;
+    while (j < end) : (j += 1) {
         stepThread(g, side, st, dead, j, b) catch |err| switch (err) {
             error.Parse => dead[j] = true,
             else => |e| return e,
         };
-        j += 1 + (st.n - before);
     }
+}
+
+/// Closed object in key_lit: the next declared property after cur whose
+/// `"name":` literal starts with the first i bytes of cur's (and continues
+/// with b, when set), among the candidates of the key: the properties up
+/// to and including the first required one. Literals are unique and none
+/// is a prefix of another, so cur and the properties this yields are the
+/// ones still possible after the i key bytes read.
+pub fn nextKeyCandidate(g: *const grammar.Grammar, props: []const grammar.Prop, cur: u32, i: u32, b: ?u8) ?u32 {
+    if (props[cur].required) return null;
+    const read = g.literalBytes(props[cur].key)[0..i];
+    var j = cur + 1;
+    while (j < props.len) : (j += 1) {
+        const kb = g.literalBytes(props[j].key);
+        if (kb.len > i and std.mem.eql(u8, kb[0..i], read) and (b == null or kb[i] == b.?)) return j;
+        if (props[j].required) return null;
+    }
+    return null;
 }
 
 fn noRequiredFrom(props: []const grammar.Prop, idx: u32) bool {
@@ -1146,32 +1171,21 @@ fn stepThread(g: *const grammar.Grammar, side: *Side, st: *State, dead: *[MAX_TH
                             return;
                         }
                         if (b != '"') return error.Parse;
-                        const first = f.object.idx;
-                        var cand: u32 = 0;
-                        var i: u32 = first;
-                        while (i < props.len) : (i += 1) {
-                            cand += 1;
-                            if (props[i].required) break;
-                        }
-                        if (cand == 0) return error.Parse;
-                        const n0 = st.n;
-                        var k: u32 = 1;
-                        while (k < cand) : (k += 1) {
-                            const ni = try spawnThread(side, st, t_idx);
-                            const nf = &st.threads[ni].frames[t.len - 1];
-                            nf.object.cur = first + k;
-                            nf.object.idx = 0;
-                            nf.object.phase = .key_lit;
-                        }
-                        f.object.cur = first;
+                        if (f.object.idx >= props.len) return error.Parse;
+                        // One thread reads the key for every candidate: cur
+                        // is the first property whose literal matches the
+                        // bytes read (nextKeyCandidate).
+                        f.object.cur = f.object.idx;
                         f.object.idx = 0;
                         f.object.phase = .key_lit;
-                        try stepSpawned(g, side, st, dead, n0, b);
                         continue :retry;
                     },
                     .key_lit => {
-                        const kb = g.literalBytes(props[f.object.cur].key);
-                        if (b != kb[f.object.idx]) return error.Parse;
+                        var kb = g.literalBytes(props[f.object.cur].key);
+                        if (b != kb[f.object.idx]) {
+                            f.object.cur = nextKeyCandidate(g, props, f.object.cur, f.object.idx, b) orelse return error.Parse;
+                            kb = g.literalBytes(props[f.object.cur].key);
+                        }
                         try tapAppend(g, side, t, b);
                         f.object.idx += 1;
                         if (f.object.idx == kb.len) {
@@ -1593,6 +1607,8 @@ fn openKeyFeed(side: *Side, of: *OpenObjFrame, b: u8) error{OutOfMemory}!OpenKey
         },
         .uhex1 => {
             const v = lowerHexVal(b) orelse return .err;
+            // Only U+0000..U+001F take a \u escape (canonical escape table).
+            if (v > 1) return .err;
             try openKeyAppend(side, of, b);
             of.u.key.lo = v;
             of.u.key.st = .uhex2;
@@ -1633,7 +1649,7 @@ fn seenAdd(side: *Side, h_ptr: *u32, key: []const u8) error{OutOfMemory}!void {
     const h = h_ptr.*;
     const old: []const u8 = if (h == 0) &.{} else side.chunkAt(h).payload.items;
     const count: u32 = if (old.len < 4) 0 else std.mem.readInt(u32, old[0..4], .little);
-    var fresh: std.ArrayListUnmanaged(u8) = .{};
+    var fresh: std.ArrayListUnmanaged(u8) = .empty;
     errdefer fresh.deinit(side.a);
     var cb: [4]u8 = undefined;
     std.mem.writeInt(u32, &cb, count + 1, .little);
@@ -1691,6 +1707,15 @@ fn openObjDispatch(g: *const grammar.Grammar, side: *Side, of: *OpenObjFrame, on
         const kl = g.literalBytes(p.key);
         const inner = kl[1 .. kl.len - 2]; // strip the quotes and ':'
         if (!std.mem.eql(u8, inner, kb)) continue;
+        if (on.any_order) {
+            // Order-free node: the seen set alone enforces uniqueness;
+            // next_idx stays 0 and required props are checked at close.
+            if (seenContains(side, of.seen, kb)) return error.Parse;
+            if (on.track_keys and seenCount(side, of.seen) >= on.max_props) return error.Parse;
+            try seenAdd(side, &of.seen, kb);
+            if (on.track_keys) try depsResidual(g, side, of, on);
+            return p.value;
+        }
         if (i < of.next_idx) return error.Parse; // duplicate or out of order
         // Landing on prop i skips props[next_idx..i]; a skipped required
         // prop can never be satisfied, so this thread is a dead end.
@@ -1730,7 +1755,13 @@ fn openObjDispatch(g: *const grammar.Grammar, side: *Side, of: *OpenObjFrame, on
 }
 
 fn openObjCanClose(g: *const grammar.Grammar, side: *const Side, of: *const OpenObjFrame, on: *const grammar.OpenObjNode) bool {
-    if (!noRequiredFrom(on.props, of.next_idx)) return false;
+    if (on.any_order) {
+        for (on.props) |p| {
+            if (!p.required) continue;
+            const kl = g.literalBytes(p.key);
+            if (!seenContains(side, of.seen, kl[1 .. kl.len - 2])) return false;
+        }
+    } else if (!noRequiredFrom(on.props, of.next_idx)) return false;
     for (on.extra_required) |lit| {
         if (!seenContains(side, of.seen, g.literalBytes(lit))) return false;
     }
@@ -1821,10 +1852,27 @@ pub fn nodeMatchesBytes(g: *const grammar.Grammar, side: *Side, node: grammar.No
     return canEnd(g, &st);
 }
 
+/// False when no continuation of `bytes` is in the language of `node`:
+/// the parser refuses a byte of the prefix.
+pub fn nodeAcceptsPrefix(g: *const grammar.Grammar, side: *Side, node: grammar.NodeId, bytes: []const u8) Error!bool {
+    var st: State = undefined;
+    st.n = 1;
+    st.max_threads = MAX_THREADS_CAP;
+    st.threads[0].len = 0;
+    st.threads[0].tap_count = 0;
+    try pushNode(g, side, &st, 0, node);
+    defer releaseState(side, &st);
+    feedWork(g, side, &st, bytes) catch |err| switch (err) {
+        error.Parse => return false,
+        else => |e| return e,
+    };
+    return true;
+}
+
 /// propertyNames check for an undeclared key: the raw canonical key bytes
 /// re-quoted and matched against the compiled propertyNames node.
 fn keyMatchesSchema(g: *const grammar.Grammar, side: *Side, node: grammar.NodeId, kb: []const u8) Error!bool {
-    var buf: std.ArrayListUnmanaged(u8) = .{};
+    var buf: std.ArrayListUnmanaged(u8) = .empty;
     defer buf.deinit(side.a);
     try buf.append(side.a, '"');
     try buf.appendSlice(side.a, kb);
@@ -1841,10 +1889,10 @@ fn keyMatchesPattern(g: *const grammar.Grammar, side: *Side, pl: grammar.Literal
     if (std.mem.indexOfScalar(u8, kb, '\\') == null) {
         return std.mem.indexOf(u8, kb, needle) != null;
     }
-    var arena = std.heap.ArenaAllocator.init(side.a);
+    var arena = Arena.init(side.a);
     defer arena.deinit();
     const aa = arena.allocator();
-    var buf: std.ArrayListUnmanaged(u8) = .{};
+    var buf: std.ArrayListUnmanaged(u8) = .empty;
     try buf.append(aa, '"');
     try buf.appendSlice(aa, kb);
     try buf.append(aa, '"');
@@ -1867,10 +1915,10 @@ fn keyMatchesRegex(g: *const grammar.Grammar, side: *Side, dfa: *const pattern.D
         // No escape: the raw bytes are the decoded key's UTF-8.
         return dfa.matchesUtf8(kb) catch false;
     }
-    var arena = std.heap.ArenaAllocator.init(side.a);
+    var arena = Arena.init(side.a);
     defer arena.deinit();
     const aa = arena.allocator();
-    var buf: std.ArrayListUnmanaged(u8) = .{};
+    var buf: std.ArrayListUnmanaged(u8) = .empty;
     try buf.append(aa, '"');
     try buf.appendSlice(aa, kb);
     try buf.append(aa, '"');
@@ -1918,7 +1966,7 @@ fn canonDecimalRt(a: std.mem.Allocator, lexeme: []const u8) error{ OutOfMemory, 
         }
         if (exp_neg) exp_val = -exp_val;
     }
-    var all: std.ArrayListUnmanaged(u8) = .{};
+    var all: std.ArrayListUnmanaged(u8) = .empty;
     try all.appendSlice(a, int_part);
     try all.appendSlice(a, frac_part);
     var digits: []const u8 = all.items;
@@ -2012,7 +2060,7 @@ fn seenValContains(side: *const Side, h: u32, hash: u64, sig: []const u8) bool {
 
 fn seenValAdd(side: *Side, h_ptr: *u32, hash: u64, sig: []const u8) error{OutOfMemory}!void {
     const h = h_ptr.*;
-    var eb: std.ArrayListUnmanaged(u8) = .{};
+    var eb: std.ArrayListUnmanaged(u8) = .empty;
     defer eb.deinit(side.a);
     var b8: [8]u8 = undefined;
     var b4: [4]u8 = undefined;
@@ -2055,7 +2103,7 @@ fn seenValAdd(side: *Side, h_ptr: *u32, hash: u64, sig: []const u8) error{OutOfM
 /// and add them to the seen set; a duplicate is a hard element rejection
 /// (semantics-spec-v1 section 2 equality: [1, 1.0] has a duplicate).
 fn uniqNote(side: *Side, seen_ptr: *u32, bytes: []const u8) Error!void {
-    var arena = std.heap.ArenaAllocator.init(side.a);
+    var arena = Arena.init(side.a);
     defer arena.deinit();
     const aa = arena.allocator();
     var off: u32 = 0;
@@ -2064,7 +2112,7 @@ fn uniqNote(side: *Side, seen_ptr: *u32, bytes: []const u8) Error!void {
         error.ResourceLimit => return error.ResourceLimit,
         error.InvalidSchema => return error.Parse, // unreachable: bytes are engine-validated
     };
-    var sig: std.ArrayListUnmanaged(u8) = .{};
+    var sig: std.ArrayListUnmanaged(u8) = .empty;
     try sigAppendValue(&sig, aa, v);
     const h = grammar.fnv1a64(sig.items);
     if (seenValContains(side, seen_ptr.*, h, sig.items)) return error.Parse;
@@ -3163,6 +3211,8 @@ fn strFeed(g: *const grammar.Grammar, sf: *StrFrame, b: u8) StrFeedResult {
         },
         .uhex1 => {
             const v = lowerHexVal(b) orelse return .err;
+            // Only U+0000..U+001F take a \u escape (canonical escape table).
+            if (v > 1) return .err;
             sf.lo = v;
             sf.state = .uhex2;
             return .consumed;
@@ -3316,6 +3366,8 @@ fn strExclFeed(g: *const grammar.Grammar, sf: *StrExclFrame, b: u8) StrExclResul
         },
         .uhex1 => {
             const v = lowerHexVal(b) orelse return .err;
+            // Only U+0000..U+001F take a \u escape (canonical escape table).
+            if (v > 1) return .err;
             strExclTrieStep(tr, sf, b);
             sf.lo = v;
             sf.state = .uhex2;
@@ -3479,6 +3531,8 @@ fn strPatFeed(g: *const grammar.Grammar, sf: *StrPatFrame, b: u8) StrExclResult 
         },
         .uhex1 => {
             const v = lowerHexVal(b) orelse return .err;
+            // Only U+0000..U+001F take a \u escape (canonical escape table).
+            if (v > 1) return .err;
             sf.lo = v;
             sf.state = .uhex2;
             return .consumed;
@@ -3497,7 +3551,7 @@ fn strPatFeed(g: *const grammar.Grammar, sf: *StrPatFrame, b: u8) StrExclResult 
 }
 
 fn feedWork(g: *const grammar.Grammar, side: *Side, work: *State, bytes: []const u8) Error!void {
-    var dead = [_]bool{false} ** MAX_THREADS_CAP;
+    var dead: [MAX_THREADS_CAP]bool = @splat(false);
     for (bytes) |b| {
         const n_start = work.n;
         var j: usize = 0;
@@ -3540,7 +3594,8 @@ fn feedWork(g: *const grammar.Grammar, side: *Side, work: *State, bytes: []const
         while (k < work.n) : (k += 1) dead[k] = false;
         work.n = @intCast(w);
         if (w == 0) return error.Parse;
-        dedupThreads(side, work);
+        dedupThreads(g, side, work);
+        if (work.n > work.max_threads) return error.ResourceLimit;
     }
 }
 
@@ -3558,9 +3613,13 @@ fn chunkContentEq(side: *const Side, ha: u32, hb: u32) bool {
 /// Frame equality for dedup: raw bytes when they agree, otherwise field
 /// values for the chunk-carrying frames (repeat, open_obj) with the chunks
 /// compared by CONTENT - two COW copies of one logical chunk hold different
-/// handles over equal bytes and must still count as duplicates. Every other
-/// tag carries no side data, so a raw-byte mismatch is final.
-fn framesEqual(side: *const Side, fa: *const Frame, fb: *const Frame) bool {
+/// handles over equal bytes and must still count as duplicates - and, for
+/// the leaf value machines, field values over leaf nodes of equal content
+/// (leafNodesEqual): the same "any value" compiled once per branch of an
+/// untyped anyOf reads a number with machines that differ only in their
+/// node ids. Every other tag carries no side data, so a raw-byte mismatch
+/// is final.
+fn framesEqual(g: *const grammar.Grammar, side: *const Side, fa: *const Frame, fb: *const Frame) bool {
     if (std.mem.eql(u8, std.mem.asBytes(fa), std.mem.asBytes(fb))) return true;
     const tag = std.meta.activeTag(fa.*);
     if (tag != std.meta.activeTag(fb.*)) return false;
@@ -3581,18 +3640,42 @@ fn framesEqual(side: *const Side, fa: *const Frame, fb: *const Frame) bool {
                 chunkContentEq(side, oa.key, ob.key) and
                 chunkContentEq(side, oa.ann, ob.ann);
         },
+        inline .literal, .str, .int_v, .num_v, .int_num, .not_int_num => |t| {
+            const xa = @field(fa.*, @tagName(t));
+            const xb = @field(fb.*, @tagName(t));
+            inline for (@typeInfo(@TypeOf(xa)).@"struct".field_names) |name| {
+                if (comptime std.mem.eql(u8, name, "node")) continue;
+                if (!std.meta.eql(@field(xa, name), @field(xb, name))) return false;
+            }
+            return leafNodesEqual(g, xa.node, xb.node);
+        },
         else => return false,
     }
+}
+
+/// Leaf nodes that accept the same language: equal literal bytes, equal
+/// string length bounds, or the same parameterless number machine.
+fn leafNodesEqual(g: *const grammar.Grammar, a: grammar.NodeId, b: grammar.NodeId) bool {
+    if (a == b) return true;
+    const na = g.node(a);
+    const nb = g.node(b);
+    if (std.meta.activeTag(na.*) != std.meta.activeTag(nb.*)) return false;
+    return switch (na.*) {
+        .literal => |x| std.mem.eql(u8, g.literalBytes(x), g.literalBytes(nb.literal)),
+        .str => |x| x.min_len == nb.str.min_len and x.max_len == nb.str.max_len,
+        .int_v, .num_v, .int_num, .not_int_num => true,
+        else => false,
+    };
 }
 
 /// Two threads are duplicates when their tap counts agree and every frame
 /// pair compares equal: both threads then parse the same prefix with the
 /// same continuation and either one can stand for the other.
-fn threadsEqual(side: *const Side, ta: *const Thread, tb: *const Thread) bool {
+fn threadsEqual(g: *const grammar.Grammar, side: *const Side, ta: *const Thread, tb: *const Thread) bool {
     if (ta.len != tb.len or ta.tap_count != tb.tap_count) return false;
     if (std.mem.eql(u8, std.mem.sliceAsBytes(ta.frames[0..ta.len]), std.mem.sliceAsBytes(tb.frames[0..tb.len]))) return true;
     for (ta.frames[0..ta.len], tb.frames[0..tb.len]) |*fa, *fb| {
-        if (!framesEqual(side, fa, fb)) return false;
+        if (!framesEqual(g, side, fa, fb)) return false;
     }
     return true;
 }
@@ -3604,15 +3687,15 @@ fn threadsEqual(side: *const Side, ta: *const Thread, tb: *const Thread) bool {
 /// they double on every converging value and exhaust the thread budget
 /// within a handful of array elements. Comb verdicts are branch masks over
 /// the live threads, so removing a duplicate never changes a group outcome.
-fn dedupThreads(side: *Side, work: *State) void {
+fn dedupThreads(g: *const grammar.Grammar, side: *Side, work: *State) void {
     if (work.n < 2) return;
-    var dup = [_]bool{false} ** MAX_THREADS_CAP;
+    var dup: [MAX_THREADS_CAP]bool = @splat(false);
     for (0..work.n) |i| {
         if (dup[i]) continue;
         var j = i + 1;
         while (j < work.n) : (j += 1) {
             if (dup[j]) continue;
-            if (threadsEqual(side, &work.threads[i], &work.threads[j])) dup[j] = true;
+            if (threadsEqual(g, side, &work.threads[i], &work.threads[j])) dup[j] = true;
         }
     }
     var w: usize = 0;
@@ -3636,16 +3719,20 @@ pub fn initState(g: *const grammar.Grammar, max_threads: u16, side: *Side) Error
     st.threads[0].len = 0;
     st.threads[0].tap_count = 0;
     try pushNode(g, side, &st, 0, g.root);
+    if (st.n > max_threads) {
+        releaseState(side, &st);
+        return error.ResourceLimit;
+    }
     return st;
 }
 
 /// Feeds `bytes` to every live thread of `in` and collects the survivors
 /// into `out` (`out` is fully overwritten). `work` is caller-provided
 /// scratch (must alias neither `in` nor `out`), fully overwritten per call.
-/// It used to be a `threadlocal` scratch, but a GD-model TLS access calls
+/// A `threadlocal` scratch is unsafe here: a GD-model TLS access calls
 /// __tls_get_addr, which is free to clobber argument registers (glibc's
-/// implementation clobbers %rdx); the safe-mode codegen kept `in` in %rdx
-/// across that call and read a wild pointer afterwards.
+/// implementation clobbers %rdx), and the safe-mode codegen may keep `in`
+/// in %rdx across that call and read a wild pointer afterwards.
 ///
 /// Chunk discipline (spec-v1 open objects): `in` keeps its references. On
 /// success `out` owns fresh references (caller releases with releaseState);
@@ -3849,11 +3936,11 @@ pub fn hashState(st: *const State, side: *const Side) StateHash {
                 .open_obj => |*of| {
                     if (i > run_start) h.update(std.mem.sliceAsBytes(t.frames[run_start..i]));
                     run_start = @intCast(i + 1);
-                    const tag: u8 = @intFromEnum(std.meta.activeTag(f.*));
+                    const tag: u8 = @backingInt(std.meta.activeTag(f.*));
                     h.update(&[_]u8{tag});
                     h.update(std.mem.asBytes(&of.node));
                     h.update(std.mem.asBytes(&of.next_idx));
-                    h.update(&[_]u8{@intFromEnum(of.phase)});
+                    h.update(&[_]u8{@backingInt(of.phase)});
                     h.update(std.mem.asBytes(&of.u));
                     hashChunk(&h, side, of.seen);
                     hashChunk(&h, side, of.key);
@@ -3863,13 +3950,13 @@ pub fn hashState(st: *const State, side: *const Side) StateHash {
                 .repeat => |*rf| {
                     if (i > run_start) h.update(std.mem.sliceAsBytes(t.frames[run_start..i]));
                     run_start = @intCast(i + 1);
-                    const tag: u8 = @intFromEnum(std.meta.activeTag(f.*));
+                    const tag: u8 = @backingInt(std.meta.activeTag(f.*));
                     h.update(&[_]u8{tag});
                     h.update(std.mem.asBytes(&rf.node));
                     h.update(std.mem.asBytes(&rf.count));
                     h.update(std.mem.asBytes(&rf.ann));
                     h.update(std.mem.asBytes(&rf.matched));
-                    h.update(&[_]u8{@intFromEnum(rf.phase)});
+                    h.update(&[_]u8{@backingInt(rf.phase)});
                     hashChunk(&h, side, rf.tap);
                     hashChunk(&h, side, rf.seen);
                     has_chunks = has_chunks or rf.tap != 0 or rf.seen != 0;
@@ -3888,7 +3975,7 @@ fn hashChunk(h: *std.hash.Wyhash, side: *const Side, handle: u32) void {
         return;
     }
     const c = side.chunkAt(handle);
-    h.update(&[_]u8{ 1, @intFromEnum(c.kind) });
+    h.update(&[_]u8{ 1, @backingInt(c.kind) });
     var lb: [4]u8 = undefined;
     std.mem.writeInt(u32, &lb, @intCast(c.payload.items.len), .little);
     h.update(&lb);
@@ -4061,14 +4148,14 @@ pub fn writeStateKey(st: *const State, out: []u8) void {
 const testing = std.testing;
 
 fn litGrammar(a: std.mem.Allocator, s: []const u8) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addLiteralNode(s);
     return b.finish(arena, .literal_set, root, .{});
 }
 
 fn choiceGrammar(a: std.mem.Allocator, alts: []const []const u8) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const ids = try aa.alloc(grammar.NodeId, alts.len);
@@ -4078,28 +4165,28 @@ fn choiceGrammar(a: std.mem.Allocator, alts: []const []const u8) !grammar.Gramma
 }
 
 fn strGrammar(a: std.mem.Allocator, min: u32, max: u32) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addNode(.{ .str = .{ .min_len = min, .max_len = max } });
     return b.finish(arena, .json_schema, root, .{});
 }
 
 fn intGrammar(a: std.mem.Allocator) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addNode(.{ .int_v = {} });
     return b.finish(arena, .json_schema, root, .{});
 }
 
 fn numGrammar(a: std.mem.Allocator) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addNode(.{ .num_v = {} });
     return b.finish(arena, .json_schema, root, .{});
 }
 
 fn intArrayGrammar(a: std.mem.Allocator, min: u32, max: u32) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const item = try b.addNode(.{ .int_v = {} });
     const root = try b.addNode(.{ .repeat = .{ .item = item, .min = min, .max = max } });
@@ -4107,7 +4194,7 @@ fn intArrayGrammar(a: std.mem.Allocator, min: u32, max: u32) !grammar.Grammar {
 }
 
 fn objGrammar(a: std.mem.Allocator) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const str_node = try b.addNode(.{ .str = .{ .min_len = 0, .max_len = grammar.UNBOUNDED } });
@@ -4121,7 +4208,7 @@ fn objGrammar(a: std.mem.Allocator) !grammar.Grammar {
 }
 
 fn optObjGrammar(a: std.mem.Allocator) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const int_node = try b.addNode(.{ .int_v = {} });
@@ -4134,7 +4221,7 @@ fn optObjGrammar(a: std.mem.Allocator) !grammar.Grammar {
 }
 
 fn enumObjGrammar(a: std.mem.Allocator) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const la = try b.addLiteralNode("\"a\"");
@@ -4461,7 +4548,7 @@ test "repeat: number before delimiter, min/max items" {
 
 test "seq node and virtual canEnd cascade" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const lit = try b.addLiteralNode("ab");
@@ -4601,7 +4688,7 @@ test "hashState/eqlStates stable across feed partitions" {
 }
 
 fn litTrieGrammar(a: std.mem.Allocator, alts: []const []const u8) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const ids = try aa.alloc(grammar.NodeId, alts.len);
@@ -4654,7 +4741,7 @@ test "lit_trie: empty alternative completes immediately" {
 
 test "lit_trie: object value, enum with shared prefix" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const l0 = try b.addLiteralNode("\"sym_1\"");
@@ -4699,7 +4786,7 @@ fn feedS(g: *const grammar.Grammar, side: *Side, st: *State, bytes: []const u8) 
 fn openObjGrammarA(a: std.mem.Allocator) !grammar.Grammar {
     // {"a": str (required), "b": int (optional), undeclared: int|str,
     //  extra_required: ["zz"]}
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const str_node = try b.addNode(.{ .str = .{ .min_len = 0, .max_len = grammar.UNBOUNDED } });
@@ -4751,7 +4838,7 @@ test "open_obj: interleave, uniqueness, required guards" {
 
 fn openObjGrammarFree(a: std.mem.Allocator) !grammar.Grammar {
     // No declared props, no extra required; undeclared values int|str.
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const str_node = try b.addNode(.{ .str = .{ .min_len = 0, .max_len = grammar.UNBOUNDED } });
@@ -4821,7 +4908,7 @@ test "open_obj: cross-owner state equality and hash (ADR-0006 D2/D3)" {
 
 test "open_obj: key escapes canonical, escaped declared key match" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const int_node = try b.addNode(.{ .int_v = {} });
@@ -4854,14 +4941,14 @@ test "open_obj: key escapes canonical, escaped declared key match" {
 }
 
 fn intNumGrammar(a: std.mem.Allocator) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addNode(.{ .int_num = {} });
     return b.finish(arena, .json_schema, root, .{});
 }
 
 fn numConstGrammar(a: std.mem.Allocator, neg: bool, digits: []const u8, exp10: i64) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const root = try b.addNode(.{ .num_const = .{
@@ -4984,7 +5071,7 @@ test "num_const: const by value (ADR-0006 D6)" {
 }
 
 fn numRangeGrammar(a: std.mem.Allocator, nr: grammar.NumRange) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     var n = nr;
@@ -4995,7 +5082,7 @@ fn numRangeGrammar(a: std.mem.Allocator, nr: grammar.NumRange) !grammar.Grammar 
 }
 
 fn numMultGrammar(a: std.mem.Allocator, nm: grammar.NumMult) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addNode(.{ .num_mult = nm });
     return b.finish(arena, .json_schema, root, .{});
@@ -5257,7 +5344,7 @@ test "num_range/num_mult: boundary verdict feeds comb groups (P3 cascade)" {
     // allOf[num_range(>=5), num_mult(2)]: both verdicts must hold; a
     // failing branch is a confirmed-boundary rejection resolved through
     // the comb group (combBoundaryFail), not a mid-value error.
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const rn = try b.addNode(.{ .num_range = .{ .min = .{ .neg = false, .digits = "5", .exp10 = 0 } } });
@@ -5296,7 +5383,7 @@ test "int_num/num_const: frames fit the 32-byte frame budget" {
 
 test "repeat: tuple prefix by position" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const str_node = try b.addNode(.{ .str = .{ .min_len = 0, .max_len = grammar.UNBOUNDED } });
@@ -5332,7 +5419,7 @@ test "repeat: contains with min/max contains" {
     defer side.deinit();
     const mk = struct {
         fn go(a: std.mem.Allocator, min_c: u32, max_c: u32) !grammar.Grammar {
-            var arena = std.heap.ArenaAllocator.init(a);
+            var arena = Arena.init(a);
             const aa = arena.allocator();
             var b = grammar.Builder.init(aa);
             const str_node = try b.addNode(.{ .str = .{ .min_len = 0, .max_len = grammar.UNBOUNDED } });
@@ -5379,7 +5466,7 @@ test "repeat: contains with min/max contains" {
 
 test "repeat: uniqueItems by canonical value" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const num_node = try b.addNode(.{ .num_v = {} });
@@ -5402,7 +5489,7 @@ test "repeat: uniqueItems by canonical value" {
 
 test "repeat: uniqueItems finite-set residual" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const one = try b.addLiteralNode("1");
@@ -5428,7 +5515,7 @@ test "repeat: uniqueItems finite-set residual" {
 fn openObjDepsGrammar(a: std.mem.Allocator) !grammar.Grammar {
     // Undeclared values int; min 1 max 2 properties; dependentRequired
     // a -> b; dependentSchemas c -> closed object {"d": int required}.
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const int_node = try b.addNode(.{ .int_v = {} });
@@ -5490,7 +5577,7 @@ test "open_obj: min/maxProperties and dependencies" {
 // ---- spec-v1 P3: boolean combinators and complement nodes ----
 
 fn combGrammar(a: std.mem.Allocator, kind: grammar.CombKind, branch_nodes: []const grammar.Node, branch_ids: []const grammar.NodeId) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const ids = try aa.alloc(grammar.NodeId, branch_nodes.len);
@@ -5603,7 +5690,7 @@ test "comb if/then without else and born-doomed allOf" {
 
 test "comb sweep: a dead branch kills the allOf group mid-array" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const n_int = try b.addNode(.{ .int_num = {} });
@@ -5624,7 +5711,7 @@ test "comb sweep: a dead branch kills the allOf group mid-array" {
 
 test "not_int_num: numbers whose value is not an integer" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addNode(.{ .not_int_num = {} });
     var g = try b.finish(arena, .json_schema, root, .{});
@@ -5648,7 +5735,7 @@ test "not_int_num: numbers whose value is not an integer" {
 }
 
 fn strExclGrammar(a: std.mem.Allocator, forbidden: []const []const u8) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const lits = try aa.alloc(grammar.Literal, forbidden.len);
@@ -5692,7 +5779,7 @@ test "str_excl: string language minus a forbidden set" {
 
 test "num_excl: number language minus up to two constants" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const root = try b.addNode(.{
@@ -5727,7 +5814,7 @@ test "num_excl: number language minus up to two constants" {
 
 test "comb nested in an object property value" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const n_num = try b.addNode(.{ .num_v = {} });
@@ -5752,7 +5839,7 @@ test "comb nested in an object property value" {
 
 test "comb nested in a closed object property value" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const n_num = try b.addNode(.{ .num_v = {} });
@@ -5772,7 +5859,7 @@ test "comb nested in a closed object property value" {
 
 test "comb allOf as an array item" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const n_int = try b.addNode(.{ .int_num = {} });
@@ -5788,6 +5875,52 @@ test "comb allOf as an array item" {
     try testing.expect(docValid(&g, &side, "[5.0]"));
     try testing.expect(!docValid(&g, &side, "[5,6]"));
     try testing.expect(!docValid(&g, &side, "[6]"));
+}
+
+test "comb siblings spawned on an array element's first byte see it once" {
+    const schema = @import("schema.zig");
+    const alloc = testing.allocator;
+    var diag: schema.Diagnostic = .{};
+    var w = @import("work.zig").Work{};
+    // Each `not required` is a union of two ban objects; the allOf element
+    // spawns its lazy unions on '{', and every alternative must step it.
+    var g = try schema.compile(alloc, "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"allOf\":[{\"not\":{\"required\":[\"a\",\"b\"]}},{\"not\":{\"required\":[\"c\",\"d\"]}}]}}", 64, &diag, &w, false, .spec_v1, &.{});
+    defer g.deinit();
+    var side = Side.init(alloc);
+    defer side.deinit();
+    try testing.expect(docValid(&g, &side, "[{}]"));
+    try testing.expect(docValid(&g, &side, "[{\"a\":1,\"c\":2}]"));
+    try testing.expect(docValid(&g, &side, "[{\"b\":1},{\"d\":2}]"));
+    try testing.expect(!docValid(&g, &side, "[{\"a\":1,\"b\":2}]"));
+    try testing.expect(!docValid(&g, &side, "[{\"d\":1,\"c\":2}]"));
+}
+
+test "untyped anyOf branches spawned on a number's first byte all see it" {
+    const schema = @import("schema.zig");
+    const alloc = testing.allocator;
+    var diag: schema.Diagnostic = .{};
+    var w = @import("work.zig").Work{};
+    // A thread that missed the '8' would read "" as the whole value.
+    const srcs = [_][]const u8{
+        "{\"anyOf\":[{},{},{}]}",
+        "{\"type\":\"array\",\"items\":{\"anyOf\":[{},{},{}]}}",
+    };
+    for (srcs, 0..) |src, k| {
+        var g = try schema.compile(alloc, src, 64, &diag, &w, false, .spec_v1, &.{});
+        defer g.deinit();
+        var side = Side.init(alloc);
+        defer side.deinit();
+        if (k == 0) {
+            try testing.expect(docValid(&g, &side, "8"));
+            try testing.expect(docValid(&g, &side, "\"a\""));
+            try testing.expect(!docValid(&g, &side, "8\"\""));
+            try testing.expect(!docValid(&g, &side, "8\"a\""));
+        } else {
+            try testing.expect(docValid(&g, &side, "[8,\"a\",null,{}]"));
+            try testing.expect(!docValid(&g, &side, "[8\"\"]"));
+            try testing.expect(!docValid(&g, &side, "[1,8\"\"]"));
+        }
+    }
 }
 
 test "comb group resolution survives per-byte state hand-off (C ABI loop)" {
@@ -5888,7 +6021,7 @@ test "spec-v1 AnyJSON arrays: converged duplicate threads are merged" {
 // ---- spec-v1 P4: regex-constrained strings (str_pat) ----
 
 fn strPatGrammar(a: std.mem.Allocator, pat: []const u8, min_len: u32, max_len: u32) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const dfa = try aa.create(pattern.Dfa);
@@ -6055,4 +6188,18 @@ test "str_pat: end-to-end through schema.compile" {
         .{ .doc = "{\"k\":\"a\",\"e\":\"dd\"}", .ok = false },
     };
     for (cases) |c| try testing.expectEqual(c.ok, docValid(&g, &side, c.doc));
+}
+
+test "str: a \\u escape spells only U+0000..U+001F" {
+    var g = try strGrammar(testing.allocator, 0, grammar.UNBOUNDED);
+    defer g.deinit();
+    var st = try initStateT(&g, 4);
+    try feedOk(&g, &st, "\"\\u00");
+    for ("23456789abcdef") |b| {
+        var out: State = undefined;
+        try testing.expectError(error.Parse, feedT(&g, &st, &[_]u8{b}, &out));
+    }
+    var out: State = undefined;
+    try feedT(&g, &st, "1f\"", &out);
+    try testing.expect(canEnd(&g, &out));
 }

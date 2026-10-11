@@ -31,13 +31,14 @@ Guarantees:
 - Alternative branches (`oneOf`/`anyOf`): the structurally compatible
   branch joins the key order - the single fitting branch for `oneOf`,
   the first fitting branch in document order for `anyOf`. The order is
-  merged, not replaced. Without `unevaluated*` on the outer schema the
-  branch is the scenario's leading conjunct: its `properties` order
-  decides the keys it declares (shared keys included), outer-only
-  declared keys follow in outer order. With `unevaluatedProperties`/
-  `unevaluatedItems` the ADR-0009 guard hoisting leads with the outer
-  schema instead: outer `properties` first, then the branch's (first
-  appearance wins, as with `allOf`).
+  merged, not replaced: the emitted order is a linearization consistent
+  with the branch's and the outer schema's declared orders (the engine
+  enforces the outer object's declared order whatever the branch
+  declares). Where neither order decides, the branch's keys come first
+  without `unevaluated*` on the outer schema; with
+  `unevaluatedProperties`/`unevaluatedItems` the ADR-0009 guard
+  hoisting leads with the outer schema instead (first appearance wins,
+  as with `allOf`).
   Structural fit is checked with the keywords that fix the object
   context (type/enum/const/pattern, required/properties/
   patternProperties/additionalProperties, recursively); an ambiguous
@@ -202,6 +203,12 @@ def _resolve_ref(schema: Any, root: Any) -> Optional[Any]:
     return None  # ref cycle
 
 
+# Marks a schema built by _effective_schema: its `properties` follow the
+# branch-led first appearance, which orders keys only where no conjunct
+# does.
+_RESOLVED = "\x00resolved"
+
+
 def _merged_branches(schema: Dict[str, Any], root: Any) -> List[Dict[str, Any]]:
     """The schema itself plus resolved allOf subschemas, document order.
 
@@ -228,20 +235,20 @@ def _merged_branches(schema: Dict[str, Any], root: Any) -> List[Dict[str, Any]]:
     return branches
 
 
-def _declared_order(schema: Dict[str, Any], root: Any,
-                    topological: bool = True) -> List[str]:
+def _declared_order(schema: Dict[str, Any], root: Any) -> List[str]:
     """Declared key order: first appearance across the merged subschemas
     in document order (section 4.3); the own `properties` come first.
 
-    With `topological` (the plain-`allOf` path) the order is refined into
-    a linearization consistent with EVERY merged subschema's relative key
-    order: the engine accepts any such linearization and rejects shared
-    keys emitted against a sibling conjunct's relative order. The
-    linearization keeps the first-appearance order whenever that already
-    satisfies every subschema; contradictory subschema orders (no
-    linearization exists) keep the first-appearance order unchanged.
-    `topological=False` is used for combinator-resolved schemas, whose
-    merged `properties` are already in the canonical branch-led order.
+    The order is refined into a linearization consistent with EVERY
+    merged subschema's relative key order: the engine accepts any such
+    linearization and rejects shared keys emitted against a sibling
+    conjunct's relative order. The linearization keeps the
+    first-appearance order whenever that already satisfies every
+    subschema; contradictory subschema orders (no linearization exists)
+    keep the first-appearance order unchanged. The `properties` of a
+    combinator-resolved schema (`_effective_schema`) are in the
+    branch-led order, which only breaks ties: the constraints come from
+    its conjuncts, the selected branch and the outer schema.
     """
     lists: List[List[str]] = []
     order: List[str] = []
@@ -250,12 +257,13 @@ def _declared_order(schema: Dict[str, Any], root: Any,
         props = branch.get("properties")
         if isinstance(props, dict):
             keys = list(props)
-            lists.append(keys)
+            if not branch.get(_RESOLVED):
+                lists.append(keys)
             for key in keys:
                 if key not in seen:
                     seen.add(key)
                     order.append(key)
-    if not topological or len(lists) < 2:
+    if len(lists) < 2:
         return order
     preds: Dict[str, set] = {key: set() for key in order}
     for keys in lists:
@@ -603,7 +611,7 @@ def _effective_schema(schema: Any, value: Any, root: Any,
                 continue
         absorb(own, conj)
 
-    merged: Dict[str, Any] = {}
+    merged: Dict[str, Any] = {_RESOLVED: True}
     if props:
         merged["properties"] = props
     merged["allOf"] = allof
@@ -640,11 +648,9 @@ def _emit(value: Any, schema: Any, root: Any, pointer: str,
                 )
             members[key] = member
             data_order.append(key)
-        resolved = schema
         schema = _effective_schema(schema, members, root)
         if _orderable(schema):
-            declared = _declared_order(
-                schema, root, topological=schema is resolved)
+            declared = _declared_order(schema, root)
             undeclared = [k for k in data_order if k not in set(declared)]
             order = [k for k in declared if k in members] + undeclared
         else:

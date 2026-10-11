@@ -7,27 +7,29 @@ body:
     attributes:
       value: |
         Thanks for the report! Please provide a minimal reproduction - it is
-        usually the schema (or literal set) plus the tokenizer description.
+        usually the schema (or literal set), the profile, the tokenizer
+        description and a short script.
   - type: input
     id: version
     attributes:
-      label: Bolorgir version
-      description: Release version or commit id
-      placeholder: "0.1.0 / abc1234"
+      label: Bolorgir version and installation
+      description: bolorgir.__version__ and how it was installed (release wheel or sdist, or a commit)
+      placeholder: "0.2.0rc1, wheel from the GitHub release / commit abc1234"
     validations:
       required: true
   - type: input
     id: python
     attributes:
       label: Python and Zig versions
-      placeholder: "Python 3.12.4, Zig 0.15.2"
+      placeholder: "Python 3.14.8, Zig 0.17.0"
     validations:
       required: true
   - type: input
     id: env
     attributes:
       label: OS / platform
-      placeholder: "Ubuntu 22.04 x86_64, gcc 11.4"
+      description: OS and version, CPU architecture, glibc version
+      placeholder: "Ubuntu 22.04 x86_64, glibc 2.35"
     validations:
       required: true
   - type: input
@@ -45,6 +47,24 @@ body:
       render: json
     validations:
       required: true
+  - type: dropdown
+    id: profile
+    attributes:
+      label: Profile
+      options:
+        - canonical-v1 (default)
+        - spec-v1
+        - literal set (no profile)
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal reproduction
+      description: A short script that shows the problem, with the engine mode and limits
+      render: python
+    validations:
+      required: true
   - type: textarea
     id: expected
     attributes:
@@ -54,8 +74,8 @@ body:
   - type: textarea
     id: actual
     attributes:
-      label: Actual behavior
-      description: Include the traceback or error status (if any)
+      label: Observed result
+      description: The exception or status with its message, the generated text, or how long a call ran before you stopped it
     validations:
       required: true
   - type: textarea

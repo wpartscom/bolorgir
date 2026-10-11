@@ -1,4 +1,4 @@
-//! Exact token-level completion reachability for masks (TZ 3.1, FR-6).
+//! Exact token-level completion reachability for masks.
 //!
 //! A token is allowed only when, after accepting it, a finite continuation
 //! of allowed tokens still reaches a completed answer. The mask walk
@@ -41,10 +41,12 @@
 //! mask call fails (ADR-0005 Decision 3).
 
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 const parser = @import("parser.zig");
 const witset = @import("witset.zig");
 const synth = @import("synth.zig");
+const numcert = @import("numcert.zig");
 const pattern = @import("pattern.zig");
 const tokenizer = @import("tokenizer.zig");
 const work_mod = @import("work.zig");
@@ -70,6 +72,63 @@ const MAX_DEPTH_REACH: usize = 512;
 /// fail the mask call with ResourceLimit (ADR-0005 D3).
 pub const FILL_SEARCH_BUDGET: u64 = 1 << 16;
 
+const test_hooks_enabled = @import("build_options").test_hooks;
+
+/// Test builds only (-Dtest_hooks=true, src/test_hooks.zig): the per-fill
+/// search budget, the first search tier budget, and a forced UNKNOWN
+/// verdict for states with a top frame of the given kind or with the given
+/// state key hash (stateKeyHash). Zero / null keeps the normal behavior.
+pub const TestOverrides = struct {
+    fill_budget: u64 = 0,
+    tier_budget: u64 = 0,
+    unknown_kind: ?std.meta.Tag(parser.Frame) = null,
+    unknown_key: u64 = 0,
+};
+pub var test_overrides: TestOverrides = .{};
+
+pub fn fillBudget() u64 {
+    if (test_hooks_enabled and test_overrides.fill_budget != 0) return test_overrides.fill_budget;
+    return FILL_SEARCH_BUDGET;
+}
+
+/// Grammar node of the first thread's top frame of the last state the
+/// reachability check left undecided on this thread (probe diagnostics).
+pub threadlocal var last_unknown_node: ?grammar.NodeId = null;
+
+fn frameNode(f: *const parser.Frame) ?grammar.NodeId {
+    return switch (f.*) {
+        .lit_trie => |x| x.gnode,
+        inline else => |x| if (@hasField(@TypeOf(x), "node")) x.node else null,
+    };
+}
+
+fn noteUnknown(st: *const parser.State) error{ResourceLimit} {
+    last_unknown_node = null;
+    if (st.n > 0 and st.threads[0].len > 0) last_unknown_node = frameNode(&st.threads[0].frames[st.threads[0].len - 1]);
+    return error.ResourceLimit;
+}
+
+/// Wyhash of the compact state image (parser.writeStateKey).
+pub fn stateKeyHash(st: *const parser.State, a: std.mem.Allocator) ?u64 {
+    const buf = a.alloc(u8, parser.stateKeyLen(st)) catch return null;
+    defer a.free(buf);
+    parser.writeStateKey(st, buf);
+    return std.hash.Wyhash.hash(0, buf);
+}
+
+fn forcedUnknown(st: *const parser.State, a: std.mem.Allocator) bool {
+    const o = test_overrides;
+    if (o.unknown_kind) |k| {
+        for (st.threads[0..st.n]) |*t| {
+            if (t.len > 0 and std.meta.activeTag(t.frames[t.len - 1]) == k) return true;
+        }
+    }
+    if (o.unknown_key != 0) {
+        if (stateKeyHash(st, a)) |h| return h == o.unknown_key;
+    }
+    return false;
+}
+
 const Status = enum(u8) { in_progress, dead, alive };
 
 /// Memo entry. `alive` and `in_progress` are absolute; `dead` carries the
@@ -85,8 +144,8 @@ const Entry = struct { status: Status, rem: u32 };
 pub const Cache = struct {
     a: std.mem.Allocator,
     map: std.StringHashMapUnmanaged(Entry) = .{},
-    states: std.ArrayListUnmanaged(*parser.State) = .{},
-    key_buf: std.ArrayListUnmanaged(u8) = .{},
+    states: std.ArrayListUnmanaged(*parser.State) = .empty,
+    key_buf: std.ArrayListUnmanaged(u8) = .empty,
     side: ?*parser.Side = null,
     /// Thread cap of the state under test, propagated to the pooled scratch
     /// states so feedBytes inside the search enforces the same engine limit
@@ -236,6 +295,7 @@ pub fn stateAlive(
     cache.side = side;
     cache.max_threads = st.max_threads;
     defer cache.releaseScratch();
+    if (test_hooks_enabled and forcedUnknown(st, side.a)) return noteUnknown(st);
     if (!g.needs_reachability) return explore(g, tok, st, 0, cache, w, side);
     if (cache.fill_budget == 0) {
         // The shared per-fill budget is spent (an earlier unprovable state
@@ -249,7 +309,7 @@ pub fn stateAlive(
             .dead => false,
             .undecided => {
                 recordFailure(g, st, side, .fail_budget0);
-                return error.ResourceLimit;
+                return noteUnknown(st);
             },
         };
     }
@@ -260,7 +320,7 @@ pub fn stateAlive(
     // tier (with the completion-directed ordering) finds the witness in a
     // few expansions instead. A state the budget cannot settle comes back
     // as ResourceLimit, which fails the mask call (ADR-0005 D3).
-    var budget: u64 = 1 << 5;
+    var budget: u64 = if (test_hooks_enabled and test_overrides.tier_budget != 0) test_overrides.tier_budget else 1 << 5;
     // Top-level certification with the simulation certificate enabled
     // (in_search is false here): a concrete completing suffix settles the
     // state before any search tier runs.
@@ -269,6 +329,7 @@ pub fn stateAlive(
         .dead => return false,
         .undecided => {},
     }
+    und_hist[@backingInt(UndReason.search_entered)] += 1;
     in_search = true;
     defer in_search = false;
     while (true) {
@@ -281,7 +342,7 @@ pub fn stateAlive(
         const v = search(g, tok, st, 0, cap, cache, w, side) catch |err| switch (err) {
             error.OutOfMemory => {
                 recordFailure(g, st, side, .fail_oom);
-                return error.ResourceLimit;
+                return noteUnknown(st);
             },
             else => |e| return e,
         };
@@ -291,7 +352,7 @@ pub fn stateAlive(
             .capped => {
                 if (cap >= MAX_DEPTH_REACH) {
                     recordFailure(g, st, side, .fail_search);
-                    return error.ResourceLimit;
+                    return noteUnknown(st);
                 }
                 cap = @min(cap * 8, MAX_DEPTH_REACH);
                 budget = @min(budget * 16, cache.fill_budget);
@@ -450,11 +511,15 @@ fn feedAndSearch(
     parser.releaseState(side, work);
     parser.feedBytes(g, side, st, bytes, dst, work) catch |err| switch (err) {
         error.Parse => return .dead,
-        // A branch the engine cannot even represent (frame/thread cap -
-        // the same ResourceLimit accept would raise on this feed) cannot
-        // complete under this engine, so for reachability it is a proven
-        // dead branch, not an undecided one.
-        error.ResourceLimit => return .dead,
+        // A branch past the frame or thread cap is not exhausted, only
+        // out of reach of this context: it stays undecided like a budget
+        // cut. Counting it dead would drop the token from the mask with no
+        // ResourceLimit, an incomplete mask the thread cap must never
+        // cause.
+        error.ResourceLimit => {
+            cache.budget_out = true;
+            return .capped;
+        },
         else => |e| return e,
     };
     return search(g, tok, dst, depth + 1, cap, cache, w, side);
@@ -548,10 +613,10 @@ fn search(
     // pass over open-ended key/content spellings diverges into unbounded
     // junk-key runs before it ever tries the bytes that spell a declared
     // required key, so those bytes are tried ahead of the phase classes.
-    var req_hint = [_]bool{false} ** 256;
-    var any_hint = [_]bool{false} ** 256;
+    var req_hint: [256]bool = @splat(false);
+    var any_hint: [256]bool = @splat(false);
     keyHints(g, side, st, &req_hint, &any_hint);
-    var pruned = [_]bool{false} ** 256;
+    var pruned: [256]bool = @splat(false);
     const prune = keyByteClasses(g, side, st, &req_hint, &any_hint, &pruned);
     var ord: u8 = 0;
     while (ord < 6) : (ord += 1) {
@@ -611,7 +676,8 @@ fn keyHints(g: *const grammar.Grammar, side: *parser.Side, st: *const parser.Sta
             if (of.u.key.st != .normal or of.u.key.rem != 0) continue;
             const on = &g.node(of.node).open_obj;
             const kb = side.chunkAt(of.key).payload.items;
-            for (on.props[of.next_idx..]) |p| {
+            for (on.props[of.next_idx..], of.next_idx..) |p, pi| {
+                if (!propPending(g, side, of, on, pi)) continue;
                 const kl = g.literalBytes(p.key);
                 const inner = kl[1 .. kl.len - 2]; // strip quotes and ':'
                 if (inner.len <= kb.len) continue;
@@ -758,9 +824,12 @@ pub const UndReason = enum(u8) {
     no_nonempty, // per-node emptiness bitset not computed
     openobj_gate, // gated open_obj (OR of the gate sub-reasons above)
     num_und, // num_mult / num_excl / str_pat / str_excl undecided
+    // Not a failure: counts every state stateAlive hands to the budgeted
+    // search after certification left it undecided.
+    search_entered,
 };
 
-pub const UND_REASONS = @typeInfo(UndReason).@"enum".fields.len;
+pub const UND_REASONS = @typeInfo(UndReason).@"enum".field_names.len;
 pub threadlocal var und_hist: [UND_REASONS]u64 = @splat(0);
 
 threadlocal var und_rec: bool = false;
@@ -772,7 +841,7 @@ threadlocal var und_pend: [UND_REASONS]u64 = @splat(0);
 threadlocal var in_search: bool = false;
 
 fn note(r: UndReason) void {
-    if (und_rec) und_pend[@intFromEnum(r)] += 1;
+    if (und_rec) und_pend[@backingInt(r)] += 1;
 }
 
 /// Re-certify the failed state with recording on and commit the pending
@@ -783,7 +852,7 @@ fn recordFailure(g: *const grammar.Grammar, st: *const parser.State, side: *pars
     und_rec = true;
     _ = certifyState(g, st, side);
     und_rec = false;
-    und_pend[@intFromEnum(r)] += 1;
+    und_pend[@backingInt(r)] += 1;
     for (&und_hist, und_pend) |*h, p| h.* += p;
 }
 
@@ -818,19 +887,106 @@ fn combBornOkC(cb: *const grammar.Comb, live: u64) bool {
 /// proof bottoms out on comb-free threads and can never talk itself into
 /// existence. See combGroupAlive for the per-kind rules.
 pub fn certifyState(g: *const grammar.Grammar, st: *const parser.State, side: *parser.Side) Cert {
+    if (escapeOffset(st)) |k| return certifyMidEscape(g, st, side, k);
+    return certifyStateCore(g, st, side);
+}
+
+/// What may follow the backslash of a string escape under the canonical
+/// escape table: the short escapes, and \u00XX for the other code points
+/// below U+0020 (lowercase hex).
+const ESCAPE_TAILS = blk: {
+    var tails: [34][]const u8 = undefined;
+    var n: usize = 0;
+    for ("\"\\bfnrt") |c| {
+        tails[n] = &[_]u8{c};
+        n += 1;
+    }
+    const hex = "0123456789abcdef";
+    for (0..0x20) |code| {
+        if (code == 0x08 or code == 0x09 or code == 0x0A or code == 0x0C or code == 0x0D) continue;
+        tails[n] = &[_]u8{ 'u', '0', '0', hex[code >> 4], hex[code & 15] };
+        n += 1;
+    }
+    break :blk tails;
+};
+
+/// Bytes of the escape already read after the backslash when the threads
+/// are mid escape. All threads read the same bytes, so they agree on it;
+/// the first string machine on a thread top answers.
+fn escapeOffset(st: *const parser.State) ?usize {
+    for (st.threads[0..st.n]) |*t| {
+        if (t.len == 0) continue;
+        const ss: parser.StrState = switch (t.frames[t.len - 1]) {
+            .str => |f| f.state,
+            .str_excl => |f| f.state,
+            .str_pat => |f| f.state,
+            .open_obj => |f| if (f.phase == .key_str) f.u.key.st else continue,
+            else => continue,
+        };
+        return switch (ss) {
+            .open, .normal => null,
+            .escape => 0,
+            .u0 => 1,
+            .u00 => 2,
+            .uhex1 => 3,
+            .uhex2 => 4,
+        };
+    }
+    return null;
+}
+
+/// Mid escape the state is alive iff the state after one of the finitely
+/// many escape endings is, and dead iff every ending is refused or dead.
+fn certifyMidEscape(g: *const grammar.Grammar, st: *const parser.State, side: *parser.Side, k: usize) Cert {
+    const bufs = side.a.alloc(parser.State, 2) catch return .undecided;
+    defer side.a.free(bufs);
+    var undecided = false;
+    for (ESCAPE_TAILS, 0..) |tail, i| {
+        if (tail.len <= k or (k > 0 and tail[0] != 'u')) continue;
+        // Endings of the \u forms share suffixes past their first bytes.
+        const rest = tail[k..];
+        var dup = false;
+        for (ESCAPE_TAILS[0..i]) |prev| {
+            if (prev.len > k and std.mem.eql(u8, prev[k..], rest)) dup = true;
+        }
+        if (dup) continue;
+        parser.feedBytes(g, side, st, rest, &bufs[0], &bufs[1]) catch |e| switch (e) {
+            error.Parse => continue,
+            else => {
+                undecided = true;
+                continue;
+            },
+        };
+        defer parser.releaseState(side, &bufs[0]);
+        switch (certifyStateCore(g, &bufs[0], side)) {
+            .alive => return .alive,
+            .dead => {},
+            .undecided => undecided = true,
+        }
+    }
+    return if (undecided) .undecided else .dead;
+}
+
+fn certifyStateCore(g: *const grammar.Grammar, st: *const parser.State, side: *parser.Side) Cert {
     var tc: [parser.MAX_THREADS_CAP]Cert = undefined;
     // base[i]: aggregate certificate of thread i's NON-comb frames.
     var base: [parser.MAX_THREADS_CAP]Cert = undefined;
     var n_dead: usize = 0;
+    // Numeric allOf groups decided jointly (ADR-0011): the top leaf frame
+    // of each member thread takes the group verdict instead of its own.
+    var ng: NumGroups = .{};
+    numGroups(g, st, side.a, &ng, null, null);
     for (st.threads[0..st.n], 0..) |*t, i| {
         var c: Cert = .alive;
         var has_comb = false;
-        for (t.frames[0..t.len]) |*f| {
+        for (t.frames[0..t.len], 0..) |*f, d| {
             if (f.* == .comb) {
                 has_comb = true;
                 continue;
             }
-            switch (certifyFrame(g, f, side)) {
+            var fc = if (d + 1 == t.len and ng.ov[i] != null) ng.ov[i].? else certifyFrame(g, f, side);
+            if (fc == .alive and f.* == .repeat and d + 1 < t.len and repeatInFlightUnproven(g, t, d)) fc = .undecided;
+            switch (fc) {
                 .dead => {
                     c = .dead;
                     break;
@@ -841,7 +997,7 @@ pub fn certifyState(g: *const grammar.Grammar, st: *const parser.State, side: *p
         }
         base[i] = c;
         tc[i] = if (has_comb and c == .alive) .undecided else c;
-        if (tc[i] != .dead and (repeatContainsDoom(g, t) or openObjDepValueDoom(g, side, t))) {
+        if (tc[i] != .dead and (repeatContainsDoom(g, t) or openObjDepValueDoom(g, side, t) or openObjDepPrefixDoom(g, side, t))) {
             base[i] = .dead;
             tc[i] = .dead;
         }
@@ -890,7 +1046,16 @@ pub fn certifyState(g: *const grammar.Grammar, st: *const parser.State, side: *p
                         // branches canonicalize to the same num_const node, or
                         // oneOf{"^(ab|c)$","^(ab|d)$"} after `"a`, where both
                         // branch residuals are {`b"`}).
-                        if (cb.kind != .oneof or !oneOfLinkedDoom(g, side.a, st, tc[0..st.n], inst)) continue;
+                        // if/then/else shadow doom: with the then path dead, the
+                        // else path needs a completion the if branch rejects;
+                        // when every live else thread is linked to or
+                        // subsumed by a live if thread there is none.
+                        const doomed = switch (cb.kind) {
+                            .oneof => oneOfLinkedDoom(g, side.a, st, tc[0..st.n], inst),
+                            .ifelse => ifElseShadowDoom(g, side.a, st, tc[0..st.n], inst, cb, live),
+                            .allof => false,
+                        };
+                        if (!doomed) continue;
                     }
                     for (st.threads[0..st.n], 0..) |*t2, j| {
                         if (tc[j] == .dead) continue;
@@ -937,6 +1102,11 @@ pub fn certifyState(g: *const grammar.Grammar, st: *const parser.State, side: *p
     // thread_ok[i]: every frame of thread i is certified alive (non-comb
     // frames by base, comb frames via a proven group). Initially only
     // comb-free threads qualify.
+    for (insts[0..n_inst], 0..) |inst, k| {
+        for (ng.ok[0..ng.n_ok]) |ok_inst| {
+            if (ok_inst == inst) inst_ok[k] = true;
+        }
+    }
     var thread_ok: [parser.MAX_THREADS_CAP]bool = undefined;
     for (0..st.n) |i| thread_ok[i] = threadOkEx(st, tc[0..st.n], base[0..st.n], insts[0..n_inst], inst_ok[0..n_inst], i, NONE_INST);
     var grown = true;
@@ -1084,7 +1254,7 @@ fn combGroupAliveCheap(
             const then_none = c.branches[1] == grammar.COMB_NONE;
             const else_none = c.branches[2] == grammar.COMB_NONE;
             var if_live = false;
-            var ok_branch = [_]bool{false} ** 3;
+            var ok_branch: [3]bool = @splat(false);
             for (st.threads[0..st.n], 0..) |*t, i| {
                 var br: ?u32 = null;
                 for (t.frames[0..t.len]) |*f| {
@@ -1170,7 +1340,7 @@ fn combGroupAlive(
     }
     const node = cb_node orelse return false;
     if (!combResiduesPristine(st, target)) return false;
-    var arena = std.heap.ArenaAllocator.init(side.a);
+    var arena = Arena.init(side.a);
     defer arena.deinit();
     return witset.witness(witset.viewOf(g), arena.allocator(), node) != null;
 }
@@ -1220,88 +1390,145 @@ fn combDeadAllOfPass(g: *const grammar.Grammar, side: *parser.Side, st: *const p
 }
 
 /// allOf key-obligation doom (spec-v1 cheap certificate). Suppose every
-/// live thread of branch b0 provably owes a future dispatch of the raw key
-/// spelling K: it carries, above its comb frame, an open_obj frame with K
-/// still outstanding (an unseen extra_required name or a required declared
-/// prop at/after next_idx; a mid-key frame counts only when the typed raw
-/// prefix can no longer spell K). Every joint completion of the group is a
-/// continuation in which some b0 thread survives end-to-end, so the byte
-/// run `"K"` (raw) is fed at some point with that thread at a key boundary.
-/// If every live thread of every OTHER branch carries, above the same comb
-/// instance, exactly one container frame and it is a closed .object whose
-/// remaining key candidates (idx, or cur when mid-key/value) exclude K -
+/// live thread t of branch b0 provably owes a future dispatch of some raw
+/// key spelling K_t: it carries, above its comb frame, an open_obj frame
+/// with K_t still outstanding (an unseen extra_required name or a required
+/// declared prop at/after next_idx; a mid-key frame counts only when the
+/// typed raw prefix can no longer spell K_t). Every joint completion of the
+/// group is a continuation in which some b0 thread t survives end-to-end,
+/// so the byte run `"K_t"` (raw) is fed at some point with that thread at
+/// a key boundary. If every live thread of every OTHER branch carries,
+/// above the same comb instance, exactly one container frame and it is a
+/// closed .object whose remaining key candidates (idx, or cur when
+/// mid-key/value) exclude K_t -
 /// with only escape-free value machines (literal/number family) above it -
-/// then feeding `"K"` kills every such thread: the closed machine accepts
+/// then feeding `"K_t"` kills every such thread: the closed machine accepts
 /// only its remaining declared keys at a key position, a number/literal
 /// value machine dies at the closing quote or the following colon, and the
-/// object completing before K fails the allOf verdict because no obligated
+/// object completing before K_t fails the allOf verdict because no obligated
 /// b0 thread can vote. (String-family frames above the object could absorb
-/// the key bytes as escaped content, so they defer.) The group is dead.
+/// the key bytes as escaped content, so they defer.) A thread of another
+/// branch that sits in a nested allOf also dies on `"K_t"` when some branch
+/// of that allOf consists of such threads (threadDiesOnKey): the nested
+/// allOf fails with that branch. The group is dead.
 /// Narrow on purpose: any other shape defers to the budgeted search.
 fn combDeadAllOf(g: *const grammar.Grammar, side: *parser.Side, st: *const parser.State, tc: []const Cert, inst: u32) bool {
-    // Candidate obligations (branch b0, key K), capped; more defers.
-    var cand_branch: [8]u32 = undefined;
-    var cand_key: [8][]const u8 = undefined;
-    var n_cand: usize = 0;
+    // The argument holds per thread: a branch is doomed when each of its
+    // live threads (its alternatives, e.g. the branches of a nested anyOf)
+    // owes some key that every live thread of the other branches blocks.
+    var branches: u64 = 0;
     for (st.threads[0..st.n], 0..) |*t, i| {
         if (tc[i] == .dead) continue;
         const d0 = combFrameIdx(t, inst) orelse continue;
-        const br = t.frames[d0].comb.branch;
-        for (t.frames[d0 + 1 .. t.len]) |*f| {
-            if (f.* != .open_obj) continue;
-            const of = &f.open_obj;
-            if (of.phase == .key_str) {
-                // The key in progress may be spelling K right now; only a
-                // clean prefix that can no longer extend to K keeps the
-                // obligation outstanding.
-                if (of.u.key.st != .normal or of.u.key.rem != 0) continue;
-            }
-            const on = &g.node(of.node).open_obj;
-            const kb: []const u8 = if (of.phase == .key_str) side.chunkAt(of.key).payload.items else "";
-            for (on.extra_required) |lit| {
-                const name = g.literalBytes(lit);
-                if (seenContainsC(side, of.seen, name)) continue;
-                if (of.phase == .key_str and std.mem.startsWith(u8, name, kb)) continue;
-                if (n_cand >= cand_key.len) return false;
-                cand_branch[n_cand] = br;
-                cand_key[n_cand] = name;
-                n_cand += 1;
-            }
-            for (on.props[of.next_idx..]) |p| {
-                if (!p.required) continue;
-                const kl = g.literalBytes(p.key);
-                const name = kl[1 .. kl.len - 2];
-                if (of.phase == .key_str and std.mem.startsWith(u8, name, kb)) continue;
-                if (n_cand >= cand_key.len) return false;
-                cand_branch[n_cand] = br;
-                cand_key[n_cand] = name;
-                n_cand += 1;
-            }
-        }
+        branches |= @as(u64, 1) << @intCast(t.frames[d0].comb.branch);
     }
-    for (cand_branch[0..n_cand], cand_key[0..n_cand]) |b0, k| {
-        // (i) every live thread of branch b0 owes K;
-        // (ii) every live thread of every other branch blocks K.
-        var ok = true;
-        for (st.threads[0..st.n], 0..) |*t, i| {
-            if (tc[i] == .dead) continue;
-            const d0 = combFrameIdx(t, inst) orelse continue;
-            const br = t.frames[d0].comb.branch;
-            if (br == b0) {
-                if (!threadOwesKey(g, side, t, d0 + 1, k)) {
-                    ok = false;
-                    break;
-                }
-            } else {
-                if (!threadBlocksKey(g, t, d0 + 1, k)) {
-                    ok = false;
-                    break;
-                }
-            }
-        }
-        if (ok) return true;
+    var b0: u6 = 0;
+    while (true) : (b0 += 1) {
+        if ((branches >> b0) & 1 != 0 and branchKeyDoomed(g, side, st, tc, inst, b0)) return true;
+        if (b0 == 63) break;
     }
     return false;
+}
+
+fn branchKeyDoomed(g: *const grammar.Grammar, side: *parser.Side, st: *const parser.State, tc: []const Cert, inst: u32, b0: u6) bool {
+    for (st.threads[0..st.n], 0..) |*t, i| {
+        if (tc[i] == .dead) continue;
+        const d0 = combFrameIdx(t, inst) orelse continue;
+        if (t.frames[d0].comb.branch != b0) continue;
+        var keys: [8][]const u8 = undefined;
+        const n = owedKeys(g, side, t, d0 + 1, &keys) orelse return false;
+        var found = false;
+        for (keys[0..n]) |k| {
+            if (blockedElsewhere(g, side, st, tc, inst, b0, k)) {
+                found = true;
+                break;
+            }
+        }
+        if (!found) return false;
+    }
+    return true;
+}
+
+/// Every live thread of the instance outside branch b0 dies on raw key K.
+fn blockedElsewhere(g: *const grammar.Grammar, side: *const parser.Side, st: *const parser.State, tc: []const Cert, inst: u32, b0: u6, k: []const u8) bool {
+    var any = false;
+    for (st.threads[0..st.n], 0..) |*t, i| {
+        if (tc[i] == .dead) continue;
+        const d0 = combFrameIdx(t, inst) orelse continue;
+        if (t.frames[d0].comb.branch == b0) continue;
+        if (!threadDiesOnKey(g, side, st, tc, t, d0 + 1, k, 3)) return false;
+        any = true;
+    }
+    return any;
+}
+
+/// The thread dies on a fed raw key `"K"`: it blocks K itself
+/// (threadBlocksKey), or the frame at `from` is a branch of a nested allOf
+/// one of whose branches has every live thread dying on K, which fails
+/// that allOf and with it every thread inside it.
+fn threadDiesOnKey(g: *const grammar.Grammar, side: *const parser.Side, st: *const parser.State, tc: []const Cert, t: *const parser.Thread, from: usize, k: []const u8, depth: u8) bool {
+    if (threadBlocksKey(g, side, t, from, k)) return true;
+    if (depth == 0 or from >= t.len) return false;
+    const f = &t.frames[from];
+    if (f.* != .comb or g.node(f.comb.node).comb.kind != .allof) return false;
+    const inner = f.comb.inst;
+    var branches: u64 = 0;
+    for (st.threads[0..st.n], 0..) |*u, i| {
+        if (tc[i] == .dead) continue;
+        const d = combFrameIdx(u, inner) orelse continue;
+        branches |= @as(u64, 1) << @intCast(u.frames[d].comb.branch);
+    }
+    var c: u6 = 0;
+    while (true) : (c += 1) {
+        if ((branches >> c) & 1 != 0 and branchDiesOnKey(g, side, st, tc, inner, c, k, depth - 1)) return true;
+        if (c == 63) break;
+    }
+    return false;
+}
+
+fn branchDiesOnKey(g: *const grammar.Grammar, side: *const parser.Side, st: *const parser.State, tc: []const Cert, inst: u32, c: u6, k: []const u8, depth: u8) bool {
+    var any = false;
+    for (st.threads[0..st.n], 0..) |*t, i| {
+        if (tc[i] == .dead) continue;
+        const d = combFrameIdx(t, inst) orelse continue;
+        if (t.frames[d].comb.branch != c) continue;
+        if (!threadDiesOnKey(g, side, st, tc, t, d + 1, k, depth)) return false;
+        any = true;
+    }
+    return any;
+}
+
+/// Raw keys the thread provably still owes (open_obj frames at/above
+/// `from`: unseen extra_required names and pending required declared
+/// props; a mid-key frame only for names its clean typed prefix can no
+/// longer spell). Null when there are more than out.len.
+fn owedKeys(g: *const grammar.Grammar, side: *parser.Side, t: *const parser.Thread, from: usize, out: *[8][]const u8) ?usize {
+    var n: usize = 0;
+    for (t.frames[from..t.len]) |*f| {
+        if (f.* != .open_obj) continue;
+        const of = &f.open_obj;
+        if (of.phase == .key_str and (of.u.key.st != .normal or of.u.key.rem != 0)) continue;
+        const on = &g.node(of.node).open_obj;
+        const kb: []const u8 = if (of.phase == .key_str) side.chunkAt(of.key).payload.items else "";
+        for (on.extra_required) |lit| {
+            const name = g.literalBytes(lit);
+            if (seenContainsC(side, of.seen, name)) continue;
+            if (of.phase == .key_str and std.mem.startsWith(u8, name, kb)) continue;
+            if (n >= out.len) return null;
+            out[n] = name;
+            n += 1;
+        }
+        for (on.props[of.next_idx..], of.next_idx..) |p, pi| {
+            if (!p.required or !propPending(g, side, of, on, pi)) continue;
+            const kl = g.literalBytes(p.key);
+            const name = kl[1 .. kl.len - 2];
+            if (of.phase == .key_str and std.mem.startsWith(u8, name, kb)) continue;
+            if (n >= out.len) return null;
+            out[n] = name;
+            n += 1;
+        }
+    }
+    return n;
 }
 
 fn combFrameIdx(t: *const parser.Thread, inst: u32) ?usize {
@@ -1311,45 +1538,18 @@ fn combFrameIdx(t: *const parser.Thread, inst: u32) ?usize {
     return null;
 }
 
-/// Thread owes a future dispatch of raw key K: some open_obj frame at/above
-/// `from` still has K outstanding (see combDeadAllOf).
-fn threadOwesKey(g: *const grammar.Grammar, side: *parser.Side, t: *const parser.Thread, from: usize, k: []const u8) bool {
-    for (t.frames[from..t.len]) |*f| {
-        if (f.* != .open_obj) continue;
-        const of = &f.open_obj;
-        const on = &g.node(of.node).open_obj;
-        var kb: []const u8 = "";
-        if (of.phase == .key_str) {
-            if (of.u.key.st != .normal or of.u.key.rem != 0) continue;
-            kb = side.chunkAt(of.key).payload.items;
-        }
-        for (on.extra_required) |lit| {
-            const name = g.literalBytes(lit);
-            if (seenContainsC(side, of.seen, name)) continue;
-            if (of.phase == .key_str and std.mem.startsWith(u8, name, kb)) continue;
-            if (std.mem.eql(u8, name, k)) return true;
-        }
-        for (on.props[of.next_idx..]) |p| {
-            if (!p.required) continue;
-            const kl = g.literalBytes(p.key);
-            const name = kl[1 .. kl.len - 2];
-            if (of.phase == .key_str and std.mem.startsWith(u8, name, kb)) continue;
-            if (std.mem.eql(u8, name, k)) return true;
-        }
-    }
-    return false;
-}
-
 /// Thread provably dies on any fed raw key spelling `"K"` (see
-/// combDeadAllOf): its only container frame at/above `from` is a closed
-/// object whose remaining candidates exclude K, with only escape-free value
-/// machines above it.
-fn threadBlocksKey(g: *const grammar.Grammar, t: *const parser.Thread, from: usize, k: []const u8) bool {
+/// combDeadAllOf): its only container frame at/above `from` is an object
+/// that refuses K from now on, with only escape-free value machines above
+/// it. A closed object refuses K when its remaining candidates exclude K;
+/// an open object (openObjBlocksKey) when the dispatch of K fails for
+/// reasons that only accumulate.
+fn threadBlocksKey(g: *const grammar.Grammar, side: *const parser.Side, t: *const parser.Thread, from: usize, k: []const u8) bool {
     var containers: usize = 0;
     var obj: ?*const parser.Frame = null;
     for (t.frames[from..t.len]) |*f| {
         switch (f.*) {
-            .object => {
+            .object, .open_obj => {
                 containers += 1;
                 obj = f;
             },
@@ -1364,6 +1564,7 @@ fn threadBlocksKey(g: *const grammar.Grammar, t: *const parser.Thread, from: usi
     }
     const f = obj orelse return false;
     if (containers != 1) return false;
+    if (f.* == .open_obj) return openObjBlocksKey(g, side, &f.open_obj, k);
     const props = g.node(f.object.node).object.props;
     const start: usize = switch (f.object.phase) {
         // idx is clobbered with the key-literal offset in key_lit and
@@ -1378,6 +1579,22 @@ fn threadBlocksKey(g: *const grammar.Grammar, t: *const parser.Thread, from: usi
         if (std.mem.eql(u8, kl[1 .. kl.len - 2], k)) return false;
     }
     return true;
+}
+
+/// The open object refuses key K at every later dispatch
+/// (parser.openObjDispatch): propertyNames false; a declared K already
+/// passed in declared order (next_idx only grows), or seen in an order-free
+/// copy; an undeclared K already seen (the seen set only grows).
+fn openObjBlocksKey(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, k: []const u8) bool {
+    const on = &g.node(of.node).open_obj;
+    if (on.names_forbidden) return true;
+    for (on.props, 0..) |p, i| {
+        const kl = g.literalBytes(p.key);
+        if (!std.mem.eql(u8, kl[1 .. kl.len - 2], k)) continue;
+        if (on.any_order) return seenContainsC(side, of.seen, k);
+        return i < of.next_idx;
+    }
+    return seenContainsC(side, of.seen, k);
 }
 
 /// Lockstep linking of two branch threads of the oneOf instance `inst`
@@ -1397,6 +1614,28 @@ fn threadBlocksKey(g: *const grammar.Grammar, t: *const parser.Thread, from: usi
 fn linkedThreads(g: *const grammar.Grammar, alloc: std.mem.Allocator, inst: u32, a: *const parser.Thread, b: *const parser.Thread) bool {
     if (a.len != b.len) return false;
     for (a.frames[0..a.len], b.frames[0..b.len]) |*fa, *fb| {
+        if (!framesLinked(g, alloc, inst, fa, fb)) return false;
+    }
+    return true;
+}
+
+/// Thread a of a oneOf branch accepts no continuation that thread b of the
+/// same branch does not: the stacks are linked below the top, and on top
+/// an integer-by-value machine sits beside a number machine in the same
+/// automaton state. The branch votes as b does whatever a does.
+fn subsumedThread(g: *const grammar.Grammar, alloc: std.mem.Allocator, inst: u32, a: *const parser.Thread, b: *const parser.Thread) bool {
+    if (a.len != b.len or a.len == 0) return false;
+    const top = a.len - 1;
+    for (a.frames[0..top], b.frames[0..top]) |*fa, *fb| {
+        if (!framesLinked(g, alloc, inst, fa, fb)) return false;
+    }
+    const fa = &a.frames[top];
+    const fb = &b.frames[top];
+    return fa.* == .int_num and fb.* == .num_v and fa.int_num.st == fb.num_v.st;
+}
+
+fn framesLinked(g: *const grammar.Grammar, alloc: std.mem.Allocator, inst: u32, fa: *const parser.Frame, fb: *const parser.Frame) bool {
+    {
         const ta: std.meta.Tag(parser.Frame) = fa.*;
         const tb: std.meta.Tag(parser.Frame) = fb.*;
         if (ta != tb) {
@@ -1408,8 +1647,7 @@ fn linkedThreads(g: *const grammar.Grammar, alloc: std.mem.Allocator, inst: u32,
             // the oneOf{number, integer} `-0e` overlap: both branches vote
             // accept together or die together, so the verdict is never
             // "exactly one".
-            if (!numExpLockstep(fa, fb)) return false;
-            continue;
+            return numExpLockstep(fa, fb);
         }
         if (fa.* == .comb) {
             if (fa.comb.node != fb.comb.node or fa.comb.inst != fb.comb.inst) return false;
@@ -1424,11 +1662,16 @@ fn linkedThreads(g: *const grammar.Grammar, alloc: std.mem.Allocator, inst: u32,
             ca.node = 0;
             cb.node = 0;
             if (!std.mem.eql(u8, std.mem.asBytes(&ca), std.mem.asBytes(&cb))) return false;
-        } else if (fa.* == .repeat or fa.* == .choice) {
+        } else if (fa.* == .repeat or fa.* == .choice or fa.* == .str or fa.* == .num_v or
+            fa.* == .int_v or fa.* == .int_num or fa.* == .not_int_num or fa.* == .object or
+            fa.* == .open_obj)
+        {
             // Interchangeable subschemas compiled twice (oneOf branches over
-            // the same "any" tower): frames whose state bytes agree and
-            // whose nodes are structurally equal accept identical byte runs
-            // from here, so they vote in lockstep like identical frames.
+            // the same "any" tower, or `true` branches): frames whose state
+            // bytes agree and whose nodes are structurally equal accept
+            // identical byte runs from here, so they vote in lockstep like
+            // identical frames. Each of these frames starts with its node;
+            // side-store handles in the rest compare by identity.
             var ba = std.mem.asBytes(fa).*;
             var bb = std.mem.asBytes(fb).*;
             std.mem.writeInt(u32, ba[0..4], 0, .little);
@@ -1560,11 +1803,11 @@ fn residualLinkedStrPat(g: *const grammar.Grammar, alloc: std.mem.Allocator, fa:
 fn dfaResidualEquiv(da: *const pattern.Dfa, sa_in: u32, db: *const pattern.Dfa, sb_in: u32, alloc: std.mem.Allocator) error{ OutOfMemory, Overflow }!bool {
     if (da.states.len == 0 or db.states.len == 0)
         return da.isAccept(sa_in) == db.isAccept(sb_in);
-    var pairs: std.ArrayListUnmanaged([2]u32) = .{};
+    var pairs: std.ArrayListUnmanaged([2]u32) = .empty;
     defer pairs.deinit(alloc);
     var idx: std.AutoHashMapUnmanaged([2]u32, u32) = .{};
     defer idx.deinit(alloc);
-    var kids: std.ArrayListUnmanaged(std.ArrayListUnmanaged([2]u32)) = .{};
+    var kids: std.ArrayListUnmanaged(std.ArrayListUnmanaged([2]u32)) = .empty;
     defer {
         for (kids.items) |*k| k.deinit(alloc);
         kids.deinit(alloc);
@@ -1577,7 +1820,7 @@ fn dfaResidualEquiv(da: *const pattern.Dfa, sa_in: u32, db: *const pattern.Dfa, 
     const root = [2]u32{ norm(da, sa_in), norm(db, sb_in) };
     try pairs.append(alloc, root);
     try idx.put(alloc, root, 0);
-    try kids.append(alloc, .{});
+    try kids.append(alloc, .empty);
     // BFS over the pair graph.
     var head: usize = 0;
     while (head < pairs.items.len) : (head += 1) {
@@ -1605,7 +1848,7 @@ fn dfaResidualEquiv(da: *const pattern.Dfa, sa_in: u32, db: *const pattern.Dfa, 
                 if (pairs.items.len >= RESIDUAL_EQ_CAP) return error.Overflow;
                 gop.value_ptr.* = @intCast(pairs.items.len);
                 try pairs.append(alloc, child);
-                try kids.append(alloc, .{});
+                try kids.append(alloc, .empty);
             }
             try kids.items[head].append(alloc, child);
             var next: u32 = MAXCP;
@@ -1640,41 +1883,359 @@ fn dfaResidualEquiv(da: *const pattern.Dfa, sa_in: u32, db: *const pattern.Dfa, 
     return !bad[0];
 }
 
-/// See the vote-link rule at the call site: every live branch thread of
-/// the oneOf instance is frame-linked to at least one other live branch
-/// thread of the instance.
+fn ifElseShadowDoom(g: *const grammar.Grammar, alloc: std.mem.Allocator, st: *const parser.State, tc: []const Cert, inst: u32, cb: *const grammar.Comb, live: u64) bool {
+    const then_ok = (live & 1) != 0 and (cb.branches[1] == grammar.COMB_NONE or (live & 2) != 0);
+    if (then_ok or cb.branches[2] == grammar.COMB_NONE) return false;
+    for (st.threads[0..st.n], 0..) |*e, j| {
+        if (tc[j] == .dead or combBranchOf(e, inst) != 2) continue;
+        var shadowed = false;
+        for (st.threads[0..st.n], 0..) |*i, k| {
+            if (tc[k] == .dead or combBranchOf(i, inst) != 0) continue;
+            if (linkedThreads(g, alloc, inst, e, i) or subsumedThread(g, alloc, inst, e, i)) {
+                shadowed = true;
+                break;
+            }
+        }
+        if (!shadowed) return false;
+    }
+    return true;
+}
+
+fn combBranchOf(t: *const parser.Thread, inst: u32) ?u8 {
+    for (t.frames[0..t.len]) |*f| {
+        if (f.* == .comb and f.comb.inst == inst) return f.comb.branch;
+    }
+    return null;
+}
+
+/// See the vote-link rule at the call site: after dropping threads another
+/// thread of their branch subsumes, every live branch thread of the oneOf
+/// instance is linked to a live thread of another branch.
 fn oneOfLinkedDoom(g: *const grammar.Grammar, alloc: std.mem.Allocator, st: *const parser.State, tc: []const Cert, inst: u32) bool {
-    var branches: [parser.MAX_THREADS_CAP]usize = undefined;
+    var threads: [parser.MAX_THREADS_CAP]usize = undefined;
+    var branch: [parser.MAX_THREADS_CAP]u8 = undefined;
     var nb: usize = 0;
     for (st.threads[0..st.n], 0..) |*t, j| {
         if (tc[j] == .dead) continue;
         for (t.frames[0..t.len]) |*f| {
             if (f.* == .comb and f.comb.inst == inst) {
-                branches[nb] = j;
+                threads[nb] = j;
+                branch[nb] = f.comb.branch;
                 nb += 1;
                 break;
             }
         }
     }
     if (nb < 2) return false;
+    // A branch votes as the OR of its threads: a thread whose accepted
+    // continuations another thread of the same branch also accepts does
+    // not change the vote.
+    var keep: [parser.MAX_THREADS_CAP]bool = @splat(true);
+    for (0..nb) |k| {
+        for (0..nb) |m| {
+            if (m == k or !keep[m] or branch[m] != branch[k]) continue;
+            if (subsumedThread(g, alloc, inst, &st.threads[threads[k]], &st.threads[threads[m]])) {
+                keep[k] = false;
+                break;
+            }
+        }
+    }
+    // Linked threads accept in lockstep; a group spanning two branches
+    // gives every boundary it accepts at least two votes. With every group
+    // spanning two branches the verdict is never "exactly one".
     var gid: [parser.MAX_THREADS_CAP]usize = undefined;
-    for (branches[0..nb], 0..) |tj, k| {
+    for (0..nb) |k| {
         gid[k] = k;
-        for (branches[0..k], 0..) |tp, p| {
-            if (linkedThreads(g, alloc, inst, &st.threads[tj], &st.threads[tp])) {
-                gid[k] = p;
+        if (!keep[k]) continue;
+        for (0..k) |p| {
+            if (keep[p] and linkedThreads(g, alloc, inst, &st.threads[threads[k]], &st.threads[threads[p]])) {
+                gid[k] = gid[p];
                 break;
             }
         }
     }
     for (0..nb) |k| {
-        var cnt: usize = 0;
+        if (!keep[k] or gid[k] != k) continue;
+        var spans = false;
         for (0..nb) |m| {
-            if (gid[m] == gid[k]) cnt += 1;
+            if (keep[m] and gid[m] == k and branch[m] != branch[k]) spans = true;
         }
-        if (cnt < 2) return false;
+        if (!spans) return false;
     }
     return true;
+}
+
+// ---- numeric conjunction groups (ADR-0011) --------------------------------
+
+/// Result of the numeric group pass over one state: ov[i] is the joint
+/// verdict that replaces thread i's top leaf certificate (null: no decided
+/// group), ok lists the comb instances of the groups proven alive.
+const NumGroups = struct {
+    ov: [parser.MAX_THREADS_CAP]?Cert = @splat(null),
+    ok: [64]u32 = undefined,
+    n_ok: usize = 0,
+    /// Verdict of the last evaluated group (test hooks).
+    last: ?numcert.Verdict = null,
+};
+
+const MAX_GROUP_TERMS = 64;
+const MAX_GROUP_NEST = 8;
+const ThreadMask = u128;
+
+comptime {
+    std.debug.assert(parser.MAX_THREADS_CAP <= @bitSizeOf(ThreadMask));
+}
+
+fn isNumLeaf(f: *const parser.Frame) bool {
+    return switch (f.*) {
+        .num_v, .int_num, .num_range, .num_mult, .num_excl, .num_const => true,
+        else => false,
+    };
+}
+
+/// Lowest frame of the run of comb frames directly below a numeric leaf
+/// on top of the thread; null when there is no such run.
+fn numRunRoot(t: *const parser.Thread) ?usize {
+    if (t.len < 2) return null;
+    if (!isNumLeaf(&t.frames[t.len - 1])) return null;
+    var d: usize = t.len - 1;
+    while (d > 0 and t.frames[d - 1] == .comb) d -= 1;
+    if (d == t.len - 1) return null;
+    return d;
+}
+
+/// A conjunction of leaf threads: accepted (pos) and rejected (neg).
+const Term = struct { pos: ThreadMask = 0, neg: ThreadMask = 0 };
+
+const Dnf = struct {
+    terms: [MAX_GROUP_TERMS]Term = undefined,
+    n: usize = 0,
+
+    fn add(self: *Dnf, t: Term) error{TooLarge}!void {
+        if (t.pos & t.neg != 0) return; // a leaf both accepts and rejects
+        if (self.n >= MAX_GROUP_TERMS) return error.TooLarge;
+        self.terms[self.n] = t;
+        self.n += 1;
+    }
+
+    fn top() Dnf {
+        var d: Dnf = .{};
+        d.terms[0] = .{};
+        d.n = 1;
+        return d;
+    }
+
+    fn andWith(x: Dnf, y: Dnf) error{TooLarge}!Dnf {
+        var out: Dnf = .{};
+        for (x.terms[0..x.n]) |a| {
+            for (y.terms[0..y.n]) |b| try out.add(.{ .pos = a.pos | b.pos, .neg = a.neg | b.neg });
+        }
+        return out;
+    }
+
+    fn orWith(x: *Dnf, y: Dnf) error{TooLarge}!void {
+        for (y.terms[0..y.n]) |t| try x.add(t);
+    }
+};
+
+/// A comb instance (or one branch of it) within a numeric group: its DNF
+/// and the DNF of its negation; no is null where the negation is not
+/// modeled (a oneOf).
+const Pair = struct { yes: Dnf, no: ?Dnf };
+
+/// DNF of a comb instance whose branch parses are numeric leaves or nested
+/// instances (each thread = one leaf): allOf is the conjunction of its
+/// branches, oneOf the union over k of branch k with every other branch
+/// negated, if/then/else (if and then) or (not if and else); an absent
+/// branch is true, a branch with no live parse false. An empty DNF means
+/// the instance can never accept.
+fn groupDnf(g: *const grammar.Grammar, st: *const parser.State, members: ThreadMask, d: usize, nest: usize) error{TooLarge}!Pair {
+    if (nest > MAX_GROUP_NEST) return error.TooLarge;
+    var first: usize = 0;
+    while ((members >> @intCast(first)) & 1 == 0) first += 1;
+    const cf = st.threads[first].frames[d].comb;
+    const cb = &g.node(cf.node).comb;
+    var br: [16]Pair = undefined;
+    if (cb.branches.len > br.len) return error.TooLarge;
+    for (0..cb.branches.len) |b| {
+        if (cb.branches[b] == grammar.COMB_NONE) {
+            br[b] = .{ .yes = Dnf.top(), .no = .{} };
+            continue;
+        }
+        // A branch accepts when one of its alternatives does.
+        var yes: Dnf = .{};
+        var no: ?Dnf = Dnf.top();
+        var seen: ThreadMask = 0;
+        for (0..st.n) |j| {
+            const bit = @as(ThreadMask, 1) << @intCast(j);
+            if (members & bit == 0 or seen & bit != 0) continue;
+            const t = &st.threads[j];
+            if (t.frames[d].comb.branch != b) continue;
+            if (t.len == d + 2) {
+                try yes.add(.{ .pos = bit });
+                if (no) |*n| {
+                    var leaf_no: Dnf = .{};
+                    try leaf_no.add(.{ .neg = bit });
+                    n.* = try Dnf.andWith(n.*, leaf_no);
+                }
+                seen |= bit;
+                continue;
+            }
+            const inner = t.frames[d + 1].comb.inst;
+            var sub: ThreadMask = 0;
+            for (0..st.n) |k| {
+                const kb = @as(ThreadMask, 1) << @intCast(k);
+                if (members & kb == 0) continue;
+                const tk = &st.threads[k];
+                if (tk.len > d + 2 and tk.frames[d].comb.branch == b and tk.frames[d + 1].comb.inst == inner) sub |= kb;
+            }
+            seen |= sub;
+            const ip = try groupDnf(g, st, sub, d + 1, nest + 1);
+            try yes.orWith(ip.yes);
+            if (no) |*n| {
+                n.* = if (ip.no) |inn| try Dnf.andWith(n.*, inn) else {
+                    no = null;
+                    continue;
+                };
+            }
+        }
+        br[b] = .{ .yes = yes, .no = no };
+    }
+    const nb = cb.branches.len;
+    switch (cb.kind) {
+        .allof => {
+            var yes = Dnf.top();
+            var no: ?Dnf = .{};
+            for (br[0..nb]) |x| {
+                yes = try Dnf.andWith(yes, x.yes);
+                if (no) |*n| {
+                    if (x.no) |xn| try n.orWith(xn) else no = null;
+                }
+            }
+            return .{ .yes = yes, .no = no };
+        },
+        .oneof => {
+            var yes: Dnf = .{};
+            for (0..nb) |k| {
+                var term = br[k].yes;
+                for (0..nb) |j| {
+                    if (j == k) continue;
+                    term = try Dnf.andWith(term, br[j].no orelse return error.TooLarge);
+                }
+                try yes.orWith(term);
+            }
+            return .{ .yes = yes, .no = null };
+        },
+        .ifelse => {
+            const if_no = br[0].no orelse return error.TooLarge;
+            var yes = try Dnf.andWith(br[0].yes, br[1].yes);
+            try yes.orWith(try Dnf.andWith(if_no, br[2].yes));
+            var no: ?Dnf = null;
+            if (br[1].no != null and br[2].no != null) {
+                var n = try Dnf.andWith(br[0].yes, br[1].no.?);
+                try n.orWith(try Dnf.andWith(if_no, br[2].no.?));
+                no = n;
+            }
+            return .{ .yes = yes, .no = no };
+        },
+    }
+}
+
+/// Finds the maximal numeric allOf groups of the state (every thread of
+/// the instance is an allOf run ending in a numeric leaf) and decides each
+/// jointly (numcert.termVerdict over the DNF terms). `wit` receives the
+/// witness of the last alive group (test hooks).
+fn numGroups(g: *const grammar.Grammar, st: *const parser.State, a: std.mem.Allocator, out: *NumGroups, wit: ?*numcert.Witness, n_hint: ?i64) void {
+    var roots: [parser.MAX_THREADS_CAP]?usize = undefined;
+    var any = false;
+    for (st.threads[0..st.n], 0..) |*t, i| {
+        roots[i] = numRunRoot(t);
+        if (roots[i] != null) any = true;
+    }
+    if (!any) return;
+    var done: ThreadMask = 0;
+    for (st.threads[0..st.n], 0..) |*t, i| {
+        const d0 = roots[i] orelse continue;
+        if ((done >> @intCast(i)) & 1 != 0) continue;
+        const inst = t.frames[d0].comb.inst;
+        var members: ThreadMask = 0;
+        var valid = true;
+        for (st.threads[0..st.n], 0..) |*t2, j| {
+            const idx = combFrameIdx(t2, inst) orelse continue;
+            if (roots[j] == null or roots[j].? != idx) {
+                valid = false;
+                break;
+            }
+            members |= @as(ThreadMask, 1) << @intCast(j);
+        }
+        done |= members;
+        if (!valid) continue;
+        const dnf = (groupDnf(g, st, members, d0, 0) catch continue).yes;
+        var verdict: numcert.Verdict = .dead;
+        var leaves: [64]numcert.Lit = undefined;
+        for (dnf.terms[0..dnf.n]) |term| {
+            var nl: usize = 0;
+            var over = false;
+            for (0..st.n) |j| {
+                const bit = @as(ThreadMask, 1) << @intCast(j);
+                if ((term.pos | term.neg) & bit == 0) continue;
+                if (nl >= leaves.len) {
+                    over = true;
+                    break;
+                }
+                const tj = &st.threads[j];
+                leaves[nl] = .{ .f = &tj.frames[tj.len - 1], .code = if (term.pos & bit != 0) .pos else .neg };
+                nl += 1;
+            }
+            // No literal: every number completion qualifies.
+            const v: numcert.Verdict = if (over) .undecided else if (nl == 0) .alive else numcert.termVerdictLits(.{ .g = g, .a = a, .wit = wit, .n_hint = n_hint }, leaves[0..nl]);
+            if (v == .alive) {
+                verdict = .alive;
+                break;
+            }
+            if (v == .undecided) verdict = .undecided;
+        }
+        out.last = verdict;
+        const c: Cert = switch (verdict) {
+            .alive => .alive,
+            .dead => .dead,
+            .undecided => continue,
+        };
+        for (0..st.n) |j| {
+            if ((members >> @intCast(j)) & 1 != 0) out.ov[j] = c;
+        }
+        if (c != .alive) continue;
+        for (0..st.n) |j| {
+            if ((members >> @intCast(j)) & 1 == 0) continue;
+            const tj = &st.threads[j];
+            for (tj.frames[d0 .. tj.len - 1]) |*f| {
+                const in = f.comb.inst;
+                var known = false;
+                for (out.ok[0..out.n_ok]) |o| {
+                    if (o == in) known = true;
+                }
+                if (!known and out.n_ok < out.ok.len) {
+                    out.ok[out.n_ok] = in;
+                    out.n_ok += 1;
+                }
+            }
+        }
+    }
+}
+
+/// Test hook (src/test_hooks.zig): the joint verdict of the numeric group
+/// covering the state, with its witness; null when the state is not a
+/// single numeric allOf group or a plain numeric leaf.
+pub fn numGroupVerdictHinted(g: *const grammar.Grammar, st: *const parser.State, a: std.mem.Allocator, wit: *numcert.Witness, n_hint: ?i64) ?numcert.Verdict {
+    wit.* = .none;
+    if (st.n == 1 and st.threads[0].len >= 1 and isNumLeaf(&st.threads[0].frames[st.threads[0].len - 1]) and numRunRoot(&st.threads[0]) == null) {
+        const t = &st.threads[0];
+        const leaf: [1]*const parser.Frame = .{&t.frames[t.len - 1]};
+        return numcert.termVerdict(.{ .g = g, .a = a, .wit = wit, .n_hint = n_hint }, &leaf);
+    }
+    var ng: NumGroups = .{};
+    numGroups(g, st, a, &ng, wit, n_hint);
+    return ng.last;
 }
 
 fn certifyFrame(g: *const grammar.Grammar, f: *const parser.Frame, side: *parser.Side) Cert {
@@ -1721,7 +2282,7 @@ fn certifyFrameInner(g: *const grammar.Grammar, f: *const parser.Frame, side: *p
         .comb => .undecided,
         .seq => certSeq(g, f),
         .object => certObject(g, f),
-        .repeat => certRepeat(g, f),
+        .repeat => certRepeat(g, f, side),
         // Lazy alternation: the deferred (non-nullable) alternatives are
         // this frame's only futures; nullable ones were forked at push
         // time. Alive when some deferred alternative is known non-empty,
@@ -1770,9 +2331,10 @@ fn certSeq(g: *const grammar.Grammar, f: *const parser.Frame) Cert {
 /// REQUIRED properties (optional ones can always be skipped; keys are
 /// literals and always emittable, so only the value languages matter).
 /// Phase layout (stepThread .object): key/key_after_comma/sep carry the
-/// next candidate index in idx; key_lit/value owe the current prop cur
-/// (its value is not pushed yet in key_lit and certifies itself in the
-/// frames above in value) and continue from cur+1 (idx is clobbered with
+/// next candidate index in idx; key_lit owes one of the props still
+/// possible for the key bytes read, value owes the current prop cur (its
+/// value is not pushed yet in key_lit and certifies itself in the frames
+/// above in value); both continue from cur+1 (idx is clobbered with
 /// the key-literal offset in key_lit and restored to cur+1 on entering
 /// sep). key_after_comma additionally owes one more key: some candidate
 /// (props up to and including the first required one) must be emittable.
@@ -1784,7 +2346,22 @@ fn certObject(g: *const grammar.Grammar, f: *const parser.Frame) Cert {
     switch (f.object.phase) {
         .open, .key, .key_after_comma, .sep => {},
         .key_lit => {
-            switch (g.nonempty[props[f.object.cur].value]) {
+            // Any property still possible for the key bytes read; those
+            // after cur are optional up to the first required one, which
+            // the obligations from cur + 1 include.
+            var own: u8 = grammar.NE_NO;
+            var c: ?u32 = f.object.cur;
+            while (c) |j| : (c = parser.nextKeyCandidate(g, props, j, f.object.idx, null)) {
+                switch (g.nonempty[props[j].value]) {
+                    grammar.NE_YES => {
+                        own = grammar.NE_YES;
+                        break;
+                    },
+                    grammar.NE_NO => {},
+                    else => own = grammar.NE_UNKNOWN,
+                }
+            }
+            switch (own) {
                 grammar.NE_YES => {},
                 grammar.NE_NO => return .dead,
                 else => saw_unknown = true,
@@ -1824,12 +2401,12 @@ fn certObject(g: *const grammar.Grammar, f: *const parser.Frame) Cert {
 }
 
 /// Contains-deficit doom from the in-flight element: a repeat frame with an
-/// unmet minContains whose in-flight element is rooted in a machine whose
-/// language is disjoint from a numeric-only contains schema
-/// (int_v/num_v/int_num/num_const/num_excl/num_range/num_mult accept only
-/// JSON numbers; strings, arrays, objects and true/false/null literals
-/// never match). The remaining slots after the in-flight element must then
-/// cover the deficit on their own; when they cannot, no completion of this
+/// unmet minContains whose in-flight element started with a byte no value
+/// of the contains schema starts with (the element's root machine bounds
+/// that byte; comb frames between the repeat and the root are skipped,
+/// since the element value is the same on every branch thread). The
+/// element then never matches, and the remaining slots after it must cover
+/// the deficit on their own; when they cannot, no completion of this
 /// thread exists (the parser taps the contains reparse at element close and
 /// rejects the final ']').
 fn repeatContainsDoom(g: *const grammar.Grammar, t: *const parser.Thread) bool {
@@ -1839,13 +2416,59 @@ fn repeatContainsDoom(g: *const grammar.Grammar, t: *const parser.Thread) bool {
         const cn = rep.contains orelse continue;
         if (f.repeat.matched >= rep.min_contains) continue;
         if (rep.max == grammar.UNBOUNDED) continue;
-        if (d + 1 >= t.len) continue; // quiescent: certRepeat's deficit rule
-        if (!numericOnlyNode(g, cn)) continue;
-        if (!rootDisjointFromNumbers(g, &t.frames[d + 1])) continue;
+        // Quiescent repeat: certRepeat's deficit rule applies instead.
+        const r = elemRoot(t, d) orelse continue;
+        const started = frameFirstBytes(g, &t.frames[r]) orelse continue;
+        var common = g.firstBytes(cn, 0);
+        common.setIntersection(started);
+        if (common.count() != 0) continue;
         const left = rep.max -| (f.repeat.count + 1);
         if (f.repeat.matched + left < rep.min_contains) return true;
     }
     return false;
+}
+
+/// Index of the first non-comb frame above frame `d`: the root machine of
+/// the value in flight there. Null when nothing but comb frames sits above
+/// (no value in flight, or a completed branch awaiting its boundary).
+fn elemRoot(t: *const parser.Thread, d: usize) ?usize {
+    var r = d + 1;
+    while (r < t.len and t.frames[r] == .comb) r += 1;
+    return if (r < t.len) r else null;
+}
+
+/// First bytes of the value machine rooted at frame `f` (a superset of the
+/// byte it already consumed); null for frames of other kinds.
+fn frameFirstBytes(g: *const grammar.Grammar, f: *const parser.Frame) ?grammar.ByteSet {
+    var out = grammar.ByteSet.empty;
+    switch (f.*) {
+        .str, .str_pat, .str_excl => out.set('"'),
+        .repeat => out.set('['),
+        .object, .open_obj => out.set('{'),
+        .int_v, .num_v, .int_num, .num_const, .not_int_num, .num_excl, .num_range, .num_mult => return grammar.number_first,
+        .literal => |lf| return g.firstBytes(lf.node, 0),
+        .lit_trie => |tf| return g.firstBytes(tf.gnode, 0),
+        else => return null,
+    }
+    return out;
+}
+
+/// A closable repeat frame with an element in flight still needs that
+/// element accepted when it closes: uniqueItems wants a value not seen yet
+/// and a reached maxContains a value that does not match `contains`.
+/// Proven only for a plain string element that can still grow (it then has
+/// more completions than the seen set holds).
+fn repeatInFlightUnproven(g: *const grammar.Grammar, t: *const parser.Thread, d: usize) bool {
+    const f = &t.frames[d].repeat;
+    const rep = &g.node(f.node).repeat;
+    const at_max_contains = rep.contains != null and rep.max_contains != grammar.UNBOUNDED and
+        f.matched >= rep.max_contains;
+    if (!rep.unique and !at_max_contains) return false;
+    if (at_max_contains or d + 2 != t.len) return true;
+    return switch (t.frames[d + 1]) {
+        .str => |sf| !((sf.state == .open or sf.state == .normal) and sf.count < g.node(sf.node).str.max_len),
+        else => true,
+    };
 }
 
 /// Node accepts only JSON numbers.
@@ -1916,6 +2539,26 @@ fn depObjectSchema(g: *const grammar.Grammar, node: grammar.NodeId) ?grammar.Nod
 /// that key to numbers, while the value's root machine can never produce
 /// one. The close-time dep reparse (ADR-0006 D2 capture) then always fails:
 /// the thread is dead. Key name comes from the retained key chunk.
+/// A triggered schema-kind dependency must accept the whole object; when
+/// its parser already refuses the captured object prefix, no completion
+/// can close the object.
+fn openObjDepPrefixDoom(g: *const grammar.Grammar, side: *parser.Side, t: *const parser.Thread) bool {
+    for (t.frames[0..t.len]) |*f| {
+        if (f.* != .open_obj) continue;
+        const of = &f.open_obj;
+        const on = &g.node(of.node).open_obj;
+        if (!on.capture or of.ann == 0) continue;
+        const bytes = side.chunkAt(of.ann).payload.items;
+        for (on.deps) |dep| {
+            if (dep.kind != .schema) continue;
+            if (!seenContainsC(side, of.seen, g.literalBytes(dep.trigger))) continue;
+            const ok = parser.nodeAcceptsPrefix(g, side, dep.schema, bytes) catch continue;
+            if (!ok) return true;
+        }
+    }
+    return false;
+}
+
 fn openObjDepValueDoom(g: *const grammar.Grammar, side: *parser.Side, t: *const parser.Thread) bool {
     for (t.frames[0..t.len], 0..) |*f, d| {
         if (f.* != .open_obj) continue;
@@ -1951,14 +2594,28 @@ fn openObjDepValueDoom(g: *const grammar.Grammar, side: *parser.Side, t: *const 
 /// owed; their slot schemas must be known non-empty. uniqueItems freshness
 /// and contains-matching of future elements are content-dependent, so
 /// those stay undecided (the parser already kills hopeless deficits at
-/// element start); only exact impossibility is certified dead here.
-fn certRepeat(g: *const grammar.Grammar, f: *const parser.Frame) Cert {
+/// element start); only exact impossibility is certified dead here. A
+/// finite uniqueItems element language (uniq_finite) is exhausted when the
+/// seen set plus the owed slots outnumber its distinct values.
+fn certRepeat(g: *const grammar.Grammar, f: *const parser.Frame, side: *parser.Side) Cert {
     const rep = g.node(f.repeat.node).repeat;
     const closable = f.repeat.count >= rep.min and
         (rep.contains == null or f.repeat.matched >= rep.min_contains);
     if (closable and f.repeat.phase != .body_after_comma) return .alive;
     // At least one more element is owed (deficit or post-comma mandate).
     if (f.repeat.count >= rep.max) return .dead; // no room for it
+    // Slots count..upto-1 must each accept a value. The slot in progress
+    // (count, when element frames sit above) is included: an empty-language
+    // slot can never complete, and a non-empty one composes with its own
+    // frames' certificates.
+    const upto: usize = if (f.repeat.phase == .body_after_comma)
+        @max(rep.min, f.repeat.count + 1)
+    else
+        rep.min;
+    if (rep.unique and rep.uniq_finite > 0) {
+        const owed: u64 = upto -| f.repeat.count;
+        if (@as(u64, seenCountC(side, f.repeat.seen)) + owed > rep.uniq_finite) return .dead;
+    }
     if (g.nonempty.len == 0) return .undecided;
     if (rep.contains) |cn| {
         if (f.repeat.matched < rep.min_contains) {
@@ -1971,16 +2628,8 @@ fn certRepeat(g: *const grammar.Grammar, f: *const parser.Frame) Cert {
         }
     }
     // uniqueItems: a new element must be fresh; the seen set is
-    // content-dependent (exhaustion is enforced at element start).
+    // content-dependent.
     if (rep.unique) return .undecided;
-    // Slots count..upto-1 must each accept a value. The slot in progress
-    // (count, when element frames sit above) is included: an empty-language
-    // slot can never complete, and a non-empty one composes with its own
-    // frames' certificates.
-    const upto: usize = if (f.repeat.phase == .body_after_comma)
-        @max(rep.min, f.repeat.count + 1)
-    else
-        rep.min;
     var saw_unknown = false;
     var i: usize = f.repeat.count;
     while (i < upto) : (i += 1) {
@@ -1993,6 +2642,24 @@ fn certRepeat(g: *const grammar.Grammar, f: *const parser.Frame) Cert {
     }
     return if (saw_unknown) .undecided else .alive;
 }
+
+/// Declared prop i of an open-object frame can still be dispatched: at or
+/// after next_idx and, on an order-free node (next_idx stays 0 there),
+/// absent from the seen set.
+fn propPending(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, i: usize) bool {
+    if (i < of.next_idx) return false;
+    if (!on.any_order) return true;
+    const kl = g.literalBytes(on.props[i].key);
+    return !seenContainsC(side, of.seen, kl[1 .. kl.len - 2]);
+}
+
+/// The dispatch window of a frame ends at the first pending required prop:
+/// in schema order the props beyond it are reachable only over a skip that
+/// kills the thread. An order-free node has no such barrier.
+fn windowEnds(on: *const grammar.OpenObjNode, p: grammar.Prop) bool {
+    return p.required and !on.any_order;
+}
+
 /// the payload format is [count u32] then entries [len u32][raw key bytes]
 /// sorted by (len, bytes).
 fn seenContainsC(side: *const parser.Side, h: u32, key: []const u8) bool {
@@ -2144,11 +2811,7 @@ fn rawKeyContains(kb: []const u8, needle: []const u8) ?bool {
 
 /// Is `name` (raw bytes) one of the declared property spellings?
 fn declaredName(on: *const grammar.OpenObjNode, g: *const grammar.Grammar, name: []const u8) bool {
-    for (on.props) |p| {
-        const kl = g.literalBytes(p.key);
-        if (std.mem.eql(u8, kl[1 .. kl.len - 2], name)) return true;
-    }
-    return false;
+    return declaredPropValue(g, on, name) != null;
 }
 
 /// Dispatch value node of an undeclared key spelled `name` (raw bytes):
@@ -2177,35 +2840,38 @@ fn mergePath(ne: u8, witness: *bool, witness_unknown: *bool) void {
     }
 }
 
+/// Merge one undeclared dispatch side (freshUndeclaredKey) of value
+/// non-emptiness `ne` into a witness pair.
+fn mergeKeyPath(kp: KeyPath, ne: u8, witness: *bool, witness_unknown: *bool) void {
+    switch (kp) {
+        .yes => mergePath(ne, witness, witness_unknown),
+        .unknown => witness_unknown.* = true,
+        .no => {},
+    }
+}
+
 /// Can a FRESH undeclared key (no typed prefix) dispatch to a non-empty
-/// value schema? A pattern-matched key exists iff the pattern language is
-/// non-empty (sticky accept then makes the matching spellings infinite, so
-/// one avoids the declared names and the seen set); a non-matching key
-/// exists iff the empty key does not match - pathological near-universal
-/// patterns whose non-matching remnant is finite and taken are left
-/// undecided.
+/// value schema? With a key pattern DFA both dispatch sides are counted
+/// exactly (freshUndeclaredKey): the matching keys and the non-matching
+/// keys may each be finite and taken (`^line[1-3]$`; the remnant of a
+/// near-universal pattern). A literal pattern (a fixed non-empty
+/// substring) leaves infinitely many keys on both sides - appending the
+/// needle always matches, repeating a code point other than its first
+/// never does - and the taken keys are finite.
 fn freshUndeclaredPath(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode) KeyPath {
     var witness = false;
     var unknown = false;
     if (on.pattern_dfa) |pd| {
         const descr = g.pat_len[of.node] orelse return .unknown;
-        if (descr.reachableIn(pd.start(), 0, null)) mergePath(g.nonempty[on.pattern_value], &witness, &unknown);
-        if (!pd.isAccept(pd.start()) and !declaredName(on, g, "") and
-            !seenContainsC(side, of.seen, ""))
-        {
-            mergePath(g.nonempty[on.value], &witness, &unknown);
-        } else if (!pd.isAccept(pd.start()) and g.nonempty[on.value] == grammar.NE_UNKNOWN) {
-            unknown = true;
+        if (g.nonempty[on.pattern_value] != grammar.NE_NO) {
+            mergeKeyPath(freshUndeclaredKey(g, side, of, on, pd, descr, "", pd.start(), null, .hit), g.nonempty[on.pattern_value], &witness, &unknown);
+        }
+        if (g.nonempty[on.value] != grammar.NE_NO) {
+            mergeKeyPath(freshUndeclaredKey(g, side, of, on, pd, descr, "", pd.start(), null, .miss), g.nonempty[on.value], &witness, &unknown);
         }
     } else if (on.pattern_lit) |pl| {
         mergePath(g.nonempty[on.pattern_value], &witness, &unknown);
-        if (g.literalBytes(pl).len != 0) {
-            if (!declaredName(on, g, "") and !seenContainsC(side, of.seen, "")) {
-                mergePath(g.nonempty[on.value], &witness, &unknown);
-            } else if (g.nonempty[on.value] == grammar.NE_UNKNOWN) {
-                unknown = true;
-            }
-        }
+        if (g.literalBytes(pl).len != 0) mergePath(g.nonempty[on.value], &witness, &unknown);
     } else {
         mergePath(g.nonempty[on.value], &witness, &unknown);
     }
@@ -2213,9 +2879,639 @@ fn freshUndeclaredPath(g: *const grammar.Grammar, side: *parser.Side, of: *const
     return if (unknown) .unknown else .no;
 }
 
+/// Which dispatch side of a key pattern: the keys it matches (pattern
+/// value) or the keys it does not match (fallback value).
+const KeySide = enum { hit, miss };
+
+/// Is there a key among the completions of the raw prefix kb (DFA state q;
+/// with `window`, the completions whose next code point lies in it - a key
+/// cut inside a UTF-8 sequence) on the dispatch side `want` that is fresh?
+/// Not fresh are the seen keys, the declared names (they dispatch to their
+/// declared prop) and the undeclared dependency triggers whose dispatch
+/// leads nowhere (undeclaredTriggerCert: a dead one is taken, an
+/// undecided one may be). In spec-v1 every decoded key has exactly one raw
+/// spelling (canonical escapes), so the completions on that side and the
+/// taken keys among them compare by count (dfaKeyCount, exact): more
+/// completions than possibly-taken keys leaves a fresh one, no more than
+/// the surely-taken ones leaves none, anything between is unknown - as is
+/// a key that does not decode or a count without memory. An empty or
+/// exhausted analysis is never read as "no key".
+fn freshUndeclaredKey(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, pd: *const pattern.Dfa, descr: *const pattern.PatLenDescr, kb: []const u8, q: pattern.RunState, window: ?CpWindow, want: KeySide) KeyPath {
+    var taken: u64 = 0;
+    var maybe: u64 = 0;
+    // Seen keys (distinct by construction).
+    if (of.seen != 0) {
+        const items = side.chunkAt(of.seen).payload.items;
+        if (items.len >= 4) {
+            const count = std.mem.readInt(u32, items[0..4], .little);
+            var off: usize = 4;
+            var n: u32 = 0;
+            while (n < count) : (n += 1) {
+                if (off + 4 > items.len) return .unknown;
+                const len = std.mem.readInt(u32, items[off..][0..4], .little);
+                off += 4;
+                if (off + len > items.len) return .unknown;
+                switch (takenCompletion(pd, items[off .. off + len], kb, window, want)) {
+                    .yes => taken += 1,
+                    .unknown => return .unknown,
+                    .no => {},
+                }
+                off += len;
+            }
+        }
+    }
+    for (on.props) |p| {
+        const kl = g.literalBytes(p.key);
+        const name = kl[1 .. kl.len - 2];
+        if (seenContainsC(side, of.seen, name)) continue;
+        switch (takenCompletion(pd, name, kb, window, want)) {
+            .yes => taken += 1,
+            .unknown => return .unknown,
+            .no => {},
+        }
+    }
+    for (on.deps, 0..) |dep, di| {
+        const trigger = g.literalBytes(dep.trigger);
+        if (declaredName(on, g, trigger) or seenContainsC(side, of.seen, trigger)) continue;
+        // One count per trigger name (several entries may share it).
+        var dup = false;
+        for (on.deps[0..di]) |prev| {
+            if (std.mem.eql(u8, g.literalBytes(prev.trigger), trigger)) dup = true;
+        }
+        if (dup) continue;
+        const fate = undeclaredTriggerCert(g, side, of, on, trigger);
+        if (fate == .alive) continue;
+        switch (takenCompletion(pd, trigger, kb, window, want)) {
+            .yes => if (fate == .dead) {
+                taken += 1;
+            } else {
+                maybe += 1;
+            },
+            .unknown => return .unknown,
+            .no => {},
+        }
+    }
+    const total = dfaKeyCount(side.a, pd, descr, q, window, want, taken + maybe + 1) orelse return .unknown;
+    if (total > taken + maybe) return .yes;
+    if (total <= taken) return .no;
+    return .unknown;
+}
+
+const CpWindow = struct { lo: u32, hi: u32 };
+
+/// Is the raw key k a completion of the raw prefix kb (with `window`: its
+/// next code point lies in the window) on the dispatch side `want`?
+fn takenCompletion(pd: *const pattern.Dfa, k: []const u8, kb: []const u8, window: ?CpWindow, want: KeySide) KeyPath {
+    if (!std.mem.startsWith(u8, k, kb)) return .no;
+    if (window) |w| {
+        if (k.len == kb.len) return .no;
+        var dec = KeyDecoder{ .kb = k[kb.len..] };
+        const cp = dec.next() orelse return .unknown;
+        if (cp < w.lo or cp > w.hi) return .no;
+    }
+    const m = dfaKeyMatches(pd, k) orelse return .unknown;
+    return if (m == (want == .hit)) .yes else .no;
+}
+
+/// Unicode scalar values in [lo, hi] (no surrogates, at most U+10FFFF):
+/// each is one key code point with one canonical raw spelling.
+fn scalarWidth(lo: u32, hi: u32) u64 {
+    const top = @min(hi, 0x10FFFF);
+    if (lo > top) return 0;
+    var w: u64 = @as(u64, top - lo) + 1;
+    const s_lo = @max(lo, 0xD800);
+    const s_hi = @min(top, 0xDFFF);
+    if (s_lo <= s_hi) w -= @as(u64, s_hi - s_lo) + 1;
+    return w;
+}
+
+fn satMulAdd(acc: u64, w: u64, n: u64, cap: u64) u64 {
+    const prod = std.math.mul(u64, w, n) catch return cap;
+    const sum = std.math.add(u64, acc, prod) catch return cap;
+    return @min(sum, cap);
+}
+
+/// A DFA state some continuation still takes to an accept state.
+fn liveKeyState(pd: *const pattern.Dfa, descr: *const pattern.PatLenDescr, s: pattern.RunState) bool {
+    return !pd.dead(s) and descr.reachableIn(s, 0, null);
+}
+
+/// Number of decoded strings c (code point sequences) with q --c--> a
+/// state that accepts (`hit`) or does not accept (`miss`), saturated at
+/// `cap`; with `window`, only the strings whose first code point lies in
+/// it (the empty completion excluded). Exact, no search budget:
+/// - a code point without a live transition (none at all, or into a state
+///   no accept state is reachable from) leaves the pattern for good: on
+///   the miss side it starts infinitely many strings (cap), on the hit
+///   side none;
+/// - otherwise the strings follow live transitions over the states R
+///   reachable from q; the states of R that can still reach a counted
+///   state (P) carry the count, a cycle inside P makes it infinite (cap),
+///   and without one the count sums the weighted paths into the counted
+///   states of P (topological order).
+/// Null when the work arrays cannot be allocated.
+fn dfaKeyCount(a: std.mem.Allocator, pd: *const pattern.Dfa, descr: *const pattern.PatLenDescr, q: pattern.RunState, window: ?CpWindow, want: KeySide, cap: u64) ?u64 {
+    const miss = want == .miss;
+    if (!liveKeyState(pd, descr, q)) {
+        // Every completion misses.
+        if (!miss) return 0;
+        if (window) |w| return if (scalarWidth(w.lo, w.hi) > 0) cap else 0;
+        return cap;
+    }
+    const n = pd.states.len;
+    const IN_R: u8 = 1;
+    const IN_P: u8 = 2;
+    const flags = a.alloc(u8, n) catch return null;
+    defer a.free(flags);
+    @memset(flags, 0);
+    const order = a.alloc(u32, n) catch return null;
+    defer a.free(order);
+    const paths = a.alloc(u64, n) catch return null;
+    defer a.free(paths);
+    @memset(paths, 0);
+    var len: usize = 0;
+    // Roots: q itself, or the targets of its transitions inside the window
+    // weighted by the code points of the overlap.
+    if (window) |w| {
+        var next: u32 = w.lo;
+        for (pd.states[q].trans) |t| {
+            if (t.hi < w.lo or t.lo > w.hi) continue;
+            const lo = @max(t.lo, w.lo);
+            const hi = @min(t.hi, w.hi);
+            if (miss and lo > next and scalarWidth(next, lo - 1) > 0) return cap;
+            next = hi +| 1;
+            const width = scalarWidth(lo, hi);
+            if (width == 0) continue;
+            if (!liveKeyState(pd, descr, t.to)) {
+                if (miss) return cap;
+                continue;
+            }
+            paths[t.to] = satMulAdd(paths[t.to], width, 1, cap);
+            if (flags[t.to] & IN_R == 0) {
+                flags[t.to] |= IN_R;
+                order[len] = t.to;
+                len += 1;
+            }
+        }
+        if (miss and next <= w.hi and scalarWidth(next, w.hi) > 0) return cap;
+    } else {
+        paths[q] = 1;
+        flags[q] |= IN_R;
+        order[0] = q;
+        len = 1;
+    }
+    // R, breadth first over live transitions; reverse edge counts.
+    const rstart = a.alloc(u32, n + 1) catch return null;
+    defer a.free(rstart);
+    @memset(rstart, 0);
+    var i: usize = 0;
+    while (i < len) : (i += 1) {
+        const s = order[i];
+        var next: u32 = 0;
+        for (pd.states[s].trans) |t| {
+            if (miss and t.lo > next and scalarWidth(next, t.lo - 1) > 0) return cap;
+            next = t.hi +| 1;
+            if (scalarWidth(t.lo, t.hi) == 0) continue;
+            if (!liveKeyState(pd, descr, t.to)) {
+                if (miss) return cap;
+                continue;
+            }
+            rstart[t.to + 1] += 1;
+            if (flags[t.to] & IN_R == 0) {
+                flags[t.to] |= IN_R;
+                order[len] = t.to;
+                len += 1;
+            }
+        }
+        if (miss and next <= 0x10FFFF and scalarWidth(next, 0x10FFFF) > 0) return cap;
+    }
+    for (0..n) |k| rstart[k + 1] += rstart[k];
+    const redge = a.alloc(u32, rstart[n]) catch return null;
+    defer a.free(redge);
+    const fill = a.alloc(u32, n) catch return null;
+    defer a.free(fill);
+    @memcpy(fill, rstart[0..n]);
+    for (order[0..len]) |s| {
+        for (pd.states[s].trans) |t| {
+            if (scalarWidth(t.lo, t.hi) == 0 or !liveKeyState(pd, descr, t.to)) continue;
+            redge[fill[t.to]] = s;
+            fill[t.to] += 1;
+        }
+    }
+    // P: backwards from the counted states of R (fill reused as a stack).
+    var top: usize = 0;
+    for (order[0..len]) |s| {
+        if (pd.isAccept(s) == miss) continue;
+        flags[s] |= IN_P;
+        fill[top] = s;
+        top += 1;
+    }
+    while (top > 0) {
+        top -= 1;
+        const s = fill[top];
+        for (redge[rstart[s]..rstart[s + 1]]) |p| {
+            if (flags[p] & IN_P != 0) continue;
+            flags[p] |= IN_P;
+            fill[top] = p;
+            top += 1;
+        }
+    }
+    // Topological order of P (Kahn; the in-degrees reuse rstart, every
+    // predecessor of a P state is in P). A state left over sits on a cycle.
+    var p_count: usize = 0;
+    for (order[0..len]) |s| {
+        if (flags[s] & IN_P != 0) p_count += 1;
+    }
+    for (order[0..len]) |s| {
+        if (flags[s] & IN_P == 0) continue;
+        rstart[s] = 0;
+    }
+    for (order[0..len]) |s| {
+        if (flags[s] & IN_P == 0) continue;
+        for (pd.states[s].trans) |t| {
+            if (scalarWidth(t.lo, t.hi) == 0 or !liveKeyState(pd, descr, t.to)) continue;
+            if (flags[t.to] & IN_P != 0) rstart[t.to] += 1;
+        }
+    }
+    top = 0;
+    for (order[0..len]) |s| {
+        if (flags[s] & IN_P != 0 and rstart[s] == 0) {
+            fill[top] = s;
+            top += 1;
+        }
+    }
+    var done: usize = 0;
+    var total: u64 = 0;
+    while (top > 0) {
+        top -= 1;
+        const s = fill[top];
+        done += 1;
+        if (pd.isAccept(s) != miss) total = satMulAdd(total, 1, paths[s], cap);
+        for (pd.states[s].trans) |t| {
+            const width = scalarWidth(t.lo, t.hi);
+            if (width == 0 or !liveKeyState(pd, descr, t.to)) continue;
+            if (flags[t.to] & IN_P == 0) continue;
+            paths[t.to] = satMulAdd(paths[t.to], width, paths[s], cap);
+            rstart[t.to] -= 1;
+            if (rstart[t.to] == 0) {
+                fill[top] = t.to;
+                top += 1;
+            }
+        }
+    }
+    if (done < p_count) return cap;
+    return @min(total, cap);
+}
+
+/// Dependency doom of missing names (the parser.depsResidual check looked
+/// ahead). A name that is neither seen nor `x` (the key a witness check
+/// dispatches first) is doomed when no completion can dispatch it any
+/// more: a declared name behind the skip `k` of an ordered node, a banned
+/// trigger, an empty value schema, a forbidden undeclared name or an
+/// exhausted property count - or when, as a trigger, it fires a
+/// dependentRequired entry with a doomed missing name: its dispatch fails
+/// or leaves that name undischargeable. A least fixpoint over the triggers
+/// (marks per entry), so a dependency cycle alone dooms nothing. Every
+/// condition only grows as keys are dispatched and the skip advances, and
+/// a doomed name never gets dispatched, so a doomed name stays doomed. The
+/// `loose` variant also counts a value schema that may be empty (or a name
+/// that does not decode); doomed only loosely is undecided.
+const Doom = struct {
+    g: *const grammar.Grammar,
+    side: *const parser.Side,
+    of: *const parser.OpenObjFrame,
+    on: *const grammar.OpenObjNode,
+    k: usize,
+    x: ?[]const u8,
+    loose: bool,
+    marks: []bool = &.{},
+    oom: bool = false,
+
+    fn init(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, k: usize, x: ?[]const u8, loose: bool) Doom {
+        var d: Doom = .{ .g = g, .side = side, .of = of, .on = on, .k = k, .x = x, .loose = loose };
+        d.marks = side.a.alloc(bool, on.deps.len) catch {
+            d.oom = true;
+            return d;
+        };
+        @memset(d.marks, false);
+        var changed = true;
+        while (changed) {
+            changed = false;
+            for (on.deps, 0..) |dep, di| {
+                if (d.marks[di] or dep.kind != .required) continue;
+                const t = g.literalBytes(dep.trigger);
+                if (d.seen(t)) continue;
+                for (dep.names) |nl| {
+                    const m = g.literalBytes(nl);
+                    if (std.mem.eql(u8, m, t) or d.seen(m)) continue;
+                    if (!d.base(m) and !d.marked(m)) continue;
+                    for (on.deps, 0..) |dep2, dj| {
+                        if (std.mem.eql(u8, g.literalBytes(dep2.trigger), t)) d.marks[dj] = true;
+                    }
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        return d;
+    }
+
+    fn deinit(d: *Doom) void {
+        if (!d.oom) d.side.a.free(d.marks);
+    }
+
+    fn seen(d: *const Doom, name: []const u8) bool {
+        if (d.x) |x| {
+            if (std.mem.eql(u8, x, name)) return true;
+        }
+        return seenContainsC(d.side, d.of.seen, name);
+    }
+
+    fn emptyValue(d: *const Doom, v: grammar.NodeId) bool {
+        return switch (d.g.nonempty[v]) {
+            grammar.NE_NO => true,
+            grammar.NE_UNKNOWN => d.loose,
+            else => false,
+        };
+    }
+
+    /// Doomed on its own (no dependency entry involved but a ban).
+    fn base(d: *const Doom, name: []const u8) bool {
+        for (d.on.deps) |dep| {
+            if (dep.kind == .ban and std.mem.eql(u8, d.g.literalBytes(dep.trigger), name)) return true;
+        }
+        if (declaredIndex(d.g, d.on, name)) |idx| {
+            if (!d.on.any_order and idx < d.k) return true;
+            return d.emptyValue(d.on.props[idx].value);
+        }
+        if (d.on.names_forbidden) return true;
+        if (seenCountC(d.side, d.of.seen) >= d.on.max_props) return true;
+        const v = extraKeyValue(d.g, d.on, name) orelse return d.loose;
+        return d.emptyValue(v);
+    }
+
+    fn marked(d: *const Doom, name: []const u8) bool {
+        for (d.on.deps, 0..) |dep, di| {
+            if (d.marks[di] and std.mem.eql(u8, d.g.literalBytes(dep.trigger), name)) return true;
+        }
+        return false;
+    }
+
+    /// Is the missing name doomed? Without memory for the marks the answer
+    /// is the safe one: never doomed strictly, always loosely.
+    fn doomed(d: *const Doom, name: []const u8) bool {
+        if (d.oom) return d.loose;
+        return d.base(name) or d.marked(name);
+    }
+};
+
+/// Fate of missing names in one dispatch state (skip k, `x` dispatched
+/// first): dead when doomed, undecided when doomed only loosely, alive
+/// otherwise.
+const DoomPair = struct {
+    strict: Doom,
+    loose: Doom,
+
+    fn init(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, k: usize, x: ?[]const u8) DoomPair {
+        return .{
+            .strict = Doom.init(g, side, of, on, k, x, false),
+            .loose = Doom.init(g, side, of, on, k, x, true),
+        };
+    }
+
+    fn deinit(p: *DoomPair) void {
+        p.strict.deinit();
+        p.loose.deinit();
+    }
+
+    fn cert(p: *const DoomPair, name: []const u8) Cert {
+        if (p.strict.doomed(name)) return .dead;
+        if (p.loose.doomed(name)) return .undecided;
+        return .alive;
+    }
+};
+
+/// Fate of dispatching the undeclared key `trigger` now: dead when a ban
+/// refuses it or a name its dependentRequired entries fire is doomed once
+/// it is seen (Doom: the dispatch fails at parser.depsResidual, or the
+/// name can never be discharged); undecided when such a name is doomed
+/// only loosely or a schema-kind entry fires; alive otherwise.
+fn undeclaredTriggerCert(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, trigger: []const u8) Cert {
+    var fires = false;
+    for (on.deps) |dep| {
+        if (std.mem.eql(u8, g.literalBytes(dep.trigger), trigger)) fires = true;
+    }
+    if (!fires) return .alive;
+    var fate = DoomPair.init(g, side, of, on, of.next_idx, trigger);
+    defer fate.deinit();
+    var unknown = false;
+    for (on.deps) |dep| {
+        if (!std.mem.eql(u8, g.literalBytes(dep.trigger), trigger)) continue;
+        switch (dep.kind) {
+            .ban => return .dead,
+            .schema => {
+                unknown = true;
+                continue;
+            },
+            .required => {},
+        }
+        for (dep.names) |nl| {
+            const name = g.literalBytes(nl);
+            if (fate.strict.seen(name)) continue;
+            switch (fate.cert(name)) {
+                .alive => {},
+                .dead => return .dead,
+                .undecided => unknown = true,
+            }
+        }
+    }
+    return if (unknown) .undecided else .alive;
+}
+
+/// A declared prop at index i is a completion witness when its value may
+/// be non-empty, no ban refuses its name and no missing name is doomed
+/// once it is dispatched (Doom with the skip past i and its own name seen:
+/// a skipped optional name before it never comes back): the names of the
+/// entries fired already and of those its own name fires
+/// (parser.depsResidual checks both at its dispatch), and the obligations
+/// still pending after it.
+fn mergeDeclaredWitness(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, i: usize, witness: *bool, witness_unknown: *bool) void {
+    var unknown = false;
+    switch (g.nonempty[on.props[i].value]) {
+        grammar.NE_NO => return,
+        grammar.NE_UNKNOWN => unknown = true,
+        else => {},
+    }
+    if (on.deps.len != 0) {
+        const kl = g.literalBytes(on.props[i].key);
+        const own = kl[1 .. kl.len - 2];
+        var fate = DoomPair.init(g, side, of, on, i + 1, own);
+        defer fate.deinit();
+        for (on.deps) |dep| {
+            const trigger = g.literalBytes(dep.trigger);
+            const by_own = std.mem.eql(u8, trigger, own);
+            if (dep.kind == .ban and by_own) return;
+            if (dep.kind != .required) continue;
+            if (!by_own and !seenContainsC(side, of.seen, trigger)) continue;
+            for (dep.names) |nl| {
+                const name = g.literalBytes(nl);
+                if (fate.strict.seen(name)) continue;
+                switch (fate.cert(name)) {
+                    .alive => {},
+                    .dead => return,
+                    .undecided => unknown = true,
+                }
+            }
+        }
+        // The obligations still pending after the dispatch: a required prop
+        // or a missing extra_required name that the dispatch dooms (a
+        // dependency name it skips) can never be discharged.
+        const from = if (on.any_order) 0 else i + 1;
+        for (on.props[from..], from..) |p, j| {
+            if (j == i or !p.required or !propPending(g, side, of, on, j)) continue;
+            const kj = g.literalBytes(p.key);
+            switch (fate.cert(kj[1 .. kj.len - 2])) {
+                .alive => {},
+                .dead => return,
+                .undecided => unknown = true,
+            }
+        }
+        for (on.extra_required) |lit| {
+            const name = g.literalBytes(lit);
+            if (fate.strict.seen(name)) continue;
+            switch (fate.cert(name)) {
+                .alive => {},
+                .dead => return,
+                .undecided => unknown = true,
+            }
+        }
+    }
+    if (unknown) witness_unknown.* = true else witness.* = true;
+}
+
+/// A missing extra_required name (an undeclared key) with value node v as
+/// a dispatch witness: its value schema may be non-empty and dispatching
+/// it does not lead nowhere (undeclaredTriggerCert).
+fn mergeExtraWitness(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, name: []const u8, v: grammar.NodeId, witness: *bool, witness_unknown: *bool) void {
+    if (g.nonempty[v] == grammar.NE_NO) return;
+    switch (undeclaredTriggerCert(g, side, of, on, name)) {
+        .dead => {},
+        .undecided => witness_unknown.* = true,
+        .alive => mergePath(g.nonempty[v], witness, witness_unknown),
+    }
+}
+
+/// Fate of a pending obligation name (a required declared prop, a missing
+/// extra_required name) in the current state, `fate` built for it (skip
+/// next_idx, nothing dispatched first): a doomed name can never be
+/// dispatched, so the object can never close. Only nodes with dependency
+/// entries add anything to the value checks of the callers.
+fn obligationCert(on: *const grammar.OpenObjNode, fate: *const DoomPair, name: []const u8) Cert {
+    if (on.deps.len == 0) return .alive;
+    return fate.cert(name);
+}
+
+/// Unseen names of fired dependentRequired entries: a completion has to
+/// dispatch them before the object closes. `outstanding` marks at least
+/// one unseen name, `dead` a doomed one, `unknown` one doomed only
+/// loosely (`fate`: skip next_idx, nothing dispatched first).
+const DepObligations = struct {
+    outstanding: bool = false,
+    unknown: bool = false,
+    dead: bool = false,
+};
+
+fn depObligations(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, fate: *const DoomPair) DepObligations {
+    var res = DepObligations{};
+    for (on.deps) |dep| {
+        if (dep.kind != .required) continue;
+        if (!seenContainsC(side, of.seen, g.literalBytes(dep.trigger))) continue;
+        for (dep.names) |nl| {
+            const name = g.literalBytes(nl);
+            if (seenContainsC(side, of.seen, name)) continue;
+            res.outstanding = true;
+            switch (fate.cert(name)) {
+                .alive => {},
+                .dead => {
+                    res.dead = true;
+                    return res;
+                },
+                .undecided => res.unknown = true,
+            }
+        }
+    }
+    return res;
+}
+
+/// The obligation half of a mid-key residual: the pending required
+/// declared props, the missing extra_required names and the names of the
+/// fired dependentRequired entries. An empty value schema or a doomed name
+/// (obligationCert, depObligations) can never be discharged - whatever the
+/// typed key turns out to be - so the frame is dead; a maybe-empty one
+/// blocks an alive verdict.
+const KeyObligations = struct { dead: bool = false, unknown: bool = false };
+
+fn keyObligations(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, fate: *const DoomPair) KeyObligations {
+    var res: KeyObligations = .{};
+    for (on.props[of.next_idx..], of.next_idx..) |p, pi| {
+        if (!p.required or !propPending(g, side, of, on, pi)) continue;
+        switch (g.nonempty[p.value]) {
+            grammar.NE_NO => return .{ .dead = true },
+            grammar.NE_UNKNOWN => res.unknown = true,
+            else => {},
+        }
+        const kl = g.literalBytes(p.key);
+        switch (obligationCert(on, fate, kl[1 .. kl.len - 2])) {
+            .dead => return .{ .dead = true },
+            .undecided => res.unknown = true,
+            .alive => {},
+        }
+    }
+    for (on.extra_required) |lit| {
+        const name = g.literalBytes(lit);
+        if (seenContainsC(side, of.seen, name)) continue;
+        const v = extraKeyValue(g, on, name) orelse {
+            res.unknown = true;
+            continue;
+        };
+        switch (g.nonempty[v]) {
+            grammar.NE_NO => return .{ .dead = true },
+            grammar.NE_UNKNOWN => res.unknown = true,
+            else => {},
+        }
+        switch (obligationCert(on, fate, name)) {
+            .dead => return .{ .dead = true },
+            .undecided => res.unknown = true,
+            .alive => {},
+        }
+    }
+    const deps = depObligations(g, side, of, on, fate);
+    if (deps.dead) return .{ .dead = true };
+    if (deps.unknown) res.unknown = true;
+    return res;
+}
+
+/// Index of the declared property spelled exactly `name`, null when no
+/// declared property has that spelling.
+fn declaredIndex(g: *const grammar.Grammar, on: *const grammar.OpenObjNode, name: []const u8) ?usize {
+    for (on.props, 0..) |p, i| {
+        const kl = g.literalBytes(p.key);
+        if (std.mem.eql(u8, kl[1 .. kl.len - 2], name)) return i;
+    }
+    return null;
+}
+
+/// Value node of the declared property spelled exactly `name` (raw key
+/// bytes), null when no declared property has that spelling.
+fn declaredPropValue(g: *const grammar.Grammar, on: *const grammar.OpenObjNode, name: []const u8) ?grammar.NodeId {
+    const i = declaredIndex(g, on, name) orelse return null;
+    return on.props[i].value;
+}
+
 /// Open-object residual. The frame is certified only for nodes without the
-/// features this rule does not analyze (propertyNames, dependencies,
-/// key/count bounds, capture); those defer to the search. The key
+/// features this rule does not analyze (propertyNames, schema-kind
+/// dependencies, key/count bounds, capture); those defer to the search.
+/// dependentRequired entries are analyzed (depObligations). The key
 /// constraint of a patternProperties entry (pattern_dfa/pattern_lit) lands
 /// only at dispatch (parser.openObjDispatch), so the search must never
 /// enumerate key spellings: the certifier reasons about the dispatch
@@ -2224,7 +3520,9 @@ fn freshUndeclaredPath(g: *const grammar.Grammar, side: *parser.Side, of: *const
 /// For a frame not inside a key the residual obligation is exact: a live
 /// frame never skipped a required declared prop (dispatch kills such
 /// threads, parser openObjDispatch), so what remains is props[next_idx..]
-/// required values plus the extra_required names not yet in the seen set;
+/// required values (on an order-free node: the required props not yet in
+/// the seen set), the extra_required names not yet in the seen set, and
+/// the unseen names of every fired dependentRequired entry;
 /// a comma makes one more key mandatory even with no other obligation. An
 /// outstanding obligation needs a dispatch witness: a remaining declared
 /// prop inside the dispatch window (up to and including the first required
@@ -2233,9 +3531,23 @@ fn freshUndeclaredPath(g: *const grammar.Grammar, side: *parser.Side, of: *const
 /// value schema (the certified bitset).
 fn certOpenObj(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame) Cert {
     const on = &g.node(of.node).open_obj;
-    if (on.names_forbidden or on.track_keys or on.capture or on.deps.len != 0 or
+    // The count bounds hold whatever else the node constrains, so their
+    // dead rules apply to every counted node before the routes below.
+    const counted = on.track_keys and (on.min_props != 0 or on.max_props != grammar.UNBOUNDED);
+    if (counted and certOpenObjCount(g, side, of, on) == .dead) return .dead;
+    var deps_required_only = true;
+    for (on.deps) |dep| {
+        if (dep.kind != .required) deps_required_only = false;
+    }
+    // dependentRequired on an otherwise gate-free node is certified here,
+    // with or without count bounds; schema-kind deps (capture) and the
+    // remaining gate features still defer to the search.
+    const dep_route = on.deps.len != 0 and deps_required_only and !on.capture and
+        !on.names_forbidden and on.prop_names == null and
+        on.key_min_len == 0 and on.key_max_len == grammar.UNBOUNDED;
+    if (!dep_route and (on.names_forbidden or on.track_keys or on.capture or on.deps.len != 0 or
         on.prop_names != null or on.key_min_len != 0 or on.key_max_len != grammar.UNBOUNDED or
-        on.min_props != 0 or on.max_props != grammar.UNBOUNDED)
+        on.min_props != 0 or on.max_props != grammar.UNBOUNDED))
     {
         note(.openobj_gate);
         if (on.names_forbidden or on.track_keys or on.capture) note(.openobj_track);
@@ -2244,21 +3556,52 @@ fn certOpenObj(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.
         if (on.key_min_len != 0 or on.key_max_len != grammar.UNBOUNDED) note(.openobj_key_bounds);
         if (on.min_props != 0) note(.openobj_min_props);
         if (on.max_props != grammar.UNBOUNDED) note(.openobj_max_props);
-        // Pure count-bounded nodes (min/maxProperties only) admit exact
-        // dead rules; aliveness is left to the simulation certificate.
+        // The gates only add constraints (dispatch takes no key they do not
+        // allow), so a key no completion can dispatch is dead under them.
+        if (of.phase == .key_str and g.nonempty.len != 0 and certOpenObjKeyStr(g, side, of, on) == .dead) return .dead;
+        if (on.names_forbidden and (of.phase == .key_str or of.phase == .key_after_comma)) return .dead;
+        if (of.phase == .key_str) {
+            if (on.prop_names) |pn| {
+                if (!keyPrefixNameable(g, side, pn, side.chunkAt(of.key).payload.items)) return .dead;
+            }
+        }
+        // Pure count-bounded nodes (min/maxProperties only): the count-free
+        // analyses still prove dead exactly; their alive verdict ignores
+        // the count bounds and holds under them only with a completion of
+        // a fitting key count (countAlive), else the simulation
+        // certificate decides.
         if (!on.names_forbidden and !on.capture and on.deps.len == 0 and
             on.prop_names == null and on.key_min_len == 0 and
             on.key_max_len == grammar.UNBOUNDED and on.track_keys)
         {
-            return certOpenObjCounted(g, side, of, on);
+            return switch (certOpenObjInner(g, side, of, on)) {
+                .dead => .dead,
+                .alive => if (countAlive(g, side, of, on)) .alive else .undecided,
+                .undecided => .undecided,
+            };
         }
         return .undecided;
     }
     const c = certOpenObjInner(g, side, of, on);
+    if (counted and c == .alive and !countAlive(g, side, of, on)) {
+        if (on.min_props != 0) note(.openobj_min_props);
+        if (on.max_props != grammar.UNBOUNDED) note(.openobj_max_props);
+        return .undecided;
+    }
     // The colon-pending check and the closing witness scan note themselves
     // inside; here only the mid-key phases need classifying.
     if (c == .undecided and of.phase == .key_str) note(if (of.u.key.st != .normal or of.u.key.rem != 0) UndReason.openobj_keyesc else UndReason.openobj_keystr);
     return c;
+}
+
+/// Some completion of the raw key prefix kb may pass propertyNames: its
+/// string parser accepts the quoted prefix (unknown counts as yes).
+fn keyPrefixNameable(g: *const grammar.Grammar, side: *parser.Side, pn: grammar.NodeId, kb: []const u8) bool {
+    const buf = side.a.alloc(u8, kb.len + 1) catch return true;
+    defer side.a.free(buf);
+    buf[0] = '"';
+    @memcpy(buf[1..], kb);
+    return parser.nodeAcceptsPrefix(g, side, pn, buf) catch true;
 }
 
 /// Entry count of a seen-keys chunk (0 when there is no chunk). With
@@ -2271,73 +3614,222 @@ fn seenCountC(side: *const parser.Side, h: u32) u32 {
     return std.mem.readInt(u32, items[0..4], .little);
 }
 
-/// Count-bounded open_object residual (min/maxProperties with track_keys,
-/// no other gated feature). Only dead verdicts are derived; aliveness goes
-/// to the simulation certificate, which already pads min_props and caps
-/// max_props (synth.padMinProps). Three exact rules, all mirroring the
-/// parser's own count enforcement (dispatch rejects a key when
-/// seenCount == max_props; close rejects seenCount < min_props):
+/// Upper bound of the owed-name set (owedNames); a larger set gives no
+/// count verdict.
+const MAX_OWED: usize = 64;
+
+fn owedHas(owed: []const []const u8, name: []const u8) bool {
+    for (owed) |x| {
+        if (std.mem.eql(u8, x, name)) return true;
+    }
+    return false;
+}
+
+/// Names a completion of the frame still has to dispatch: the pending
+/// required declared props, the missing extra_required names and the
+/// unseen names of the fired dependentRequired entries, closed under the
+/// entries an owed name fires once it is dispatched (parser.depsResidual,
+/// openObjClose). All are unseen raw spellings, pairwise distinct, so each
+/// takes one more key: the set size is a lower bound on the keys still to
+/// come. Null when the set outgrows the buffer.
+fn owedNames(g: *const grammar.Grammar, side: *const parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, buf: *[MAX_OWED][]const u8) ?usize {
+    var n: usize = 0;
+    for (on.props, 0..) |p, i| {
+        if (!p.required or !propPending(g, side, of, on, i)) continue;
+        const kl = g.literalBytes(p.key);
+        const name = kl[1 .. kl.len - 2];
+        if (owedHas(buf[0..n], name)) continue;
+        if (n == MAX_OWED) return null;
+        buf[n] = name;
+        n += 1;
+    }
+    for (on.extra_required) |lit| {
+        const name = g.literalBytes(lit);
+        if (seenContainsC(side, of.seen, name) or owedHas(buf[0..n], name)) continue;
+        if (n == MAX_OWED) return null;
+        buf[n] = name;
+        n += 1;
+    }
+    var changed = true;
+    while (changed) {
+        changed = false;
+        for (on.deps) |dep| {
+            if (dep.kind != .required) continue;
+            const t = g.literalBytes(dep.trigger);
+            if (!seenContainsC(side, of.seen, t) and !owedHas(buf[0..n], t)) continue;
+            for (dep.names) |nl| {
+                const name = g.literalBytes(nl);
+                if (seenContainsC(side, of.seen, name) or owedHas(buf[0..n], name)) continue;
+                if (n == MAX_OWED) return null;
+                buf[n] = name;
+                n += 1;
+                changed = true;
+            }
+        }
+    }
+    return n;
+}
+
+/// Can the in-flight key (phase key_str) still complete to the owed name
+/// `name` and be dispatched as it: the raw spelling extends the typed
+/// prefix (mid-character: continues into the pending code point range),
+/// and the dispatch passes - a declared prop not skipped yet whose
+/// dispatch skips no pending required prop, or an undeclared name the
+/// node may take - with a possibly non-empty value and no doomed name
+/// after it (mergeDeclaredWitness, mergeExtraWitness). What the analysis
+/// cannot settle counts as possible.
+fn owedKeyPossible(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, name: []const u8) bool {
+    const kb = side.chunkAt(of.key).payload.items;
+    if (of.u.key.st != .normal) return true;
+    if (of.u.key.rem != 0) {
+        const pc = pendingKeyCp(kb, of.u.key) orelse return true;
+        if (!nameContinuesInto(name, pc)) return false;
+    } else if (!std.mem.startsWith(u8, name, kb)) return false;
+    if (g.nonempty.len == 0) return true;
+    var witness = false;
+    var witness_unknown = false;
+    if (declaredIndex(g, on, name)) |i| {
+        if (!propPending(g, side, of, on, i)) return false;
+        if (!on.any_order) {
+            for (on.props[of.next_idx..i]) |p| {
+                if (p.required) return false;
+            }
+        }
+        mergeDeclaredWitness(g, side, of, on, i, &witness, &witness_unknown);
+    } else {
+        if (on.names_forbidden) return false;
+        const v = extraKeyValue(g, on, name) orelse return true;
+        mergeExtraWitness(g, side, of, on, name, v, &witness, &witness_unknown);
+    }
+    return witness or witness_unknown;
+}
+
+/// The in-flight key (phase key_str, clean key state) completes to the
+/// owed name `name` for certain: its raw spelling extends the typed
+/// prefix, the dispatch passes (a declared prop not skipped yet whose
+/// dispatch skips no pending required prop, or an undeclared name) and
+/// the value is non-empty with no doomed name after it - the certain half
+/// of owedKeyPossible.
+fn owedKeyCertain(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, name: []const u8) bool {
+    if (of.u.key.st != .normal or of.u.key.rem != 0 or g.nonempty.len == 0) return false;
+    if (!std.mem.startsWith(u8, name, side.chunkAt(of.key).payload.items)) return false;
+    var witness = false;
+    var witness_unknown = false;
+    if (declaredIndex(g, on, name)) |i| {
+        if (!propPending(g, side, of, on, i)) return false;
+        if (!on.any_order) {
+            for (on.props[of.next_idx..i]) |p| {
+                if (p.required) return false;
+            }
+        }
+        mergeDeclaredWitness(g, side, of, on, i, &witness, &witness_unknown);
+    } else {
+        if (on.names_forbidden) return false;
+        const v = extraKeyValue(g, on, name) orelse return false;
+        mergeExtraWitness(g, side, of, on, name, v, &witness, &witness_unknown);
+    }
+    return witness;
+}
+
+/// Alive under the count bounds, for a frame (dependentRequired or pure
+/// count route) whose count-free analysis is alive: that analysis proved
+/// every owed name dischargeable, and here one completion of a fitting
+/// key count is exhibited. With n keys seen and m owed names
+/// (owedNames), it dispatches exactly the owed names - declared ones in
+/// schema order - plus one fresh undeclared key where a key is mandatory
+/// and no owed name takes the place (after a comma with nothing owed, or
+/// an in-flight key that spells no owed name for certain, owedKeyCertain),
+/// plus fresh keys up to min_props. A fresh key fires nothing and is
+/// always available, with any typed prefix, only on a node whose
+/// undeclared keys all take a non-empty fallback value (no key pattern);
+/// otherwise such a completion is not claimed. The total must lie within
+/// [min_props, max_props]; anything else stays undecided.
+fn countAlive(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode) bool {
+    if (g.nonempty.len == 0) return false;
+    var buf: [MAX_OWED][]const u8 = undefined;
+    const m = owedNames(g, side, of, on, &buf) orelse return false;
+    const fresh = on.pattern_lit == null and on.pattern_dfa == null and !on.names_forbidden and
+        on.prop_names == null and on.key_min_len == 0 and on.key_max_len == grammar.UNBOUNDED and
+        g.nonempty[on.value] == grammar.NE_YES;
+    var extra: u64 = 0;
+    switch (of.phase) {
+        .key_str => {
+            for (buf[0..m]) |name| {
+                if (owedKeyCertain(g, side, of, on, name)) break;
+            } else {
+                if (!fresh) return false;
+                extra = 1;
+            }
+        },
+        .key_after_comma => if (m == 0) {
+            if (!fresh) return false;
+            extra = 1;
+        },
+        else => {},
+    }
+    const total = @as(u64, seenCountC(side, of.seen)) + m + extra;
+    if (total > on.max_props) return false;
+    if (total < on.min_props and (!fresh or on.min_props > on.max_props)) return false;
+    return true;
+}
+
+/// Count bounds (min/maxProperties; node.track_keys, so the seen set holds
+/// every dispatched key and seenCountC is the property count). Only dead
+/// verdicts are derived, each exact whatever else the node constrains
+/// (the other features only refuse more keys); aliveness goes to the
+/// simulation certificate, which pads min_props and caps max_props
+/// (synth.padMinProps). With n keys seen and `owed` the names a completion
+/// still has to dispatch (owedNames):
 ///
 /// 1. A pending (key_str) or comma-mandatory (key_after_comma) key with
-///    seenCount == max_props can never dispatch, and a comma cannot be
-///    closed over: dead.
-/// 2. Every unsatisfied required obligation (declared required props from
-///    next_idx, missing extra_required names, name-duplicates merged) is a
-///    distinct further key at close; n + that count > max_props: dead.
-/// 3. With no fresh undeclared dispatch (freshUndeclaredPath == .no, never
+///    n == max_props can never dispatch (parser.openObjDispatch), and a
+///    comma cannot be closed over: dead.
+/// 2. Every owed name is one more distinct key: n + |owed| > max_props is
+///    dead.
+/// 3. The in-flight key (key_str) is one more key unless it completes to an
+///    owed name. With n + 1 + |owed| > max_props it has to, so when no
+///    owed name extends the typed prefix and can be dispatched now
+///    (owedKeyPossible) the frame is dead. (Dispatched, an owed name
+///    leaves n + |owed| keys: the set is closed under the entries it
+///    fires.)
+/// 4. With no fresh undeclared dispatch (freshUndeclaredPath == .no, never
 ///    .unknown) the achievable key count is bounded by n + remaining
 ///    declared props + missing extra_required names + an in-flight key;
 ///    below min_props: dead.
-fn certOpenObjCounted(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode) Cert {
+fn certOpenObjCount(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode) Cert {
     const n = seenCountC(side, of.seen);
-    if ((of.phase == .key_after_comma or of.phase == .key_str) and
-        n >= on.max_props) return .dead;
-    // Missing extra_required names, deduplicated against each other and
-    // against declared props (a shared name is one key, not two).
-    var extra_missing: u32 = 0;
-    for (on.extra_required, 0..) |lit, j| {
-        const name = g.literalBytes(lit);
-        if (seenContainsC(side, of.seen, name)) continue;
-        var dup = false;
-        for (on.extra_required[0..j]) |lit2| {
-            if (std.mem.eql(u8, g.literalBytes(lit2), name)) {
-                dup = true;
-                break;
+    const in_key = of.phase == .key_str;
+    if ((of.phase == .key_after_comma or in_key) and n >= on.max_props) return .dead;
+    if (on.max_props != grammar.UNBOUNDED) {
+        var buf: [MAX_OWED][]const u8 = undefined;
+        if (owedNames(g, side, of, on, &buf)) |m| {
+            if (@as(u64, n) + m > on.max_props) return .dead;
+            if (in_key and @as(u64, n) + 1 + m > on.max_props) {
+                for (buf[0..m]) |name| {
+                    if (owedKeyPossible(g, side, of, on, name)) break;
+                } else return .dead;
             }
         }
-        if (!dup) extra_missing += 1;
     }
-    // Rule 2: a required prop beyond next_idx whose name is not also an
-    // already-counted extra_required name is one more mandatory key.
-    var req_missing = extra_missing;
-    for (on.props[of.next_idx..]) |p| {
-        if (!p.required) continue;
-        const kl = g.literalBytes(p.key);
-        const name = kl[1 .. kl.len - 2];
-        var counted = false;
-        for (on.extra_required) |lit| {
-            if (std.mem.eql(u8, g.literalBytes(lit), name)) {
-                counted = true;
-                break;
-            }
-        }
-        if (!counted) req_missing += 1;
-    }
-    if (@as(u64, n) + req_missing > on.max_props) return .dead;
-    // Rule 3.
+    // Rule 4. Missing extra_required names, deduplicated against each
+    // other (a shared name is one key, not two).
     if (on.min_props != 0 and freshUndeclaredPath(g, side, of, on) == .no) {
-        const inflight: u64 = if (of.phase == .key_str) 1 else 0;
-        const achievable = @as(u64, n) + (on.props.len - @min(of.next_idx, @as(u32, @intCast(on.props.len)))) + extra_missing + inflight;
-        if (achievable < on.min_props) return .dead;
+        var extra_missing: u64 = 0;
+        for (on.extra_required, 0..) |lit, j| {
+            const name = g.literalBytes(lit);
+            if (seenContainsC(side, of.seen, name)) continue;
+            for (on.extra_required[0..j]) |lit2| {
+                if (std.mem.eql(u8, g.literalBytes(lit2), name)) break;
+            } else extra_missing += 1;
+        }
+        var pending: u64 = 0;
+        for (of.next_idx..on.props.len) |pi| {
+            if (propPending(g, side, of, on, pi)) pending += 1;
+        }
+        const inflight: u64 = if (in_key) 1 else 0;
+        if (@as(u64, n) + pending + extra_missing + inflight < on.min_props) return .dead;
     }
-    // The count-free analyses still prove dead exactly (undispatchable
-    // keys, empty obligation values); their alive verdicts ignore the
-    // count bounds, so they degrade to undecided here.
-    const base: Cert = switch (of.phase) {
-        .key_str => certOpenObjKeyStr(g, side, of, on),
-        else => certOpenObjInner(g, side, of, on),
-    };
-    return if (base == .dead) .dead else .undecided;
+    return .undecided;
 }
 
 fn certOpenObjInner(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode) Cert {
@@ -2359,17 +3851,26 @@ fn certOpenObjInner(g: *const grammar.Grammar, side: *parser.Side, of: *const pa
         },
         else => {},
     }
-    // Doom scan: an outstanding obligation whose value schema is empty can
-    // never dispatch, so no completion exists.
+    // Doom scan: an outstanding obligation whose value schema is empty, or
+    // whose dispatch a dependency dooms (obligationCert), can never be
+    // discharged, so no completion exists.
+    var fate = DoomPair.init(g, side, of, on, of.next_idx, null);
+    defer fate.deinit();
     var unknown = false;
     var has_required = false;
-    for (on.props[of.next_idx..]) |p| {
-        if (!p.required) continue;
+    for (on.props[of.next_idx..], of.next_idx..) |p, pi| {
+        if (!p.required or !propPending(g, side, of, on, pi)) continue;
         has_required = true;
         switch (g.nonempty[p.value]) {
             grammar.NE_NO => return .dead,
             grammar.NE_UNKNOWN => unknown = true,
             else => {},
+        }
+        const kl = g.literalBytes(p.key);
+        switch (obligationCert(on, &fate, kl[1 .. kl.len - 2])) {
+            .dead => return .dead,
+            .undecided => unknown = true,
+            .alive => {},
         }
     }
     var missing_extra = false;
@@ -2379,21 +3880,29 @@ fn certOpenObjInner(g: *const grammar.Grammar, side: *parser.Side, of: *const pa
         const name = g.literalBytes(lit);
         if (seenContainsC(side, of.seen, name)) continue;
         missing_extra = true;
+        // The name is an obligation (an empty or maybe-empty value blocks
+        // dead resp. alive) AND a dispatch candidate.
         const v = extraKeyValue(g, on, name) orelse {
             unknown = true;
+            witness_unknown = true;
             continue;
         };
         switch (g.nonempty[v]) {
-            grammar.NE_YES => witness = true, // the name itself dispatches
             grammar.NE_NO => return .dead,
-            // The name is an obligation whose value may be empty (blocks
-            // alive) AND a dispatch candidate (blocks dead).
-            else => {
-                unknown = true;
-                witness_unknown = true;
-            },
+            grammar.NE_UNKNOWN => unknown = true,
+            else => {},
         }
+        switch (obligationCert(on, &fate, name)) {
+            .dead => return .dead,
+            .undecided => unknown = true,
+            .alive => {},
+        }
+        mergeExtraWitness(g, side, of, on, name, v, &witness, &witness_unknown);
     }
+    const deps = depObligations(g, side, of, on, &fate);
+    if (deps.dead) return .dead;
+    if (deps.outstanding) missing_extra = true;
+    if (deps.unknown) unknown = true;
     const obligated = has_required or missing_extra or of.phase == .key_after_comma;
     if (!obligated) {
         if (unknown) note(.openobj_witness);
@@ -2404,8 +3913,9 @@ fn certOpenObjInner(g: *const grammar.Grammar, side: *parser.Side, of: *const pa
     var i: usize = of.next_idx;
     while (i < on.props.len) : (i += 1) {
         const p = on.props[i];
-        mergePath(g.nonempty[p.value], &witness, &witness_unknown);
-        if (p.required) break;
+        if (!propPending(g, side, of, on, i)) continue;
+        mergeDeclaredWitness(g, side, of, on, i, &witness, &witness_unknown);
+        if (windowEnds(on, p)) break;
     }
     if (!witness) {
         switch (freshUndeclaredPath(g, side, of, on)) {
@@ -2434,39 +3944,23 @@ fn certOpenObjInner(g: *const grammar.Grammar, side: *parser.Side, of: *const pa
 fn certOpenObjKeyStr(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode) Cert {
     if (of.u.key.st != .normal or of.u.key.rem != 0) return certOpenObjKeyEsc(g, side, of, on);
     const kb = side.chunkAt(of.key).payload.items;
-    var unknown = false;
-    for (on.props[of.next_idx..]) |p| {
-        if (!p.required) continue;
-        switch (g.nonempty[p.value]) {
-            grammar.NE_NO => return .dead,
-            grammar.NE_UNKNOWN => unknown = true,
-            else => {},
-        }
-    }
-    for (on.extra_required) |lit| {
-        const name = g.literalBytes(lit);
-        if (seenContainsC(side, of.seen, name)) continue;
-        const v = extraKeyValue(g, on, name) orelse {
-            unknown = true;
-            continue;
-        };
-        switch (g.nonempty[v]) {
-            grammar.NE_NO => return .dead,
-            grammar.NE_UNKNOWN => unknown = true,
-            else => {},
-        }
-    }
+    var fate = DoomPair.init(g, side, of, on, of.next_idx, null);
+    defer fate.deinit();
+    const obl = keyObligations(g, side, of, on, &fate);
+    if (obl.dead) return .dead;
+    const unknown = obl.unknown;
     var witness = false;
     var witness_unknown = false;
     // Declared names extending the typed prefix, in dispatchable order.
     var i: usize = of.next_idx;
     while (i < on.props.len) : (i += 1) {
         const p = on.props[i];
+        if (!propPending(g, side, of, on, i)) continue;
         const kl = g.literalBytes(p.key);
         if (std.mem.startsWith(u8, kl[1 .. kl.len - 2], kb)) {
-            mergePath(g.nonempty[p.value], &witness, &witness_unknown);
+            mergeDeclaredWitness(g, side, of, on, i, &witness, &witness_unknown);
         }
-        if (p.required) break;
+        if (windowEnds(on, p)) break;
     }
     // Missing extra_required names extending the typed prefix.
     for (on.extra_required) |lit| {
@@ -2477,31 +3971,22 @@ fn certOpenObjKeyStr(g: *const grammar.Grammar, side: *parser.Side, of: *const p
             witness_unknown = true;
             continue;
         };
-        mergePath(g.nonempty[v], &witness, &witness_unknown);
+        mergeExtraWitness(g, side, of, on, name, v, &witness, &witness_unknown);
     }
     // Undeclared completions.
     if (on.pattern_dfa) |pd| {
         const q = dfaFeedKeyBytes(pd, kb) orelse return .undecided;
         if (g.pat_len[of.node]) |descr| {
-            const can_match = descr.reachableIn(q, 0, null);
-            if (can_match) {
-                // Sticky accept: the matching continuations are infinite,
-                // so a fresh undeclared spelling always exists.
-                mergePath(g.nonempty[on.pattern_value], &witness, &witness_unknown);
+            // Both dispatch sides are counted against the taken keys:
+            // either may be finite - a finite pattern language
+            // (`^line[1-3]$`) runs out once its keys are seen (dispatch
+            // refuses a duplicate), and so may the non-matching remnant of
+            // a near-universal pattern.
+            if (g.nonempty[on.pattern_value] != grammar.NE_NO) {
+                mergeKeyPath(freshUndeclaredKey(g, side, of, on, pd, descr, kb, q, null, .hit), g.nonempty[on.pattern_value], &witness, &witness_unknown);
             }
             if (g.nonempty[on.value] != grammar.NE_NO) {
-                if (!can_match) {
-                    // No continuation ever matches: every extension takes
-                    // the fallback (an infinite, dodgeable set).
-                    mergePath(g.nonempty[on.value], &witness, &witness_unknown);
-                } else if (!pd.isAccept(q) and !seenContainsC(side, of.seen, kb)) {
-                    // kb as completed so far does not match and is fresh.
-                    mergePath(g.nonempty[on.value], &witness, &witness_unknown);
-                } else if (!pd.isAccept(q)) {
-                    // A non-matching extension may exist (kb is taken); a
-                    // non-accept-cycle analysis is out of scope here.
-                    witness_unknown = true;
-                }
+                mergeKeyPath(freshUndeclaredKey(g, side, of, on, pd, descr, kb, q, null, .miss), g.nonempty[on.value], &witness, &witness_unknown);
             }
         } else {
             witness_unknown = true;
@@ -2544,13 +4029,17 @@ fn certOpenObjKeyStr(g: *const grammar.Grammar, side: *parser.Side, of: *const p
 /// search.
 fn certOpenObjKeyEsc(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode) Cert {
     const kb = side.chunkAt(of.key).payload.items;
+    if (of.u.key.st == .normal) {
+        if (pendingKeyCp(kb, of.u.key)) |pc| return certOpenObjKeyMidCp(g, side, of, on, pc);
+    }
     if (on.pattern_lit != null or on.pattern_dfa != null) return .undecided;
     var i: usize = of.next_idx;
     while (i < on.props.len) : (i += 1) {
         const p = on.props[i];
+        if (!propPending(g, side, of, on, i)) continue;
         const kl = g.literalBytes(p.key);
         if (std.mem.startsWith(u8, kl[1 .. kl.len - 2], kb)) return .undecided;
-        if (p.required) break;
+        if (windowEnds(on, p)) break;
     }
     for (on.extra_required) |lit| {
         const name = g.literalBytes(lit);
@@ -2560,6 +4049,95 @@ fn certOpenObjKeyEsc(g: *const grammar.Grammar, side: *parser.Side, of: *const p
     if (g.nonempty[on.value] != grammar.NE_NO) return .undecided;
     return .dead;
 }
+/// A raw key cut inside a UTF-8 sequence: the bytes before the sequence and
+/// the code points its pending bytes can still complete to (the first
+/// pending byte within [k.lo, k.hi], the others free continuation bytes).
+const PendingCp = struct { prefix: []const u8, lo: u32, hi: u32 };
+
+fn pendingKeyCp(kb: []const u8, k: parser.OpenObjKeyState) ?PendingCp {
+    if (k.rem == 0) return null;
+    var j = kb.len;
+    while (j > 0 and kb.len - j < 4) {
+        j -= 1;
+        if (kb[j] >= 0xC0) break;
+    }
+    if (j == kb.len or kb[j] < 0xC0) return null;
+    const lead = kb[j];
+    const total: usize = if (lead < 0xE0) 2 else if (lead < 0xF0) 3 else 4;
+    if (kb.len - j + k.rem != total) return null;
+    var bits: u32 = if (lead < 0xE0) lead & 0x1F else if (lead < 0xF0) lead & 0x0F else lead & 0x07;
+    for (kb[j + 1 ..]) |c| bits = (bits << 6) | (c & 0x3F);
+    const shift: u5 = @intCast(6 * @as(u32, k.rem - 1));
+    const base = bits << @intCast(6 * @as(u32, k.rem));
+    return .{
+        .prefix = kb[0..j],
+        .lo = base | (@as(u32, k.lo & 0x3F) << shift),
+        .hi = base | (@as(u32, k.hi & 0x3F) << shift) | ((@as(u32, 1) << shift) - 1),
+    };
+}
+
+/// Raw name spelling continues the complete prefix with a code point in
+/// the pending range.
+fn nameContinuesInto(name: []const u8, pc: PendingCp) bool {
+    if (!std.mem.startsWith(u8, name, pc.prefix) or name.len == pc.prefix.len) return false;
+    const rest = name[pc.prefix.len..];
+    const n = std.unicode.utf8ByteSequenceLength(rest[0]) catch return false;
+    if (rest.len < n) return false;
+    const cp = std.unicode.utf8Decode(rest[0..n]) catch return false;
+    return cp >= pc.lo and cp <= pc.hi;
+}
+
+/// Mid-codepoint mid-key residual: certOpenObjKeyStr with the next code
+/// point ranging over the pending range. The key pattern DFA answers per
+/// transition range from the state after the complete prefix; a code
+/// point no live transition covers never matches.
+fn certOpenObjKeyMidCp(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.OpenObjFrame, on: *const grammar.OpenObjNode, pc: PendingCp) Cert {
+    if (on.pattern_lit != null) return .undecided;
+    var fate = DoomPair.init(g, side, of, on, of.next_idx, null);
+    defer fate.deinit();
+    const obl = keyObligations(g, side, of, on, &fate);
+    if (obl.dead) return .dead;
+    const unknown = obl.unknown;
+    var witness = false;
+    var witness_unknown = false;
+    var i: usize = of.next_idx;
+    while (i < on.props.len) : (i += 1) {
+        const p = on.props[i];
+        if (!propPending(g, side, of, on, i)) continue;
+        const kl = g.literalBytes(p.key);
+        if (nameContinuesInto(kl[1 .. kl.len - 2], pc)) mergeDeclaredWitness(g, side, of, on, i, &witness, &witness_unknown);
+        if (windowEnds(on, p)) break;
+    }
+    for (on.extra_required) |lit| {
+        const name = g.literalBytes(lit);
+        if (seenContainsC(side, of.seen, name)) continue;
+        if (!nameContinuesInto(name, pc)) continue;
+        const v = extraKeyValue(g, on, name) orelse {
+            witness_unknown = true;
+            continue;
+        };
+        mergeExtraWitness(g, side, of, on, name, v, &witness, &witness_unknown);
+    }
+    if (on.pattern_dfa) |pd| {
+        const q = dfaFeedKeyBytes(pd, pc.prefix) orelse return .undecided;
+        const descr = g.pat_len[of.node] orelse return .undecided;
+        // Both dispatch sides counted against the taken keys, over the
+        // completions whose next code point lies in the pending range.
+        const window: CpWindow = .{ .lo = pc.lo, .hi = pc.hi };
+        if (g.nonempty[on.pattern_value] != grammar.NE_NO) {
+            mergeKeyPath(freshUndeclaredKey(g, side, of, on, pd, descr, pc.prefix, q, window, .hit), g.nonempty[on.pattern_value], &witness, &witness_unknown);
+        }
+        if (g.nonempty[on.value] != grammar.NE_NO) {
+            mergeKeyPath(freshUndeclaredKey(g, side, of, on, pd, descr, pc.prefix, q, window, .miss), g.nonempty[on.value], &witness, &witness_unknown);
+        }
+    } else {
+        mergePath(g.nonempty[on.value], &witness, &witness_unknown);
+    }
+    if (witness and !unknown) return .alive;
+    if (!witness and !witness_unknown) return .dead;
+    return .undecided;
+}
+
 /// x == p, or the decimal digits of p are a prefix of those of x. (A typed
 /// prefix of value 0 - all zeros - extends to every exponent and is handled
 /// by the callers.)
@@ -2658,20 +4236,35 @@ fn rangeHiOkI(nf: *const parser.NumRangeFrame, b: MagBound, t: i64) bool {
 }
 
 /// Point test (mantissa frozen): the achievable magnitude at om t is the
-/// single value D x 10^(t - d + 1); the digit comparison against the bound
-/// is exact (padded streams), so cmp 0 means equal, 1 below, 2 above.
+/// single value D x 10^(t - d + 1). cmp 1 is below the bound, 2 above; cmp 0
+/// is equal unless D's digits are a proper prefix of the bound's, whose
+/// canonical tail then ends in a nonzero digit, so D is below.
+fn rangePtOrder(nf: *const parser.NumRangeFrame, b: MagBound) std.math.Order {
+    return switch (magCmp(nf, b)) {
+        1 => .lt,
+        2 => .gt,
+        else => if (nf.j[b.slot] < b.dlen) .lt else .eq,
+    };
+}
+
 fn rangePtLo(nf: *const parser.NumRangeFrame, b: MagBound, t: i64) bool {
     if (t > b.om) return true;
     if (t < b.om) return false;
-    const c = magCmp(nf, b);
-    return c == 2 or (c == 0 and !b.excl);
+    return switch (rangePtOrder(nf, b)) {
+        .gt => true,
+        .eq => !b.excl,
+        .lt => false,
+    };
 }
 
 fn rangePtHi(nf: *const parser.NumRangeFrame, b: MagBound, t: i64) bool {
     if (t < b.om) return true;
     if (t > b.om) return false;
-    const c = magCmp(nf, b);
-    return c == 1 or (c == 0 and !b.excl);
+    return switch (rangePtOrder(nf, b)) {
+        .lt => true,
+        .eq => !b.excl,
+        .gt => false,
+    };
 }
 
 fn rangePointOk(nf: *const parser.NumRangeFrame, lo: ?MagBound, hi: ?MagBound, t: i64) bool {
@@ -2965,7 +4558,32 @@ fn certStrPat(g: *const grammar.Grammar, sf: *const parser.StrPatFrame) Cert {
             }
             return .dead;
         },
-        else => return .undecided, // mid escape: a bounded suffix, left to the search
+        .escape, .u0, .u00, .uhex1, .uhex2 => {
+            // Mid escape: the canonical escape table fixes the codepoints
+            // the escape can still decode to (\" \\ and U+0000..U+001F,
+            // whose \u00XX forms exclude the five with a short escape).
+            const descr = g.pat_len[sf.node] orelse return .undecided;
+            const count1 = sf.count + 1; // a character starts only below max_len
+            const lo = sp.min_len -| count1;
+            const hi: ?u32 = if (sp.max_len == grammar.UNBOUNDED) null else sp.max_len - count1;
+            const R = struct { lo: u32, hi: u32 };
+            const ranges: []const R = switch (sf.state) {
+                .escape => &.{ .{ .lo = 0x00, .hi = 0x1F }, .{ .lo = 0x22, .hi = 0x22 }, .{ .lo = 0x5C, .hi = 0x5C } },
+                .uhex2 => if (sf.lo == 0)
+                    &.{ .{ .lo = 0x00, .hi = 0x07 }, .{ .lo = 0x0B, .hi = 0x0B }, .{ .lo = 0x0E, .hi = 0x0F } }
+                else
+                    &.{.{ .lo = 0x10, .hi = 0x1F }},
+                else => &.{ .{ .lo = 0x00, .hi = 0x07 }, .{ .lo = 0x0B, .hi = 0x0B }, .{ .lo = 0x0E, .hi = 0x1F } },
+            };
+            for (ranges) |r| {
+                for (sp.dfa.states[sf.dfa].trans) |t| {
+                    if (t.hi < r.lo or t.lo > r.hi) continue;
+                    if (sp.dfa.dead(t.to)) continue;
+                    if (descr.reachableIn(t.to, lo, hi)) return .alive;
+                }
+            }
+            return .dead;
+        },
     }
 }
 
@@ -2985,21 +4603,23 @@ fn certStrExcl(g: *const grammar.Grammar, sf: *const parser.StrExclFrame) Cert {
             if (sf.trie_dead) return .alive;
             return if (se.trie.nodes[sf.trie].terminal) .dead else .alive;
         },
-        else => return .undecided,
+        // Mid escape the character in flight is counted at its end; with
+        // room for one more character the spelling can still leave the trie.
+        else => return if (sf.count + 1 < se.max_len) .alive else .undecided,
     }
 }
 
 const testing = std.testing;
 
 fn litGrammar(a: std.mem.Allocator, s: []const u8) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     var b = grammar.Builder.init(arena.allocator());
     const root = try b.addLiteralNode(s);
     return b.finish(arena, .literal_set, root, .{});
 }
 
 fn objGrammar(a: std.mem.Allocator) !grammar.Grammar {
-    var arena = std.heap.ArenaAllocator.init(a);
+    var arena = Arena.init(a);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const int_node = try b.addNode(.{ .int_v = {} });
@@ -3088,7 +4708,7 @@ fn byteTok(a: std.mem.Allocator) !tokenizer.Tokenizer {
 
 test "complete r1: allof enum intersection kills dead prefixes" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     var b = grammar.Builder.init(arena.allocator());
     var lits1 = [_]grammar.Literal{ try b.addLiteral("\"ab\""), try b.addLiteral("\"xy\"") };
     const n1 = try b.addNode(.{ .lit_trie = try b.buildTrie(&lits1) });
@@ -3185,28 +4805,28 @@ test "complete r1: certification agrees with exhaustive search (number machines)
     var built: usize = 0;
     defer for (0..built) |i| gs[i].deinit();
     {
-        var arena = std.heap.ArenaAllocator.init(alloc);
+        var arena = Arena.init(alloc);
         var b = grammar.Builder.init(arena.allocator());
         const root = try b.addNode(.{ .num_range = .{ .min = one, .max = hundred } });
         gs[0] = try b.finish(arena, .json_schema, root, .{});
         built += 1;
     }
     {
-        var arena = std.heap.ArenaAllocator.init(alloc);
+        var arena = Arena.init(alloc);
         var b = grammar.Builder.init(arena.allocator());
         const root = try b.addNode(.{ .int_num = {} });
         gs[1] = try b.finish(arena, .json_schema, root, .{});
         built += 1;
     }
     {
-        var arena = std.heap.ArenaAllocator.init(alloc);
+        var arena = Arena.init(alloc);
         var b = grammar.Builder.init(arena.allocator());
         const root = try b.addNode(.{ .not_int_num = {} });
         gs[2] = try b.finish(arena, .json_schema, root, .{});
         built += 1;
     }
     {
-        var arena = std.heap.ArenaAllocator.init(alloc);
+        var arena = Arena.init(alloc);
         var b = grammar.Builder.init(arena.allocator());
         const root = try b.addNode(.{ .num_mult = .{ .div = 2, .div_exp10 = 0, .co = 1 } });
         gs[3] = try b.finish(arena, .json_schema, root, .{});
@@ -3228,9 +4848,119 @@ test "complete r1: certification agrees with exhaustive search (number machines)
     }
 }
 
+fn rangeCertAfter(r: grammar.NumRange, prefix: []const u8) !Cert {
+    const alloc = testing.allocator;
+    var arena = Arena.init(alloc);
+    var b = grammar.Builder.init(arena.allocator());
+    const root = try b.addNode(.{ .num_range = r });
+    var g = try b.finish(arena, .json_schema, root, .{});
+    defer g.deinit();
+    var side = parser.Side.init(alloc);
+    defer side.deinit();
+    var st = try parser.initState(&g, 4, &side);
+    var bufs: [2]parser.State = undefined;
+    for (&bufs) |*s| s.n = 0;
+    try parser.feedBytes(&g, &side, &st, prefix, &bufs[0], &bufs[1]);
+    return certifyState(&g, &bufs[0], &side);
+}
+
+test "complete r1: frozen mantissa shorter than the bound's digits" {
+    const c15: grammar.NumConst = .{ .neg = false, .digits = "15", .exp10 = -1 };
+    const c16: grammar.NumConst = .{ .neg = false, .digits = "16", .exp10 = -1 };
+    const one: grammar.NumConst = .{ .neg = false, .digits = "1", .exp10 = 0 };
+    const n15: grammar.NumConst = .{ .neg = true, .digits = "15", .exp10 = -1 };
+    const n16: grammar.NumConst = .{ .neg = true, .digits = "16", .exp10 = -1 };
+    const Case = struct { r: grammar.NumRange, p: []const u8, want: Cert };
+    const cases = [_]Case{
+        // 1e0 = 1 is below 1.5 although "1" matches the bound's first digit.
+        .{ .r = .{ .min = c15, .max = c16 }, .p = "1e", .want = .dead },
+        .{ .r = .{ .min = c15 }, .p = "1e-", .want = .dead },
+        .{ .r = .{ .min = n16, .max = n15 }, .p = "-1e", .want = .dead },
+        // 1e0 = 1 is below an exclusive 1.6, not equal to it.
+        .{ .r = .{ .min = one, .max = c16, .max_excl = true }, .p = "1e", .want = .alive },
+        .{ .r = .{ .min = c15 }, .p = "1e", .want = .alive },
+        .{ .r = .{ .min = c15, .max = c16 }, .p = "15e", .want = .alive },
+        .{ .r = .{ .min = c15, .max = c16 }, .p = "16e", .want = .alive },
+        .{ .r = .{ .min = c15, .max = c16, .max_excl = true }, .p = "16e", .want = .dead },
+    };
+    for (cases) |c| {
+        const got = try rangeCertAfter(c.r, c.p);
+        if (got != c.want) std.debug.print("prefix {s}: got {s}\n", .{ c.p, @tagName(got) });
+        try testing.expectEqual(c.want, got);
+    }
+}
+
+fn specCertAfter(schema_json: []const u8, prefix: []const u8) !Cert {
+    const schema_mod = @import("schema.zig");
+    const alloc = testing.allocator;
+    var diag: schema_mod.Diagnostic = .{};
+    var w = work_mod.Work{};
+    var g = try schema_mod.compile(alloc, schema_json, 64, &diag, &w, false, .spec_v1, &.{});
+    defer g.deinit();
+    var side = parser.Side.init(alloc);
+    defer side.deinit();
+    var st = try parser.initState(&g, parser.MAX_THREADS_CAP, &side);
+    if (prefix.len == 0) return certifyState(&g, &st, &side);
+    var bufs: [2]parser.State = undefined;
+    for (&bufs) |*s| s.n = 0;
+    try parser.feedBytes(&g, &side, &st, prefix, &bufs[0], &bufs[1]);
+    return certifyState(&g, &bufs[0], &side);
+}
+
+test "complete r1: numeric conjunctions certify jointly (ADR-0011)" {
+    const Case = struct { schema: []const u8, p: []const u8, want: Cert };
+    const cases = [_]Case{
+        // -51...: an integer needs a nonnegative exponent, so <= -51 < -9.
+        .{ .schema = "{\"type\":\"integer\",\"minimum\":-9}", .p = "-51", .want = .dead },
+        .{ .schema = "{\"type\":\"integer\",\"minimum\":-9}", .p = "-50", .want = .alive },
+        .{ .schema = "{\"type\":\"integer\",\"minimum\":-9}", .p = "-5", .want = .alive },
+        // Leading digits 12: 1.2, 0.12, 12, ... none is a multiple of 0.5 in (0, 2].
+        .{ .schema = "{\"type\":\"number\",\"multipleOf\":0.5,\"maximum\":2}", .p = "12", .want = .dead },
+        .{ .schema = "{\"type\":\"number\",\"multipleOf\":0.5,\"maximum\":2}", .p = "15", .want = .alive },
+        .{ .schema = "{\"type\":\"number\",\"multipleOf\":0.5,\"maximum\":2}", .p = "1", .want = .alive },
+        .{ .schema = "{\"type\":\"integer\",\"not\":{\"const\":5},\"minimum\":1,\"maximum\":9}", .p = "", .want = .alive },
+        .{ .schema = "{\"type\":\"integer\",\"not\":{\"const\":5},\"minimum\":1,\"maximum\":9}", .p = "5", .want = .dead },
+        .{ .schema = "{\"type\":\"integer\",\"not\":{\"const\":5},\"minimum\":1,\"maximum\":9}", .p = "0.6e", .want = .alive },
+        .{ .schema = "{\"type\":\"integer\",\"maximum\":9}", .p = "51", .want = .dead },
+        .{ .schema = "{\"type\":\"integer\",\"maximum\":9}", .p = "-", .want = .alive },
+        .{ .schema = "{\"type\":\"integer\",\"minimum\":0,\"maximum\":1}", .p = "", .want = .alive },
+        .{ .schema = "{\"type\":\"integer\",\"minimum\":0,\"maximum\":1}", .p = "2", .want = .dead },
+        .{ .schema = "{\"type\":\"integer\",\"minimum\":0,\"maximum\":1}", .p = "10", .want = .alive },
+        .{ .schema = "{\"type\":\"integer\",\"minimum\":1,\"maximum\":9}", .p = "61", .want = .dead },
+        .{ .schema = "{\"type\":\"integer\",\"minimum\":1}", .p = "0.0", .want = .alive },
+        .{ .schema = "{\"type\":\"integer\",\"exclusiveMinimum\":0}", .p = "", .want = .alive },
+    };
+    for (cases) |c| {
+        const got = try specCertAfter(c.schema, c.p);
+        if (got != c.want) std.debug.print("{s} after \"{s}\": got {s}\n", .{ c.schema, c.p, @tagName(got) });
+        try testing.expectEqual(c.want, got);
+    }
+}
+
+test "complete: contains and uniqueItems element residuals" {
+    const Case = struct { schema: []const u8, p: []const u8, dead: bool };
+    const one_false = "{\"type\":\"array\",\"maxItems\":1,\"contains\":{\"enum\":[false]}";
+    const cases = [_]Case{
+        // The only slot must match contains: a string element never does.
+        .{ .schema = one_false ++ "}", .p = "[\"", .dead = true },
+        .{ .schema = one_false ++ "}", .p = "[1", .dead = true },
+        .{ .schema = one_false ++ "}", .p = "[f", .dead = false },
+        .{ .schema = one_false ++ ",\"unevaluatedItems\":{\"type\":\"string\"}}", .p = "[\"", .dead = true },
+        .{ .schema = one_false ++ ",\"unevaluatedItems\":{\"type\":\"string\"}}", .p = "[f", .dead = false },
+        // Two distinct values exist; a third element can never be fresh.
+        .{ .schema = "{\"type\":\"array\",\"items\":{\"enum\":[\"a\",\"b\"]},\"uniqueItems\":true}", .p = "[\"a\",\"b\",", .dead = true },
+        .{ .schema = "{\"type\":\"array\",\"items\":{\"enum\":[\"a\",\"b\"]},\"uniqueItems\":true}", .p = "[\"a\",", .dead = false },
+    };
+    for (cases) |c| {
+        const got = try specCertAfter(c.schema, c.p);
+        if ((got == .dead) != c.dead) std.debug.print("{s} after \"{s}\": got {s}\n", .{ c.schema, c.p, @tagName(got) });
+        try testing.expectEqual(c.dead, got == .dead);
+    }
+}
+
 test "complete r1: open_obj residual certifies remaining required keys" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     const int_node = try b.addNode(.{ .int_v = {} });
@@ -3277,7 +5007,7 @@ test "complete r1: open_obj residual certifies remaining required keys" {
     // A required key whose value language is empty (oneOf over two
     // identical branches accepts nothing) makes the whole object dead from
     // the start - certified, not searched.
-    var arena2 = std.heap.ArenaAllocator.init(alloc);
+    var arena2 = Arena.init(alloc);
     const aa2 = arena2.allocator();
     var b2 = grammar.Builder.init(aa2);
     const ii = try b2.addNode(.{ .int_v = {} });
@@ -3295,9 +5025,85 @@ test "complete r1: open_obj residual certifies remaining required keys" {
     try testing.expect(!try stateAlive(&g2, &tk, &st2, &cache, &w, &side));
 }
 
+/// An open object with integer values, the given extra_required names and
+/// maxProperties (count tracked), as schema.zig compiles one.
+fn countedObjGrammar(alloc: std.mem.Allocator, extra: []const []const u8, max: u32) !grammar.Grammar {
+    var arena = Arena.init(alloc);
+    const aa = arena.allocator();
+    var b = grammar.Builder.init(aa);
+    const int_node = try b.addNode(.{ .int_v = {} });
+    var lits: [4]grammar.Literal = undefined;
+    for (extra, 0..) |e, i| lits[i] = try b.addLiteral(e);
+    const root = try b.addNode(.{ .open_obj = .{
+        .props = &.{},
+        .extra_required = try b.copyLiterals(lits[0..extra.len]),
+        .value = int_node,
+        .max_props = max,
+        .track_keys = true,
+    } });
+    return b.finish(arena, .json_schema, root, .{});
+}
+
+test "complete: maxProperties counts the owed names and the in-flight key" {
+    // Second review of the release-line fix: with maxProperties keys seen
+    // the comma was admitted and the next key could never close (no filter
+    // ran for the node); routed to the filter, a key typed while every
+    // remaining slot belongs to an owed name had no dead rule and the
+    // search could not exhaust its spellings (RESOURCE_LIMIT). `closed`:
+    // alive in closed form (countAlive), without the simulation certificate
+    // - every token of a key or a nested value is checked on such a node.
+    const alloc = testing.allocator;
+    var side = parser.Side.init(alloc);
+    defer side.deinit();
+    const Case = struct { extra: []const []const u8, max: u32, prefix: []const u8, cert: Cert, closed: bool = false };
+    const cases = [_]Case{
+        // The review's example: the comma after the only allowed member.
+        .{ .extra = &.{}, .max = 1, .prefix = "{\"x\":1", .cert = .alive, .closed = true },
+        .{ .extra = &.{}, .max = 1, .prefix = "{\"x\":1,", .cert = .dead },
+        .{ .extra = &.{}, .max = 1, .prefix = "{\"x\":1}", .cert = .alive, .closed = true },
+        .{ .extra = &.{}, .max = 0, .prefix = "{\"", .cert = .dead },
+        .{ .extra = &.{}, .max = 2, .prefix = "{\"x\":1,", .cert = .alive, .closed = true },
+        .{ .extra = &.{}, .max = 2, .prefix = "{\"x", .cert = .alive, .closed = true },
+        // Every slot owed: the in-flight key must spell an owed name.
+        .{ .extra = &.{"a"}, .max = 1, .prefix = "{\"", .cert = .alive, .closed = true },
+        .{ .extra = &.{"a"}, .max = 1, .prefix = "{\"a", .cert = .alive, .closed = true },
+        .{ .extra = &.{"a"}, .max = 1, .prefix = "{\"b", .cert = .dead },
+        .{ .extra = &.{"a"}, .max = 1, .prefix = "{\"ab", .cert = .dead },
+        .{ .extra = &.{"a"}, .max = 2, .prefix = "{\"b", .cert = .alive, .closed = true },
+        .{ .extra = &.{ "a", "b" }, .max = 1, .prefix = "{", .cert = .dead },
+        .{ .extra = &.{ "a", "b" }, .max = 2, .prefix = "{\"a\":1,\"", .cert = .alive, .closed = true },
+        .{ .extra = &.{ "a", "b" }, .max = 2, .prefix = "{\"a\":1,\"c", .cert = .dead },
+        .{ .extra = &.{ "a", "b" }, .max = 2, .prefix = "{\"a\":1,\"b", .cert = .alive, .closed = true },
+        // Mid code point: the owed name must continue into the pending range.
+        .{ .extra = &.{"\u{e9}"}, .max = 1, .prefix = "{\"\xc3", .cert = .alive },
+        .{ .extra = &.{"\u{e9}"}, .max = 1, .prefix = "{\"\xc4", .cert = .dead },
+    };
+    for (cases) |c| {
+        var g = try countedObjGrammar(alloc, c.extra, c.max);
+        defer g.deinit();
+        try testing.expect(g.needs_reachability);
+        var st = try parser.initState(&g, 8, &side);
+        var cur: parser.State = undefined;
+        var work: parser.State = undefined;
+        try parser.feedBytes(&g, &side, &st, c.prefix, &cur, &work);
+        testing.expectEqual(c.cert, certifyState(&g, &cur, &side)) catch |e| {
+            std.debug.print("max {d} prefix {s}\n", .{ c.max, c.prefix });
+            return e;
+        };
+        if (c.closed) {
+            in_search = true;
+            defer in_search = false;
+            testing.expectEqual(Cert.alive, certifyState(&g, &cur, &side)) catch |e| {
+                std.debug.print("closed form: max {d} prefix {s}\n", .{ c.max, c.prefix });
+                return e;
+            };
+        }
+    }
+}
+
 test "complete r1: oneof vote-link residual doom (lit_trie overlap)" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     var b = grammar.Builder.init(arena.allocator());
     // oneOf{"ab","c"} / {"ab","d"}: after `"a` both branches hold the same
     // residual {`b"`}, so exactly-one is unreachable (certified dead by
@@ -3349,7 +5155,7 @@ test "complete r1: oneof vote-link residual doom (lit_trie overlap)" {
 
 test "complete r1: oneof vote-link residual doom (pattern overlap)" {
     const alloc = testing.allocator;
-    var arena = std.heap.ArenaAllocator.init(alloc);
+    var arena = Arena.init(alloc);
     const aa = arena.allocator();
     var b = grammar.Builder.init(aa);
     // Overlapping oneOf branches violate strict ADR-0005 D3 exclusive
@@ -3405,7 +5211,7 @@ test "complete r1: oneof vote-link residual doom (pattern overlap)" {
     // residuals ({`b"`} vs {`x"`}): no link. The simulation-verified
     // certificate proves the state alive exactly (`b"` completes branch 1
     // alone); stateAlive agrees.
-    var arena2 = std.heap.ArenaAllocator.init(alloc);
+    var arena2 = Arena.init(alloc);
     const aa2 = arena2.allocator();
     var b2 = grammar.Builder.init(aa2);
     const d3 = try aa2.create(pattern.Dfa);
@@ -3425,4 +5231,66 @@ test "complete r1: oneof vote-link residual doom (pattern overlap)" {
     try parser.feedBytes(&g2, &side, &st2, "\"a", &st2_a, &work);
     try testing.expectEqual(Cert.alive, certifyState(&g2, &st2_a, &side));
     try testing.expect(try stateAlive(&g2, &tk, &st2_a, &cache, &w, &side));
+}
+
+test "complete: pattern key completions are counted exactly on both dispatch sides" {
+    // T3 acceptance of 50cbd80e: a finite patternProperties language was
+    // taken for an infinite one, so a duplicate key was admitted and died
+    // at its closing quote (DEAD_END). The non-matching side can be finite
+    // too: the remnant of a near-universal pattern (review of the fix).
+    var arena = std.heap.ArenaAllocator.init(testing.allocator);
+    defer arena.deinit();
+    const aa = arena.allocator();
+    const cap: u64 = 1 << 40;
+    const Case = struct { pat: []const u8, prefix: []const u8, window: ?CpWindow = null, hit: u64, miss: u64 };
+    const near = "^([\\s\\S]{2,}|[^a])$";
+    const cases = [_]Case{
+        .{ .pat = "^k[12]$", .prefix = "", .hit = 2, .miss = cap },
+        .{ .pat = "^k[12]$", .prefix = "k", .hit = 2, .miss = cap },
+        .{ .pat = "^k[12]$", .prefix = "k1", .hit = 1, .miss = cap },
+        .{ .pat = "^line[1-3]$", .prefix = "line", .hit = 3, .miss = cap },
+        .{ .pat = "^ключ[12]$", .prefix = "ключ", .hit = 2, .miss = cap },
+        .{ .pat = "^[ab]{3}$", .prefix = "", .hit = 8, .miss = cap },
+        .{ .pat = "^a{2,3}$", .prefix = "a", .hit = 2, .miss = cap },
+        .{ .pat = "^$", .prefix = "", .hit = 1, .miss = cap },
+        // No end anchor: every extension of a match matches.
+        .{ .pat = "^k[12]", .prefix = "k1", .hit = cap, .miss = 0 },
+        // One code point other than a line terminator: every Unicode
+        // scalar value but the four terminators, surrogates excluded.
+        .{ .pat = "^.$", .prefix = "", .hit = 0x110000 - 0x800 - 4, .miss = cap },
+        // Only "" and "a" miss; "b" matches with every extension (a cycle
+        // among accepting states alone counts nothing on the miss side).
+        .{ .pat = near, .prefix = "", .hit = cap, .miss = 2 },
+        .{ .pat = near, .prefix = "a", .hit = cap, .miss = 1 },
+        .{ .pat = near, .prefix = "b", .hit = cap, .miss = 0 },
+        // Odd lengths miss forever: a cycle through a non-accepting state.
+        .{ .pat = "^([\\s\\S][\\s\\S])*$", .prefix = "", .hit = cap, .miss = cap },
+        // Unanchored search: the DFA never leaves the pattern, yet the
+        // keys avoiding the needle are infinite.
+        .{ .pat = "abc", .prefix = "", .hit = cap, .miss = cap },
+        .{ .pat = "abc", .prefix = "xabc", .hit = cap, .miss = 0 },
+        // Windows on the next code point (a key cut inside UTF-8).
+        .{ .pat = "^k[12]$", .prefix = "k", .window = .{ .lo = '1', .hi = '1' }, .hit = 1, .miss = cap },
+        .{ .pat = near, .prefix = "", .window = .{ .lo = 'b', .hi = 'b' }, .hit = cap, .miss = 0 },
+        .{ .pat = "^([\\s\\S]{2,}|[^é])$", .prefix = "", .window = .{ .lo = 0xC0, .hi = 0xFF }, .hit = cap, .miss = 1 },
+    };
+    for (cases) |c| {
+        const dfa = try aa.create(pattern.Dfa);
+        dfa.* = try pattern.compileJsonSchema(aa, c.pat);
+        var lb: pattern.LenBudget = .{};
+        const descr = (try pattern.computeLenDescr(aa, dfa, &lb)) orelse return error.TestUnexpectedResult;
+        const q = dfaFeedKeyBytes(dfa, c.prefix) orelse return error.TestUnexpectedResult;
+        const hit = dfaKeyCount(testing.allocator, dfa, descr, q, c.window, .hit, cap) orelse return error.TestUnexpectedResult;
+        const miss = dfaKeyCount(testing.allocator, dfa, descr, q, c.window, .miss, cap) orelse return error.TestUnexpectedResult;
+        testing.expectEqual(c.hit, hit) catch |e| {
+            std.debug.print("hit: pattern {s} prefix {s}\n", .{ c.pat, c.prefix });
+            return e;
+        };
+        testing.expectEqual(c.miss, miss) catch |e| {
+            std.debug.print("miss: pattern {s} prefix {s}\n", .{ c.pat, c.prefix });
+            return e;
+        };
+        // A small cap saturates.
+        try testing.expectEqual(@min(c.hit, 1), dfaKeyCount(testing.allocator, dfa, descr, q, c.window, .hit, 1).?);
+    }
 }

@@ -12,5 +12,8 @@ test {
     _ = @import("coverage.zig");
     _ = @import("work.zig");
     _ = @import("precompute.zig");
+    _ = @import("probe.zig");
     _ = @import("c_api.zig");
+    _ = @import("numcert.zig");
+    _ = @import("test_hooks.zig");
 }

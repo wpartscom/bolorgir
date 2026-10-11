@@ -1,7 +1,7 @@
 {
  "status": "OK",
  "case": "adr0007_mask_fast_path",
- "lib": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/zig-out/lib/libbolorgir.so",
+ "lib": "zig-out/lib/libbolorgir.so",
  "environment": {
   "date_utc": "2026-09-30T10:12:18Z"
  },

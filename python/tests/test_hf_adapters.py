@@ -18,7 +18,7 @@ Covers:
 - finish_row without an accepted EOS -> (False, "length"), even
   when can_end() holds;
 - NaN/+inf among constraint-allowed scores -> ZigConstraintsError;
-- FR-14/15: generation conflicts are checked against the effective
+- generation conflicts are checked against the effective
   config (model.generation_config merged with gen_kwargs), and the
   processor's EOS set is the union of tokenizer and generation_config
   eos ids.
@@ -625,7 +625,7 @@ def test_nan_at_disallowed_position_is_masked_not_an_error(zt):
 
 
 # ----------------------------------------------------------------------
-# FR-14/15: effective generation config and the EOS union
+# Effective generation config and the EOS union
 # ----------------------------------------------------------------------
 
 @needs_core_masks
@@ -1007,3 +1007,151 @@ def test_explicit_num_beams_one_wins_over_model_config(cg):
         for s in r.sessions:
             s.close()
         c.close()
+
+
+# ----------------------------------------------------------------------
+# on_constraint_error: an engine error of one row (here RESOURCE_LIMIT
+# from a context with a tiny work budget) fails that row only.
+# ----------------------------------------------------------------------
+
+def _two_rows(work_limit_ops=50):
+    good = Engine(mode="lazy")
+    bad = Engine(mode="lazy", work_limit_ops=work_limit_ops)
+    c_bad = bad.compile_literals(["a", "b"], tokenizer=mini_bundle())
+    c_good = good.compile_literals(["a", "b"], tokenizer=mini_bundle())
+    return (good, bad), (c_bad, c_good)
+
+
+def _close(engines, constraints, sessions):
+    for s in sessions:
+        s.close()
+    for c in constraints:
+        c.close()
+    for e in engines:
+        e.close()
+
+
+@needs_core_masks
+def test_fail_row_leaves_only_eos_and_other_rows_continue(zt):
+    torch, proc_cls = zt
+    engines, cs = _two_rows()
+    sessions = [c.create_session() for c in cs]
+    proc = proc_cls(sessions, prompt_len=1, eos_ids=(EOS_ID,), on_constraint_error="fail_row")
+    out = proc(torch.zeros((2, 1), dtype=torch.long), torch.zeros((2, VOCAB)))
+    assert torch.isfinite(out[0]).nonzero().flatten().tolist() == [EOS_ID]
+    assert torch.isfinite(out[1]).nonzero().flatten().tolist() == [ord("a"), ord("b")]
+    assert "limit" in proc.row_error[0] and proc.row_error[1] is None
+    assert proc.active == [False, True]
+    assert proc.finish_row(0, [0, EOS_ID]) == (False, "constraint_error")
+    assert proc.finish_row(1, [0, ord("a"), EOS_ID]) == (True, "eos")
+    _close(engines, cs, sessions)
+
+
+@needs_core_masks
+def test_raise_is_the_default_on_constraint_error(zt):
+    torch, proc_cls = zt
+    engines, cs = _two_rows()
+    sessions = [c.create_session() for c in cs]
+    proc = proc_cls(sessions, prompt_len=1, eos_ids=(EOS_ID,))
+    with pytest.raises(zc.ResourceLimitError):
+        proc(torch.zeros((2, 1), dtype=torch.long), torch.zeros((2, VOCAB)))
+    with pytest.raises(zc.InvalidArgumentError):
+        proc_cls(sessions, prompt_len=1, eos_ids=(EOS_ID,), on_constraint_error="skip")
+    _close(engines, cs, sessions)
+
+
+class _GreedyModel:
+    """Greedy decoding that calls the logits processors like HF does."""
+
+    generation_config = SimpleNamespace(eos_token_id=EOS_ID)
+
+    def generate(self, input_ids, logits_processor, generation_config, **kwargs):
+        import torch
+
+        ids = input_ids
+        done = torch.zeros(ids.shape[0], dtype=torch.bool)
+        for _ in range(generation_config.max_new_tokens):
+            scores = torch.zeros((ids.shape[0], VOCAB))
+            for p in logits_processor:
+                scores = p(ids, scores)
+            nxt = torch.argmax(scores, dim=1)
+            nxt[done] = EOS_ID
+            done |= nxt == EOS_ID
+            ids = torch.cat([ids, nxt[:, None]], dim=1)
+            if bool(done.all()):
+                break
+        return SimpleNamespace(sequences=ids)
+
+
+_HOOKS_LIB = os.environ.get("BLG_TEST_HOOKS_LIB") or os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    "zig-out", "test-hooks", "lib", "libbolorgir.so.0.1.0")
+
+# Runs with the hooks core preloaded: the extension's libbolorgir.so.0
+# resolves to it by soname. Row 0 reaches a pattern string, whose verdict
+# the hook forces to UNKNOWN; row 1 never does.
+_FORCED_UNKNOWN_ROWS = r"""
+import ctypes, sys
+import torch
+from bolorgir import Engine, TokenizerBundle
+from bolorgir.transformers import ConstraintLogitsProcessor
+
+hooks = ctypes.CDLL(sys.argv[1])
+tag = hooks.blg_test_frame_tag(b"str_pat")
+assert tag >= 0
+hooks.blg_test_set_overrides.argtypes = [ctypes.c_uint64, ctypes.c_uint64, ctypes.c_int32, ctypes.c_uint64]
+assert hooks.blg_test_set_overrides(0, 0, tag, 0) == 0
+EOS, VOCAB = 256, 257
+bundle = TokenizerBundle.from_token_bytes([bytes([b]) for b in range(256)] + [b"<eos>"], eos_ids=[EOS])
+e = Engine(mode="lazy")
+cs = [e.compile({"type": "string", "pattern": "^a"}, tokenizer=bundle, profile="spec-v1"),
+      e.compile_literals(["ab"], tokenizer=bundle)]
+sessions = [c.create_session() for c in cs]
+proc = ConstraintLogitsProcessor(sessions, prompt_len=1, eos_ids=(EOS,), on_constraint_error="fail_row")
+ids = torch.zeros((2, 1), dtype=torch.long)
+for _ in range(4):
+    out = proc(ids, torch.zeros((2, VOCAB)))
+    nxt = torch.argmax(out, dim=1)
+    ids = torch.cat([ids, nxt[:, None]], dim=1)
+    if not any(proc.active):
+        break
+rows = ids[:, 1:].tolist()
+assert proc.row_error[0] and "limit" in proc.row_error[0], proc.row_error
+assert rows[0][-1] == EOS and proc.finish_row(0, ids[0].tolist()) == (False, "constraint_error"), rows
+assert proc.row_error[1] is None and rows[1][:3] == [ord("a"), ord("b"), EOS], rows
+assert proc.finish_row(1, ids[1].tolist()) == (True, "eos")
+print("ok", rows[0])
+"""
+
+
+@needs_core_masks
+@pytest.mark.skipif(not os.path.exists(_HOOKS_LIB), reason="core with test hooks not built")
+def test_fail_row_with_unknown_forced_by_the_test_hook(zt, tmp_path):
+    import shutil
+    import subprocess
+    import sys
+
+    # LD_PRELOAD splits on spaces: preload a copy from a plain path.
+    lib = str(tmp_path / "libbolorgir.so.0.1.0")
+    if " " in lib or ":" in lib:
+        pytest.skip("temporary directory path not usable in LD_PRELOAD")
+    shutil.copyfile(_HOOKS_LIB, lib)
+    env = dict(os.environ, LD_PRELOAD=lib)
+    out = subprocess.run([sys.executable, "-c", _FORCED_UNKNOWN_ROWS, lib],
+                         capture_output=True, text=True, env=env)
+    assert out.returncode == 0, out.stdout[-2000:] + out.stderr[-2000:]
+    assert out.stdout.startswith("ok"), out.stdout
+
+
+@needs_core_masks
+def test_constrained_generate_fail_row_reports_the_failed_row(cg):
+    torch, constrained_generate = cg
+    engines, cs = _two_rows()
+    tok = SimpleNamespace(eos_token_id=EOS_ID)
+    result = constrained_generate(_GreedyModel(), tok, list(cs),
+                                  inputs={"input_ids": torch.zeros((2, 1), dtype=torch.long)},
+                                  max_new_tokens=4, on_constraint_error="fail_row")
+    assert result.completed == [False, True]
+    assert result.stop_reason == ["constraint_error", "eos"]
+    assert "limit" in result.errors[0] and result.errors[1] is None
+    _close(engines, cs, result.sessions)

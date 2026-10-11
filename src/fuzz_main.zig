@@ -1,4 +1,4 @@
-//! T4 fuzz / fault-injection runner (see TZ §11 T4).
+//! Fuzz / fault-injection runner.
 //!
 //! Campaigns:
 //!   A. compile     - schema and literal-set compiler on random inputs
@@ -24,6 +24,7 @@ const parser = @import("parser.zig");
 const mask = @import("mask.zig");
 const work_mod = @import("work.zig");
 const c_api = @import("c_api.zig");
+const io_mod = @import("io.zig");
 
 const page = std.heap.page_allocator;
 const FailingAllocator = std.testing.FailingAllocator;
@@ -67,11 +68,20 @@ fn failInvariant(comptime fmt: []const u8, args: anytype) noreturn {
     std.process.exit(2);
 }
 
+/// Milliseconds elapsed on the awake clock since `t`.
+fn elapsedMsSince(t: std.Io.Clock.Timestamp) u64 {
+    const d = t.untilNow(io_mod.io());
+    if (d.raw.nanoseconds <= 0) return 0;
+    return @as(u64, @intCast(d.raw.nanoseconds)) / std.time.ns_per_ms;
+}
+
 fn saveArtifact(name: []const u8, data: []const u8) void {
-    std.fs.cwd().makePath(cfg.artifacts_dir) catch {};
+    const io = io_mod.io();
+    const cwd = std.Io.Dir.cwd();
+    cwd.createDirPath(io, cfg.artifacts_dir) catch {};
     var path_buf: [512]u8 = undefined;
     const path = std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ cfg.artifacts_dir, name }) catch return;
-    std.fs.cwd().writeFile(.{ .sub_path = path, .data = data }) catch |e| {
+    cwd.writeFile(io, .{ .sub_path = path, .data = data }) catch |e| {
         std.debug.print("cannot write artifact {s}: {s}\n", .{ path, @errorName(e) });
     };
 }
@@ -232,7 +242,7 @@ const SchemaGen = struct {
             try b.appendSlice(a, "{\"type\":\"null\"}");
         } else {
             // enum / const of same-type scalars
-            const kind: ScalarKind = @enumFromInt(rng.uintLessThan(u8, 5));
+            const kind: ScalarKind = @fromBackingInt(@intCast(rng.uintLessThan(u8, 5)));
             const with_type = self.must_compile and rng.boolean() or
                 (!self.must_compile and rng.uintLessThan(u32, 100) < 60);
             const is_const = rng.uintLessThan(u32, 100) < 30;
@@ -293,14 +303,14 @@ fn genGarbage(a: std.mem.Allocator, buf: *std.ArrayList(u8), rng: std.Random) !v
         },
         1 => {
             // valid schema cut at a random point
-            var tmp: std.ArrayList(u8) = .{};
+            var tmp: std.ArrayList(u8) = .empty;
             try genSchema(a, &tmp, rng, true);
             const cut = rng.uintLessThan(usize, tmp.items.len + 1);
             try buf.appendSlice(a, tmp.items[0..cut]);
         },
         2 => {
             // valid schema + unsupported keyword
-            var tmp: std.ArrayList(u8) = .{};
+            var tmp: std.ArrayList(u8) = .empty;
             try genSchema(a, &tmp, rng, true);
             const kw = [_][]const u8{ "\"pattern\":\"^a\",", "\"anyOf\":[],", "\"minimum\":3,", "\"format\":\"email\"," };
             try buf.append(a, '{');
@@ -342,7 +352,7 @@ const TokSpec = struct {
 fn genTokenizer(a: std.mem.Allocator, rng: std.Random, full: bool) !TokSpec {
     // structural single chars are (almost) always included so walks progress;
     // `full` forces all of them (used where every valid schema must compile)
-    var list: std.ArrayList([]const u8) = .{};
+    var list: std.ArrayList([]const u8) = .empty;
     const core = [_][]const u8{ "{", "}", "[", "]", ",", ":", "\"", "0", "1", "a", "t", "f", "n", "-", ".", "e", "u", "l", "s", "r" };
     for (core) |t| {
         if (full or rng.uintLessThan(u32, 100) < 85) try list.append(a, t);
@@ -381,7 +391,7 @@ const TokDescKeep = struct {
 // Byte-complete tokenizer: all 256 single-byte tokens + EOS + special.
 // Passes the compile-time coverage gate for every grammar.
 fn genByteTokenizer(a: std.mem.Allocator) !TokSpec {
-    var list: std.ArrayList([]const u8) = .{};
+    var list: std.ArrayList([]const u8) = .empty;
     const bufs = try a.alloc([1]u8, 256);
     for (0..256) |i| {
         bufs[i][0] = @intCast(i);
@@ -439,7 +449,7 @@ fn makeError() c_api.ZgError {
 }
 
 fn checkStatus(st: c_api.Status, where: []const u8) void {
-    const v = @intFromEnum(st);
+    const v = @backingInt(st);
     if (v < 0 or v > 13)
         failInvariant("status code {d} out of range at {s}", .{ v, where });
 }
@@ -460,7 +470,7 @@ fn campaignCompile(rng: std.Random) !void {
     while (i < cfg.compile_iters) : (i += 1) {
         _ = arena.reset(.retain_capacity);
         const a = arena.allocator();
-        var buf: std.ArrayList(u8) = .{};
+        var buf: std.ArrayList(u8) = .empty;
         const sel = rng.uintLessThan(u32, 100);
         const use_literals = sel >= 85;
         if (use_literals) {
@@ -505,10 +515,11 @@ fn campaignCompile(rng: std.Random) !void {
             if (corpus_saved < 400 and counters.compile_ok % 500 == 0) {
                 var name_buf: [64]u8 = undefined;
                 const name = std.fmt.bufPrint(&name_buf, "schema_{d}.json", .{corpus_saved}) catch continue;
-                std.fs.cwd().makePath(cfg.corpus_dir) catch {};
+                const io = io_mod.io();
+                std.Io.Dir.cwd().createDirPath(io, cfg.corpus_dir) catch {};
                 var path_buf: [600]u8 = undefined;
                 const path = std.fmt.bufPrint(&path_buf, "{s}/{s}", .{ cfg.corpus_dir, name }) catch continue;
-                std.fs.cwd().writeFile(.{ .sub_path = path, .data = bytes }) catch {};
+                std.Io.Dir.cwd().writeFile(io, .{ .sub_path = path, .data = bytes }) catch {};
                 corpus_saved += 1;
             }
             gg.deinit();
@@ -532,7 +543,7 @@ fn campaignInjection(rng: std.Random) !void {
     while (s < cfg.fail_schemas) : (s += 1) {
         _ = arena.reset(.retain_capacity);
         const a = arena.allocator();
-        var buf: std.ArrayList(u8) = .{};
+        var buf: std.ArrayList(u8) = .empty;
         const use_literals = rng.boolean();
         if (use_literals)
             try genLiteralsJson(a, &buf, rng, true)
@@ -628,7 +639,7 @@ fn genContextConfig(rng: std.Random, harsh: bool) c_api.ContextConfig {
 }
 
 fn dumpRepro(a: std.mem.Allocator, spec: TokSpec, schema_bytes: []const u8) []u8 {
-    var buf: std.ArrayList(u8) = .{};
+    var buf: std.ArrayList(u8) = .empty;
     buf.appendSlice(a, "{\"schema\":") catch return schema_bytes;
     buf.appendSlice(a, schema_bytes) catch return schema_bytes;
     buf.appendSlice(a, ",\"tokens\":[") catch return schema_bytes;
@@ -732,7 +743,7 @@ fn runWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: *c_ap
         @memcpy(prev, mbuf);
 
         // allowed regular tokens
-        var allowed: std.ArrayList(u32) = .{};
+        var allowed: std.ArrayList(u32) = .empty;
         var id: u32 = 0;
         while (id < spec.vocab) : (id += 1) {
             if (maskBit(mbuf, id) and id != spec.eos[0]) try allowed.append(a, id);
@@ -887,15 +898,15 @@ fn runBatchWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: 
             if (st == .resource_limit) {
                 var saw = false;
                 for (sts) |x| {
-                    if (x == @intFromEnum(st)) saw = true;
-                    if (x != @intFromEnum(c_api.Status.ok) and x != @intFromEnum(c_api.Status.resource_limit))
+                    if (x == @backingInt(st)) saw = true;
+                    if (x != @backingInt(c_api.Status.ok) and x != @backingInt(c_api.Status.resource_limit))
                         artifactAndDie("batch statuses diverge (memory): batch={s} rows={d},{d},{d}", .{ @tagName(st), sts[0], sts[1], sts[2] }, "crash_batch.json", schema_bytes);
                 }
                 if (!saw)
                     artifactAndDie("batch statuses diverge (memory): batch={s} rows={d},{d},{d}", .{ @tagName(st), sts[0], sts[1], sts[2] }, "crash_batch.json", schema_bytes);
             } else {
                 for (sts) |x| {
-                    if (x != @intFromEnum(st))
+                    if (x != @backingInt(st))
                         artifactAndDie("batch statuses diverge (dead_end): batch={s} rows={d},{d},{d}", .{ @tagName(st), sts[0], sts[1], sts[2] }, "crash_batch.json", schema_bytes);
                 }
             }
@@ -913,7 +924,7 @@ fn runBatchWalk(a: std.mem.Allocator, rng: std.Random, ctx: *c_api.Context, gh: 
             if (!std.mem.eql(u32, mask_bufs[i], single))
                 artifactAndDie("batch mask {d} != individual mask", .{i}, "crash_batch_mismatch.json", schema_bytes);
         }
-        var allowed: std.ArrayList(u32) = .{};
+        var allowed: std.ArrayList(u32) = .empty;
         var id: u32 = 0;
         while (id < spec.vocab) : (id += 1) {
             if (maskBit(single, id) and id != spec.eos[0]) try allowed.append(a, id);
@@ -974,7 +985,7 @@ fn campaignWalk(rng: std.Random) !void {
             continue;
         }
         const context = ctx.?;
-        var sbuf: std.ArrayList(u8) = .{};
+        var sbuf: std.ArrayList(u8) = .empty;
         try genSchema(a, &sbuf, rng, rng.uintLessThan(u32, 100) < 85);
         var req: c_api.CompileRequest = .{
             .struct_size = @sizeOf(c_api.CompileRequest),
@@ -1052,7 +1063,7 @@ fn campaignWalk(rng: std.Random) !void {
 
 const NCTX = 4;
 
-var cache_compile_mutex: std.Thread.Mutex = .{};
+var cache_compile_mutex: io_mod.Mutex = .{};
 
 fn cacheContextConfigs() [NCTX]c_api.ContextConfig {
     var out: [NCTX]c_api.ContextConfig = undefined;
@@ -1079,7 +1090,7 @@ fn cacheWalk(a: std.mem.Allocator, walk_seed: u64, ctxs: *const [NCTX]*c_api.Con
     const rng = prng.random();
     var err = makeError();
 
-    var sbuf: std.ArrayList(u8) = .{};
+    var sbuf: std.ArrayList(u8) = .empty;
     try genSchema(a, &sbuf, rng, true);
     const schema_bytes = sbuf.items;
 
@@ -1134,7 +1145,7 @@ fn cacheWalk(a: std.mem.Allocator, walk_seed: u64, ctxs: *const [NCTX]*c_api.Con
         checkMaskInvariants(sess[0].?, spec, masks[0], schema_bytes);
         h = grammar.fnv1a64Update(h, std.mem.sliceAsBytes(masks[0]));
 
-        var allowed: std.ArrayList(u32) = .{};
+        var allowed: std.ArrayList(u32) = .empty;
         var id: u32 = 0;
         while (id < spec.vocab) : (id += 1) {
             if (maskBit(masks[0], id) and id != spec.eos[0]) try allowed.append(a, id);
@@ -1241,7 +1252,7 @@ fn campaignCache(rng: std.Random) !void {
         var jobs: [4]ThreadJob = undefined;
         var threads: [4]?std.Thread = .{ null, null, null, null };
         for (0..4) |t| {
-            var tw: std.ArrayList(u64) = .{};
+            var tw: std.ArrayList(u64) = .empty;
             var w: u64 = t;
             while (w < n_walks) : (w += 4) try tw.append(a, w);
             jobs[t] = .{
@@ -1287,7 +1298,7 @@ fn campaignCache(rng: std.Random) !void {
 // main
 // ---------------------------------------------------------------------------
 
-fn argValue(args: [][:0]u8, i: *usize) ?[]const u8 {
+fn argValue(args: []const [:0]const u8, i: *usize) ?[]const u8 {
     const arg = args[i.*];
     if (std.mem.indexOfScalar(u8, arg, '=')) |eq| return arg[eq + 1 ..];
     if (i.* + 1 < args.len) {
@@ -1297,15 +1308,15 @@ fn argValue(args: [][:0]u8, i: *usize) ?[]const u8 {
     return null;
 }
 
-pub fn main() !void {
+pub fn main(init: std.process.Init) !void {
     var arena = std.heap.ArenaAllocator.init(page);
     const a = arena.allocator();
-    const args = try std.process.argsAlloc(a);
+    const args = try init.minimal.args.toSlice(a);
     var i: usize = 1;
     while (i < args.len) : (i += 1) {
         const arg = args[i];
         const num = struct {
-            fn get(as: [][:0]u8, ip: *usize) ?u64 {
+            fn get(as: []const [:0]const u8, ip: *usize) ?u64 {
                 const v = argValue(as, ip) orelse return null;
                 return std.fmt.parseInt(u64, v, 10) catch null;
             }
@@ -1333,35 +1344,36 @@ pub fn main() !void {
         }
     }
 
-    std.fs.cwd().makePath(cfg.artifacts_dir) catch {};
-    std.fs.cwd().makePath(cfg.corpus_dir) catch {};
+    const io = io_mod.io();
+    std.Io.Dir.cwd().createDirPath(io, cfg.artifacts_dir) catch {};
+    std.Io.Dir.cwd().createDirPath(io, cfg.corpus_dir) catch {};
 
     var prng = std.Random.DefaultPrng.init(cfg.seed);
     const rng = prng.random();
-    var timer = try std.time.Timer.start();
+    const timer = std.Io.Clock.Timestamp.now(io, .awake);
 
     std.debug.print("[T4] campaign A: compiler fuzz ({d} iters, seed {d})\n", .{ cfg.compile_iters, cfg.seed });
     try campaignCompile(rng);
-    std.debug.print("[T4] campaign A done: ok={d} err={d} ({d} ms)\n", .{ counters.compile_ok, counters.compile_err, timer.read() / std.time.ns_per_ms });
+    std.debug.print("[T4] campaign A done: ok={d} err={d} ({d} ms)\n", .{ counters.compile_ok, counters.compile_err, elapsedMsSince(timer) });
 
     try campaignInjection(rng);
-    std.debug.print("[T4] campaign B done: injected={d} cases={d} ({d} ms)\n", .{ counters.injected_failures, counters.injected_cases, timer.read() / std.time.ns_per_ms });
+    std.debug.print("[T4] campaign B done: injected={d} cases={d} ({d} ms)\n", .{ counters.injected_failures, counters.injected_cases, elapsedMsSince(timer) });
 
     std.debug.print("[T4] campaign C: accept/mask walks ({d} sessions)\n", .{cfg.walk_sessions});
     try campaignWalk(rng);
-    std.debug.print("[T4] campaign C done: sessions={d} api_calls={d} masks={d} accepts={d} dead_ends={d} rl={d} ({d} ms)\n", .{ counters.walk_sessions, counters.walk_api_calls, counters.walk_masks, counters.walk_accepts, counters.walk_dead_ends, counters.walk_resource_limits, timer.read() / std.time.ns_per_ms });
+    std.debug.print("[T4] campaign C done: sessions={d} api_calls={d} masks={d} accepts={d} dead_ends={d} rl={d} ({d} ms)\n", .{ counters.walk_sessions, counters.walk_api_calls, counters.walk_masks, counters.walk_accepts, counters.walk_dead_ends, counters.walk_resource_limits, elapsedMsSince(timer) });
 
     std.debug.print("[T4] campaign D: cache parity ({d} walks x2 phases)\n", .{cfg.cache_walks});
     try campaignCache(rng);
-    std.debug.print("[T4] campaign D done: walks={d} mask_cmps={d} threaded_match={} ({d} ms)\n", .{ counters.cache_walks, counters.cache_mask_cmps, counters.threaded_match, timer.read() / std.time.ns_per_ms });
+    std.debug.print("[T4] campaign D done: walks={d} mask_cmps={d} threaded_match={} ({d} ms)\n", .{ counters.cache_walks, counters.cache_mask_cmps, counters.threaded_match, elapsedMsSince(timer) });
 
     const total = counters.compile_iters + counters.injected_failures + counters.walk_api_calls + counters.cache_mask_cmps;
-    var rep: std.ArrayList(u8) = .{};
+    var rep: std.ArrayList(u8) = .empty;
     try rep.print(a,
         \\{{"seed":{d},"compile_iters":{d},"compile_ok":{d},"compile_err":{d},"injected_failures":{d},"injected_cases":{d},"walk_sessions":{d},"walk_api_calls":{d},"walk_masks":{d},"walk_accepts":{d},"walk_dead_ends":{d},"walk_resource_limits":{d},"walk_compile_failures":{d},"cache_walks":{d},"cache_mask_cmps":{d},"threaded_match":{},"total_iterations":{d},"elapsed_ms":{d}}}
-    , .{ cfg.seed, counters.compile_iters, counters.compile_ok, counters.compile_err, counters.injected_failures, counters.injected_cases, counters.walk_sessions, counters.walk_api_calls, counters.walk_masks, counters.walk_accepts, counters.walk_dead_ends, counters.walk_resource_limits, counters.walk_compile_failures, counters.cache_walks, counters.cache_mask_cmps, counters.threaded_match, total, timer.read() / std.time.ns_per_ms });
+    , .{ cfg.seed, counters.compile_iters, counters.compile_ok, counters.compile_err, counters.injected_failures, counters.injected_cases, counters.walk_sessions, counters.walk_api_calls, counters.walk_masks, counters.walk_accepts, counters.walk_dead_ends, counters.walk_resource_limits, counters.walk_compile_failures, counters.cache_walks, counters.cache_mask_cmps, counters.threaded_match, total, elapsedMsSince(timer) });
     try rep.append(a, '\n');
-    std.fs.cwd().writeFile(.{ .sub_path = cfg.report, .data = rep.items }) catch |e| {
+    std.Io.Dir.cwd().writeFile(io, .{ .sub_path = cfg.report, .data = rep.items }) catch |e| {
         std.debug.print("cannot write report {s}: {s}\n", .{ cfg.report, @errorName(e) });
     };
     std.debug.print("[T4] ALL CAMPAIGNS PASSED, total_iterations={d}, report={s}\n", .{ total, cfg.report });

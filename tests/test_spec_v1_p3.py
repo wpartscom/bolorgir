@@ -307,6 +307,82 @@ def test_str_excl_mask_excludes_forbidden_close(byte_ctx):
 
 
 # ---------------------------------------------------------------------------
+# Value verdicts ignore declared-key order
+# ---------------------------------------------------------------------------
+
+# A oneOf branch, an `if` condition and a contains subschema under a finite
+# maxContains decide on the value. A branch whose declared keys arrive out
+# of schema order still matches; otherwise a second matching branch would
+# pass alone. Each bad document below was accepted when the order counted.
+_AB = {"type": "object", "properties": {"a": {"const": 1}, "b": {"const": 2}},
+       "required": ["a", "b"]}
+VALUE_VERDICT_CASES = [
+    ({"type": "object", "oneOf": [
+        {"properties": {"error": {"type": "string"}, "reason": {"type": "string"}},
+         "required": ["error", "reason"]},
+        {"properties": {"id": {"type": "string"}, "ok": {"type": "boolean"},
+                        "rev": {"type": "string"}},
+         "required": ["id", "ok"]}]},
+     ['{"id":"","ok":true,"reason":""}', '{"reason":"","error":""}', '{"ok":true,"id":""}'],
+     ['{"reason":"","id":"","error":"","ok":true}', '{"error":"","reason":"","id":"","ok":true}']),
+    ({"oneOf": [
+        {"type": "object", "properties": {"a": {}, "b": {}}, "required": ["a", "b"],
+         "additionalProperties": False},
+        {"type": "object", "required": ["b"]}]},
+     ['{"b":1,"c":2}'],
+     ['{"b":1,"a":2}', '{"a":1,"b":2}']),
+    ({"$schema": D7, "if": _AB, "then": {"required": ["t"]}, "else": {"required": ["e"]}},
+     ['{"b":2,"a":1,"t":0}', '{"a":1,"b":3,"e":0}'],
+     ['{"b":2,"a":1,"e":0}']),
+    ({"type": "array", "contains": _AB, "minContains": 0, "maxContains": 0},
+     ['[{"b":2}]', "[1]", "[]"],
+     ['[{"b":2,"a":1}]']),
+    ({"type": "array", "contains": _AB, "maxContains": 1},
+     ['[{"b":2,"a":1}]', '[{"a":1,"b":2},{"b":2}]'],
+     ['[{"a":1,"b":2},{"b":2,"a":1}]']),
+    # A oneOf with a single live branch is that branch, a conjunct: its
+    # declared order applies, as for an allOf member.
+    ({"oneOf": [_AB]}, ['{"a":1,"b":2}'], ['{"b":2,"a":1}']),
+    ({"oneOf": [_AB, False]}, ['{"a":1,"b":2}'], ['{"b":2,"a":1}']),
+]
+
+
+def _walk(ctx, grammar, doc: str) -> str:
+    """Feed doc through the mask: "complete", "masked" (a byte outside the
+    mask or no end) or the status of a failing mask call."""
+    s = zg.Session(ctx, grammar)
+    try:
+        for b in doc.encode():
+            try:
+                ids = s.fill_mask_ids()
+            except zg.CoreFailure as e:
+                return str(e)
+            if b not in ids or s.accept(b) != zg.BLG_OK:
+                return "masked"
+        return "complete" if s.can_end() else "masked"
+    finally:
+        s.destroy()
+
+
+@pytest.mark.parametrize("fast", [True, False], ids=["fast-on", "fast-off"])
+@pytest.mark.parametrize("mode", [zg.BLG_MODE_LAZY, zg.BLG_MODE_ADAPTIVE], ids=["lazy", "adaptive"])
+def test_value_verdicts_ignore_key_order(byte_tok, mode, fast):
+    ctx = zg.Context(byte_tok, mode, mask_fast_path=fast)
+    try:
+        for schema, ok_docs, bad_docs in VALUE_VERDICT_CASES:
+            g = _compile(ctx, schema)
+            try:
+                for d in ok_docs:
+                    assert _walk(ctx, g, d) == "complete", (schema, d)
+                for d in bad_docs:
+                    assert _walk(ctx, g, d) != "complete", (schema, d)
+            finally:
+                zg.grammar_release(g)
+    finally:
+        assert ctx.destroy() == zg.BLG_OK
+
+
+# ---------------------------------------------------------------------------
 # canonical-v1 is frozen; $ref siblings refuse
 # ---------------------------------------------------------------------------
 
@@ -326,10 +402,10 @@ def test_ref_sibling_combinator_conjoins(byte_ctx):
               "$ref": "#/$defs/d",
               "anyOf": [{"type": "integer"}, {"type": "string"}]}
     _check(byte_ctx, schema, ["5", "-1"], ['"s"', "5.5", "null"])
-    # A contradictory sibling compiles to the (runtime-empty) conjunction:
-    # nothing is accepted.
-    _check(byte_ctx,
-           {"$defs": {"d": {"type": "integer"}},
-            "$ref": "#/$defs/d",
-            "anyOf": [{"type": "string"}]},
-           [], ["5", '"s"'])
+    # A contradictory sibling (integer and string share no value) makes the
+    # conjunction empty: refused at compile time.
+    _refusal(byte_ctx,
+             {"$defs": {"d": {"type": "integer"}},
+              "$ref": "#/$defs/d",
+              "anyOf": [{"type": "string"}]},
+             "UNSATISFIABLE_CONSTRAINT")

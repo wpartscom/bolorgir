@@ -1,0 +1,11 @@
+Current thread 0x0000727ccdec6000 (most recent call first):
+  File "benchmarks/local/release-0.2.0/benchmarks/local/t8a-6e62e0d1/venv-pinned/lib/python3.10/site-packages/bolorgir/__init__.py", line 425 in fill_mask
+  File "benchmarks/external/jsonschemabench-maskbench/maskbench/maskbench/blg_engine.py", line 231 in compute_mask
+  File "benchmarks/local/t3/de7/t8a-diag/diag_runner.py", line 105 in mask_d
+  File "benchmarks/external/jsonschemabench-maskbench/maskbench/maskbench/runner.py", line 109 in process_file
+  File "benchmarks/local/release-0.2.0/benchmarks/maskbench/t8a/paired_runner.py", line 149 in process_file
+  File "benchmarks/local/t3/de7/t8a-diag/diag_runner.py", line 138 in process_file
+  File "benchmarks/external/jsonschemabench-maskbench/maskbench/maskbench/runner.py", line 328 in main
+  File "benchmarks/local/t3/de7/t8a-diag/diag_runner.py", line 153 in <module>
+  File "/usr/lib/python3.10/runpy.py", line 86 in _run_code
+  File "/usr/lib/python3.10/runpy.py", line 196 in _run_module_as_main

@@ -1,0 +1,222 @@
+{
+ "exit_code": -14,
+ "timeout": true,
+ "wall_s": 903.556,
+ "file_outcome": {
+  "pending_file": 1
+ },
+ "compile": {
+  "us": 575
+ },
+ "instances": [
+  {
+   "i": 0,
+   "start_s": 0.001,
+   "n_tokens": 281,
+   "steps": 281,
+   "mask_us": 253878623,
+   "commit_us": 4960,
+   "max_mask_us": 1162907,
+   "max_mask_k": 51,
+   "masks_over_100ms": 243,
+   "masks_over_900ms": 243,
+   "rejected_at": null,
+   "serialize": {
+    "us": 2880,
+    "bytes": 1038
+   }
+  },
+  {
+   "i": 1,
+   "start_s": 253.912,
+   "n_tokens": 281,
+   "steps": 281,
+   "mask_us": 264965294,
+   "commit_us": 4885,
+   "max_mask_us": 1164498,
+   "max_mask_k": 37,
+   "masks_over_100ms": 258,
+   "masks_over_900ms": 258,
+   "rejected_at": null,
+   "serialize": {
+    "us": 365,
+    "bytes": 1072
+   }
+  },
+  {
+   "i": 2,
+   "start_s": 518.907,
+   "n_tokens": 282,
+   "steps": 267,
+   "mask_us": 250552199,
+   "commit_us": 4388,
+   "max_mask_us": 1113388,
+   "max_mask_k": 156,
+   "masks_over_100ms": 244,
+   "masks_over_900ms": 244,
+   "rejected_at": 266,
+   "serialize": {
+    "us": 302,
+    "bytes": 1072
+   }
+  },
+  {
+   "i": 3,
+   "start_s": 769.487,
+   "n_tokens": 281,
+   "steps": 143,
+   "mask_us": 130054154,
+   "commit_us": 2329,
+   "max_mask_us": 1112911,
+   "max_mask_k": 50,
+   "masks_over_100ms": 126,
+   "masks_over_900ms": 126,
+   "rejected_at": null,
+   "serialize": {
+    "us": 296,
+    "bytes": 1071
+   }
+  }
+ ],
+ "steps": 972,
+ "mask_us_total": 899450270,
+ "commit_us_total": 16562,
+ "slowest_masks": [
+  {
+   "i": 1,
+   "k": 37,
+   "mask_us": 1164498,
+   "commit_us": 21,
+   "at_s": 292.662
+  },
+  {
+   "i": 0,
+   "k": 51,
+   "mask_us": 1162907,
+   "commit_us": 20,
+   "at_s": 45.772
+  },
+  {
+   "i": 1,
+   "k": 36,
+   "mask_us": 1123871,
+   "commit_us": 20,
+   "at_s": 291.498
+  },
+  {
+   "i": 0,
+   "k": 38,
+   "mask_us": 1119513,
+   "commit_us": 17,
+   "at_s": 40.271
+  },
+  {
+   "i": 1,
+   "k": 38,
+   "mask_us": 1115233,
+   "commit_us": 19,
+   "at_s": 293.778
+  },
+  {
+   "i": 2,
+   "k": 156,
+   "mask_us": 1113388,
+   "commit_us": 22,
+   "at_s": 661.858
+  },
+  {
+   "i": 0,
+   "k": 82,
+   "mask_us": 1113165,
+   "commit_us": 17,
+   "at_s": 65.049
+  },
+  {
+   "i": 1,
+   "k": 39,
+   "mask_us": 1112958,
+   "commit_us": 21,
+   "at_s": 294.891
+  },
+  {
+   "i": 3,
+   "k": 50,
+   "mask_us": 1112911,
+   "commit_us": 17,
+   "at_s": 813.743
+  },
+  {
+   "i": 0,
+   "k": 37,
+   "mask_us": 1110975,
+   "commit_us": 19,
+   "at_s": 39.152
+  },
+  {
+   "i": 2,
+   "k": 19,
+   "mask_us": 1110562,
+   "commit_us": 16,
+   "at_s": 538.631
+  },
+  {
+   "i": 0,
+   "k": 57,
+   "mask_us": 1109831,
+   "commit_us": 17,
+   "at_s": 46.886
+  },
+  {
+   "i": 0,
+   "k": 193,
+   "mask_us": 1108936,
+   "commit_us": 144,
+   "at_s": 168.324
+  },
+  {
+   "i": 0,
+   "k": 227,
+   "mask_us": 1107576,
+   "commit_us": 16,
+   "at_s": 201.72
+  },
+  {
+   "i": 0,
+   "k": 83,
+   "mask_us": 1105906,
+   "commit_us": 19,
+   "at_s": 66.155
+  }
+ ],
+ "last_event": {
+  "e": "tok",
+  "t": 900.75742,
+  "i": 3,
+  "k": 142,
+  "mask_us": 1033600,
+  "commit_us": 24,
+  "ok": true
+ },
+ "file_ended": false,
+ "in_progress_at_end": "instance 3, token 143: compute_mask or commit_token",
+ "seconds_from_file_start_to_last_event": 899.556,
+ "memory": {
+  "ru_maxrss_children_kb": 691644,
+  "sampled_vmhwm_kb_max": 692216,
+  "samples": 1798
+ },
+ "stacks_at_alarm": "Current thread 0x000071b7a194f000 (most recent call first):\n  File \"benchmarks/local/release-0.2.0/benchmarks/local/t8a-6e62e0d1/venv-pinned/lib/python3.10/site-packages/bolorgir/__init__.py\", line 425 in fill_mask\n  File \"benchmarks/external/jsonschemabench-maskbench/maskbench/maskbench/blg_engine.py\", line 231 in compute_mask\n  File \"benchmarks/local/t3/de7/t8a-diag/diag_runner.py\", line 105 in mask_d\n  File \"benchmarks/external/jsonschemabench-maskbench/maskbench/maskbench/runner.py\", line 109 in process_file\n  File \"benchmarks/local/release-0.2.0/benchmarks/maskbench/t8a/paired_runner.py\", line 149 in process_file\n  File \"benchmarks/local/t3/de7/t8a-diag/diag_runner.py\", line 138 in process_file\n  File \"benchmarks/external/jsonschemabench-maskbench/maskbench/maskbench/runner.py\", line 328 in main\n  File \"benchmarks/local/t3/de7/t8a-diag/diag_runner.py\", line 153 in <module>\n  File \"/usr/lib/python3.10/runpy.py\", line 86 in _run_code\n  File \"/usr/lib/python3.10/runpy.py\", line 196 in _run_module_as_main\n",
+ "file": "Github_medium---o65503.json",
+ "checks": {
+  "paired_runner.py": "5c646c2180fc08d8435f56e04a6db85957a2ebb2e78c1d2a35dc15a3fb5124b6",
+  "t8a_streams.py": "1547fc20b243fdba2dc26e1e9dd1a18d4b3a12c6096247e2c9148adb4fbcc3a6",
+  "maskbench_code_files": 12,
+  "corpus_file": "f09213640e25db265860e21b304c217a15f5edf62d4f6320e89c1a32445e6db2",
+  "tokenizer_revision": "a2856192dd7c25b842431f39c179a6c2c2f627d1",
+  "core_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+  "wheel_sha256": "e5bb3f5bf7e5b19b21f96b1ff3ee4e74dad3490fcd95c7c9f082ccc9c39fd2b6",
+  "diag_runner.py": "be92c1db1786ff114f951abb9030732779a86cd239e6118af056f6d1cebf4fab",
+  "diag.py": "2ded72fb46f33b6a8d05acf7a4edd7f7062da299a64b0f66e3227e1f39456a9f"
+ },
+ "run_dir_unchanged": true
+}

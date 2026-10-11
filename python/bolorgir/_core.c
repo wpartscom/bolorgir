@@ -1,7 +1,7 @@
 /*
  * bolorgir._core - thin CPython wrapper over the libbolorgir C ABI.
  *
- * Limited API (Py_LIMITED_API 0x030A0000) -> abi3 wheel for Python 3.10+.
+ * Limited API (Py_LIMITED_API 0x030C0000) -> abi3 wheel for Python 3.12+.
  * No mask-building algorithms here: only Python objects, buffer ownership,
  * the GIL, and blg_status -> typed exception mapping.
  *
@@ -17,7 +17,7 @@
  *    native call returns; the core copies data into context-owned memory.
  */
 
-#define Py_LIMITED_API 0x030A0000
+#define Py_LIMITED_API 0x030C0000
 #include <Python.h>
 
 #include <string.h>
@@ -57,7 +57,12 @@ static int raise_zg(blg_status st, const blg_error *err) {
     if (st == BLG_OK) return 0;
     exc = (st >= 1 && st <= 13) ? ExcTable[st] : ExcTable[BLG_ERR_INTERNAL];
     msg = (err && err->message[0]) ? err->message : default_msg(st);
-    if (err && err->schema_offset != UINT32_MAX)
+    if (err && err->json_pointer[0] && err->schema_offset != UINT32_MAX)
+        PyErr_Format(exc, "%s (schema_offset=%u, json_pointer=%s)", msg,
+                     (unsigned)err->schema_offset, err->json_pointer);
+    else if (err && err->json_pointer[0])
+        PyErr_Format(exc, "%s (json_pointer=%s)", msg, err->json_pointer);
+    else if (err && err->schema_offset != UINT32_MAX)
         PyErr_Format(exc, "%s (schema_offset=%u)", msg,
                      (unsigned)err->schema_offset);
     else
@@ -142,12 +147,13 @@ static int Context_init(ContextObject *self, PyObject *args, PyObject *kwds) {
         "schema_limit_bytes", "vocab_size", "token_blob", "token_index",
         "eos_ids", "special_ids", "flags",
         "work_limit_ops", "adaptive_min_hits", "adaptive_min_cost_ns",
-        "precompute_max_states", NULL
+        "precompute_max_states", "probe_max_states", "probe_max_work", NULL
     };
     unsigned int mode = 0, max_depth = 0, max_threads = 0, vocab_size = 0;
     unsigned int flags = 0;
     unsigned long long work_limit_ops = 0, adaptive_min_hits = 0;
     unsigned long long adaptive_min_cost_ns = 0, precompute_max_states = 0;
+    unsigned long long probe_max_states = 0, probe_max_work = 0;
     unsigned long long mem_limit = 0, cache_limit = 0, sess_limit = 0, schema_limit = 0;
     PyObject *blob_obj, *index_obj, *eos_obj, *special_obj;
     uint32_t *eos = NULL, *special = NULL, *entries = NULL;
@@ -158,14 +164,15 @@ static int Context_init(ContextObject *self, PyObject *args, PyObject *kwds) {
     blg_status st;
     PyThreadState *save;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "IIIKKKKISSOOIKKKK:Context", kwlist,
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "IIIKKKKISSOOIKKKK|KK:Context", kwlist,
                                      &mode, &max_depth, &max_threads,
                                      &mem_limit, &cache_limit, &sess_limit,
                                      &schema_limit, &vocab_size,
                                      &blob_obj, &index_obj,
                                      &eos_obj, &special_obj, &flags,
                                      &work_limit_ops, &adaptive_min_hits,
-                                     &adaptive_min_cost_ns, &precompute_max_states))
+                                     &adaptive_min_cost_ns, &precompute_max_states,
+                                     &probe_max_states, &probe_max_work))
         return -1;
     if (vocab_size == 0) {
         PyErr_SetString(ExcTable[BLG_ERR_INVALID_ARGUMENT], "vocab_size must be > 0");
@@ -203,6 +210,8 @@ static int Context_init(ContextObject *self, PyObject *args, PyObject *kwds) {
     cfg.adaptive_min_hits = (uint64_t)adaptive_min_hits;
     cfg.adaptive_min_cost_ns = (uint64_t)adaptive_min_cost_ns;
     cfg.precompute_max_states = (uint64_t)precompute_max_states;
+    cfg.probe_max_states = (uint64_t)probe_max_states;
+    cfg.probe_max_work = (uint64_t)probe_max_work;
 
     memset(&desc, 0, sizeof(desc));
     desc.struct_size = (uint32_t)sizeof(desc);
@@ -267,8 +276,9 @@ static PyObject *Context_close(ContextObject *self, PyObject *Py_UNUSED(ign)) {
 }
 
 static PyObject *Context_compile(ContextObject *self, PyObject *args, PyObject *kwds) {
-    static char *kwlist[] = {"kind", "data", "profile", NULL};
+    static char *kwlist[] = {"kind", "data", "profile", "flags", NULL};
     unsigned int kind;
+    unsigned int flags = 0;
     PyObject *data_obj;
     const char *profile = NULL;
     blg_compile_request req;
@@ -282,8 +292,8 @@ static PyObject *Context_compile(ContextObject *self, PyObject *args, PyObject *
         PyErr_SetString(ExcTable[BLG_ERR_WRONG_STATE], "context is closed");
         return NULL;
     }
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "IS|z:compile", kwlist,
-                                     &kind, &data_obj, &profile))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "IS|zI:compile", kwlist,
+                                     &kind, &data_obj, &profile, &flags))
         return NULL;
 
     memset(&req, 0, sizeof(req));
@@ -292,6 +302,7 @@ static PyObject *Context_compile(ContextObject *self, PyObject *args, PyObject *
     req.profile = profile;
     req.data = (const uint8_t *)PyBytes_AsString(data_obj);
     req.data_len = (size_t)PyBytes_Size(data_obj);
+    req.flags = flags;
 
     init_zg_error(&err);
     save = PyEval_SaveThread();
@@ -374,6 +385,7 @@ static PyObject *stats_to_dict(const blg_stats *st) {
     SETU64("cache_hits", st->cache_hits);
     SETU64("cache_misses", st->cache_misses);
     SETU64("cache_evictions", st->cache_evictions);
+    SETU64("probe_runs", st->probe_runs);
 #undef SETU64
     used = PyDict_New();
     peak = PyDict_New();
@@ -506,6 +518,26 @@ static PyObject *Grammar_close(GrammarObject *self, PyObject *Py_UNUSED(ign)) {
     Py_RETURN_NONE;
 }
 
+/* Weak: a process may hold an earlier core (loaded through ctypes by the
+ * benchmark tools) under the same soname; the extension must still load. */
+extern blg_status blg_grammar_probe_status(const blg_grammar *, uint32_t *) __attribute__((weak));
+
+static PyObject *Grammar_probe_status(GrammarObject *self, PyObject *Py_UNUSED(ign)) {
+    uint32_t status = 0;
+    blg_status st;
+    if (!blg_grammar_probe_status) {
+        PyErr_SetString(ExcTable[BLG_ERR_WRONG_STATE], "the loaded core has no probe (ADR-0012)");
+        return NULL;
+    }
+    if (!self->grammar) {
+        PyErr_SetString(ExcTable[BLG_ERR_WRONG_STATE], "grammar is closed");
+        return NULL;
+    }
+    st = blg_grammar_probe_status(self->grammar, &status);
+    if (st != BLG_OK) return raise_zg(st, NULL), NULL;
+    return PyLong_FromUnsignedLong((unsigned long)status);
+}
+
 static PyObject *Grammar_create_session(GrammarObject *self, PyObject *Py_UNUSED(ign)) {
     if (!self->context) {
         PyErr_SetString(ExcTable[BLG_ERR_WRONG_STATE], "grammar has no context");
@@ -530,6 +562,8 @@ static PyMethodDef Grammar_methods[] = {
     {"create_session", (PyCFunction)Grammar_create_session, METH_NOARGS,
      "create_session() -> Session"},
     {"close", (PyCFunction)Grammar_close, METH_NOARGS, "close()"},
+    {"probe_status", (PyCFunction)Grammar_probe_status, METH_NOARGS,
+     "probe_status() -> int (BLG_PROBE_*)"},
     {"__enter__", (PyCFunction)Grammar_enter, METH_NOARGS, NULL},
     {"__exit__", (PyCFunction)Grammar_exit, METH_VARARGS, NULL},
     {NULL}
@@ -793,7 +827,7 @@ static void free_batch(PyObject **bufs, SessionObject **robjs, blg_session **ses
  * fill_masks_batch(sessions) -> list[(status_code:int, mask:bytes|None)]
  * Rows are independent; a row's status does not abort the others.
  *
- * Serialization (FR-11/13): per-session locks are taken without the GIL in
+ * Serialization: per-session locks are taken without the GIL in
  * one global order - sessions are deduplicated by object identity and
  * sorted by native session pointer. This rules out lock-order inversion
  * between overlapping batches and a double acquire of a non-recursive lock
@@ -999,6 +1033,8 @@ PyMODINIT_FUNC PyInit__core(void) {
     if (PyModule_AddIntConstant(mod, "KIND_JSON_SCHEMA", BLG_CONSTRAINT_JSON_SCHEMA) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "KIND_LITERAL_SET", BLG_CONSTRAINT_LITERAL_SET) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "MODE_LAZY", BLG_MODE_LAZY) < 0) goto fail;
+    if (PyModule_AddIntConstant(mod, "COMPILE_PROBE", BLG_COMPILE_PROBE) < 0) goto fail;
+    if (PyModule_AddIntConstant(mod, "COMPILE_PROBE_STRICT", BLG_COMPILE_PROBE_STRICT) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "MODE_ADAPTIVE", BLG_MODE_ADAPTIVE) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "MODE_PRECOMPUTE", BLG_MODE_PRECOMPUTE) < 0) goto fail;
 

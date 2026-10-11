@@ -1,0 +1,19 @@
+{
+ "git_head": "fc44c37491a44852ce5e706df51d642d6b43e3f3",
+ "changed_from_head": [
+  "benchmarks/t3/r6_review.sh",
+  "benchmarks/t3/tools/acceptance_compare.py"
+ ],
+ "files": {
+  "benchmarks/t3/r6_review.sh": "2feeba4c00fae79b5cb2230c8f859d7bcdaec5412a5a71141d0f42ede664e4e8",
+  "benchmarks/t3/r6_publish.sh": "84e82ca05491d8d50302dd26733ec09bfb4ffcc417d7f0318323cbca05f822c4",
+  "benchmarks/t3/tools/acceptance_compare.py": "a21c19f8eb68a61aeefedd8336b9d4cf91a4f3b8b1cd06c71924ce00f6e1a1b0",
+  "benchmarks/triage_semantic.py": "70d900387727a4b4e4c3d8a0aefd1a8ceddd3c410034c39b982ae284e96570e4",
+  "tests/generation_passes.py": "c3f11e7a33cfd974436f17a934f35b6e02e7f2a324b6325788440d6cde1834c0",
+  "tests/semantic_outcomes.py": "e9c798bf3b1b78de834f58f970d07b3ca1f2aabb0ad4737497a959268ee09475",
+  "tests/exact_numbers.py": "1f6cae67f15907d3c35ac0b49b1b9f059b1d77b3e69b7fb0ab101cd10698b79f",
+  "tests/blg_ctypes.py": "2bea4f89c22b419ca33f10ed48b25802b9842ebc1372f9a275d959cca279fe1c",
+  "python/bolorgir/serializer.py": "1140bfc5ccc23dee3d35a696ef4ffeb1844f4897faa4b965f885ae0cf1130dd9",
+  "benchmarks/protected_paths.sh": "0179f5f1a4710f154106e442c53785c1d9e44545224e2bdae8cfb38aacbef8fe"
+ }
+}

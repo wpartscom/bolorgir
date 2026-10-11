@@ -79,10 +79,15 @@ def _find_lib() -> str:
     candidates = [
         os.path.join(_ROOT, "zig-out", "lib", "libbolorgir.so"),
         os.path.join(_ROOT, "zig-out", "lib", "libbolorgir.so.0.1.0"),
+        os.path.join(_ROOT, "zig-out", "lib", "libbolorgir.dylib"),
     ]
     env = os.environ.get("BLG_LIB_PATH")
     if env:
-        candidates.insert(0, env)
+        # An explicit library never falls back to zig-out: a missing file
+        # must not run the tests on another build.
+        if not os.path.exists(env):
+            raise ModuleNotFoundError(f"BLG_LIB_PATH={env} does not exist")
+        return env
     for path in candidates:
         if os.path.exists(path):
             return path
@@ -121,6 +126,8 @@ class ZgContextConfig(ctypes.Structure):
         # fast path on, single worker).
         ("mask_fast_path", ctypes.c_uint64),
         ("max_workers", ctypes.c_uint64),
+        ("probe_max_states", ctypes.c_uint64),
+        ("probe_max_work", ctypes.c_uint64),
     ]
 
 
@@ -162,7 +169,19 @@ class ZgCompileRequest(ctypes.Structure):
         # means "no registry" (the pre-P5 behavior).
         ("registry_data", ctypes.POINTER(ctypes.c_uint8)),
         ("registry_data_len", ctypes.c_size_t),
+        ("flags", ctypes.c_uint32),
+        ("reserved1", ctypes.c_uint32),
     ]
+
+
+class ZgSessionConfig(ctypes.Structure):
+    _fields_ = [
+        ("struct_size", ctypes.c_uint32),
+        ("max_rollback_tokens", ctypes.c_uint32),
+    ]
+
+
+BLG_MAX_ROLLBACK_TOKENS = 65535
 
 
 class ZgStats(ctypes.Structure):
@@ -188,6 +207,7 @@ class ZgStats(ctypes.Structure):
         ("cache_adaptive_skips", ctypes.c_uint64),
         ("precompute_states", ctypes.c_uint64),
         ("work_ops_total", ctypes.c_uint64),
+        ("probe_runs", ctypes.c_uint64),
     ]
 
 
@@ -221,6 +241,9 @@ def _load():
     lib.blg_compile.restype = ctypes.c_int
 
     lib.blg_grammar_release.argtypes = [void_p]
+    if hasattr(lib, "blg_grammar_probe_status"):  # absent before ADR-0012
+        lib.blg_grammar_probe_status.argtypes = [void_p, ctypes.POINTER(ctypes.c_uint32)]
+        lib.blg_grammar_probe_status.restype = ctypes.c_int
     lib.blg_grammar_release.restype = None
 
     lib.blg_session_create.argtypes = [
@@ -229,6 +252,18 @@ def _load():
 
     lib.blg_session_destroy.argtypes = [void_p]
     lib.blg_session_destroy.restype = None
+
+    if hasattr(lib, "blg_session_rollback"):  # absent before ADR-0014
+        lib.blg_session_create_ex.argtypes = [
+            void_p, void_p, ctypes.POINTER(ZgSessionConfig),
+            ctypes.POINTER(void_p), ctypes.POINTER(ZgError)]
+        lib.blg_session_create_ex.restype = ctypes.c_int
+        lib.blg_session_rollback.argtypes = [void_p, ctypes.c_uint32]
+        lib.blg_session_rollback.restype = ctypes.c_int
+        lib.blg_validate_tokens.argtypes = [
+            void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_size_t,
+            ctypes.POINTER(ctypes.c_size_t)]
+        lib.blg_validate_tokens.restype = ctypes.c_int
 
     lib.blg_fill_mask.argtypes = [
         void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_size_t,
@@ -262,11 +297,33 @@ def _load():
     lib.blg_cancel_flag_set.argtypes = [void_p, ctypes.POINTER(ctypes.c_uint8)]
     lib.blg_cancel_flag_set.restype = ctypes.c_int
 
+    lib.blg_cert_stats.argtypes = [ctypes.POINTER(ctypes.c_uint64), ctypes.c_size_t]
+    lib.blg_cert_stats.restype = ctypes.c_size_t
+
+    lib.blg_cert_stats_reset.argtypes = []
+    lib.blg_cert_stats_reset.restype = None
+
     lib._path = path
     return lib
 
 
 LIB = _load()
+
+
+# Index of UndReason.search_entered (src/complete.zig) in blg_cert_stats.
+UND_SEARCH_ENTERED = 24
+
+
+def cert_stats() -> list[int]:
+    """The calling thread's undecided-reason histogram (diagnostics)."""
+    n = LIB.blg_cert_stats(None, 0)
+    buf = (ctypes.c_uint64 * n)()
+    LIB.blg_cert_stats(buf, n)
+    return list(buf)
+
+
+def cert_stats_reset() -> None:
+    LIB.blg_cert_stats_reset()
 
 
 def new_error() -> ZgError:
@@ -284,6 +341,7 @@ class CoreFailure(Exception):
 
     def __init__(self, status: int, where: str, err: ZgError | None = None):
         self.status = status
+        self.err = err
         msg = STATUS_NAMES.get(status, f"status={status}")
         detail = f" ({err_text(err)})" if err is not None and err.code != 0 else ""
         pointer = ""
@@ -330,7 +388,8 @@ class Context:
                  cache_limit_bytes=0, session_limit_bytes=0,
                  schema_limit_bytes=0, max_depth=0, max_threads_per_state=0,
                  work_limit_ops=0, adaptive_min_hits=0, adaptive_min_cost_ns=0,
-                 precompute_max_states=0, mask_fast_path=0, max_workers=0):
+                 precompute_max_states=0, mask_fast_path=0, max_workers=0,
+                 probe_max_states=0, probe_max_work=0):
         config = ZgContextConfig()
         config.struct_size = ctypes.sizeof(ZgContextConfig)
         config.version = BLG_ABI_VERSION
@@ -347,6 +406,11 @@ class Context:
         config.precompute_max_states = precompute_max_states
         config.mask_fast_path = mask_fast_path
         config.max_workers = max_workers
+        config.probe_max_states = probe_max_states
+        config.probe_max_work = probe_max_work
+        if not (probe_max_states or probe_max_work):
+            # The layout before the probe tail, which earlier cores accept.
+            config.struct_size = ZgContextConfig.probe_max_states.offset
         self._config = config
         self._desc, self._keep = make_tokenizer_desc(spec)
         self.spec = spec
@@ -377,16 +441,21 @@ class Context:
         stats.struct_size = ctypes.sizeof(ZgStats)
         stats.version = BLG_ABI_VERSION
         status = LIB.blg_get_stats(self.handle, ctypes.byref(stats))
+        if status == BLG_ERR_INVALID_ARGUMENT:
+            # An earlier core without the probe_runs tail.
+            stats.struct_size = ZgStats.probe_runs.offset
+            status = LIB.blg_get_stats(self.handle, ctypes.byref(stats))
         if status != BLG_OK:
             raise CoreFailure(status, "blg_get_stats")
         return stats
 
 
 def compile_grammar(ctx: Context, data: bytes, kind: int, profile: bytes = b"canonical-v1",
-                    registry: bytes | None = None) -> ctypes.c_void_p:
+                    registry: bytes | None = None, flags: int = 0) -> ctypes.c_void_p:
     req = ZgCompileRequest()
-    req.struct_size = ctypes.sizeof(ZgCompileRequest)
+    req.struct_size = ctypes.sizeof(ZgCompileRequest) if flags else ZgCompileRequest.flags.offset
     req.kind = kind
+    req.flags = flags
     req.profile = profile
     buf = (ctypes.c_uint8 * max(len(data), 1)).from_buffer_copy(data or b"\0")
     req.data = buf
@@ -403,12 +472,13 @@ def compile_grammar(ctx: Context, data: bytes, kind: int, profile: bytes = b"can
     if status != BLG_OK:
         e = CoreFailure(status, "blg_compile", err)
         e.schema_offset = err.schema_offset
+        e.json_pointer = err.json_pointer.split(b"\0", 1)[0].decode("utf-8", "replace")
         raise e
     return out  # caller need not keep buf/rbuf: the core copies the data
 
 
 def compile_schema(ctx: Context, schema, profile: bytes = b"canonical-v1",
-                   registry=None) -> ctypes.c_void_p:
+                   registry=None, flags: int = 0) -> ctypes.c_void_p:
     """registry (P5, spec-v1): None, raw bytes, or a mapping uri -> schema
     (wrapped into {"documents": ...}; an optional "version" key in a dict
     argument is passed through)."""
@@ -433,7 +503,15 @@ def compile_schema(ctx: Context, schema, profile: bytes = b"canonical-v1",
             reg_bytes = _json.dumps(snap, ensure_ascii=False,
                                     separators=(",", ":")).encode("utf-8")
     return compile_grammar(ctx, data, BLG_CONSTRAINT_JSON_SCHEMA, profile,
-                           registry=reg_bytes)
+                           registry=reg_bytes, flags=flags)
+
+
+BLG_CONSTRAINT_REGEX = 2
+
+
+def compile_regex(ctx: Context, pattern: str) -> ctypes.c_void_p:
+    """BLG_CONSTRAINT_REGEX (ADR-0015); profile NULL."""
+    return compile_grammar(ctx, pattern.encode("utf-8"), BLG_CONSTRAINT_REGEX, profile=None)
 
 
 def compile_literals(ctx: Context, strings) -> ctypes.c_void_p:
@@ -446,17 +524,49 @@ def grammar_release(grammar) -> None:
     LIB.blg_grammar_release(grammar)
 
 
+BLG_COMPILE_PROBE = 0x1
+BLG_COMPILE_PROBE_STRICT = 0x2
+BLG_PROBE_NOT_RUN, BLG_PROBE_INCONCLUSIVE, BLG_PROBE_PROVEN = 0, 1, 2
+
+
+def probe_status(grammar) -> int:
+    out = ctypes.c_uint32()
+    status = LIB.blg_grammar_probe_status(grammar, ctypes.byref(out))
+    if status != BLG_OK:
+        raise CoreFailure(status, "blg_grammar_probe_status")
+    return out.value
+
+
+def has_rollback() -> bool:
+    return hasattr(LIB, "blg_session_rollback")
+
+
 class Session:
-    def __init__(self, ctx: Context, grammar):
+    def __init__(self, ctx: Context, grammar, max_rollback_tokens: int = 0):
         self.ctx = ctx
         out = ctypes.c_void_p()
         err = new_error()
-        status = LIB.blg_session_create(ctx.handle, grammar,
-                                       ctypes.byref(out), ctypes.byref(err))
+        if max_rollback_tokens:
+            cfg = ZgSessionConfig(ctypes.sizeof(ZgSessionConfig), max_rollback_tokens)
+            status = LIB.blg_session_create_ex(ctx.handle, grammar, ctypes.byref(cfg),
+                                               ctypes.byref(out), ctypes.byref(err))
+        else:
+            status = LIB.blg_session_create(ctx.handle, grammar,
+                                           ctypes.byref(out), ctypes.byref(err))
         if status != BLG_OK:
             raise CoreFailure(status, "blg_session_create", err)
         self.handle = out
         self._destroyed = False
+
+    def rollback(self, n_tokens: int) -> int:
+        return LIB.blg_session_rollback(self.handle, n_tokens)
+
+    def validate_tokens(self, ids) -> tuple[int, int]:
+        """-> (status, accepted prefix length)."""
+        arr = (ctypes.c_uint32 * max(1, len(ids)))(*ids)
+        out = ctypes.c_size_t(0)
+        status = LIB.blg_validate_tokens(self.handle, arr, len(ids), ctypes.byref(out))
+        return status, out.value
 
     def fill_mask_words(self, words: int | None = None):
         """-> (status, list[int] words). Too few words -> BUFFER_TOO_SMALL."""
@@ -500,6 +610,10 @@ class Session:
         stats.struct_size = ctypes.sizeof(ZgStats)
         stats.version = BLG_ABI_VERSION
         status = LIB.blg_get_stats_session(self.handle, ctypes.byref(stats))
+        if status == BLG_ERR_INVALID_ARGUMENT:
+            # An earlier core without the probe_runs tail.
+            stats.struct_size = ZgStats.probe_runs.offset
+            status = LIB.blg_get_stats_session(self.handle, ctypes.byref(stats))
         if status != BLG_OK:
             raise CoreFailure(status, "blg_get_stats_session")
         return stats

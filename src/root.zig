@@ -11,8 +11,10 @@ pub const cache = @import("cache.zig");
 pub const coverage = @import("coverage.zig");
 pub const work = @import("work.zig");
 pub const precompute = @import("precompute.zig");
+pub const probe = @import("probe.zig");
 pub const c_api = @import("c_api.zig");
 
 comptime {
     _ = @import("c_api.zig");
+    if (@import("build_options").test_hooks) _ = @import("test_hooks.zig");
 }

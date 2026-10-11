@@ -1,7 +1,7 @@
 """
-Regression tests for batch serialization in fill_masks_batch (FR-11/13).
+Regression tests for batch serialization in fill_masks_batch.
 
-Covers (FR-11/13 row):
+Covers:
 - duplicate sessions in one batch (double acquire of a non-recursive lock);
 - overlapping batches in concurrent threads (lock-order inversion);
 - closing a session while a batch is being prepared (stale native pointer).

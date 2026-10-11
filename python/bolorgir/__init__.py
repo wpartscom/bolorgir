@@ -69,7 +69,7 @@ __all__ = [
     "fill_masks_batch",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0rc1"
 
 
 class UnsupportedModeError(ZigConstraintsError):
@@ -88,7 +88,7 @@ TokenizerLike = Union[TokenizerBundle, Any]
 
 
 class CancelToken:
-    """Cooperative cancellation flag shared with the native context (NFR-2).
+    """Cooperative cancellation flag shared with the native context.
 
     ``cancel()`` sets the flag; the next compile/fill_mask call of the
     Engine that registered the token fails with ``CancelledError`` - the
@@ -141,6 +141,8 @@ class Engine:
         adaptive_min_hits: int = 0,
         adaptive_min_cost_ns: int = 0,
         precompute_max_states: int = 0,
+        probe_max_states: int = 0,
+        probe_max_work: int = 0,
         tokenizer: Optional[TokenizerLike] = None,
     ) -> None:
         if mode not in _MODES:
@@ -158,6 +160,8 @@ class Engine:
             ("adaptive_min_hits", adaptive_min_hits),
             ("adaptive_min_cost_ns", adaptive_min_cost_ns),
             ("precompute_max_states", precompute_max_states),
+            ("probe_max_states", probe_max_states),
+            ("probe_max_work", probe_max_work),
         ):
             if not isinstance(value, int) or value < 0:
                 raise InvalidArgumentError(f"{name} must be a non-negative int")
@@ -174,6 +178,8 @@ class Engine:
             adaptive_min_hits=adaptive_min_hits,
             adaptive_min_cost_ns=adaptive_min_cost_ns,
             precompute_max_states=precompute_max_states,
+            probe_max_states=probe_max_states,
+            probe_max_work=probe_max_work,
         )
         self._tokenizer = tokenizer
         self._cancel_tokens: list = []
@@ -209,7 +215,7 @@ class Engine:
         return self._ctx
 
     def register_cancel_token(self, token: CancelToken) -> None:
-        """Registers a cancellation flag on the native context (NFR-2).
+        """Registers a cancellation flag on the native context.
 
         Once ``token.cancel()`` is called, the next compile/mask call of
         this Engine fails with ``CancelledError``; a cache hit does not
@@ -239,8 +245,21 @@ class Engine:
         schema: Union[dict, str, bytes],
         tokenizer: Optional[TokenizerLike] = None,
         profile: str = "canonical-v1",
+        probe: Optional[str] = None,
     ) -> "Constraint":
-        """Compile a JSON Schema (dict | str | bytes) into a Constraint."""
+        """Compile a JSON Schema (dict | str | bytes) into a Constraint.
+
+        probe: None (default), "probe" or "strict" runs the compile-time
+        generatability probe (ADR-0012) within the Engine's
+        probe_max_states / probe_max_work budgets (0 = 256 states, 16M
+        ops). A reachable state whose mask is undecided fails the compile
+        with ResourceLimitError naming the token path and the subschema;
+        "strict" also fails when the budget runs out first. The verdict is
+        Constraint.probe_status.
+        """
+        flags = {None: 0, "probe": _core.COMPILE_PROBE, "strict": _core.COMPILE_PROBE_STRICT}.get(probe)
+        if flags is None:
+            raise InvalidArgumentError(f"probe: {probe!r} is not None, 'probe' or 'strict'")
         ctx = self._ensure_context(tokenizer)
         if isinstance(schema, dict):
             data = json.dumps(schema, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
@@ -252,7 +271,7 @@ class Engine:
             raise InvalidArgumentError(
                 f"schema: expected dict|str|bytes, got {type(schema).__name__}"
             )
-        grammar = ctx.compile(kind=_core.KIND_JSON_SCHEMA, data=data, profile=profile)
+        grammar = ctx.compile(kind=_core.KIND_JSON_SCHEMA, data=data, profile=profile, flags=flags)
         return Constraint(self, grammar)
 
     def compile_literals(
@@ -260,7 +279,7 @@ class Engine:
         literals: Sequence[str],
         tokenizer: Optional[TokenizerLike] = None,
     ) -> "Constraint":
-        """Compile a list of literal alternatives (FR-3) into a Constraint."""
+        """Compile a list of literal alternatives into a Constraint."""
         ctx = self._ensure_context(tokenizer)
         if not isinstance(literals, (list, tuple)) or not literals:
             raise InvalidArgumentError("literals: a non-empty list of strings is required")
@@ -271,7 +290,7 @@ class Engine:
         return Constraint(self, grammar)
 
     def stats(self) -> dict:
-        """Context statistics (NFR-4)."""
+        """Context statistics."""
         self._require_ctx()
         return self._ctx.stats()
 
@@ -354,6 +373,14 @@ class Constraint:
     @property
     def vocab_size(self) -> int:
         return self._engine.vocab_size
+
+    @property
+    def probe_status(self) -> str:
+        """Probe verdict kept with the compiled artifact (ADR-0012):
+        "not_run", "inconclusive" (nothing found within the budget,
+        nothing guaranteed) or "proven" (every reachable state has a
+        decided mask for this vocabulary and these limits)."""
+        return ("not_run", "inconclusive", "proven")[self._grammar.probe_status()]
 
     def close(self) -> None:
         # The core is idempotent to repeated close; operations on a closed

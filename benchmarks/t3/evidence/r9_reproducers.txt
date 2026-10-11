@@ -1,0 +1,119 @@
+# probe_c.py: every byte of the prefix masked and accepted (benchmarks/local/t3/de7)
+{"library_sha256": "50cbd80e874eac5d"}
+finite_fallback      b'{"'                  {"status": "RESOURCE_LIMIT"}
+finite_fallback      b'{"b'                 {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_fallback      b'{"":0'               {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_fallback      b'{"":0,"'             {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_fallback      b'{"":0,"a'            {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_taken         b'{"'                  {"status": "RESOURCE_LIMIT"}
+finite_taken         b'{"":0'               {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_taken         b'{"":0,"a":0'         {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+literal_fallback     b'{"":0'               {"status": "OK", "allowed": ".Ee}", "eos": false}
+literal_fallback     b'{"":0,"'             {"status": "MASKED", "at": 5, "byte": ",", "allowed": ".Ee}"}
+multibyte_fallback   b'{"'                  {"status": "RESOURCE_LIMIT"}
+multibyte_fallback   b'{"":0,"'             {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+multibyte_fallback   b'{"":0,"\xc3'         {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+midcp_own_dep        b'{"x":""'             {"status": "OK", "allowed": ",}", "eos": false}
+midcp_own_dep        b'{"x":"","'           {"status": "OK", "allowed": "zÃ", "eos": false}
+midcp_own_dep        b'{"x":"","\xc3'       {"status": "OK", "allowed": "©", "eos": false}
+required_own_dep     b'{"x'                 {"status": "OK", "allowed": "147 bytes", "eos": false}
+required_own_dep     b'{"x":""'             {"status": "OK", "allowed": ",", "eos": false}
+extra_own_dep        b'{"x'                 {"status": "OK", "allowed": "147 bytes", "eos": false}
+extra_own_dep        b'{"x":""'             {"status": "OK", "allowed": ",", "eos": false}
+required_own_dep_closed b'{"'                  {"status": "OK", "allowed": "brx", "eos": false}
+required_own_dep_closed b'{"x'                 {"status": "OK", "allowed": "\"", "eos": false}
+dep_chain            b'{"'                  {"status": "OK", "allowed": "DTXy", "eos": false}
+dep_chain            b'{"y":""'             {"status": "OK", "allowed": ",}", "eos": false}
+dep_chain            b'{"y":"","T'          {"status": "OK", "allowed": "\"", "eos": false}
+dep_cycle            b'{"'                  {"status": "OK", "allowed": "ab", "eos": false}
+dep_cycle            b'{"a":"","'           {"status": "OK", "allowed": "b", "eos": false}
+{"library_sha256": "f5726dd69e9520aa"}
+finite_fallback      b'{"'                  {"status": "RESOURCE_LIMIT"}
+finite_fallback      b'{"b'                 {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_fallback      b'{"":0'               {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_fallback      b'{"":0,"'             {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_fallback      b'{"":0,"a'            {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_taken         b'{"'                  {"status": "RESOURCE_LIMIT"}
+finite_taken         b'{"":0'               {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+finite_taken         b'{"":0,"a":0'         {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+literal_fallback     b'{"":0'               {"status": "OK", "allowed": ".Ee}", "eos": false}
+literal_fallback     b'{"":0,"'             {"status": "MASKED", "at": 5, "byte": ",", "allowed": ".Ee}"}
+multibyte_fallback   b'{"'                  {"status": "RESOURCE_LIMIT"}
+multibyte_fallback   b'{"":0,"'             {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+multibyte_fallback   b'{"":0,"\xc3'         {"status": "RESOURCE_LIMIT", "at": 2, "prefix": "{\""}
+midcp_own_dep        b'{"x":""'             {"status": "OK", "allowed": ",}", "eos": false}
+midcp_own_dep        b'{"x":"","'           {"status": "OK", "allowed": "zÃ", "eos": false}
+midcp_own_dep        b'{"x":"","\xc3'       {"status": "DEAD_END"}
+required_own_dep     b'{"x'                 {"status": "OK", "allowed": "147 bytes", "eos": false}
+required_own_dep     b'{"x":""'             {"status": "OK", "allowed": ",", "eos": false}
+extra_own_dep        b'{"x'                 {"status": "OK", "allowed": "147 bytes", "eos": false}
+extra_own_dep        b'{"x":""'             {"status": "OK", "allowed": ",", "eos": false}
+required_own_dep_closed b'{"'                  {"status": "OK", "allowed": "bx", "eos": false}
+required_own_dep_closed b'{"x'                 {"status": "DEAD_END"}
+dep_chain            b'{"'                  {"status": "OK", "allowed": "TXy", "eos": false}
+dep_chain            b'{"y":""'             {"status": "OK", "allowed": ",}", "eos": false}
+dep_chain            b'{"y":"","T'          {"status": "DEAD_END"}
+dep_cycle            b'{"'                  {"status": "OK", "allowed": "a", "eos": false}
+dep_cycle            b'{"a":"","'           {"status": "OK", "allowed": "b", "eos": false}
+{"library_sha256": "ea54be1b497feefa"}
+finite_fallback      b'{"'                  {"status": "OK", "allowed": "\"a", "eos": false}
+finite_fallback      b'{"b'                 {"status": "MASKED", "at": 2, "byte": "b", "allowed": "\"a"}
+finite_fallback      b'{"":0'               {"status": "OK", "allowed": ",.Ee}", "eos": false}
+finite_fallback      b'{"":0,"'             {"status": "OK", "allowed": "a", "eos": false}
+finite_fallback      b'{"":0,"a'            {"status": "OK", "allowed": "\"", "eos": false}
+finite_taken         b'{"'                  {"status": "OK", "allowed": "\"a", "eos": false}
+finite_taken         b'{"":0'               {"status": "OK", "allowed": ",.Ee}", "eos": false}
+finite_taken         b'{"":0,"a":0'         {"status": "OK", "allowed": ".Ee}", "eos": false}
+literal_fallback     b'{"":0'               {"status": "OK", "allowed": ",.Ee}", "eos": false}
+literal_fallback     b'{"":0,"'             {"status": "OK", "allowed": "146 bytes", "eos": false}
+multibyte_fallback   b'{"'                  {"status": "OK", "allowed": "\"Ã", "eos": false}
+multibyte_fallback   b'{"":0,"'             {"status": "OK", "allowed": "Ã", "eos": false}
+multibyte_fallback   b'{"":0,"\xc3'         {"status": "OK", "allowed": "©", "eos": false}
+midcp_own_dep        b'{"x":""'             {"status": "OK", "allowed": ",}", "eos": false}
+midcp_own_dep        b'{"x":"","'           {"status": "OK", "allowed": "z", "eos": false}
+midcp_own_dep        b'{"x":"","\xc3'       {"status": "MASKED", "at": 9, "byte": "Ã", "allowed": "z"}
+required_own_dep     b'{"x'                 {"status": "OK", "allowed": "146 bytes", "eos": false}
+required_own_dep     b'{"x":""'             {"status": "MASKED", "at": 3, "byte": "\"", "allowed": " !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóô"}
+extra_own_dep        b'{"x'                 {"status": "OK", "allowed": "146 bytes", "eos": false}
+extra_own_dep        b'{"x":""'             {"status": "MASKED", "at": 3, "byte": "\"", "allowed": " !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóô"}
+required_own_dep_closed b'{"'                  {"status": "OK", "allowed": "b", "eos": false}
+required_own_dep_closed b'{"x'                 {"status": "MASKED", "at": 2, "byte": "x", "allowed": "b"}
+dep_chain            b'{"'                  {"status": "OK", "allowed": "Xy", "eos": false}
+dep_chain            b'{"y":""'             {"status": "OK", "allowed": "}", "eos": false}
+dep_chain            b'{"y":"","T'          {"status": "MASKED", "at": 7, "byte": ",", "allowed": "}"}
+dep_cycle            b'{"'                  {"status": "OK", "allowed": "a", "eos": false}
+dep_cycle            b'{"a":"","'           {"status": "OK", "allowed": "b", "eos": false}
+
+# probe_end.py: the prefix accepted without masks, one fill_mask at its end
+{"library_sha256": "50cbd80e874eac5d", "mode": "accept without masks, one fill_mask at the end"}
+finite_fallback      b'{"":0'       {"accept": "ok", "status": "OK", "allowed": ".Ee}"}
+finite_fallback      b'{"":0,"'     {"accept": [0, 0, 0, 0, 0, 6, 6], "status": "OK", "allowed": ".Ee}"}
+multibyte_fallback   b'{"":0'       {"accept": "ok", "status": "OK", "allowed": ".Ee}"}
+multibyte_fallback   b'{"":0,"'     {"accept": [0, 0, 0, 0, 0, 6, 6], "status": "OK", "allowed": ".Ee}"}
+{"library_sha256": "f5726dd69e9520aa", "mode": "accept without masks, one fill_mask at the end"}
+finite_fallback      b'{"":0'       {"accept": "ok", "status": "OK", "allowed": ".Ee}"}
+finite_fallback      b'{"":0,"'     {"accept": [0, 0, 0, 0, 0, 6, 6], "status": "OK", "allowed": ".Ee}"}
+multibyte_fallback   b'{"":0'       {"accept": "ok", "status": "OK", "allowed": ".Ee}"}
+multibyte_fallback   b'{"":0,"'     {"accept": [0, 0, 0, 0, 0, 6, 6], "status": "OK", "allowed": ".Ee}"}
+{"library_sha256": "ea54be1b497feefa", "mode": "accept without masks, one fill_mask at the end"}
+finite_fallback      b'{"":0'       {"accept": "ok", "status": "OK", "allowed": ",.Ee}"}
+finite_fallback      b'{"":0,"'     {"accept": "ok", "status": "OK", "allowed": "a"}
+multibyte_fallback   b'{"":0'       {"accept": "ok", "status": "OK", "allowed": ",.Ee}"}
+multibyte_fallback   b'{"":0,"'     {"accept": "ok", "status": "OK", "allowed": "Ã"}
+
+# not fixed, owner decision: maxProperties on an open object (probe.py; schema {"type":"object","maxProperties":1})
+{"library_sha256": "50cbd80e874eac5d"}
+'{"x":1' -> {"status": "OK", "allowed": ",.0123456789Ee}", "eos": false}
+'{"x":1,"' -> {"status": "OK", "allowed": "146 bytes", "eos": false}
+'{"x":1,"y"' -> {"status": "MASKED", "at": 9, "byte": "\"", "allowed": " !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóô"}
+'{"x":1,"y":' -> {"status": "MASKED", "at": 9, "byte": "\"", "allowed": " !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóô"}
+{"library_sha256": "f5726dd69e9520aa"}
+'{"x":1' -> {"status": "OK", "allowed": ",.0123456789Ee}", "eos": false}
+'{"x":1,"' -> {"status": "OK", "allowed": "146 bytes", "eos": false}
+'{"x":1,"y"' -> {"status": "MASKED", "at": 9, "byte": "\"", "allowed": " !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóô"}
+'{"x":1,"y":' -> {"status": "MASKED", "at": 9, "byte": "\"", "allowed": " !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóô"}
+{"library_sha256": "ea54be1b497feefa"}
+'{"x":1' -> {"status": "OK", "allowed": ",.0123456789Ee}", "eos": false}
+'{"x":1,"' -> {"status": "OK", "allowed": "146 bytes", "eos": false}
+'{"x":1,"y"' -> {"status": "MASKED", "at": 9, "byte": "\"", "allowed": " !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóô"}
+'{"x":1,"y":' -> {"status": "MASKED", "at": 9, "byte": "\"", "allowed": " !#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóô"}

@@ -1,4 +1,5 @@
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 const json = @import("json.zig");
 const schema = @import("schema.zig");
@@ -10,7 +11,7 @@ pub const Diagnostic = schema.Diagnostic;
 pub fn compileLiterals(child_allocator: std.mem.Allocator, json_bytes: []const u8, max_depth: u32, diag: *Diagnostic, w: *work_mod.Work, strip_lead_space: bool) CompileError!grammar.Grammar {
     _ = max_depth;
     diag.* = .{};
-    var arena = std.heap.ArenaAllocator.init(child_allocator);
+    var arena = Arena.init(child_allocator);
     errdefer arena.deinit();
     const a = arena.allocator();
     try w.charge(@max(1, json_bytes.len / 4096));
@@ -31,7 +32,7 @@ pub fn compileLiterals(child_allocator: std.mem.Allocator, json_bytes: []const u
         return error.InvalidSchema;
     }
     var builder = grammar.Builder.init(a);
-    var alts: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+    var alts: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
     var seen: std.StringHashMapUnmanaged(void) = .{};
     for (items, 0..) |it, i| {
         try w.charge(1);

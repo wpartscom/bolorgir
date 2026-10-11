@@ -1,0 +1,196 @@
+{
+ "method": "200 random walks per schema over the mask of S, compared at every step with S plus maxProperties 1000000 on every object schema (same language, settled by the bounded search instead of the exact open-object certificates); DEAD_END, MISMATCH and INVALID are findings, STEPS is the 600-step walk cap",
+ "libraries": {
+  "50cbd80e874eac5d": "candidate (frozen acceptance library)",
+  "0b71d7c56b2c4871": "release-line copy with the open-object certificate fix",
+  "ac915c9d8aad1500": "prepared release-line candidate: c288703 plus the fix, zig build -Drelease=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=baseline"
+ },
+ "counts": {
+  "min_a_closed.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 158,
+    "MISMATCH": 42
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 200
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 200
+   }
+  },
+  "min_a_fallback.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 200
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 200
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 200
+   }
+  },
+  "min_a_multibyte.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 154,
+    "MISMATCH": 46
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 200
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 200
+   }
+  },
+  "min_a_required.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 40,
+    "MISMATCH": 160
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 200
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 200
+   }
+  },
+  "min_a_trigger.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 163,
+    "MISMATCH": 37
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 200
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 200
+   }
+  },
+  "min_b1.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 89,
+    "DEAD_END": 111
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 200
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 200
+   }
+  },
+  "min_b2.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 110,
+    "MISMATCH": 90
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 200
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 200
+   }
+  },
+  "o57433.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 193,
+    "STEPS": 3,
+    "MISMATCH": 4
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 197,
+    "STEPS": 3
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 197,
+    "STEPS": 3
+   }
+  },
+  "o5988.json": {
+   "50cbd80e874eac5d": {
+    "MISMATCH": 165,
+    "VALID": 24,
+    "STEPS": 11
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 115,
+    "STEPS": 85
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 115,
+    "STEPS": 85
+   }
+  },
+  "o61772.json": {
+   "50cbd80e874eac5d": {
+    "DEAD_END": 139,
+    "STEPS": 33,
+    "VALID": 28
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 81,
+    "STEPS": 119
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 81,
+    "STEPS": 119
+   }
+  },
+  "o81526.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 90,
+    "STEPS": 36,
+    "DEAD_END": 74
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 147,
+    "STEPS": 53
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 147,
+    "STEPS": 53
+   }
+  },
+  "o81581.json": {
+   "50cbd80e874eac5d": {
+    "MISMATCH": 195,
+    "VALID": 5
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 196,
+    "STEPS": 4
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 196,
+    "STEPS": 4
+   }
+  },
+  "o81583.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 110,
+    "MISMATCH": 90
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 199,
+    "STEPS": 1
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 199,
+    "STEPS": 1
+   }
+  },
+  "o83697.json": {
+   "50cbd80e874eac5d": {
+    "VALID": 129,
+    "DEAD_END": 49,
+    "MISMATCH": 22
+   },
+   "0b71d7c56b2c4871": {
+    "VALID": 195,
+    "STEPS": 5
+   },
+   "ac915c9d8aad1500": {
+    "VALID": 195,
+    "STEPS": 5
+   }
+  }
+ }
+}

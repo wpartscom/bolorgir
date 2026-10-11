@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""B5/B8. Honest long-running generation.
+"""B5/B8. Long-running generation under a fixed load.
 
-The previously published scenario did one initial mask + abort per cycle.
-Here - real generation steps: on EVERY cycle the session walks the full
-trace (fill_mask + accept_token at each token), the session is finished via
+Real generation steps: on EVERY cycle the session walks the full trace
+(fill_mask + accept_token at each token), the session is finished via
 finish() and destroyed. Total --steps aggregate mask steps (default 100k,
 SPEC B8) and ~steps/len(trace) create/destroy cycles (>= 10k, SPEC B8).
 
@@ -13,7 +12,7 @@ excluded.
 
 Stability: p50/p99 of mask/accept per window (window = 1/10 of the limit's
 steps), RSS at window boundaries, engine stats (mem_used/mem_peak, cache
-hits/evictions) before and after. Plateau criterion (NFR-2): the mean of the
+hits/evictions) before and after. Plateau criterion: the mean of the
 second half of the windows' p99 is not worse than the first by more than 20%
 and RSS does not grow monotonically.
 

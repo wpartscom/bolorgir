@@ -1,11 +1,8 @@
 """Shared utilities for GPU benchmarks (B7/T5) with a real HF model.
 
-Historically this held workarounds for bug B-1 (padded lm_head), B-3 (early
-EOS in a batch) and B-2 (BusyError masking the original error) - see
-reproducers in benchmarks/results/20260914T213127/. The fixes moved into the
-package (python/bolorgir/transformers.py, __init__.py); the names
-VocabSafeConstraintProcessor / constrained_generate_safe are kept as aliases
-of the stock classes so benchmark scripts did not change.
+The names VocabSafeConstraintProcessor and constrained_generate_safe are
+aliases of the stock package classes (python/bolorgir/transformers.py,
+__init__.py), kept so benchmark scripts need no changes.
 """
 
 from __future__ import annotations
@@ -24,7 +21,7 @@ from bolorgir.transformers import (
 
 MODEL_ID = "Qwen/Qwen2.5-1.5B-Instruct"
 
-# aliases of the stock path (fixes B-1/B-3/B-2 live in the package)
+# aliases of the stock path (kept for compatibility)
 VocabSafeConstraintProcessor = ConstraintLogitsProcessor
 constrained_generate_safe = constrained_generate
 

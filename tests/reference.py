@@ -1,6 +1,6 @@
-"""Independent reference for the MVP canonical-v1 language (TZ T1, DESIGN §9).
+"""Independent reference for the MVP canonical-v1 language (DESIGN §9).
 
-Implemented purely from docs/DESIGN.md §1 and the TZ (sections 3, 5).
+Implemented purely from docs/DESIGN.md §1.
 No shared code with the core (src/*.zig) is allowed here.
 
 Contents:
@@ -17,6 +17,7 @@ as UTF-8; byte prefixes are needed because tokens may split mid-UTF-8.
 
 from __future__ import annotations
 
+import copy
 import json
 import math
 from dataclasses import dataclass, field
@@ -264,7 +265,7 @@ class Language:
 
 
 # ---------------------------------------------------------------------------
-# JSON Schema -> Language compiler (FR-1, DESIGN §1.7)
+# JSON Schema -> Language compiler (DESIGN §1.7)
 # ---------------------------------------------------------------------------
 
 SUPPORTED_KEYWORDS = {
@@ -536,7 +537,7 @@ def compile_schema_text(text, *, max_depth: int = MAX_DEPTH_DEFAULT) -> Language
 
 
 def compile_literals(strings, *, max_depth: int = MAX_DEPTH_DEFAULT) -> Language:
-    """FR-3: non-empty list of (already decoded) strings; exactly one is chosen."""
+    """Non-empty list of (already decoded) strings; exactly one is chosen."""
     if not isinstance(strings, (list, tuple)) or len(strings) == 0:
         raise InvalidSchema("literal set must be a non-empty list of strings")
     seen = set()
@@ -692,10 +693,10 @@ def oracle_mask(prefix_valid, can_end: bool, spec: TokenizerSpec) -> set[int]:
     """Byte-legal mask: an ordinary token is allowed iff its bytes are
     accepted (prefix_valid(prefix+bytes)); EOS iff can_end; special - never.
 
-    For vocabularies with full byte coverage this equals the TZ 3.1 mask
-    (any language prefix can be completed byte-by-byte). PrefixOracle.mask
-    implements the exact TZ 3.1 rule for partial vocabularies; the Matcher
-    interface keeps this byte-legal form."""
+    For vocabularies with full byte coverage this equals the mask with the
+    completion filter (any language prefix can be completed byte-by-byte).
+    PrefixOracle.mask implements the exact completion rule for partial
+    vocabularies; the Matcher interface keeps this byte-legal form."""
     allowed = set()
     eos = set(spec.eos_ids)
     special = set(spec.special_ids)
@@ -728,11 +729,11 @@ class PrefixOracle:
     """allowed_next(prefix): prefix is a prefix of some document;
     can_end(prefix): prefix ∈ docs; mask(prefix, spec): set of token ids.
 
-    The mask follows TZ 3.1: an ordinary token is allowed only when after
-    it the document can still be completed by a finite continuation of
-    ordinary tokens. A byte-legal prefix that cannot be finished (a
-    competing segmentation trap) is excluded, so this oracle is stricter
-    than the byte-legal form on partial vocabularies."""
+    The mask follows the completion rule: an ordinary token is allowed only
+    when after it the document can still be completed by a finite
+    continuation of ordinary tokens. A byte-legal prefix that cannot be
+    finished (a competing segmentation trap) is excluded, so this oracle
+    is stricter than the byte-legal form on partial vocabularies."""
 
     def __init__(self, docs):
         self.docs = {_to_bytes(d) for d in docs}
@@ -899,7 +900,8 @@ def _str_feed(f: StrF, b: int) -> str:
                 return "ok"
             return "err"
         if f.mode == "uhex1":
-            if b in _HEX_LOWER:
+            # only U+0000..U+001F take a \u escape
+            if b in (0x30, 0x31):
                 f.hexv = int(chr(b), 16)
                 f.mode = "uhex2"
                 return "ok"
@@ -1319,7 +1321,7 @@ def _json_equal(a, b) -> bool:
 
 
 def validate_instance(value, schema, root=None) -> bool:
-    """Mini-validator for the FR-1 subset: type/properties/required/
+    """Mini-validator for the canonical-v1 subset: type/properties/required/
     additionalProperties/items/min/max/enum/const/$ref."""
     if root is None:
         root = schema
@@ -1414,3 +1416,348 @@ def canonical_check(doc, lang: Language) -> bool:
     """Document belongs to the canonical-v1 language (Matcher)."""
     m = Matcher(lang)
     return m.feed(doc) and m.can_end()
+
+
+# ---------------------------------------------------------------------------
+# spec-v1 numeric conjunctions (ADR-0011): completion reachability of a
+# number prefix under range, divisibility, exclusion and const constraints.
+# Exact rational arithmetic over the full prefix string; the reachable
+# values are enumerated per order of magnitude inside a window that covers
+# every constant, plus one representative beyond each end of the window.
+# ---------------------------------------------------------------------------
+
+from fractions import Fraction  # noqa: E402
+
+
+def _frac(x) -> Fraction:
+    if isinstance(x, Fraction):
+        return x
+    if isinstance(x, int):
+        return Fraction(x)
+    return Fraction(Decimal(str(x)))
+
+
+def _om_of(v: Fraction) -> int:
+    """Order of magnitude of |v| > 0: 10^om <= |v| < 10^(om+1)."""
+    v = abs(v)
+    om = len(str(v.numerator)) - len(str(v.denominator))
+    while Fraction(10) ** om > v:
+        om -= 1
+    while Fraction(10) ** (om + 1) <= v:
+        om += 1
+    return om
+
+
+class NumConj:
+    """Conjunction of numeric assertions over one JSON number."""
+
+    def __init__(self, *, ranges=(), divisors=(), integer=False,
+                 excluded=(), consts=()):
+        self.ranges = [(None if lo is None else _frac(lo), bool(lo_x),
+                        None if hi is None else _frac(hi), bool(hi_x))
+                       for lo, lo_x, hi, hi_x in ranges]
+        self.divisors = [_frac(d) for d in divisors]
+        if integer:
+            self.divisors.append(Fraction(1))
+        self.excluded = [_frac(c) for c in excluded]
+        self.consts = [_frac(c) for c in consts]
+
+    @classmethod
+    def from_schema(cls, schema: dict) -> "NumConj":
+        """Typed numeric schema family: type, minimum/maximum/exclusive*,
+        multipleOf, const, not {const|enum}, allOf of the same."""
+        parts = {"ranges": [], "divisors": [], "integer": False,
+                 "excluded": [], "consts": []}
+
+        def walk(s):
+            for sub in s.get("allOf", []):
+                walk(sub)
+            if s.get("type") == "integer":
+                parts["integer"] = True
+            lo = s.get("minimum")
+            hi = s.get("maximum")
+            rng = [lo, False, hi, False]
+            if "exclusiveMinimum" in s:
+                x = _frac(s["exclusiveMinimum"])
+                if rng[0] is None or x >= _frac(rng[0]):
+                    rng[0], rng[1] = x, True
+            if "exclusiveMaximum" in s:
+                x = _frac(s["exclusiveMaximum"])
+                if rng[2] is None or x <= _frac(rng[2]):
+                    rng[2], rng[3] = x, True
+            if rng[0] is not None or rng[2] is not None:
+                parts["ranges"].append(tuple(rng))
+            if "multipleOf" in s:
+                parts["divisors"].append(s["multipleOf"])
+            if "const" in s:
+                parts["consts"].append(s["const"])
+            if "enum" in s:
+                raise ValueError("enum is not part of the family")
+            n = s.get("not")
+            if n is not None:
+                if "const" in n:
+                    parts["excluded"].append(n["const"])
+                else:
+                    parts["excluded"].extend(n["enum"])
+        walk(schema)
+        return cls(**parts)
+
+    def constants(self):
+        out = list(self.divisors) + list(self.excluded) + list(self.consts)
+        for lo, _, hi, _ in self.ranges:
+            out += [x for x in (lo, hi) if x is not None]
+        return [c for c in out if c != 0]
+
+    def satisfies_num(self, v) -> bool:
+        """satisfies() over an exact_numbers.Num (no Fraction, so any
+        exponent works)."""
+        from exact_numbers import Num as ExactNum
+
+        def x(f):
+            return ExactNum(f)
+
+        for lo, lo_x, hi, hi_x in self.ranges:
+            if lo is not None and (v < x(lo) or (lo_x and v == x(lo))):
+                return False
+            if hi is not None and (v > x(hi) or (hi_x and v == x(hi))):
+                return False
+        for d in self.divisors:
+            if not v.is_multiple_of(x(d)):
+                return False
+        if any(v == x(c) for c in self.excluded):
+            return False
+        if any(not v == x(c) for c in self.consts):
+            return False
+        return True
+
+    def satisfies(self, v: Fraction) -> bool:
+        for lo, lo_x, hi, hi_x in self.ranges:
+            if lo is not None and (v < lo or (lo_x and v == lo)):
+                return False
+            if hi is not None and (v > hi or (hi_x and v == hi)):
+                return False
+        for d in self.divisors:
+            if (v / d).denominator != 1:
+                return False
+        if any(v == c for c in self.excluded):
+            return False
+        if any(v != c for c in self.consts):
+            return False
+        return True
+
+    def mag_bounds(self, neg: bool):
+        """(lo, lo_open, hi, hi_open) magnitude bounds of a nonzero value of
+        the sign, or None when no such value satisfies the ranges."""
+        lo, lo_o, hi, hi_o = Fraction(0), True, None, False
+        for rlo, rlo_x, rhi, rhi_x in self.ranges:
+            if neg:
+                a, a_x, b, b_x = rhi, rhi_x, rlo, rlo_x
+                a = None if a is None else -a
+                b = None if b is None else -b
+            else:
+                a, a_x, b, b_x = rlo, rlo_x, rhi, rhi_x
+            if a is not None and (a > lo or (a == lo and a_x)):
+                lo, lo_o = a, a_x
+            if b is not None and (hi is None or b < hi or (b == hi and b_x)):
+                hi, hi_o = b, b_x
+        if hi is not None and (hi < lo or (hi == lo and (hi_o or lo_o))):
+            return None
+        if hi is not None and hi <= 0:
+            return None
+        if lo < 0:
+            lo, lo_o = Fraction(0), True
+        return lo, lo_o, hi, hi_o
+
+    def lcm_divisor(self):
+        if not self.divisors:
+            return None
+        d = self.divisors[0]
+        for e in self.divisors[1:]:
+            num = d.numerator * e.numerator // math.gcd(d.numerator, e.numerator)
+            den = math.gcd(d.denominator, e.denominator)
+            d = Fraction(num, den)
+        return d
+
+
+def _parse_number_prefix(p: str):
+    """Split a number prefix; None when it is not a JSON number prefix."""
+    i, n = 0, len(p)
+    out = {"neg": False, "int": "", "frac": None, "exp": None,
+           "exp_sign": "", "exp_digits": ""}
+    if i < n and p[i] == "-":
+        out["neg"] = True
+        i += 1
+    j = i
+    while i < n and p[i].isdigit():
+        i += 1
+    out["int"] = p[j:i]
+    if len(out["int"]) > 1 and out["int"][0] == "0":
+        return None
+    if i < n and p[i] == ".":
+        if not out["int"]:
+            return None
+        i += 1
+        j = i
+        while i < n and p[i].isdigit():
+            i += 1
+        out["frac"] = p[j:i]
+    if i < n and p[i] in "eE":
+        if not out["int"] or out["frac"] == "":
+            return None
+        out["exp"] = True
+        i += 1
+        if i < n and p[i] in "+-":
+            out["exp_sign"] = p[i]
+            i += 1
+        j = i
+        while i < n and p[i].isdigit():
+            i += 1
+        out["exp_digits"] = p[j:i]
+    return out if i == n else None
+
+
+def _ext_first_above(typed: int, bound: int) -> int:
+    """Smallest N >= 0 in ext(typed) = {typed} u {typed x 10^j + y :
+    0 <= y < 10^j} with N > bound (every N >= 0 when typed == 0)."""
+    if typed == 0:
+        return max(bound + 1, 0)
+    j = 0
+    while True:
+        first = typed * 10 ** j
+        if first + 10 ** j - 1 > bound:
+            return max(first, bound + 1)
+        j += 1
+
+
+def _exp_candidates(info, lo: int, hi: int):
+    """Typed-exponent completions within [lo, hi] plus the nearest one
+    beyond each end of the window when the exponent set reaches there."""
+    sign, digs = info["exp_sign"], info["exp_digits"]
+    typed = int(digs) if digs else 0
+
+    def member(e: int) -> bool:
+        if sign == "-" and e > 0 or sign == "+" and e < 0:
+            return False
+        if not digs:
+            return True
+        if sign == "" and e < 0:
+            return False
+        if typed == 0:
+            return True
+        return str(abs(e)).startswith(str(typed))
+
+    for e in range(lo, hi + 1):
+        if member(e):
+            yield e
+    if sign != "-":
+        yield _ext_first_above(typed, max(hi, -1))
+    if sign == "-" or (sign == "" and not digs):
+        yield -_ext_first_above(typed, max(-lo, 0))
+
+
+def _first_value_in(conj: NumConj, neg: bool, lo, lo_open, hi, hi_open):
+    """A value of the sign with magnitude in the interval satisfying the
+    conjunction, or None. Bounds are finite decimals."""
+    sgn = -1 if neg else 1
+    if hi is not None and (hi < lo or (hi == lo and (lo_open or hi_open))):
+        return None
+    d = conj.lcm_divisor()
+    budget = len(conj.excluded) + 2
+    if d is not None:
+        k = math.ceil(lo / d)
+        m = k * d
+        if lo_open and m == lo:
+            m += d
+        for _ in range(budget):
+            if hi is not None and (m > hi or (hi_open and m == hi)):
+                return None
+            if m > 0 and conj.satisfies(sgn * m):
+                return sgn * m
+            m += d
+        return None
+    if hi is not None and hi == lo:
+        return sgn * lo if conj.satisfies(sgn * lo) and lo > 0 else None
+    if hi is None:
+        hi = lo + 1 if lo > 0 else Fraction(1)
+        hi_open = True
+    for j in range(1, budget + 1):
+        v = lo + (hi - lo) / 2 ** j
+        if v > 0 and conj.satisfies(sgn * v):
+            return sgn * v
+    return None
+
+
+def numconj_reachable(prefix, conj: NumConj):
+    """(alive, value): whether some completion of the number prefix
+    satisfies the conjunction, with one such value. None for a prefix that
+    is not a JSON number prefix."""
+    if isinstance(prefix, (bytes, bytearray)):
+        prefix = prefix.decode("ascii")
+    info = _parse_number_prefix(prefix)
+    if info is None:
+        return None
+    if conj.consts:
+        # A const pins the value: the conjunction reduces to the point range
+        # [v, v] when v satisfies it, and to nothing otherwise.
+        v = conj.consts[0]
+        if not conj.satisfies(v):
+            return False, None
+        pinned = copy.copy(conj)
+        pinned.ranges = list(conj.ranges) + [(v, False, v, False)]
+        pinned.consts = []
+        conj = pinned
+    consts = conj.constants()
+    oms = [_om_of(c) for c in consts]
+    span = max([abs(o) for o in oms] + [0])
+    W = span + len(prefix) + 12
+    mant = info["int"] + (info["frac"] or "")
+    sig = mant.lstrip("0")
+    frozen = info["exp"] is not None
+    neg_fixed = info["neg"]
+    if frozen:
+        if not sig:
+            return (True, Fraction(0)) if conj.satisfies(Fraction(0)) else (False, None)
+        from exact_numbers import Num as ExactNum
+
+        for e in _exp_candidates(info, -W, W):
+            v = ExactNum.make(neg_fixed, mant, e - len(info["frac"] or ""))
+            if conj.satisfies_num(v):
+                return True, v
+        return False, None
+    if not sig:
+        if conj.satisfies(Fraction(0)):
+            return True, Fraction(0)
+        signs = [False, True] if prefix == "" else [neg_fixed]
+        for neg in signs:
+            mb = conj.mag_bounds(neg)
+            if mb is None:
+                continue
+            lo, lo_o, hi, hi_o = mb
+            v = _first_value_in(conj, neg, lo, lo_o, hi, hi_o)
+            if v is not None:
+                return True, v
+            if hi is None:
+                return True, None
+        return False, None
+    n = len(sig)
+    P = int(sig)
+    mb = conj.mag_bounds(neg_fixed)
+    if mb is None:
+        return False, None
+    lo, lo_o, hi, hi_o = mb
+    for t in range(-W - 1, W + 2):
+        k = t - n + 1
+        a = Fraction(P) * Fraction(10) ** k
+        b = Fraction(P + 1) * Fraction(10) ** k
+        ilo, ilo_o = a, False
+        if lo > ilo or (lo == ilo and lo_o):
+            ilo, ilo_o = lo, lo_o
+        ihi, ihi_o = b, True
+        if hi is not None and hi < ihi:
+            ihi, ihi_o = hi, hi_o
+        if ihi < ilo or (ihi == ilo and (ilo_o or ihi_o)):
+            continue
+        v = _first_value_in(conj, neg_fixed, ilo, ilo_o, ihi, ihi_o)
+        if v is not None:
+            return True, v
+    return False, None

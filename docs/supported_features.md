@@ -1,9 +1,9 @@
-# supported_features.md - exact MVP support table
+# supported_features.md - exact support table (canonical-v1 and spec-v1)
 
 Document status: normative support table per spec FR-1 (§5), including the
-schema acceptance rules of both profiles. "Rejected" means a normal compilation
-error before the first forward pass; the engine never silently continues
-unconstrained (spec FR-16).
+schema acceptance rules of both profiles: `canonical-v1` (§1) and `spec-v1`
+(§1a). "Rejected" means a normal compilation error before the first forward
+pass; the engine never silently continues unconstrained (spec FR-16).
 
 ## 1. JSON Schema profile (FR-1), canonical-v1 serialization profile
 
@@ -11,7 +11,7 @@ Input: UTF-8 JSON, Draft 2020-12 profile. Unknown validation keywords raise
 `BLG_ERR_UNSUPPORTED_FEATURE` with a JSON Pointer in `blg_error.json_pointer`
 and a byte offset in `blg_error.schema_offset`.
 
-| Spec FR-1 element | MVP status | Behavior |
+| Spec FR-1 element | canonical-v1 status | Behavior |
 |---|---|---|
 | `type` | Supported | Exactly one string: `object`, `array`, `string`, `integer`, `number`, `boolean`, `null`. Array of types - `UNSUPPORTED_FEATURE`. |
 | `properties`, `required` | Supported | Both mandatory on every object node (`properties` may be `{}`, `required` may be `[]`). Names in `required` - only from `properties`, no duplicates, otherwise `INVALID_SCHEMA`. |
@@ -23,14 +23,14 @@ and a byte offset in `blg_error.schema_offset`.
 | `$defs`, `$ref` | Supported | Local references only: `#`, `#/$defs/<name>` (pointer with `~0`/`~1`). Acyclic graph: a cycle - `INVALID_SCHEMA` with pointer. Next to `$ref` only annotations are allowed; validation keywords next to it - `UNSUPPORTED_FEATURE`. |
 | `$schema` | Supported | Draft 2020-12 identifier allowed (`https://json-schema.org/draft/2020-12/schema` with optional `#`); another dialect - `INVALID_SCHEMA`. |
 | `title`, `description`, `$comment`, `examples`, `default` | Supported (annotations) | Do not affect the mask; `default` does not insert a value. |
-| `anyOf`, `oneOf`, `allOf`, `not`, `if`/`then`/`else` | Outside MVP | `UNSUPPORTED_FEATURE` with pointer. |
-| `minimum`, `maximum`, `multipleOf`, `exclusiveMinimum`, `exclusiveMaximum` | Outside MVP | `UNSUPPORTED_FEATURE` (not ignored). |
-| `pattern`, `format`, `patternProperties` | Outside MVP | `UNSUPPORTED_FEATURE`. |
-| `uniqueItems`, `contains`, `dependentSchemas`, `unevaluatedProperties` | Outside MVP | `UNSUPPORTED_FEATURE`. |
-| `dependentRequired`, `propertyNames`, `minContains`, `maxContains`, `prefixItems`, `additionalItems`, `$id`, `$anchor`, `$dynamicRef`, `$recursiveRef`, `definitions`, `dependencies`, `contentEncoding`, `contentMediaType`, `contentSchema`, `readOnly`, `writeOnly`, `deprecated` | Outside MVP | `UNSUPPORTED_FEATURE`. |
-| Any other unknown keyword | Outside MVP | `UNSUPPORTED_FEATURE`. |
-| External references and network schema loading | Not supported | `UNSUPPORTED_FEATURE`. |
-| Boolean schemas (`true`/`false` as a schema value) | Outside MVP | `UNSUPPORTED_FEATURE`. |
+| `anyOf`, `oneOf`, `allOf`, `not`, `if`/`then`/`else` | Not in canonical-v1 (implemented in spec-v1, §1a) | `UNSUPPORTED_FEATURE` with pointer. |
+| `minimum`, `maximum`, `multipleOf`, `exclusiveMinimum`, `exclusiveMaximum` | Not in canonical-v1 (implemented in spec-v1, §1a) | `UNSUPPORTED_FEATURE` (not ignored). |
+| `pattern`, `format`, `patternProperties` | Not in canonical-v1 (`pattern` and single-pattern `patternProperties` implemented in spec-v1, §1a) | `UNSUPPORTED_FEATURE`. |
+| `uniqueItems`, `contains`, `dependentSchemas`, `unevaluatedProperties` | Not in canonical-v1 (implemented in spec-v1, §1a) | `UNSUPPORTED_FEATURE`. |
+| `dependentRequired`, `propertyNames`, `minContains`, `maxContains`, `prefixItems`, `additionalItems`, `$id`, `$anchor`, `$dynamicRef`, `$recursiveRef`, `definitions`, `dependencies`, `contentEncoding`, `contentMediaType`, `contentSchema`, `readOnly`, `writeOnly`, `deprecated` | Not in canonical-v1 (many implemented in spec-v1, §1a) | `UNSUPPORTED_FEATURE`. |
+| Any other unknown keyword | Not in canonical-v1 | `UNSUPPORTED_FEATURE`. |
+| External references and network schema loading | Not supported (spec-v1 resolves external `$ref` through an explicit registry snapshot, §1a) | `UNSUPPORTED_FEATURE`. |
+| Boolean schemas (`true`/`false` as a schema value) | Not in canonical-v1 (implemented in spec-v1, §1a) | `UNSUPPORTED_FEATURE`. |
 
 Additional acceptance rules:
 
@@ -56,14 +56,17 @@ the oracle harness (`tests/oracle/`, pinned Test Suite 23.2.0 + jsonschema
 4.26.0): spec-v1 **1118 PASS / 99 SKIPPED / 1 KNOWN_GAP / 0 MISMATCH /
 0 ENGINE_ERROR** after P6b (`tests/oracle/results/oracle-p6b-spec.json`);
 canonical-v1 stays bit-for-bit frozen (95 PASS / 7 KNOWN_GAP,
-`oracle-p6b-canonical.json`). **Current state (2026-09-30, strict
-ADR-0005 D3):** 2020-12 spec-v1 **1069 PASS / 99 SKIPPED / 1 KNOWN_GAP /
-0 MISMATCH / 49 ENGINE_ERROR**. The ENGINE_ERROR rows are
-`RESOURCE_LIMIT` refusals: masks for states whose completion reachability
-cannot be proven within the search budget fail instead of admitting an
-unproven token (see "Mask and `accept`" below). They are pinned row by row
-in `tests/oracle/engine_error_residual_spec_v1.json` (196 rows across the
-five dialects); per-dialect counts are in docs/dialect-matrix.md section 9.
+`oracle-p6b-canonical.json`). **Current state (2026-10-05, strict
+ADR-0005 D3, ADR-0011 and the certificates of the 2026-10-05 wave):**
+2020-12 spec-v1 **1108 PASS / 99 SKIPPED / 1 KNOWN_GAP / 0 MISMATCH /
+10 ENGINE_ERROR** (2026-10-02: 1072 PASS / 46 ENGINE_ERROR). The
+ENGINE_ERROR rows are `RESOURCE_LIMIT` refusals: masks for states whose
+completion reachability cannot be proven within the search budget fail
+instead of admitting an unproven token (see "Mask and `accept`" below, and
+"Runtime `RESOURCE_LIMIT`" for handling it). They are pinned row by row in
+`tests/oracle/engine_error_residual_spec_v1.json` (33 rows across the five
+dialects, 181 before this wave); per-dialect counts are in
+docs/dialect-matrix.md section 9.
 Oracle reports under `tests/oracle/results/` are local run outputs and are
 not versioned; regenerate them with `tests/oracle/run_oracle.py`
 (`tests/oracle/README.md`). Since the R6 work (2026-09-22) the harness
@@ -74,21 +77,47 @@ served from one registry snapshot, and per-dialect reports live in
 draft2019-09, draft2020-12); per-dialect PASS/SKIPPED/KNOWN_GAP counts and
 the refusal classification are in docs/dialect-matrix.md section 9.
 
-Corpus exact coverage (2026-09-22, release build `zig-out/lib/libbolorgir.so`,
-`benchmarks/bench_jsb_coverage.py` with `BOLORGIR_COVERAGE_PROFILE=spec-v1`,
-reports under `benchmarks/coverage/spec-v1/`; corpus hashes identical to the
+Corpus exact coverage (2026-10-04, final build of the audit fixes, lib
+sha256 `7345490f…`, `benchmarks/bench_jsb_coverage.py` with
+`BOLORGIR_COVERAGE_PROFILE=spec-v1`, reports under
+`benchmarks/coverage/spec-v1/`; corpus hashes identical to the
 canonical-v1 runs - repo `4c6c1d39…`, maskbench `9021735d…`):
 
 | Corpus | Profile | compiled | invalid_schema | unsupported_feature | resource_limit | unsatisfiable |
 |---|---|---:|---:|---:|---:|---:|
 | repository snapshot (9,558) | canonical-v1 | 38 (0.4%) | 2,814 | 6,703 | 3 | n/a |
-| repository snapshot (9,558) | spec-v1 | **9,251 (96.8%)** | 7 | 150 | 143 | 7 |
+| repository snapshot (9,558) | spec-v1 | **9,247 (96.7%)** | 6 | 151 | 147 | 7 |
 | MaskBench snapshot (11,306) | canonical-v1 | 624 (5.5%) | 2,993 | 7,688 | 1 | n/a |
-| MaskBench snapshot (11,306) | spec-v1 | **10,794 (95.5%)** | 5 | 355 | 144 | 8 |
+| MaskBench snapshot (11,306) | spec-v1 | **10,788 (95.4%)** | 4 | 359 | 147 | 8 |
 
 Both spec-v1 numbers clear the ROADMAP section-1 target of >= 95% exact
 coverage; the remaining `unsupported_feature` files are the documented
-refusals of the list below, each with a JSON pointer.
+refusals of the list below, each with a JSON pointer. A few large
+schemas near the 256 MiB limit move between `compiled` and
+`resource_limit` from run to run (docs/RUN_HISTORY.md, unresolved
+limitations).
+
+Compiling is not generating. The same reports (generatable part
+completed 2026-10-05: every one of the K passes ran) give each compiled
+schema one outcome of K = 20 mask-guided generation passes per
+tokenizer, checked by an exact-number `jsonschema` validator with
+ECMA-262 `pattern`. `generatable` means at least one valid document and no pass
+with an invalid document, an engine error or `RESOURCE_LIMIT` (passes
+cut by a step or time budget are allowed); it is the result of K passes
+on these tokenizers, not a proof for every continuation:
+
+| Corpus | byte-level tokenizer | Llama 3.1 (1 in 20 schemas) | GPT-2 (1 in 20 schemas) |
+|---|---:|---:|---:|
+| repository snapshot | 8,108 of 9,243 (87.7%) | 227 of 431 (52.7%) | 284 of 431 (65.9%) |
+| MaskBench snapshot | 9,614 of 10,783 (89.2%) | 325 of 535 (60.7%) | 364 of 535 (68.0%) |
+
+No pass ended in an engine defect (`DEAD_END`, a refused masked token,
+a crash). The remaining schemas end in `RESOURCE_LIMIT` (byte: 359 and
+405), in the pass budgets (74 and 78), or in a document the validator
+rejects (702 and 686), all of them the draft-04 integer spelling of
+section 9 (each of the 10,350 rejected documents of the three
+tokenizers is kept and checked). Per-schema outcomes and the class of every remaining case:
+`benchmarks/coverage/spec-v1/coverage_*.md` and `triage.md`.
 
 Implemented (P1): profile dispatch; tolerant reader and annotation
 keywords; dialect normalization with preserved JSON pointers; extended
@@ -107,7 +136,12 @@ refused until P3); `propertyNames`; `minProperties`/
 `maxProperties`; `dependencies` (draft-04..07), `dependentRequired`,
 `dependentSchemas`; `prefixItems`, tuple `items`, `additionalItems`;
 `contains` with `minContains`/`maxContains`; `uniqueItems` (candidate hash
-plus exact structural equality).
+plus exact structural equality). Arrays with `contains` or `uniqueItems`
+run the completion-reachability filter, so the mask also excludes bytes
+that start an element the array can no longer accept: an element that
+cannot match `contains` when the remaining slots cannot cover the
+`minContains` deficit, an element that can only repeat a value already
+seen, or a comma after every value of a finite element language is used.
 
 Implemented (P3): `anyOf` (plain union), `oneOf`/`allOf`/`if`/`then`/`else`
 (parallel branch parses, verdict at the confirmed value boundary), `not`
@@ -138,7 +172,13 @@ conjoin with the type constraint; contradictory bounds are
 `multipleOf` divisor with more than 10 significant decimal digits refuses
 `UNSUPPORTED_FEATURE` with the pointer. Inside `not` these keywords stay
 refused (complement of a numeric interval is outside the approved `not`
-subset).
+subset). The conjunction of these keywords with `type: integer`, numeric
+`const` and `not` of numeric `const`/`enum` is certified jointly in closed
+form (ADR-0011): a conjunction no number satisfies is
+`UNSATISFIABLE_CONSTRAINT` at compile time, and masks over such
+conjunctions do not need the budgeted search on byte-complete
+vocabularies. Two different `multipleOf` divisors in one conjunction are
+outside the certificate and can still end in `RESOURCE_LIMIT`.
 
 Implemented (P5, recursion; ADR-0008): recursive local `$ref` (`#`,
 `#/...` pointers, plain-name fragments, all five dialects) by bounded
@@ -212,6 +252,14 @@ regressions pinned in `tests/test_spec_v1_r2_r3.py`):
   a shape that cannot merge (a closed `additionalProperties: false`
   object, a pattern/propertyNames overlap) refuses
   `UNSUPPORTED_FEATURE` with a pointer.
+- Value verdicts ignore declared-key order (2026-10-02): a branch of a
+  `oneOf` with two or more live branches, the `if` condition and a
+  `contains` subschema under a finite `maxContains` compile to an
+  order-free copy of their subgraph, so a value with its declared keys out
+  of schema order still counts as a match there (semantics-spec-v1 4.3).
+  A `oneOf` with a single live branch is that branch and keeps its
+  declared order. Before, such a branch did not
+  vote and a document matching two `oneOf` branches was accepted.
 - Mask and `accept` run the ADR-0005 residual-reachability filter for
   every grammar with deferred value verdicts (comb groups, pattern
   strings, bounded/excluded strings, value-constrained numbers), on any
@@ -233,6 +281,31 @@ regressions pinned in `tests/test_spec_v1_r2_r3.py`):
   with `RESOURCE_LIMIT`, never silently admitting a token that may
   dead-end. A masked token is always an exact dead-end proof, an admitted
   token is provably reachable. No new compile-time refusal is introduced.
+
+Runtime `RESOURCE_LIMIT` (spec-v1): a schema that compiled can still fail
+`blg_fill_mask` / `blg_accept_token` with `RESOURCE_LIMIT` when the
+completion check of some token stays undecided. It never yields a wrong
+mask; generation cannot continue from that state. Ways to handle it:
+
+- Hugging Face adapter: `constrained_generate(..., on_constraint_error=
+  "fail_row")` (docs/API.md section 3.6) keeps the batch running, ends the
+  failed row with EOS and reports `stop_reason="constraint_error"` and the
+  error text; the default `"raise"` propagates `ResourceLimitError`.
+- Before generation: compile with `BLG_COMPILE_PROBE` (Python
+  `probe="probe"`), a bounded search for such states over the context
+  vocabulary ([ADR-0012](adr/ADR-0012-generatability-probe.md)). `found`
+  fails the compile with the token path and the subschema pointer;
+  `inconclusive` (budget spent) guarantees nothing and fails only with
+  `BLG_COMPILE_PROBE_STRICT`; `proven` (every reachable state visited, only
+  for finite state spaces such as enums and closed objects of literals)
+  guarantees that no completion check of the grammar is undecided for this
+  vocabulary and these limits. Memory and work limits and cancellation can
+  still fail a call.
+- Schema side: the families still left undecided are listed with
+  counterexamples in `tests/oracle/engine_error_residual_spec_v1.json` and
+  docs/RUN_HISTORY.md; rewriting a schema away from them (for example an
+  `unevaluatedProperties` schema under `if` without `then`/`else`) avoids
+  the failure.
 
 Refused with `UNSUPPORTED_FEATURE` and a pointer (phase in parentheses):
 
@@ -289,7 +362,7 @@ custom metaschema vocabulary (5).
 |---|---|
 | `BLG_CONSTRAINT_JSON_SCHEMA` | Supported (§1 table). |
 | `BLG_CONSTRAINT_LITERAL_SET` | Supported (FR-3): non-empty JSON array of UTF-8 strings; common prefixes, empty string, Unicode; duplicates are removed. Not mixed with regex. |
-| Arbitrary CFG/EBNF, user regex | Outside MVP (plan 1.1) | `UNSUPPORTED_FEATURE`. |
+| Arbitrary CFG/EBNF, user regex | Not supported (plan 1.1): `UNSUPPORTED_FEATURE`. |
 
 ## 4. Computation modes (blg_mode)
 
@@ -304,10 +377,10 @@ but not the language and not the masks.
 
 ## 5. Platforms and tokenizers
 
-| Item | MVP status |
+| Item | Status |
 |---|---|
 | Platform | Linux x86_64 (glibc). Other platforms - after separate checks; the design has no inherent x86 dependency. |
-| Python | CPython 3.10+, regular GIL; extension via the Limited API (abi3, target `Py_LIMITED_API=0x030A0000`). |
+| Python | CPython 3.12+, regular GIL; extension via the Limited API (abi3, target `Py_LIMITED_API=0x030C0000`). |
 | Tokenizers | Two families: byte-level BPE (GPT-2/Qwen/Llama-3 style) and SentencePiece with byte fallback. Byte images of tokens are determined by the ACTUAL backend decoder (`tokenizers.__getstate__`): `<0xNN>` - one byte only when ByteFallback is present in the decoder chain (and for added tokens too); in byte-level BPE it is literal text, as in HF decode. Added tokens pass through the same decoder as regular tokens (`Ġ/Ċ/▁` → space/newline); a fallback on a non-mappable character is at the level of the WHOLE token: a mixed `Ġhello🙂` stays UTF-8 as is, including `Ġ`); tests compare the full `hf.decode(sequence)` with the byte model. Only exact decoder sequences are supported, honoring order and multiplicity (ByteLevel; SP: Replace(▁→' ') [ByteFallback] [Fuse] Strip(' ', start=1, stop=0)); two Strips, Strip before Fuse, `Strip` without `Fuse` (stripping a space from EACH token), Metaspace and other chains - `UNSUPPORTED_TOKENIZER`, no approximations. The per-process `TokenizerBundle.from_hf` cache fingerprint includes the decoder configuration and added tokens, so a decoder change does not reuse an old bundle. Strip(' ', start=1) is modeled by the core (flags = `BLG_TOKENIZER_STRIP_LEAD_SPACE`): the language L is compiled as {t∈L without a leading space} ∪ {' '+t}, and the accepted byte stream matches the decoded text exactly. |
 | Tokenizer coverage (coverage gate) | Spec 3.1: a token is allowed only if a finishing continuation of tokens exists after it. With a byte-complete vocabulary (all 256 single-byte tokens - GPT-2/Llama byte fallback) the mask is exact without extra checks. For finite literal languages (literals/enum/const/objects of them) with an incomplete vocabulary, masks are built with an exact reachability check `src/complete.zig` (state search with memoization, terminating on a finite language): a token leading to a dead end is not allowed, and `accept` of such a token - `INVALID_TOKEN` without changing state (FR-7). For other combinations (infinite language + incomplete vocabulary: `string`/`integer`/arrays etc.) termination is not proven, so such a pair is rejected at compile time (`BLG_ERR_UNSUPPORTED_TOKENIZER` with an explicit explanation); an uncoverable constraint - the same error code within the same step. Use a byte-complete vocabulary or a finite literal constraint. |
 | Mask construction | By walking the token prefix tree (trie in `Tokenizer`), not by enumerating the vocabulary; EOS/special/empty tokens do not enter the trie (EOS are allowed via `can_end`, special non-EOS are forbidden). |
@@ -346,6 +419,8 @@ budget is insufficient for the tokenizer, the context is not created.
 | `adaptive_min_hits` - admission: minimum state hits | 2 |
 | `adaptive_min_cost_ns` - admission: minimum mask computation cost, ns | 50000 |
 | `precompute_max_states` - cap of warm-up states at compile | 4096 |
+| `probe_max_states` - visited states of the compile-time probe (`BLG_COMPILE_PROBE`) | 256 |
+| `probe_max_work` - work ops of the probe (does not draw on `work_limit_ops`) | 16M |
 
 Reaching the total limit - `RESOURCE_LIMIT`; the schema is not simplified, the
 mask is not weakened. Exceeding `max_threads_per_state` - `RESOURCE_LIMIT` (not
@@ -371,7 +446,16 @@ creation. Wide alternations (`enum`, `oneOf`) no longer multiply parser threads:
 choice alternatives advance lazily through a single choice frame and only the
 alternatives matching the next byte fork a thread (src/parser.zig), so, for
 example, Github_trivial/o48280 (enum of 255 strings) compiles, creates a
-session and accepts a valid document under the default budgets.
+session and accepts a valid document under the default budgets. Closed
+objects read a key on one thread for every candidate property (the
+declared properties up to the first required one), so the number of
+optional properties does not count against `max_threads_per_state`. The
+limit counts the distinct live threads after each byte: threads that die
+on the byte and duplicates do not count (within one byte the parser may
+fork up to `MAX_THREADS_CAP`). Two threads are duplicates when their frames
+are equal, or differ only in leaf value machines over nodes of equal
+content (the "any value" of several untyped `anyOf` branches reading the
+same number, string or literal).
 
 ## 7. Error codes (include/bolorgir.h)
 
@@ -380,7 +464,7 @@ session and accepts a valid document under the default budgets.
 | 0 | `BLG_OK` | Success. |
 | 1 | `BLG_ERR_INVALID_ARGUMENT` | Invalid struct_size/version, cache_limit > memory_limit, null pointers, misaligned mask buffer. |
 | 2 | `BLG_ERR_INVALID_SCHEMA` | Schema acceptance rule violation (§1): duplicate keys, `$ref` cycle, foreign `$schema`, non-integer min/max. |
-| 3 | `BLG_ERR_UNSUPPORTED_FEATURE` | Keyword/construct outside the MVP; unknown profile. |
+| 3 | `BLG_ERR_UNSUPPORTED_FEATURE` | Keyword/construct outside the active profile; unknown profile. |
 | 4 | `BLG_ERR_UNSATISFIABLE_CONSTRAINT` | min > max; enum empty after filtering. |
 | 5 | `BLG_ERR_UNSUPPORTED_TOKENIZER` | Empty representation of a regular token; uncovered ids; uncertified decoding scheme; constraint not covered by the tokenizer (coverage gate at compile, §5). |
 | 6 | `BLG_ERR_INVALID_TOKEN` | Token outside the vocab; forbidden token at accept; special non-EOS in the document. State unchanged. |
@@ -397,7 +481,7 @@ message UTF-8 up to 256 bytes, json_pointer - RFC 6901 JSON Pointer to the
 schema node on compilation errors, "" when not applicable); there is no global
 last_error. No error crosses the ABI as a Zig error union or panic.
 
-## 8. Measured support on JSONSchemaBench
+## 8. Measured support on JSONSchemaBench (canonical-v1)
 
 A run over the full JSONSchemaBench corpus (repo guidance-ai/jsonschemabench,
 commit `ba103c73756198dd9b149ddc7db7867da7a077f6`, 9558 schemas, 10 datasets;
@@ -415,7 +499,7 @@ per-schema list, support_summary.md - summary).
 
 The measured outcomes match the §1 table: the dominant rejection causes are
 the object-node acceptance rules (`additionalProperties: false` mandatory,
-`properties`/`required` mandatory) and keywords outside the MVP (`definitions`,
+`properties`/`required` mandatory) and keywords outside canonical-v1 (`definitions`,
 `$id`/draft-4 `id`, `oneOf`/`anyOf`/`allOf`, `patternProperties` etc.).
 The 3 `RESOURCE_LIMIT` - schemas larger than `schema_limit_bytes` = 1 MiB.
 No behavioral deviations from the §1 table were found on the corpus; the only
@@ -429,6 +513,12 @@ No mask deviations of our engine from its own canonical-v1 semantics
 (oracle tests/reference.py) were found; all deviations from the competitors are
 classified as profile differences or as limitations/defects on the
 competitors' side.
+
+This section covers canonical-v1 only. The measured spec-v1 coverage of the
+same corpus snapshot (96.7% of the repository snapshot, 95.4% of the
+MaskBench snapshot compiled exactly; 87.7% and 89.2% of the compiled
+schemas generatable on the byte-level tokenizer, 2026-10-05) is reported in
+§1a with its report paths.
 
 ## 9. Operational notes and known deviations
 
@@ -475,4 +565,10 @@ so the oracle gate stays green, but the semantic coverage harness
 (jsonschema cross-check) reports the divergence - 22 of the
 JSONSchemaBench repo-snapshot schemas in the 2026-09-26 measurement
 (all `generated_schema_invalid` cases are this single shape; no other
-error types were found among them).
+error types were found among them). In the generatable reports of
+2026-10-05 it is the only cause of `invalid_document` (702 repository and
+686 MaskBench schemas on the byte-level tokenizer; every one of the
+10,350 invalid documents of the three tokenizers checked) and of the 2
+accepted invalid MaskBench instances; the cases are listed in
+`tests/fuzz/known_deviations_spec_v1.json` (triage:
+`benchmarks/coverage/spec-v1/triage.md`).

@@ -1,4 +1,5 @@
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 
 pub const Error = error{ UnsupportedTokenizer, OutOfMemory };
@@ -7,7 +8,7 @@ pub const Entry = struct { id: u32, bytes: []const u8 };
 
 pub const NO_TOKEN: u32 = std.math.maxInt(u32);
 
-/// Flat byte-prefix trie of the vocabulary (FR-6). Node 0 is the root.
+/// Flat byte-prefix trie of the vocabulary. Node 0 is the root.
 /// Edges of a node are a contiguous slice of edge_byte/edge_child, so no
 /// per-node allocations exist. Distinct ids sharing one byte image are
 /// chained through token_chain starting at node_token. max_stack is the
@@ -51,14 +52,16 @@ pub const Tokenizer = struct {
     identity: u64,
     trie: Trie,
     token_chain: []u32,
-    arena: std.heap.ArenaAllocator,
+    arena: Arena,
     /// True when every one of the 256 byte values has a usable
-    /// single-byte token (ordinary, non-EOS, non-special). Byte-complete
-    /// vocabularies make masks exact without any completion search: from
-    /// any state that has a byte-wise completion, that completion can be
-    /// fed one byte at a time (TZ 3.1), so no byte-legal token can dead
-    /// end. The completion filter (src/complete.zig) is only needed when
-    /// this flag is false and the grammar language is finite.
+    /// single-byte token (ordinary, non-EOS, non-special). For grammars
+    /// whose prefixes are guaranteed to be completable byte by byte, a
+    /// byte-complete vocabulary makes masks exact without any completion
+    /// search: that completion can be fed one byte at a time, so no
+    /// byte-legal token can dead end. The completion filter
+    /// (src/complete.zig) runs when this flag is false and the grammar
+    /// language is finite, and also for any grammar with deferred value
+    /// verdicts (needs_reachability) on any vocabulary.
     byte_complete: bool,
     /// True when the decoder drops one leading space of the whole text
     /// (HF SentencePiece Strip(" ", start=1, stop=0)). Set by the C ABI
@@ -86,7 +89,7 @@ pub const Tokenizer = struct {
         if (vocab_size == 0) return error.UnsupportedTokenizer;
         if (entries.len != vocab_size) return error.UnsupportedTokenizer;
 
-        var arena = std.heap.ArenaAllocator.init(child_allocator);
+        var arena = Arena.init(child_allocator);
         errdefer arena.deinit();
         const a = arena.allocator();
 
@@ -133,7 +136,7 @@ pub const Tokenizer = struct {
 
         const built = try buildTrie(a, vocab_size, bytes, is_eos, is_special);
 
-        var have_byte = [_]bool{false} ** 256;
+        var have_byte: [256]bool = @splat(false);
         var have_count: u32 = 0;
         for (bytes, 0..) |b, i| {
             if (is_eos[i] or is_special[i]) continue;
@@ -160,7 +163,7 @@ pub const Tokenizer = struct {
 
 const TmpEdge = struct { byte: u8, child: u32 };
 const TmpNode = struct {
-    edges: std.ArrayListUnmanaged(TmpEdge) = .{},
+    edges: std.ArrayListUnmanaged(TmpEdge) = .empty,
     token: u32 = NO_TOKEN,
 };
 
@@ -173,7 +176,7 @@ const BuiltTrie = struct { trie: Trie, chain: []u32 };
 // EOS, special and empty tokens never enter the trie; they are handled
 // outside of it (eos by can_end, special forbidden, empty impossible).
 fn buildTrie(a: std.mem.Allocator, vocab_size: u32, bytes: []const []const u8, is_eos: []const bool, is_special: []const bool) !BuiltTrie {
-    var tmp: std.ArrayListUnmanaged(TmpNode) = .{};
+    var tmp: std.ArrayListUnmanaged(TmpNode) = .empty;
     try tmp.append(a, .{}); // root
     const chain = try a.alloc(u32, vocab_size);
     @memset(chain, NO_TOKEN);
@@ -251,7 +254,7 @@ fn buildTrie(a: std.mem.Allocator, vocab_size: u32, bytes: []const []const u8, i
 fn computeMaxStack(a: std.mem.Allocator, trie: *const Trie) !u32 {
     const frames = try a.alloc(u32, trie.node_token.len);
     defer a.free(frames);
-    var stack: std.ArrayListUnmanaged(u32) = .{};
+    var stack: std.ArrayListUnmanaged(u32) = .empty;
     defer stack.deinit(a);
     try stack.append(a, 0);
     frames[0] = 1;

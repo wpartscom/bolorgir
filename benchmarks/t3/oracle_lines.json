@@ -1,0 +1,115 @@
+{
+ "about": "Oracle results of the T3 reference lines (tests/oracle/run_oracle.py, profile spec-v1, one report per dialect), read by benchmarks/t3/tools/acceptance_compare.py --oracle-lines. The reports live in the ignored tests/oracle/results/; the sha256 of each file binds this list to the bytes that were compared, and benchmarks/t3/r6_review.sh copies them, the binding documents and the archive library hash into the evidence bundle. Each line names its library; a report belongs to it when its header names that library_sha256 or, for reports older than that header field, when the archive binding holds. A line without reports keeps the acceptance closed until the owner records an exception (decision_format); the executor never fills owner_decision. The baseline library is not run again for the oracle unless the owner decides so.",
+ "decision_format": {
+  "owner_decision": "null, or {\"decision\": \"accept_without_oracle\", \"control_line\": NAME of a line with oracle data, \"candidates\": [library sha256 of every candidate the exception covers], \"by\": ..., \"date\": ..., \"note\": ...}",
+  "binding": "{\"kind\": \"archive\", \"library_path\": the path every report header names (relative to the repository root), \"documents\": [{\"path\", \"sha256\", \"contains\": [quoted statements]}]}: the file at library_path must have the line's sha256 and a modification time before the first report; each document its sha256 and every quoted statement"
+ },
+ "lines": [
+  {
+   "name": "7345490f",
+   "library_sha256": "7345490f7ddf5710ec438f0e4baf4bf98b330a61cb6663be045580da95fa56c8",
+   "identity": "The reports predate the library_sha256 header field; their header.library is benchmarks/local/libs/final/libbolorgir.so.0.1.0. That file has sha256 7345490f..., mtime 2026-10-03T14:13:09Z (the first report is 14:19:54Z), and docs/RUN_HISTORY.md (gates on the final build) and docs/dialect-matrix.md section 9 name these reports as the runs on lib 7345490f (2026-10-03).",
+   "binding": {
+    "kind": "archive",
+    "library_path": "benchmarks/local/libs/final/libbolorgir.so.0.1.0",
+    "documents": [
+     {
+      "path": "docs/RUN_HISTORY.md",
+      "sha256": "431f675ed2a56a22dffd6ee583005dac55550baac2782d2456825b850da7875b",
+      "contains": [
+       "Oracle (reports `tests/oracle/results/oracle-final-*`)",
+       "`7345490f...`, and the triage with `--gate-build final` exits 0"
+      ]
+     },
+     {
+      "path": "docs/dialect-matrix.md",
+      "sha256": "09dbb16de7c7c9054432612c5b69deb9a902df9b3570505f641bc0a6258cb8dc",
+      "contains": [
+       "(`oracle-final-*`, last on lib sha256",
+       "`7345490f...`, 2026-10-03, after the value verdicts"
+      ]
+     }
+    ]
+   },
+   "reports": {
+    "draft4": {
+     "path": "tests/oracle/results/oracle-final-draft4-spec.json",
+     "sha256": "dd3cc590a7069e7433f50d0708f0de5fcc24605f02f6907c1fcd05ae62b2b1d4"
+    },
+    "draft6": {
+     "path": "tests/oracle/results/oracle-final-draft6-spec.json",
+     "sha256": "fa674aa4375c484c3b3e551d9e32c7883d6c54ee3939592004b7d93ae23a9d2e"
+    },
+    "draft7": {
+     "path": "tests/oracle/results/oracle-final-draft7-spec.json",
+     "sha256": "7e289bd637c182b2c7f239e458d8a6521fb654e33958e97ad07df590babcaa8a"
+    },
+    "draft2019-09": {
+     "path": "tests/oracle/results/oracle-final-draft2019-09-spec.json",
+     "sha256": "3fda8221e44cf3c63b3472163537421ab185d2b8ce82514fd735913ddb410b56"
+    },
+    "draft2020-12": {
+     "path": "tests/oracle/results/oracle-final-draft2020-12-spec.json",
+     "sha256": "8b529489f7d54e023327661a3ce48cc30e691747acee60d35596d82778953576"
+    }
+   }
+  },
+  {
+   "name": "dbc5eeb",
+   "library_sha256": "8ff970d46cce8b47248ab3e0b4ed5404bb127ec733b80e649bf1d46e80bb461f",
+   "identity": "Second oracle run (fix-f/oracle_f.sh, 2026-10-10) of the kept reference library benchmarks/local/libs/dbc5eeb/libbolorgir.so.0.1.0 (sha256 8ff970d4...) on the owner's decision of 2026-10-09: the release worktree at fc44c37 with patch F (fix-f/release-line-f.patch, sha256 2f1e869c5b64aed4...; tests/oracle/run_oracle.py sends the compile request without the flags tail) as uncommitted changes, the same suite snapshot, validator and profile as the candidate's second run (t3-6e62e0d1-r2); each report header names library_sha256 8ff970d4... and harness_sha256.",
+   "reports": {
+    "draft4": {
+     "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-r2-draft4-spec.json",
+     "sha256": "bfc8022a52feb847992e9af792229f393e879dc4a286a5fab4d3ce11645997b7"
+    },
+    "draft6": {
+     "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-r2-draft6-spec.json",
+     "sha256": "5958e7337bd91ab70e4f02aed2503f070d1b69187efe544bd2b6318d88d5ec8d"
+    },
+    "draft7": {
+     "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-r2-draft7-spec.json",
+     "sha256": "dd142132906d5fa95989d02c13027a450ffd862c8fc30e5944d681b4953eafbb"
+    },
+    "draft2019-09": {
+     "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-r2-draft2019-09-spec.json",
+     "sha256": "676e567fb6fae869f1686ef6603e5e8c7eac372c45452747774957b3c8a3dbb1"
+    },
+    "draft2020-12": {
+     "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-r2-draft2020-12-spec.json",
+     "sha256": "644dc2237c3c743e7dd42b3f95d87d02ceb15757f1403f9b547fdc56f8e8075a"
+    }
+   },
+   "owner_decision": null,
+   "history": [
+    {
+     "replaced_utc": "2026-10-10T00:51:12Z",
+     "reason": "The first run (post-r6-1, 2026-10-10T00:12Z) is no evidence: the fc44c37 harness sent the full-size compile request, which dbc5eeb refuses as INVALID_ARGUMENT 'bad compile request struct_size' - every row SKIPPED, no schema compiled.",
+     "identity": "Oracle run of the kept reference library benchmarks/local/libs/dbc5eeb/libbolorgir.so.0.1.0 (sha256 8ff970d4...) on the owner's decision of 2026-10-09, with the tools of the release branch release-0.2.0 (fc44c37: tests/oracle/run_oracle.py, the same suite snapshot, validator and profile as the candidate); each report header names library_sha256 8ff970d4...",
+     "reports": {
+      "draft4": {
+       "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-draft4-spec.json",
+       "sha256": "8288d41df53e9a83a872bbc46e527dd2fe60339d64e464c47368e419e1cbb525"
+      },
+      "draft6": {
+       "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-draft6-spec.json",
+       "sha256": "c96064b81257c14a7ea07fbed71b0d9a60c58477d05a35af09efbf98526fbd19"
+      },
+      "draft7": {
+       "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-draft7-spec.json",
+       "sha256": "8ff435a9bcb5a3a936e32a96108edce810d60695faaf059c8856f41afb021865"
+      },
+      "draft2019-09": {
+       "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-draft2019-09-spec.json",
+       "sha256": "8a3084c0942ddf7db8876f6856dafa842220270f41d13fa98a80b96f407da656"
+      },
+      "draft2020-12": {
+       "path": "tests/oracle/results/oracle-line-dbc5eeb-8ff970d4-draft2020-12-spec.json",
+       "sha256": "2fed3a09823997e4238af6212377c800db3e0c129d20f9b974658cabf1d10721"
+      }
+     }
+    }
+   ]
+  }
+ ]
+}

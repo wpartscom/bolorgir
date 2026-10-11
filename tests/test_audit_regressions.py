@@ -1,7 +1,7 @@
-"""Serializer -> engine composition regressions (2026-09-22).
+"""Serializer -> engine composition regressions.
 
-The retired audit reproduction script combined the value-preserving
-serializer with the engine in one check: an out-of-order instance of the
+The value-preserving serializer and the engine are composed here in one
+check: an out-of-order instance of the
 merged-allOf schema (contradictory declared key orders across branches)
 must serialize to the first-appearance order, and that payload
 must complete under the engine. The serializer-only half is pinned in

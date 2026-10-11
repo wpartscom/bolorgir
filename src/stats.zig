@@ -23,6 +23,7 @@ pub const Stats = struct {
     errors_cancelled: u64 = 0,
     cache_adaptive_skips: u64 = 0,
     precompute_states: u64 = 0,
+    probe_runs: u64 = 0,
     work_ops_total: u64 = 0,
 
     pub fn recordError(self: *Stats, resource_limit: bool, cancelled: bool) void {
@@ -83,7 +84,7 @@ pub const Stats = struct {
 pub fn fillMemory(acc: *const alloc.Accounting, mem_used: []u64, mem_peak: []u64) void {
     std.debug.assert(mem_used.len > MEM_TOTAL and mem_peak.len > MEM_TOTAL);
     inline for (0..alloc.category_count) |i| {
-        const cat: alloc.Category = @enumFromInt(i);
+        const cat: alloc.Category = @fromBackingInt(@intCast(i));
         mem_used[i] = acc.used(cat);
         mem_peak[i] = acc.peak(cat);
     }
@@ -125,8 +126,8 @@ test "stats: fillMemory maps categories to indices" {
     defer tok.free(x);
     defer cache_a.free(y);
 
-    var used: [8]u64 = .{0} ** 8;
-    var peak: [8]u64 = .{0} ** 8;
+    var used: [8]u64 = @splat(0);
+    var peak: [8]u64 = @splat(0);
     fillMemory(&acc, &used, &peak);
     try std.testing.expectEqual(acc.used(.tokenizer), used[MEM_TOKENIZER]);
     try std.testing.expectEqual(acc.used(.cache), used[MEM_CACHE]);

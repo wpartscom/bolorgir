@@ -1,7 +1,9 @@
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 const grammar = @import("grammar.zig");
 const json = @import("json.zig");
 const parser = @import("parser.zig");
+const numcert = @import("numcert.zig");
 const pattern = @import("pattern.zig");
 const work_mod = @import("work.zig");
 
@@ -29,12 +31,12 @@ pub const Diagnostic = struct {
     pub const Code = enum { invalid_schema, unsupported_feature, unsatisfiable_constraint, resource_limit };
     code: Code = .invalid_schema,
     offset: u32 = std.math.maxInt(u32),
-    message: [256]u8 = [_]u8{0} ** 256,
+    message: [256]u8 = @splat(0),
     message_len: u16 = 0,
     // RFC 6901 JSON Pointer to the failing schema node; empty when the
     // error is not tied to a node (e.g. malformed JSON). Overlong paths
     // are truncated and end with U+2026.
-    pointer: [POINTER_CAP]u8 = [_]u8{0} ** POINTER_CAP,
+    pointer: [POINTER_CAP]u8 = @splat(0),
     pointer_len: u16 = 0,
 
     pub fn text(self: *const Diagnostic) []const u8 {
@@ -234,7 +236,7 @@ fn keywordInDialect(key: []const u8, d: Dialect) bool {
     for (all) |k| {
         if (std.mem.eql(u8, key, k)) return true;
     }
-    const ord = @intFromEnum(d); // draft04 .. d2020_12 in declaration order
+    const ord = @backingInt(d); // draft04 .. d2020_12 in declaration order
     const Group = struct { keys: []const []const u8, lo: usize, hi: usize };
     const groups = [_]Group{
         .{ .keys = &.{ "if", "then", "else" }, .lo = 2, .hi = 4 },
@@ -304,8 +306,18 @@ fn parseTypeName(s: []const u8) ?SchemaType {
 }
 
 pub fn compile(child_allocator: std.mem.Allocator, schema_bytes: []const u8, max_depth: u32, diag: *Diagnostic, w: *work_mod.Work, strip_lead_space: bool, profile: Profile, registry_bytes: []const u8) CompileError!grammar.Grammar {
+    return compileWith(child_allocator, schema_bytes, max_depth, diag, w, strip_lead_space, profile, registry_bytes, .{});
+}
+
+pub const Options = struct {
+    /// Keep the JSON Pointer of the subschema each node was compiled from
+    /// (grammar.Grammar.node_ptrs).
+    record_pointers: bool = false,
+};
+
+pub fn compileWith(child_allocator: std.mem.Allocator, schema_bytes: []const u8, max_depth: u32, diag: *Diagnostic, w: *work_mod.Work, strip_lead_space: bool, profile: Profile, registry_bytes: []const u8, opts: Options) CompileError!grammar.Grammar {
     diag.* = .{};
-    var arena = std.heap.ArenaAllocator.init(child_allocator);
+    var arena = Arena.init(child_allocator);
     errdefer arena.deinit();
     const a = arena.allocator();
     try w.charge(@max(1, schema_bytes.len / 4096));
@@ -316,6 +328,8 @@ pub fn compile(child_allocator: std.mem.Allocator, schema_bytes: []const u8, max
     };
     var c = Compiler{
         .a = a,
+        .scratch = child_allocator,
+        .record_pointers = opts.record_pointers,
         .builder = grammar.Builder.init(a),
         .root = root,
         .max_depth = if (max_depth == 0) 64 else max_depth,
@@ -341,6 +355,7 @@ pub fn compile(child_allocator: std.mem.Allocator, schema_bytes: []const u8, max
         // the whole schema is unsatisfiable, not an empty-language node.
         return c.fail(error.UnsatisfiableConstraint, 0, "schema defines an empty language (unproductive recursive $ref)", .{});
     }
+    if (profile == .spec_v1) try c.orderFreeVerdicts();
     if (strip_lead_space) {
         // Strip(" ", start=1, stop=0) drops one leading space of the whole
         // text: the byte stream may carry a space that the decoded text
@@ -358,7 +373,12 @@ pub fn compile(child_allocator: std.mem.Allocator, schema_bytes: []const u8, max
         // grammar identity, so mask-cache entries and artifacts are
         // invalidated by a registry swap.
         grammar.identityOf2(.json_schema, schema_bytes, registry_bytes);
-    return c.builder.finish(arena, .json_schema, root_id, ident);
+    if (opts.record_pointers) {
+        while (c.node_ptrs.items.len < c.builder.nodes.items.len) try c.node_ptrs.append(a, "");
+    }
+    var g = try c.builder.finish(arena, .json_schema, root_id, ident);
+    g.node_ptrs = c.node_ptrs.items;
+    return g;
 }
 
 const Compiler = struct {
@@ -379,6 +399,9 @@ const Compiler = struct {
         anchors_done: bool = false,
     };
     a: std.mem.Allocator,
+    /// Transient work released before compile returns (freed space inside
+    /// the arena `a` is not reused).
+    scratch: std.mem.Allocator,
     builder: grammar.Builder,
     root: *const json.Value,
     max_depth: u32,
@@ -387,32 +410,34 @@ const Compiler = struct {
     profile: Profile,
     dialect: Dialect = .d2020_12,
     defs: ?*const json.Value = null,
-    ref_stack: std.ArrayListUnmanaged([]const u8) = .{},
+    ref_stack: std.ArrayListUnmanaged([]const u8) = .empty,
+    // One DFA per pattern text: $ref expansion repeats the same pattern.
+    pattern_dfas: std.StringHashMapUnmanaged(*const pattern.Dfa) = .{},
     // spec-v1 $ref resolution state (dialect-matrix section 3): the stack
     // of enclosing resource roots (id/$id scopes; bottom is the document
     // root), the stack of ref targets for cycle detection by identity, and
     // the pre-collected plain-name anchors.
-    resource_stack: std.ArrayListUnmanaged(*const json.Value) = .{},
-    ref_ptrs: std.ArrayListUnmanaged(*const json.Value) = .{},
+    resource_stack: std.ArrayListUnmanaged(*const json.Value) = .empty,
+    ref_ptrs: std.ArrayListUnmanaged(*const json.Value) = .empty,
     // spec-v1 P5 (ADR-0008): remaining recursion-unroll budget along the
     // current expansion path (decremented at every cycle re-entry,
     // restored on return; < REF_UNROLL_CAP means "inside an unroll").
     recursion_left: u32 = REF_UNROLL_CAP,
-    anchors: std.ArrayListUnmanaged(Anchor) = .{},
+    anchors: std.ArrayListUnmanaged(Anchor) = .empty,
     // spec-v1 P6b: dynamic anchors ($dynamicAnchor, 2020-12) by resource,
     // in-document resources by absolute base URI, the base-URI stack running
     // in parallel with resource_stack, and the dynamic scope (the chain of
     // resources entered to reach the position under compile).
-    dyn_anchors: std.ArrayListUnmanaged(Anchor) = .{},
-    resources: std.ArrayListUnmanaged(Resource) = .{},
+    dyn_anchors: std.ArrayListUnmanaged(Anchor) = .empty,
+    resources: std.ArrayListUnmanaged(Resource) = .empty,
     res_base: std.AutoHashMapUnmanaged(*const json.Value, []const u8) = .{},
-    base_stack: std.ArrayListUnmanaged([]const u8) = .{},
-    dyn_stack: std.ArrayListUnmanaged(*const json.Value) = .{},
+    base_stack: std.ArrayListUnmanaged([]const u8) = .empty,
+    dyn_stack: std.ArrayListUnmanaged(*const json.Value) = .empty,
     // spec-v1 P5: external-$ref registry snapshot (empty = no registry).
     registry: []RegDoc = &.{},
     // spec-v1 P6a (ADR-0009): unevaluated* scenario synthesis - ref targets
     // already expanded along the current unevaluated* path (cycle cut).
-    uneval_visited: std.ArrayListUnmanaged(*const json.Value) = .{},
+    uneval_visited: std.ArrayListUnmanaged(*const json.Value) = .empty,
     // ADR-0009: while an unevaluated* scenario walk runs, uneval_mask holds
     // the container kinds the guards govern (object/array); cores and
     // combinator branches compiled in this window may assume the instance is
@@ -428,8 +453,10 @@ const Compiler = struct {
     // value validator (the refusal carries its offset and keyword).
     static_unknown_kw: []const u8 = "",
     static_unknown_off: u32 = 0,
-    path: std.ArrayListUnmanaged([]const u8) = .{},
+    path: std.ArrayListUnmanaged([]const u8) = .empty,
     nodes_left: u32 = MAX_NODES,
+    record_pointers: bool = false,
+    node_ptrs: std.ArrayListUnmanaged([]const u8) = .empty,
 
     fn addNode(self: *Compiler, n: grammar.Node) CompileError!grammar.NodeId {
         if (self.nodes_left == 0) {
@@ -438,7 +465,23 @@ const Compiler = struct {
         }
         self.nodes_left -= 1;
         try self.w.charge(1);
-        return self.builder.addNode(n);
+        const id = try self.builder.addNode(n);
+        if (self.record_pointers) try self.notePointer(id);
+        return id;
+    }
+
+    /// Records the current path as the node's pointer; nodes added without
+    /// addNode keep an empty pointer.
+    fn notePointer(self: *Compiler, id: grammar.NodeId) CompileError!void {
+        while (self.node_ptrs.items.len < id) try self.node_ptrs.append(self.a, "");
+        self.renderPointer();
+        const p = try self.a.dupe(u8, self.diag.pointerText());
+        self.diag.pointer_len = 0;
+        if (self.node_ptrs.items.len == id) {
+            try self.node_ptrs.append(self.a, p);
+        } else {
+            self.node_ptrs.items[id] = p;
+        }
     }
 
     fn renderPointer(self: *Compiler) void {
@@ -799,7 +842,7 @@ const Compiler = struct {
     /// RFC 3986 section 5.2.4 dot-segment removal.
     fn removeDotSegments(self: *Compiler, path: []const u8) CompileError![]const u8 {
         if (std.mem.indexOfScalar(u8, path, '.') == null) return path;
-        var out: std.ArrayListUnmanaged(u8) = .{};
+        var out: std.ArrayListUnmanaged(u8) = .empty;
         var in = path;
         while (in.len > 0) {
             if (std.mem.startsWith(u8, in, "../")) {
@@ -915,7 +958,7 @@ const Compiler = struct {
                 };
             }
         };
-        var out: std.ArrayListUnmanaged(u8) = .{};
+        var out: std.ArrayListUnmanaged(u8) = .empty;
         var i: usize = 0;
         while (i < s.len) : (i += 1) {
             if (s[i] == '%') {
@@ -937,7 +980,7 @@ const Compiler = struct {
 
     fn unescapeSegment(self: *Compiler, seg: []const u8, offset: u32) CompileError![]const u8 {
         if (std.mem.indexOfScalar(u8, seg, '~') == null) return seg;
-        var out: std.ArrayListUnmanaged(u8) = .{};
+        var out: std.ArrayListUnmanaged(u8) = .empty;
         var i: usize = 0;
         while (i < seg.len) : (i += 1) {
             if (seg[i] == '~') {
@@ -1343,10 +1386,6 @@ const Compiler = struct {
         return self.conjoinAllNodes(&[_]grammar.NodeId{ ref_node, sib_node }, v.offset, depth);
     }
 
-    /// spec-v1 extended local resolver (dialect-matrix section 3): '#'
-    /// and '#/...' pointers against the current resource root, plain-name
-    /// fragments via the dialect's anchor keyword, cycles and external
-    /// refs refused with a pointer.
     fn compileRefSpec(self: *Compiler, v: *const json.Value, kw: Keywords, rv: *const json.Value, depth: u32) CompileError!grammar.NodeId {
         // Sibling rule (A7): draft-04/06/07 ignore assertion keywords next
         // to $ref; in 2019-09/2020-12 they apply alongside (P6b: conjoin).
@@ -1358,9 +1397,6 @@ const Compiler = struct {
         return ref_node;
     }
 
-    /// spec-v1 $ref resolution and expansion with no sibling handling
-    /// (P6a: the unevaluated* path treats $ref as one in-place applicator
-    /// among several and conjoins the expansion itself).
     fn compileRefOnly(self: *Compiler, rv: *const json.Value, depth: u32) CompileError!grammar.NodeId {
         const s = switch (rv.v) {
             .string => |s| s,
@@ -1384,13 +1420,6 @@ const Compiler = struct {
         return self.expandRefTarget(target, rv, depth, s);
     }
 
-    /// Shared cycle handling and expansion of a resolved $ref target.
-    /// ADR-0008: a target already on the expansion stack (a cycle) is
-    /// expanded once more while the per-path unroll budget lasts; at the
-    /// bottom the position is the empty language - exactly the documents
-    /// whose recursion nesting exceeds the limit are rejected, and the
-    /// limit stays mask-visible (an optional recursive property becomes a
-    /// banned key, a required one empties its arm; ADR-0005).
     fn expandRefTarget(self: *Compiler, target: *const json.Value, rv: *const json.Value, depth: u32, s: []const u8) CompileError!grammar.NodeId {
         _ = s;
         var cycle = false;
@@ -1422,13 +1451,6 @@ const Compiler = struct {
         return self.compileSchema(target, depth + 1);
     }
 
-    /// spec-v1 P6b: a reference whose text does not start with '#' - split
-    /// off the fragment, resolve the URI part against the current base URI
-    /// (RFC 3986 section 5.2), then, in order: an in-document (or already
-    /// collected registry) resource whose absolute base URI matches, else
-    /// the registry snapshot, else a documented refusal. This subsumes the
-    /// old exact-match external $ref: absolute references resolve to
-    /// themselves.
     fn compileUriRef(self: *Compiler, rv: *const json.Value, depth: u32, s: []const u8) CompileError!grammar.NodeId {
         var base = s;
         var frag: []const u8 = "";
@@ -1447,8 +1469,6 @@ const Compiler = struct {
         return self.compileExternalRef(rv, rv, depth, s, abs, frag);
     }
 
-    /// The in-document (or lazily collected registry) resource whose
-    /// absolute base URI is `abs`, if any (P6b).
     fn lookupResource(self: *Compiler, abs: []const u8) ?*const json.Value {
         for (self.resources.items) |r| {
             if (std.mem.eql(u8, r.uri, abs)) return r.value;
@@ -1456,9 +1476,6 @@ const Compiler = struct {
         return null;
     }
 
-    /// A $ref jump into a resource of the same document (P6b): the resource
-    /// opens its own scope (its anchors and its base URI), the fragment
-    /// resolves inside it with the local rules.
     fn compileResourceRef(self: *Compiler, res: *const json.Value, rv: *const json.Value, depth: u32, s: []const u8, frag: []const u8) CompileError!grammar.NodeId {
         // Diagnostics raised below the jump carry pointers into the target
         // resource; re-anchor at the reference itself (same convention as
@@ -1498,8 +1515,6 @@ const Compiler = struct {
         return self.expandRefTarget(target, rv, depth, s);
     }
 
-    /// The plain-name anchor of `name` scoped to exactly resource `res`
-    /// (P6b): a 'uri#name' reference may not see anchors of other resources.
     fn anchorInResource(self: *Compiler, res: *const json.Value, name: []const u8) ?*const json.Value {
         for (self.anchors.items) |an| {
             if (an.res == res and std.mem.eql(u8, an.name, name)) return an.target;
@@ -1507,11 +1522,6 @@ const Compiler = struct {
         return null;
     }
 
-    /// spec-v1 P5 (ADR-0006 D5, ADR-0008): external $ref through the
-    /// immutable registry snapshot. The resolved absolute URI must match a
-    /// registry document URI exactly (no network); the fragment resolves
-    /// inside that document with the local rules (pointer, anchor,
-    /// percent-decoding), the recursion budget is shared with local cycles.
     fn compileExternalRef(self: *Compiler, v: *const json.Value, rv: *const json.Value, depth: u32, s: []const u8, abs: []const u8, frag: []const u8) CompileError!grammar.NodeId {
         _ = v;
         if (self.registry.len == 0) {
@@ -1526,10 +1536,6 @@ const Compiler = struct {
         }
         const d = doc orelse
             return self.fail(error.UnsupportedFeature, rv.offset, "external $ref '{s}' is not in the registry snapshot", .{abs});
-        // Failures raised inside a registry document carry offsets/pointers
-        // that do not address the main schema: re-anchor the diagnostic at
-        // the external $ref of the main document (the outermost crossing
-        // wins when registry documents reference each other).
         const anchor_path_len = self.path.items.len;
         return self.compileExternalRefInner(d, rv, depth, s, frag) catch |e| {
             self.path.shrinkRetainingCapacity(anchor_path_len);
@@ -1539,9 +1545,6 @@ const Compiler = struct {
         };
     }
 
-    /// Lazy per-document init (P5/P6b): own dialect (own $schema, the
-    /// 2020-12 default), then the anchor/resource pre-scan under that
-    /// dialect with the document URI as the base.
     fn ensureRegDocInit(self: *Compiler, d: *RegDoc) CompileError!void {
         if (d.dialect == null) {
             const pairs = switch (d.root.v) {
@@ -1577,10 +1580,10 @@ const Compiler = struct {
         // The document opens its own resource scope: '#' and '#/...' below
         // resolve against it, not against the main document.
         const saved_stack = self.resource_stack;
-        self.resource_stack = .{};
+        self.resource_stack = .empty;
         defer self.resource_stack = saved_stack;
         const saved_base = self.base_stack;
-        self.base_stack = .{};
+        self.base_stack = .empty;
         defer self.base_stack = saved_base;
         try self.resource_stack.append(self.a, d.root);
         try self.base_stack.append(self.a, self.res_base.get(d.root) orelse d.uri);
@@ -1599,13 +1602,6 @@ const Compiler = struct {
         return self.expandRefTarget(target, rv, depth, s);
     }
 
-    /// spec-v1 P6b: $dynamicRef (2020-12). An empty or pointer fragment
-    /// behaves exactly like $ref. A plain-name fragment first resolves
-    /// statically like $ref; when the statically resolved resource carries a
-    /// same-name $dynamicAnchor (the bookending requirement), the target is
-    /// the first matching $dynamicAnchor of the dynamic scope - the
-    /// outermost resource entered on the way here (2020-12 section 8.2.2).
-    /// Sibling assertions conjoin (the 2020-12 sibling rule).
     fn compileDynamicRef(self: *Compiler, v: *const json.Value, kw: Keywords, dv: *const json.Value, depth: u32) CompileError!grammar.NodeId {
         const s = switch (dv.v) {
             .string => |s| s,
@@ -1660,12 +1656,6 @@ const Compiler = struct {
         return self.expandRefTarget(sa.target, rv, depth, s);
     }
 
-    /// The anchor of `name` inside the resource/document whose absolute
-    /// base URI is `abs` (P6b): in-document and already collected resources
-    /// first, then a registry document (lazily initialized so its anchors
-    /// and inner resources exist). `uri_known` reports whether the URI
-    /// addressed anything at all (an unknown URI is an UNSUPPORTED_FEATURE
-    /// registry refusal; a missing anchor in a known URI is INVALID_SCHEMA).
     fn lookupScopedAnchor(self: *Compiler, abs: []const u8, name: []const u8, uri_known: *bool) CompileError!?Anchor {
         if (self.lookupResource(abs)) |res| {
             uri_known.* = true;
@@ -1687,11 +1677,6 @@ const Compiler = struct {
         return null;
     }
 
-    /// spec-v1 P6b: $recursiveRef (2019-09). Only the '#' form exists;
-    /// statically it addresses the current resource root. When that root
-    /// carries $recursiveAnchor: true (the bookend), the target is the
-    /// outermost resource root of the dynamic scope with
-    /// $recursiveAnchor: true. Sibling assertions conjoin.
     fn compileRecursiveRef(self: *Compiler, v: *const json.Value, kw: Keywords, rv: *const json.Value, depth: u32) CompileError!grammar.NodeId {
         const s = switch (rv.v) {
             .string => |s| s,
@@ -1723,7 +1708,7 @@ const Compiler = struct {
             }
         }
         if (std.mem.indexOfScalar(u8, seg, '~') == null) return seg;
-        var out: std.ArrayListUnmanaged(u8) = .{};
+        var out: std.ArrayListUnmanaged(u8) = .empty;
         var i: usize = 0;
         while (i < seg.len) : (i += 1) {
             if (seg[i] == '~') {
@@ -1869,7 +1854,7 @@ const Compiler = struct {
     const ALL_TYPES: u8 = 0x7F;
 
     fn typeBit(t: SchemaType) u8 {
-        return @as(u8, 1) << @intFromEnum(t);
+        return @as(u8, 1) << @backingInt(t);
     }
 
     fn readTypeSet(self: *Compiler, tv: *const json.Value) CompileError!u8 {
@@ -1903,10 +1888,6 @@ const Compiler = struct {
         }
     }
 
-    /// Canonical decimal form of a schema number lexeme (ADR-0006 D6):
-    /// value = digits x 10^exp10, digits with no leading/trailing zeros,
-    /// zero as the empty digit string with the sign dropped (-0 == 0).
-    /// The digits slice lives in the compile arena.
     fn canonicalDecimal(self: *Compiler, lexeme: []const u8, offset: u32) CompileError!grammar.NumConst {
         var i: usize = 0;
         var neg = false;
@@ -1940,7 +1921,7 @@ const Compiler = struct {
             }
             if (exp_neg) exp_val = -exp_val;
         }
-        var all: std.ArrayListUnmanaged(u8) = .{};
+        var all: std.ArrayListUnmanaged(u8) = .empty;
         try all.appendSlice(self.a, int_part);
         try all.appendSlice(self.a, frac_part);
         var digits: []const u8 = all.items;
@@ -1959,12 +1940,6 @@ const Compiler = struct {
         };
     }
 
-    // ---- spec-v1 P4: numeric range and divisibility ----
-
-    /// Resolved numeric assertion of a schema object (minimum/maximum/
-    /// exclusiveMinimum/exclusiveMaximum after dialect normalization, and
-    /// multipleOf). Bounds are canonical decimals; `divisor` the raw
-    /// multipleOf value (> 0).
     const NumConstraint = struct {
         lo: ?grammar.NumConst = null,
         lo_excl: bool = false,
@@ -1981,8 +1956,6 @@ const Compiler = struct {
         return self.canonicalDecimal(lex, kv.offset);
     }
 
-    /// Combine a candidate bound with the present one keeping the tighter
-    /// (JSON Schema: minimum and a standalone exclusiveMinimum conjoin).
     fn tightenBound(lo: *?grammar.NumConst, lo_excl: *bool, cand: grammar.NumConst, cand_excl: bool, comptime is_lo: bool) void {
         if (lo.* == null) {
             lo.* = cand;
@@ -1999,11 +1972,6 @@ const Compiler = struct {
         }
     }
 
-    /// Read and normalize the numeric keywords (spec-v1 P4; dialect-matrix
-    /// sections 5 and 8): draft-04 boolean exclusive* modify the bound they
-    /// name (dropped when the bound is absent), draft-06+ exclusive* are
-    /// standalone bounds conjoined with minimum/maximum. Returns null when
-    /// no numeric keyword is present.
     fn readNumConstraint(self: *Compiler, kw: Keywords) CompileError!?NumConstraint {
         var nc: NumConstraint = .{};
         var any = false;
@@ -2062,8 +2030,6 @@ const Compiler = struct {
         return nc;
     }
 
-    /// The range of a resolved constraint is empty (compile-time arm drop,
-    /// ADR-0006 D1): hi < lo, or hi == lo with either bound exclusive.
     fn numRangeEmpty(nc: NumConstraint) bool {
         if (nc.lo == null or nc.hi == null) return false;
         const c = grammar.cmpNumConst(nc.lo.?, nc.hi.?);
@@ -2071,9 +2037,6 @@ const Compiler = struct {
         return c == .eq and (nc.lo_excl or nc.hi_excl);
     }
 
-    /// The grammar NumMult of a resolved divisor; divisors with more than
-    /// 10 significant digits are refused (the parser's residue is u32-wide;
-    /// a refusal is never approximated, A6).
     fn numMultNode(self: *Compiler, mv: *const json.Value, d: grammar.NumConst) CompileError!grammar.NumMult {
         try self.path.append(self.a, "multipleOf");
         defer _ = self.path.pop();
@@ -2085,12 +2048,8 @@ const Compiler = struct {
         return .{ .div = div, .div_exp10 = d.exp10, .co = co };
     }
 
-    /// A number arm conjoined with the resolved numeric assertion: the
-    /// bounds and the divisibility are separate exact machines combined
-    /// through an allOf comb node (ADR-0005 D2 verdict at the confirmed
-    /// boundary); a single part stands alone.
     fn numConstrainedNode(self: *Compiler, base: grammar.NodeId, kw: Keywords, nc: NumConstraint) CompileError!grammar.NodeId {
-        var parts: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var parts: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         try parts.append(self.a, base);
         if (nc.lo != null or nc.hi != null) {
             try parts.append(self.a, try self.addNode(.{ .num_range = .{
@@ -2110,20 +2069,11 @@ const Compiler = struct {
         } });
     }
 
-    /// An empty-language position (ADR-0006 D1): a refusal at the root, an
-    /// empty-language node in subschema position (the document may still be
-    /// valid through other positions, e.g. an absent optional property).
     fn emptySubschema(self: *Compiler, depth: u32, offset: u32, comptime fmt: []const u8, args: anytype) CompileError!grammar.NodeId {
         if (depth == 1) return self.fail(error.UnsatisfiableConstraint, offset, fmt, args);
         return self.emptyLangNode();
     }
 
-    /// spec-v1 typed path with boolean combinators (semantics-spec-v1 4,
-    /// P3): every combinator keyword compiles to its own part; the parts
-    /// and the typed core conjoin - a single part stands alone, several
-    /// become an allOf comb node (exact NFA intersection, ADR-0005 D2; no
-    /// merge optimization). A part with an empty language empties the
-    /// whole conjunction.
     fn compileTypedSpec(self: *Compiler, v: *const json.Value, kw: Keywords, depth: u32) CompileError!grammar.NodeId {
         const has_comb = kw.any_of != null or kw.one_of != null or kw.all_of != null or
             kw.not_ != null or kw.if_ != null or kw.then_ != null or kw.else_ != null;
@@ -2136,7 +2086,7 @@ const Compiler = struct {
             kw.contains != null or kw.min_contains != null or kw.max_contains != null or
             kw.unique_items != null or kw.pattern_ != null or kw.minimum != null or
             kw.maximum != null or kw.multiple_of != null or kw.excl_min != null or kw.excl_max != null;
-        var parts: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var parts: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         if (has_typed) {
             try parts.append(self.a, try self.compileTypedSpecCore(v, kw, depth));
         }
@@ -2162,15 +2112,10 @@ const Compiler = struct {
                 return self.emptySubschema(depth, v.offset, "the conjunction defines an empty language", .{});
             }
         }
-        // then/else without if are inert: a combinator-only schema may end
-        // up with no part at all, which is AnyJSON.
         if (parts.items.len == 0) return self.compileAnyJSON(depth);
         return self.conjoinAllNodes(parts.items, v.offset, depth);
     }
 
-    /// spec-v1 typed path (semantics-spec-v1 4): `type` is a string, a
-    /// list of strings (union), or absent (all seven types); inapplicable
-    /// validation keywords are ignored; enum/const match by value.
     fn compileTypedSpecCore(self: *Compiler, v: *const json.Value, kw: Keywords, depth: u32) CompileError!grammar.NodeId {
         var types: u8 = ALL_TYPES;
         if (kw.ty) |tv| types = try self.readTypeSet(tv);
@@ -2185,12 +2130,7 @@ const Compiler = struct {
         }
         if (kw.const_) |cv| {
             if (has_enum) {
-                // spec-v1: const next to enum conjoins - the two
-                // keywords are independent assertions, so the enum members
-                // equal to the const value survive (value equality,
-                // semantics-spec-v1 2); an empty intersection is the
-                // empty-language outcome below.
-                var kept: std.ArrayListUnmanaged(*const json.Value) = .{};
+                var kept: std.ArrayListUnmanaged(*const json.Value) = .empty;
                 for (values) |ev| {
                     if (try self.constValueEqual(ev, cv)) try kept.append(self.a, ev);
                 }
@@ -2202,11 +2142,6 @@ const Compiler = struct {
             }
             has_enum = true;
         }
-        // spec-v1 P6a (ADR-0009): inside an unevaluated* scenario walk a
-        // one-shot mask restricts this schema's top-level type set to the
-        // guard's container kinds; the outside kinds are covered by the
-        // walk's own top-level arm. enum/const values stay unmasked (their
-        // outside acceptance is part of the scenario language).
         if (self.top_mask != 0) {
             const masked = types & self.top_mask;
             self.top_mask = 0;
@@ -2217,9 +2152,9 @@ const Compiler = struct {
         // types are unaffected (applicability, dialect-matrix section 5).
         const nc = try self.readNumConstraint(kw);
         if (has_enum) return self.compileEnumSpec(v, types, values, kw, depth, nc);
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
-        inline for (std.meta.fields(SchemaType)) |fld| {
-            const t: SchemaType = @enumFromInt(fld.value);
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
+        inline for (@typeInfo(SchemaType).@"enum".field_values) |value| {
+            const t: SchemaType = @fromBackingInt(@intCast(value));
             if (types & typeBit(t) != 0) {
                 if (try self.compileArm(t, v, kw, depth, nc)) |id| {
                     try arms.append(self.a, id);
@@ -2248,7 +2183,7 @@ const Compiler = struct {
         if (items.len > 64) {
             return self.fail(error.ResourceLimit, av.offset, name ++ " has more than 64 branches", .{});
         }
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (items, 0..) |it, i| {
             try self.path.append(self.a, name);
             try self.path.append(self.a, try std.fmt.allocPrint(self.a, "{d}", .{i}));
@@ -2273,7 +2208,7 @@ const Compiler = struct {
     /// become a choice/lit_trie node.
     fn compileAnyOf(self: *Compiler, av: *const json.Value, depth: u32) CompileError!grammar.NodeId {
         const branches = try self.compileCombBranches(av, "anyOf", depth);
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (branches) |id| {
             if (self.isEmptyNode(id)) continue;
             try arms.append(self.a, id);
@@ -2283,6 +2218,178 @@ const Compiler = struct {
         }
         if (arms.items.len == 1) return arms.items[0];
         return self.addNode(try self.builder.alternativesNode(arms.items));
+    }
+
+    /// Exclusivity and condition verdicts are value predicates
+    /// (semantics-spec-v1 section 1). A oneOf branch, the `if` slot of an
+    /// if/then/else group and a contains subschema under a finite
+    /// maxContains must not reject a value only because its declared keys
+    /// arrive out of schema order: the value would go uncounted, so a
+    /// second matching oneOf branch would pass alone, the else applicator
+    /// would replace then, or a surplus contains match would be missed.
+    /// Each such slot is pointed at a copy of its subgraph in which every
+    /// object is order-free (OpenObjNode.any_order); a subgraph without an
+    /// object of two or more declared properties has no order to relax and
+    /// is kept. Runs once over the finished node set (the graph is acyclic:
+    /// recursion is unrolled, ADR-0008); copies are memoized.
+    fn orderFreeVerdicts(self: *Compiler) CompileError!void {
+        var ofc: OrderFreeCtx = .{};
+        const n0 = self.builder.nodes.items.len;
+        var id: usize = 0;
+        while (id < n0) : (id += 1) {
+            switch (self.builder.nodes.items[id]) {
+                .comb => |cb| {
+                    if (cb.kind == .allof) continue;
+                    const nb = try self.a.dupe(grammar.NodeId, cb.branches);
+                    var changed = false;
+                    for (nb, 0..) |br, i| {
+                        if (cb.kind == .ifelse and i != 0) continue;
+                        const c = try self.orderFreeCopy(&ofc, br);
+                        if (c != br) changed = true;
+                        nb[i] = c;
+                    }
+                    if (changed) self.builder.nodes.items[id].comb.branches = nb;
+                },
+                .repeat => |r| {
+                    const cn = r.contains orelse continue;
+                    if (r.max_contains == grammar.UNBOUNDED) continue;
+                    const c = try self.orderFreeCopy(&ofc, cn);
+                    if (c != cn) self.builder.nodes.items[id].repeat.contains = c;
+                },
+                else => {},
+            }
+        }
+    }
+
+    const OrderFreeCtx = struct {
+        copies: std.AutoHashMapUnmanaged(grammar.NodeId, grammar.NodeId) = .{},
+        sensitive: std.AutoHashMapUnmanaged(grammar.NodeId, bool) = .{},
+        empty: ?grammar.NodeId = null,
+        // Every node is copied at most once, so the copies never outnumber
+        // the compiled nodes: they get an allowance of their own and a
+        // schema within the node budget still compiles.
+        nodes_left: u32 = MAX_NODES,
+
+        fn add(ofc: *OrderFreeCtx, c: *Compiler, n: grammar.Node) CompileError!grammar.NodeId {
+            if (ofc.nodes_left == 0) {
+                report(c.diag, .resource_limit, NO_OFFSET, "grammar exceeds node budget of {d}", .{MAX_NODES});
+                return error.ResourceLimit;
+            }
+            ofc.nodes_left -= 1;
+            try c.w.charge(1);
+            return c.builder.addNode(n);
+        }
+    };
+
+    /// The subgraph of `id` holds an object with two or more declared
+    /// properties (the only shape whose schema order can reject a value).
+    fn orderSensitive(self: *Compiler, ofc: *OrderFreeCtx, id: grammar.NodeId) CompileError!bool {
+        if (id == grammar.COMB_NONE) return false;
+        if (ofc.sensitive.get(id)) |v| return v;
+        try ofc.sensitive.put(self.a, id, false);
+        const r: bool = switch (self.builder.nodes.items[id]) {
+            .object => |o| o.props.len >= 2 or try self.propsOrderSensitive(ofc, o.props),
+            .open_obj => |o| blk: {
+                if (o.props.len >= 2 or try self.propsOrderSensitive(ofc, o.props)) break :blk true;
+                if (try self.orderSensitive(ofc, o.value)) break :blk true;
+                if ((o.pattern_lit != null or o.pattern_dfa != null) and try self.orderSensitive(ofc, o.pattern_value)) break :blk true;
+                for (o.deps) |d| {
+                    if (d.kind == .schema and try self.orderSensitive(ofc, d.schema)) break :blk true;
+                }
+                break :blk false;
+            },
+            .choice => |ids| try self.idsOrderSensitive(ofc, ids),
+            .seq => |ids| try self.idsOrderSensitive(ofc, ids),
+            .comb => |cb| try self.idsOrderSensitive(ofc, cb.branches),
+            .repeat => |r| blk: {
+                if (try self.orderSensitive(ofc, r.item)) break :blk true;
+                if (try self.idsOrderSensitive(ofc, r.prefix)) break :blk true;
+                if (r.contains) |cn| break :blk try self.orderSensitive(ofc, cn);
+                break :blk false;
+            },
+            else => false,
+        };
+        try ofc.sensitive.put(self.a, id, r);
+        return r;
+    }
+
+    fn idsOrderSensitive(self: *Compiler, ofc: *OrderFreeCtx, ids: []const grammar.NodeId) CompileError!bool {
+        for (ids) |x| {
+            if (try self.orderSensitive(ofc, x)) return true;
+        }
+        return false;
+    }
+
+    fn propsOrderSensitive(self: *Compiler, ofc: *OrderFreeCtx, props: []const grammar.Prop) CompileError!bool {
+        for (props) |p| {
+            if (try self.orderSensitive(ofc, p.value)) return true;
+        }
+        return false;
+    }
+
+    /// Order-free copy of the subgraph of `id` (see orderFreeVerdicts). A
+    /// closed object becomes an order-free open object whose undeclared
+    /// keys take the empty language, which parses exactly like `false`.
+    fn orderFreeCopy(self: *Compiler, ofc: *OrderFreeCtx, id: grammar.NodeId) CompileError!grammar.NodeId {
+        if (!try self.orderSensitive(ofc, id)) return id;
+        if (ofc.copies.get(id)) |c| return c;
+        const out: grammar.Node = switch (self.builder.nodes.items[id]) {
+            .choice => |ids| .{ .choice = try self.orderFreeIds(ofc, ids) },
+            .seq => |ids| .{ .seq = try self.orderFreeIds(ofc, ids) },
+            .comb => |cb| blk: {
+                var x = cb;
+                x.branches = try self.orderFreeIds(ofc, cb.branches);
+                break :blk .{ .comb = x };
+            },
+            .repeat => |r| blk: {
+                var x = r;
+                x.item = try self.orderFreeCopy(ofc, r.item);
+                x.prefix = try self.orderFreeIds(ofc, r.prefix);
+                if (r.contains) |cn| x.contains = try self.orderFreeCopy(ofc, cn);
+                break :blk .{ .repeat = x };
+            },
+            .object => |o| blk: {
+                const empty = ofc.empty orelse try ofc.add(self, .{ .str = .{ .min_len = 1, .max_len = 0 } });
+                ofc.empty = empty;
+                break :blk .{ .open_obj = .{
+                    .props = try self.orderFreeProps(ofc, o.props),
+                    .extra_required = &.{},
+                    .value = empty,
+                    .any_order = true,
+                } };
+            },
+            .open_obj => |o| blk: {
+                var x = o;
+                x.props = try self.orderFreeProps(ofc, o.props);
+                x.value = try self.orderFreeCopy(ofc, o.value);
+                if (o.pattern_lit != null or o.pattern_dfa != null) x.pattern_value = try self.orderFreeCopy(ofc, o.pattern_value);
+                if (o.deps.len != 0) {
+                    const ds = try self.a.dupe(grammar.Dep, o.deps);
+                    for (ds) |*d| {
+                        if (d.kind == .schema) d.schema = try self.orderFreeCopy(ofc, d.schema);
+                    }
+                    x.deps = ds;
+                }
+                x.any_order = true;
+                break :blk .{ .open_obj = x };
+            },
+            else => return id,
+        };
+        const nid = try ofc.add(self, out);
+        try ofc.copies.put(self.a, id, nid);
+        return nid;
+    }
+
+    fn orderFreeIds(self: *Compiler, ofc: *OrderFreeCtx, ids: []const grammar.NodeId) CompileError![]const grammar.NodeId {
+        const out = try self.a.alloc(grammar.NodeId, ids.len);
+        for (ids, 0..) |x, i| out[i] = try self.orderFreeCopy(ofc, x);
+        return out;
+    }
+
+    fn orderFreeProps(self: *Compiler, ofc: *OrderFreeCtx, props: []const grammar.Prop) CompileError![]const grammar.Prop {
+        const out = try self.a.alloc(grammar.Prop, props.len);
+        for (props, 0..) |p, i| out[i] = .{ .key = p.key, .value = try self.orderFreeCopy(ofc, p.value), .required = p.required };
+        return out;
     }
 
     /// oneOf: exactly one branch accepts, evaluated at the confirmed value
@@ -2295,7 +2402,7 @@ const Compiler = struct {
     fn compileOneOf(self: *Compiler, ov: *const json.Value, depth: u32) CompileError!grammar.NodeId {
         const effective = (try self.oneOfValueFilter(ov, depth)) orelse ov;
         const branches = try self.compileCombBranches(effective, "oneOf", depth);
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (branches) |id| {
             if (self.isEmptyNode(id)) continue;
             try arms.append(self.a, id);
@@ -2408,7 +2515,7 @@ const Compiler = struct {
         }
         if (!any_pure_obj) return null;
         // Values (by structural equality) that more than one branch accepts.
-        var blocked: std.ArrayListUnmanaged(*const json.Value) = .{};
+        var blocked: std.ArrayListUnmanaged(*const json.Value) = .empty;
         for (items, 0..) |bv, i| {
             _ = bv;
             const vals = pures[i] orelse continue;
@@ -2467,7 +2574,7 @@ const Compiler = struct {
                 new_items[i] = bv;
                 continue;
             };
-            var kept: std.ArrayListUnmanaged(*const json.Value) = .{};
+            var kept: std.ArrayListUnmanaged(*const json.Value) = .empty;
             for (vals) |vv| {
                 var is_blocked = false;
                 for (blocked.items) |bv2| {
@@ -2525,7 +2632,7 @@ const Compiler = struct {
         }
         if (!any_pure_obj) return null;
         const cand_vals = pures[first_pure.?].?;
-        var survivors: std.ArrayListUnmanaged(*const json.Value) = .{};
+        var survivors: std.ArrayListUnmanaged(*const json.Value) = .empty;
         for (cand_vals) |vv| {
             var accepted = true;
             for (items, 0..) |bv, j| {
@@ -2568,7 +2675,7 @@ const Compiler = struct {
                 if (!dup) try survivors.append(self.a, vv);
             }
         }
-        var new_items: std.ArrayListUnmanaged(*json.Value) = .{};
+        var new_items: std.ArrayListUnmanaged(*json.Value) = .empty;
         if (survivors.items.len == 0) {
             // The intersection is empty: a `false` branch carries the
             // empty language into the usual allOf reduction (a refusal at
@@ -2599,7 +2706,7 @@ const Compiler = struct {
     /// allOf comb contributes the union. Multi-object choices and non-allOf
     /// combs are not statically analyzable here (`uncertain`).
     const OrderInfo = struct {
-        edges: std.ArrayListUnmanaged([2]grammar.Literal) = .{},
+        edges: std.ArrayListUnmanaged([2]grammar.Literal) = .empty,
         uncertain: bool = false,
     };
 
@@ -2686,7 +2793,7 @@ const Compiler = struct {
         // Kahn's algorithm over the small key set (literals compared by
         // bytes - appendEscaped is deterministic, so equal keys have equal
         // literal bytes).
-        var keys: std.ArrayListUnmanaged(grammar.Literal) = .{};
+        var keys: std.ArrayListUnmanaged(grammar.Literal) = .empty;
         for (info.edges.items) |e| {
             for (e) |k| {
                 var seen = false;
@@ -2742,19 +2849,25 @@ const Compiler = struct {
     /// (branch order leading - the serializer's canonical oneOf/anyOf
     /// order), turning the conjunction into the distributed comb.
     fn conjoinAllNodes(self: *Compiler, ids: []const grammar.NodeId, offset: u32, depth: u32) CompileError!grammar.NodeId {
-        _ = depth;
         if (ids.len == 1) return ids[0];
+        if (self.conjunctionTypesDisjoint(ids)) {
+            return self.emptySubschema(depth, offset, "the branches of the conjunction admit no common JSON type", .{});
+        }
         if (try self.distributeChoiceConflict(ids)) |d| return d;
         if (!try self.orderConflict(ids)) {
-            return self.addNode(.{ .comb = .{
+            const id = try self.addNode(.{ .comb = .{
                 .kind = .allof,
                 .branches = try self.builder.copyNodeIds(ids),
             } });
+            if (self.numNodeEmpty(id)) {
+                return self.emptySubschema(depth, offset, "the numeric constraints of the conjunction admit no value", .{});
+            }
+            return id;
         }
-        var flat: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var flat: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         try self.flattenAllof(ids, &flat);
         var merged: ?grammar.NodeId = null;
-        var rest: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var rest: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (flat.items) |id| {
             switch (self.builder.nodes.items[id]) {
                 .open_obj => {
@@ -2825,8 +2938,8 @@ const Compiler = struct {
     /// match or any merge is unsafe (the mergeOpenObj null shapes) - the
     /// caller then keeps the plain allOf.
     fn distributeChoiceConflict(self: *Compiler, ids: []const grammar.NodeId) CompileError!?grammar.NodeId {
-        var own_objs: std.ArrayListUnmanaged(grammar.NodeId) = .{};
-        var residuals: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var own_objs: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
+        var residuals: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         var comb_id: ?grammar.NodeId = null;
         for (ids) |id| {
             switch (self.builder.nodes.items[id]) {
@@ -2875,7 +2988,7 @@ const Compiler = struct {
                 .open_obj => {},
                 else => continue,
             }
-            var check: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+            var check: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
             try check.appendSlice(self.a, own_objs.items);
             try check.append(self.a, br);
             if (try self.orderConflict(check.items)) {
@@ -2902,7 +3015,7 @@ const Compiler = struct {
             else
                 open_id;
         }
-        var branches: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var branches: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (cb.branches) |br| {
             switch (self.builder.nodes.items[br]) {
                 .open_obj => try branches.append(self.a, try self.mergeOpenObj(br, own_merged.?) orelse return null),
@@ -2914,7 +3027,7 @@ const Compiler = struct {
             .branches = try self.builder.copyNodeIds(branches.items),
         } });
         if (residuals.items.len == 0) return @as(?grammar.NodeId, distributed);
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         try arms.append(self.a, distributed);
         for (residuals.items) |r| {
             const pair = try self.a.alloc(grammar.NodeId, 2);
@@ -3009,9 +3122,9 @@ const Compiler = struct {
     /// (not_int_num node).
     fn compileTypeComplement(self: *Compiler, tv: *const json.Value, depth: u32) CompileError!grammar.NodeId {
         const types = try self.readTypeSet(tv);
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
-        inline for (std.meta.fields(SchemaType)) |fld| {
-            const t: SchemaType = @enumFromInt(fld.value);
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
+        inline for (@typeInfo(SchemaType).@"enum".field_values) |value| {
+            const t: SchemaType = @fromBackingInt(@intCast(value));
             if (types & typeBit(t) == 0 and t != .number and t != .integer) {
                 try arms.append(self.a, try self.anyTypeArm(t, depth));
             }
@@ -3035,15 +3148,15 @@ const Compiler = struct {
     /// (trie of the quoted forbidden literals), numbers the num_excl node
     /// (at most two constants); containers in the set are refused.
     fn compileEnumComplement(self: *Compiler, values: []const *const json.Value, offset: u32, depth: u32) CompileError!grammar.NodeId {
-        var forbid_strs: std.ArrayListUnmanaged(grammar.Literal) = .{};
-        var forbid_nums: std.ArrayListUnmanaged(grammar.NumConst) = .{};
+        var forbid_strs: std.ArrayListUnmanaged(grammar.Literal) = .empty;
+        var forbid_nums: std.ArrayListUnmanaged(grammar.NumConst) = .empty;
         var forbid_true = false;
         var forbid_false = false;
         var forbid_null = false;
         for (values) |val| {
             switch (val.v) {
                 .string => |s| {
-                    var lit: std.ArrayListUnmanaged(u8) = .{};
+                    var lit: std.ArrayListUnmanaged(u8) = .empty;
                     try lit.append(self.a, '"');
                     try appendEscaped(&lit, self.a, s);
                     try lit.append(self.a, '"');
@@ -3072,7 +3185,7 @@ const Compiler = struct {
         if (forbid_nums.items.len > 2) {
             return self.fail(error.UnsupportedFeature, offset, "numeric complement over more than two constants is not supported in spec-v1", .{});
         }
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         try arms.append(self.a, try self.anyTypeArm(.object, depth));
         try arms.append(self.a, try self.anyTypeArm(.array, depth));
         if (forbid_strs.items.len == 0) {
@@ -3114,7 +3227,7 @@ const Compiler = struct {
             .array => |it| it,
             else => return self.fail(error.InvalidSchema, rv.offset, "required must be an array", .{}),
         };
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         var seen: std.StringHashMapUnmanaged(void) = .{};
         for (items) |it| {
             const name = switch (it.v) {
@@ -3155,7 +3268,7 @@ const Compiler = struct {
         if (items.len > 64) {
             return self.fail(error.ResourceLimit, av.offset, "anyOf has more than 64 branches", .{});
         }
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (items, 0..) |it, i| {
             try self.path.append(self.a, "anyOf");
             try self.path.append(self.a, try std.fmt.allocPrint(self.a, "{d}", .{i}));
@@ -3184,7 +3297,7 @@ const Compiler = struct {
         if (items.len == 0) {
             return self.fail(error.InvalidSchema, av.offset, "allOf must be a non-empty array", .{});
         }
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (items, 0..) |it, i| {
             try self.path.append(self.a, "allOf");
             try self.path.append(self.a, try std.fmt.allocPrint(self.a, "{d}", .{i}));
@@ -3209,7 +3322,7 @@ const Compiler = struct {
             .object => |p| p,
             else => return self.fail(error.InvalidSchema, pv.offset, "properties must be an object", .{}),
         };
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         if (tv) |t| {
             const s = switch (t.v) {
                 .string => |ss| ss,
@@ -3235,7 +3348,7 @@ const Compiler = struct {
             defer self.path.shrinkRetainingCapacity(self.path.items.len - 2);
             const comp = try self.compileComplement(pp.value, depth + 1);
             if (self.isEmptyNode(comp)) continue; // the key can never fail
-            var lit: std.ArrayListUnmanaged(u8) = .{};
+            var lit: std.ArrayListUnmanaged(u8) = .empty;
             try lit.append(self.a, '"');
             try appendEscaped(&lit, self.a, pp.key);
             try lit.appendSlice(self.a, "\":");
@@ -3314,7 +3427,7 @@ const Compiler = struct {
             .object => |p| p,
             else => return self.fail(error.InvalidSchema, nv.offset, "schema must be an object", .{}),
         };
-        var eff: std.ArrayListUnmanaged(json.Pair) = .{};
+        var eff: std.ArrayListUnmanaged(json.Pair) = .empty;
         for (pairs) |p| {
             if (self.complementKeyIgnored(p.key)) continue;
             try eff.append(self.a, p);
@@ -3390,7 +3503,7 @@ const Compiler = struct {
                 // Tuple prefix: prefixItems (2020-12) or array-form items
                 // (draft-04..2019-09). Element i < prefix.len takes
                 // prefix[i], later elements take the rest schema.
-                var prefix: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+                var prefix: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
                 var rest_id: ?grammar.NodeId = null;
                 if (kw.prefix_items) |piv| {
                     const items = switch (piv.v) {
@@ -3536,14 +3649,18 @@ const Compiler = struct {
             .integer => {
                 if (nc) |c| {
                     if (numRangeEmpty(c)) return null;
-                    return try self.numConstrainedNode(try self.addNode(.{ .int_num = {} }), kw, c);
+                    const id = try self.numConstrainedNode(try self.addNode(.{ .int_num = {} }), kw, c);
+                    if (self.numNodeEmpty(id)) return null;
+                    return id;
                 }
                 return try self.addNode(.{ .int_num = {} });
             },
             .number => {
                 if (nc) |c| {
                     if (numRangeEmpty(c)) return null;
-                    return try self.numConstrainedNode(try self.addNode(.{ .num_v = {} }), kw, c);
+                    const id = try self.numConstrainedNode(try self.addNode(.{ .num_v = {} }), kw, c);
+                    if (self.numNodeEmpty(id)) return null;
+                    return id;
                 }
                 return try self.addNode(.{ .num_v = {} });
             },
@@ -3608,19 +3725,19 @@ const Compiler = struct {
     /// Per-type evaluation record of one acceptance scenario.
     const ObjEval = struct {
         all: bool = false, // additionalProperties / a nested unevaluated*
-        props: std.ArrayListUnmanaged([]const u8) = .{}, // decoded names
-        patterns: std.ArrayListUnmanaged([]const u8) = .{}, // regex sources
+        props: std.ArrayListUnmanaged([]const u8) = .empty, // decoded names
+        patterns: std.ArrayListUnmanaged([]const u8) = .empty, // regex sources
     };
     const ArrEval = struct {
         all: bool = false, // schema-form items / a nested unevaluated*
         prefix_len: u32 = 0,
-        contains: std.ArrayListUnmanaged(*const json.Value) = .{},
+        contains: std.ArrayListUnmanaged(*const json.Value) = .empty,
     };
     const Eval = struct { obj: ObjEval = .{}, arr: ArrEval = .{} };
     /// One acceptance combination: the conjuncts (their intersection is the
     /// scenario's language) and what the scenario evaluates.
     const Scenario = struct {
-        conjuncts: std.ArrayListUnmanaged(grammar.NodeId) = .{},
+        conjuncts: std.ArrayListUnmanaged(grammar.NodeId) = .empty,
         eval: Eval = .{},
     };
 
@@ -3846,9 +3963,9 @@ const Compiler = struct {
 
     /// The choice of the every-value arms of the kinds outside the mask.
     fn outsideArmNode(self: *Compiler, mask: u8, depth: u32) CompileError!grammar.NodeId {
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
-        inline for (std.meta.fields(SchemaType)) |fld| {
-            const t: SchemaType = @enumFromInt(fld.value);
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
+        inline for (@typeInfo(SchemaType).@"enum".field_values) |value| {
+            const t: SchemaType = @fromBackingInt(@intCast(value));
             if (t != .integer and mask & typeBit(t) == 0) {
                 try arms.append(self.a, try self.anyTypeArm(t, depth));
             }
@@ -3937,7 +4054,7 @@ const Compiler = struct {
     /// the `not` part (which carries no evaluations). Null when the schema
     /// places no non-applicator constraint at all.
     fn compileUnevalCore(self: *Compiler, v: *const json.Value, kwc: Keywords, depth: u32) CompileError!?grammar.NodeId {
-        var parts: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var parts: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         if (coreHasAssertions(kwc)) {
             const saved_mask = self.top_mask;
             self.top_mask = self.uneval_mask;
@@ -3965,7 +4082,7 @@ const Compiler = struct {
     /// scenario conjunctions); the empty list is the empty language, a
     /// conjunct-free scenario makes the whole disjunction AnyJSON.
     fn nodeOfScenarios(self: *Compiler, scen: []const Scenario, depth: u32) CompileError!grammar.NodeId {
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (scen) |*sc| {
             var dead = false;
             for (sc.conjuncts.items) |id| {
@@ -4002,7 +4119,7 @@ const Compiler = struct {
     /// Cross product of two scenario lists (conjuncts concat, evals union),
     /// bounded by UNEVAL_SCENARIO_CAP.
     fn productScenarios(self: *Compiler, a: []const Scenario, b: []const Scenario) CompileError![]Scenario {
-        var out: std.ArrayListUnmanaged(Scenario) = .{};
+        var out: std.ArrayListUnmanaged(Scenario) = .empty;
         for (a) |*sa| {
             for (b) |*sb| {
                 var m = try self.cloneScenario(sa);
@@ -4080,7 +4197,7 @@ const Compiler = struct {
         try self.uneval_visited.append(self.a, v);
         defer _ = self.uneval_visited.pop();
 
-        var scenarios: std.ArrayListUnmanaged(Scenario) = .{};
+        var scenarios: std.ArrayListUnmanaged(Scenario) = .empty;
         var base: Scenario = .{};
         // The core: everything but the conditional in-place applicators and
         // $ref (dependentSchemas split below; `not` is a plain conjunct).
@@ -4362,12 +4479,12 @@ const Compiler = struct {
     /// subset scenario). Capped at 5 live branches (31 subsets).
     fn anyOfScenarios(self: *Compiler, av: *const json.Value, acc: []Scenario, depth: u32) CompileError![]Scenario {
         const items = try self.combBranchItems(av, "anyOf");
-        var subs: std.ArrayListUnmanaged([]Scenario) = .{};
+        var subs: std.ArrayListUnmanaged([]Scenario) = .empty;
         for (items, 0..) |it, i| {
             try self.path.append(self.a, "anyOf");
             try self.path.append(self.a, try std.fmt.allocPrint(self.a, "{d}", .{i}));
             defer self.path.shrinkRetainingCapacity(self.path.items.len - 2);
-            var comb_visited: std.ArrayListUnmanaged(*const json.Value) = .{};
+            var comb_visited: std.ArrayListUnmanaged(*const json.Value) = .empty;
             if (try self.branchInvolvesCombinator(it, &comb_visited)) {
                 return self.fail(error.UnsupportedFeature, it.offset, "unevaluated* over an anyOf branch that nests another combinator exceeds the runtime thread budget in spec-v1", .{});
             }
@@ -4379,7 +4496,7 @@ const Compiler = struct {
             return self.fail(error.UnsupportedFeature, av.offset, "unevaluated* over anyOf with more than 5 live branches is not supported in spec-v1", .{});
         }
         const n = subs.items.len;
-        var variants: std.ArrayListUnmanaged(Scenario) = .{};
+        var variants: std.ArrayListUnmanaged(Scenario) = .empty;
         var mask: u32 = 1;
         while (mask < (@as(u32, 1) << @intCast(n))) : (mask += 1) {
             var combo: []const Scenario = &[1]Scenario{.{}}; // single empty scenario
@@ -4405,11 +4522,11 @@ const Compiler = struct {
         try self.path.append(self.a, "oneOf");
         defer _ = self.path.pop();
         const one_node = try self.compileOneOf(ov, depth);
-        var variants: std.ArrayListUnmanaged(Scenario) = .{};
+        var variants: std.ArrayListUnmanaged(Scenario) = .empty;
         for (items, 0..) |it, i| {
             try self.path.append(self.a, try std.fmt.allocPrint(self.a, "{d}", .{i}));
             defer _ = self.path.pop();
-            var comb_visited: std.ArrayListUnmanaged(*const json.Value) = .{};
+            var comb_visited: std.ArrayListUnmanaged(*const json.Value) = .empty;
             if (try self.branchInvolvesCombinator(it, &comb_visited)) {
                 return self.fail(error.UnsupportedFeature, it.offset, "unevaluated* over a oneOf branch that nests another combinator exceeds the runtime thread budget in spec-v1", .{});
             }
@@ -4451,7 +4568,7 @@ const Compiler = struct {
             fail_scen = try self.evalScenarios(ev, depth + 1);
             _ = self.path.pop();
         }
-        var variants: std.ArrayListUnmanaged(Scenario) = .{};
+        var variants: std.ArrayListUnmanaged(Scenario) = .empty;
         try variants.appendSlice(self.a, success);
         if (fail_scen.len > 0) {
             // ¬if: the ifelse verdict (if /\ empty) \/ (~if /\ AnyJSON).
@@ -4512,7 +4629,7 @@ const Compiler = struct {
                         for (accm) |*sa| try sa.conjuncts.append(self.a, ban);
                         continue;
                     }
-                    var out: std.ArrayListUnmanaged(Scenario) = .{};
+                    var out: std.ArrayListUnmanaged(Scenario) = .empty;
                     for (accm) |*sa| {
                         var without = try self.cloneScenario(sa);
                         try without.conjuncts.append(self.a, ban);
@@ -4539,10 +4656,10 @@ const Compiler = struct {
     /// Choice of a node with the every-value arms of the other container
     /// kinds: the wrapper passes instances the wrapped keyword is inert for.
     fn otherKindsWrap(self: *Compiler, node: grammar.NodeId, comptime skip: SchemaType, depth: u32) CompileError!grammar.NodeId {
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         try arms.append(self.a, node);
-        inline for (std.meta.fields(SchemaType)) |fld| {
-            const t: SchemaType = @enumFromInt(fld.value);
+        inline for (@typeInfo(SchemaType).@"enum".field_values) |value| {
+            const t: SchemaType = @fromBackingInt(@intCast(value));
             if (t != skip and t != .integer) {
                 // num_v already covers integer spellings.
                 try arms.append(self.a, try self.anyTypeArm(t, depth));
@@ -4644,7 +4761,7 @@ const Compiler = struct {
         if (a_pat and b_pat) return null;
         if (a_pat and bn.props.len > 0) return null;
         if (b_pat and an.props.len > 0) return null;
-        var props: std.ArrayListUnmanaged(grammar.Prop) = .{};
+        var props: std.ArrayListUnmanaged(grammar.Prop) = .empty;
         for (an.props) |ap| {
             var value = try self.conjValues(ap.value, bn.value);
             var req = ap.required;
@@ -4674,10 +4791,10 @@ const Compiler = struct {
         // extra_required holds only names absent from props (the parser
         // verifies them against the seen set, which a declared key enters
         // only under track_keys).
-        var extra: std.ArrayListUnmanaged(grammar.Literal) = .{};
+        var extra: std.ArrayListUnmanaged(grammar.Literal) = .empty;
         for (an.extra_required) |xl| try self.absorbExtraReq(xl, props.items, &extra);
         for (bn.extra_required) |xl| try self.absorbExtraReq(xl, props.items, &extra);
-        var deps: std.ArrayListUnmanaged(grammar.Dep) = .{};
+        var deps: std.ArrayListUnmanaged(grammar.Dep) = .empty;
         try deps.appendSlice(self.a, an.deps);
         try deps.appendSlice(self.a, bn.deps);
         var pattern_lit = an.pattern_lit;
@@ -4717,9 +4834,9 @@ const Compiler = struct {
     /// caller wraps or merges it for the outside kinds.
     fn guardObjNode(self: *Compiler, ev: *const ObjEval, up_node: grammar.NodeId, any_node: grammar.NodeId, depth: u32) CompileError!grammar.NodeId {
         _ = depth;
-        var props: std.ArrayListUnmanaged(grammar.Prop) = .{};
+        var props: std.ArrayListUnmanaged(grammar.Prop) = .empty;
         for (ev.props.items) |name| {
-            var lit: std.ArrayListUnmanaged(u8) = .{};
+            var lit: std.ArrayListUnmanaged(u8) = .empty;
             try lit.append(self.a, '"');
             try appendEscaped(&lit, self.a, name);
             try lit.appendSlice(self.a, "\":");
@@ -4736,7 +4853,7 @@ const Compiler = struct {
         if (ev.patterns.items.len == 1) {
             pd = try self.compilePatternText(ev.patterns.items[0], NO_OFFSET);
         } else if (ev.patterns.items.len > 1) {
-            var union_src: std.ArrayListUnmanaged(u8) = .{};
+            var union_src: std.ArrayListUnmanaged(u8) = .empty;
             for (ev.patterns.items, 0..) |p, i| {
                 if (i > 0) try union_src.append(self.a, '|');
                 try union_src.appendSlice(self.a, "(?:");
@@ -4764,7 +4881,7 @@ const Compiler = struct {
     fn guardArrNode(self: *Compiler, ev: *const ArrEval, ui_node: grammar.NodeId, any_node: grammar.NodeId, depth: u32) CompileError!grammar.NodeId {
         var item = ui_node;
         if (ev.contains.items.len > 0) {
-            var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+            var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
             for (ev.contains.items) |cv| {
                 try self.path.append(self.a, "contains");
                 const cn = try self.compileSchema(cv, depth + 1);
@@ -4816,9 +4933,9 @@ const Compiler = struct {
     /// AnyJSON outside a walk.
     fn maskedAnyNode(self: *Compiler, depth: u32) CompileError!grammar.NodeId {
         if (self.uneval_mask == 0) return self.compileAnyJSON(depth);
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
-        inline for (std.meta.fields(SchemaType)) |fld| {
-            const t: SchemaType = @enumFromInt(fld.value);
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
+        inline for (@typeInfo(SchemaType).@"enum".field_values) |value| {
+            const t: SchemaType = @fromBackingInt(@intCast(value));
             if (t != .integer and self.uneval_mask & typeBit(t) != 0) {
                 try arms.append(self.a, try self.anyTypeArm(t, depth));
             }
@@ -4885,7 +5002,7 @@ const Compiler = struct {
             var kwf = kw2;
             kwf.uneval_props = up;
             kwf.uneval_items = ui;
-            var parts: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+            var parts: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
             try parts.append(self.a, try self.compileTypedSpecCore(v, kwf, depth));
             if (kwf.not_) |nv| {
                 try self.path.append(self.a, "not");
@@ -4908,7 +5025,7 @@ const Compiler = struct {
 
     fn compileUnevalScenarios(self: *Compiler, v: *const json.Value, kw2: Keywords, up: ?*const json.Value, ui: ?*const json.Value, depth: u32) CompileError!grammar.NodeId {
         if (ui != null) {
-            var contains_visited: std.ArrayListUnmanaged(*const json.Value) = .{};
+            var contains_visited: std.ArrayListUnmanaged(*const json.Value) = .empty;
             if (try self.adjacentContainsCount(v, &contains_visited) >= 2) {
                 return self.fail(error.UnsupportedFeature, v.offset, "unevaluatedItems next to several conjunctive `contains` subschemas exceeds the runtime thread budget in spec-v1", .{});
             }
@@ -4924,7 +5041,7 @@ const Compiler = struct {
         var want_mask: u8 = 0;
         if (up != null) want_mask |= typeBit(.object);
         if (ui != null) want_mask |= typeBit(.array);
-        var visited_out: std.ArrayListUnmanaged(*const json.Value) = .{};
+        var visited_out: std.ArrayListUnmanaged(*const json.Value) = .empty;
         const outside = self.outsideAccept(v, kw2, want_mask, &visited_out) catch .unknown;
         var out_arm: ?grammar.NodeId = null;
         const saved_uneval_mask = self.uneval_mask;
@@ -4940,7 +5057,7 @@ const Compiler = struct {
         }
         const scenarios = try self.evalScenariosKw(v, kw2, depth);
         // Scenarios carrying an empty-language conjunct can never accept.
-        var live: std.ArrayListUnmanaged(*const Scenario) = .{};
+        var live: std.ArrayListUnmanaged(*const Scenario) = .empty;
         for (scenarios) |*sc| {
             var dead = false;
             for (sc.conjuncts.items) |id| {
@@ -4955,7 +5072,7 @@ const Compiler = struct {
         // identical evaluation set share one guard, which keeps the spawned
         // thread count under the parser cap (anyOf subsets collapse to a
         // single group because a plain `required` branch evaluates nothing).
-        var groups: std.ArrayListUnmanaged(std.ArrayListUnmanaged(*const Scenario)) = .{};
+        var groups: std.ArrayListUnmanaged(std.ArrayListUnmanaged(*const Scenario)) = .empty;
         outer: for (live.items) |sc| {
             for (groups.items) |*g| {
                 if (evalEq(&g.items[0].eval, &sc.eval)) {
@@ -4963,7 +5080,7 @@ const Compiler = struct {
                     continue :outer;
                 }
             }
-            var g: std.ArrayListUnmanaged(*const Scenario) = .{};
+            var g: std.ArrayListUnmanaged(*const Scenario) = .empty;
             try g.append(self.a, sc);
             try groups.append(self.a, g);
         }
@@ -4971,7 +5088,7 @@ const Compiler = struct {
         // ((C /\ X) \/ (C /\ Y) = C /\ (X \/ Y)); the core conjunct is one
         // such, and the hoisting keeps the spawned thread count under the
         // parser cap.
-        var common: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var common: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (live.items[0].conjuncts.items) |id| {
             // First-appearance order of the first scenario (semantics-spec-v1
             // 4.3: merged objects dispatch in schema order).
@@ -5010,15 +5127,15 @@ const Compiler = struct {
         // undeclared-value schema, which keeps the live thread count at key
         // dispatch within the parser cap. Common conjuncts that are open_obj
         // nodes merge into every arm instead of hoisting.
-        var common_objs: std.ArrayListUnmanaged(grammar.NodeId) = .{};
-        var common_rest: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var common_objs: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
+        var common_rest: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (common.items) |id| {
             switch (self.builder.nodes.items[id]) {
                 .open_obj => try common_objs.append(self.a, id),
                 else => try common_rest.append(self.a, id),
             }
         }
-        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var arms: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         for (groups.items) |g| {
             const ev = &g.items[0].eval;
             var guard_obj: ?grammar.NodeId = null;
@@ -5030,9 +5147,9 @@ const Compiler = struct {
                 if (!ev.arr.all) guard_arr = try self.guardArrNode(&ev.arr, un, any_node, depth);
             }
             var vacuous = false;
-            var conj_alts: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+            var conj_alts: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
             for (g.items) |sc| {
-                var rest: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+                var rest: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
                 var merged: ?grammar.NodeId = null;
                 for (common_objs.items) |id| {
                     if (merged) |m| {
@@ -5091,7 +5208,7 @@ const Compiler = struct {
             }
             if (vacuous) {
                 if (guard_obj == null and guard_arr == null) continue; // nothing beyond the commons
-                var gnodes: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+                var gnodes: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
                 if (guard_obj) |gd| try gnodes.append(self.a, if (obj_bare) gd else try self.otherKindsWrap(gd, .object, depth));
                 if (guard_arr) |ga| try gnodes.append(self.a, if (arr_bare) ga else try self.otherKindsWrap(ga, .array, depth));
                 if (gnodes.items.len == 1) {
@@ -5217,7 +5334,7 @@ const Compiler = struct {
             defer _ = self.path.pop();
             pat_dfa = try self.compilePatternKeyword(pv);
         }
-        var alts: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var alts: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         var seen: std.StringHashMapUnmanaged(void) = .{};
         for (values) |val| {
             if (!try self.valueMatchesTypes(val, types)) continue;
@@ -5266,7 +5383,7 @@ const Compiler = struct {
                 .fail => continue,
                 .unknown => return self.fail(error.UnsupportedFeature, self.static_unknown_off, "enum/const values cannot be filtered exactly next to '{s}'", .{self.static_unknown_kw}),
             }
-            var sig: std.ArrayListUnmanaged(u8) = .{};
+            var sig: std.ArrayListUnmanaged(u8) = .empty;
             try self.canonicalSig(&sig, val);
             const gop = try seen.getOrPut(self.a, sig.items);
             if (gop.found_existing) continue;
@@ -5913,7 +6030,7 @@ const Compiler = struct {
         }
         switch (val.v) {
             .string => |s| {
-                var lit: std.ArrayListUnmanaged(u8) = .{};
+                var lit: std.ArrayListUnmanaged(u8) = .empty;
                 try lit.append(self.a, '"');
                 try appendEscaped(&lit, self.a, s);
                 try lit.append(self.a, '"');
@@ -5931,7 +6048,7 @@ const Compiler = struct {
                 if (items.len == 0) {
                     return self.addNode(.{ .literal = try self.builder.addLiteral("[]") });
                 }
-                var seq: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+                var seq: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
                 try seq.append(self.a, try self.addNode(.{ .literal = try self.builder.addLiteral("[") }));
                 for (items, 0..) |it, i| {
                     if (i > 0) {
@@ -5946,9 +6063,9 @@ const Compiler = struct {
                 if (pairs.len == 0) {
                     return self.addNode(.{ .literal = try self.builder.addLiteral("{}") });
                 }
-                var props: std.ArrayListUnmanaged(grammar.Prop) = .{};
+                var props: std.ArrayListUnmanaged(grammar.Prop) = .empty;
                 for (pairs) |pp| {
-                    var lit: std.ArrayListUnmanaged(u8) = .{};
+                    var lit: std.ArrayListUnmanaged(u8) = .empty;
                     try lit.append(self.a, '"');
                     try appendEscaped(&lit, self.a, pp.key);
                     try lit.appendSlice(self.a, "\":");
@@ -6059,9 +6176,9 @@ const Compiler = struct {
                 return self.fail(error.InvalidSchema, rv.offset, "duplicate name '{s}' in required", .{name});
             }
         }
-        var props: std.ArrayListUnmanaged(grammar.Prop) = .{};
+        var props: std.ArrayListUnmanaged(grammar.Prop) = .empty;
         for (prop_pairs) |pp| {
-            var lit: std.ArrayListUnmanaged(u8) = .{};
+            var lit: std.ArrayListUnmanaged(u8) = .empty;
             try lit.append(self.a, '"');
             try appendEscaped(&lit, self.a, pp.key);
             try lit.appendSlice(self.a, "\":");
@@ -6079,7 +6196,7 @@ const Compiler = struct {
         // spec-v1 treats them as required undeclared keys of an open object
         // (an undeclared key with any-JSON value). In a closed object the
         // combination is unsatisfiable: the key must and cannot appear.
-        var extra: std.ArrayListUnmanaged(grammar.Literal) = .{};
+        var extra: std.ArrayListUnmanaged(grammar.Literal) = .empty;
         for (req_items) |rv| {
             const name = rv.v.string;
             var found = false;
@@ -6093,7 +6210,7 @@ const Compiler = struct {
                 if (!open) {
                     return self.fail(error.UnsatisfiableConstraint, rv.offset, "required name '{s}' is not in properties and additionalProperties is false", .{name});
                 }
-                var raw: std.ArrayListUnmanaged(u8) = .{};
+                var raw: std.ArrayListUnmanaged(u8) = .empty;
                 try appendEscaped(&raw, self.a, name);
                 try extra.append(self.a, try self.builder.addLiteral(raw.items));
             }
@@ -6109,6 +6226,38 @@ const Compiler = struct {
     }
 
     // ---- spec-v1 P2 object/array keywords (semantics-spec-v1 4.3) ----
+
+    /// A numeric-only node whose conjunction no number satisfies (ADR-0011,
+    /// evaluated over a temporary grammar view of the unfinished builder).
+    fn numNodeEmpty(self: *Compiler, id: grammar.NodeId) bool {
+        if (self.profile != .spec_v1) return false;
+        const gv = self.grammarView();
+        return numcert.nodeVerdict(&gv, self.a, id) == .dead;
+    }
+
+    /// No value starts with a byte every branch admits: the conjunction is
+    /// empty (branches of disjoint JSON types).
+    fn conjunctionTypesDisjoint(self: *Compiler, ids: []const grammar.NodeId) bool {
+        if (self.profile != .spec_v1) return false;
+        const gv = self.grammarView();
+        var common = grammar.ByteSet.full;
+        for (ids) |id| common.setIntersection(gv.firstBytes(id, 0));
+        return common.count() == 0;
+    }
+
+    /// Read-only Grammar over the nodes built so far (never deinitialised).
+    fn grammarView(self: *Compiler) grammar.Grammar {
+        return .{
+            .kind = .json_schema,
+            .nodes = self.builder.nodes.items,
+            .literal_pool = self.builder.pool.items,
+            .root = 0,
+            .id = 0,
+            .id_hi = 0,
+            .finite_literal = false,
+            .arena = undefined,
+        };
+    }
 
     /// True for the empty-language node shape (ADR-0006 D1): a string
     /// bound no document satisfies (`false` subschemas, contradictory
@@ -6128,13 +6277,15 @@ const Compiler = struct {
     /// carry the exact JSON pointer. The DFA lives in the grammar arena
     /// and dies with the grammar.
     fn compilePatternText(self: *Compiler, pat: []const u8, offset: u32) CompileError!*const pattern.Dfa {
-        const dfa = pattern.compileJsonSchema(self.a, pat) catch |e| switch (e) {
+        if (self.pattern_dfas.get(pat)) |d| return d;
+        const dfa = pattern.compile(self.a, pat, .{ .scratch = self.scratch }) catch |e| switch (e) {
             error.Unsupported => return self.fail(error.UnsupportedFeature, offset, "pattern uses a construct outside the supported ECMA-262 subset", .{}),
             error.Invalid => return self.fail(error.InvalidSchema, offset, "pattern is not a valid regex", .{}),
             error.OutOfMemory => return error.OutOfMemory,
         };
         const slot = try self.a.create(pattern.Dfa);
         slot.* = dfa;
+        try self.pattern_dfas.put(self.a, try self.a.dupe(u8, pat), slot);
         return slot;
     }
 
@@ -6212,7 +6363,7 @@ const Compiler = struct {
     /// document) of a property name: the form the open-object key capture
     /// and the dep trigger/name literals compare against.
     fn rawKeyLit(self: *Compiler, name: []const u8) CompileError!grammar.Literal {
-        var raw: std.ArrayListUnmanaged(u8) = .{};
+        var raw: std.ArrayListUnmanaged(u8) = .empty;
         try appendEscaped(&raw, self.a, name);
         return self.builder.addLiteral(raw.items);
     }
@@ -6234,7 +6385,7 @@ const Compiler = struct {
         };
         var side = parser.Side.init(self.a);
         defer side.deinit();
-        var buf: std.ArrayListUnmanaged(u8) = .{};
+        var buf: std.ArrayListUnmanaged(u8) = .empty;
         defer buf.deinit(self.a);
         try buf.append(self.a, '"');
         try appendEscaped(&buf, self.a, key);
@@ -6262,7 +6413,7 @@ const Compiler = struct {
     /// forbidden, propertyNames admits it, and its effective value schema
     /// (pattern reroute, else additionalProperties) is non-empty.
     fn objKeyCanAppear(self: *Compiler, ctx: *const DepCtx, name: []const u8) CompileError!bool {
-        var raw: std.ArrayListUnmanaged(u8) = .{};
+        var raw: std.ArrayListUnmanaged(u8) = .empty;
         defer raw.deinit(self.a);
         try appendEscaped(&raw, self.a, name);
         for (ctx.props) |p| {
@@ -6306,7 +6457,7 @@ const Compiler = struct {
             .array => |it| it,
             else => return self.fail(error.InvalidSchema, v.offset, "{s} entries must be arrays of strings", .{what}),
         };
-        var names: std.ArrayListUnmanaged(grammar.Literal) = .{};
+        var names: std.ArrayListUnmanaged(grammar.Literal) = .empty;
         var seen: std.StringHashMapUnmanaged(void) = .{};
         var all_can = true;
         for (items) |it| {
@@ -6508,8 +6659,8 @@ const Compiler = struct {
         // Declared properties, filtered through propertyNames: a key the
         // name schema rejects can never appear - a required one empties
         // the arm, an optional one is dropped.
-        var props: std.ArrayListUnmanaged(grammar.Prop) = .{};
-        var banned: std.ArrayListUnmanaged([]const u8) = .{};
+        var props: std.ArrayListUnmanaged(grammar.Prop) = .empty;
+        var banned: std.ArrayListUnmanaged([]const u8) = .empty;
         for (prop_pairs) |pp| {
             var allowed = !names_forbidden;
             if (allowed) {
@@ -6519,7 +6670,7 @@ const Compiler = struct {
                 if (req_set.contains(pp.key)) return null;
                 continue;
             }
-            var lit: std.ArrayListUnmanaged(u8) = .{};
+            var lit: std.ArrayListUnmanaged(u8) = .empty;
             try lit.append(self.a, '"');
             try appendEscaped(&lit, self.a, pp.key);
             try lit.appendSlice(self.a, "\":");
@@ -6570,7 +6721,7 @@ const Compiler = struct {
         // undeclared keys (P1); they too must pass propertyNames, and when
         // their effective value language is empty the combination is
         // unsatisfiable (the P1 closed-object case).
-        var extra: std.ArrayListUnmanaged(grammar.Literal) = .{};
+        var extra: std.ArrayListUnmanaged(grammar.Literal) = .empty;
         for (req_items) |rv| {
             const name = rv.v.string;
             var found = false;
@@ -6596,7 +6747,7 @@ const Compiler = struct {
             try extra.append(self.a, try self.rawKeyLit(name));
         }
         // dependencies / dependentRequired / dependentSchemas (P2).
-        var deps: std.ArrayListUnmanaged(grammar.Dep) = .{};
+        var deps: std.ArrayListUnmanaged(grammar.Dep) = .empty;
         var arm_dead = false;
         const dctx: DepCtx = .{
             .props = props.items,
@@ -6690,7 +6841,7 @@ const Compiler = struct {
     }
 
     fn compileEnum(self: *Compiler, v: *const json.Value, t: SchemaType, values: []const *const json.Value, min_len: ?u32, max_len: ?u32) CompileError!grammar.NodeId {
-        var alts: std.ArrayListUnmanaged(grammar.NodeId) = .{};
+        var alts: std.ArrayListUnmanaged(grammar.NodeId) = .empty;
         var seen: std.StringHashMapUnmanaged(void) = .{};
         for (values) |val| {
             const bytes = (try self.serializeEnumValue(t, val, min_len, max_len)) orelse continue;
@@ -6719,7 +6870,7 @@ const Compiler = struct {
                 if (max_len) |m| {
                     if (n > m) return null;
                 }
-                var lit: std.ArrayListUnmanaged(u8) = .{};
+                var lit: std.ArrayListUnmanaged(u8) = .empty;
                 try lit.append(self.a, '"');
                 try appendEscaped(&lit, self.a, s);
                 try lit.append(self.a, '"');
@@ -6782,7 +6933,7 @@ const Compiler = struct {
             }
             if (exp_neg) exp_val = -exp_val;
         }
-        var all: std.ArrayListUnmanaged(u8) = .{};
+        var all: std.ArrayListUnmanaged(u8) = .empty;
         try all.appendSlice(self.a, int_part);
         try all.appendSlice(self.a, frac_part);
         var digits: []const u8 = all.items;
@@ -6792,7 +6943,7 @@ const Compiler = struct {
             return self.fail(error.InvalidSchema, offset, "number has more than 400 significant digits", .{});
         }
         const e10: i64 = exp_val - @as(i64, @intCast(frac_part.len));
-        var out: std.ArrayListUnmanaged(u8) = .{};
+        var out: std.ArrayListUnmanaged(u8) = .empty;
         if (e10 >= 0) {
             if (neg) try out.append(self.a, '-');
             try out.appendSlice(self.a, digits);
@@ -7853,7 +8004,7 @@ test "spec-v1 P6b: assertion keywords next to $ref conjoin (2020-12 sibling rule
     var diag: Diagnostic = .{};
     // 2020-12: $ref applies alongside its siblings - the ref expansion and
     // the sibling assertions compile independently and conjoin (allOf comb).
-    const s = "{\"$defs\":{\"d\":{\"type\":\"integer\"}},\"$ref\":\"#/$defs/d\",\"anyOf\":[{\"type\":\"string\"}]}";
+    const s = "{\"$defs\":{\"d\":{\"type\":\"integer\"}},\"$ref\":\"#/$defs/d\",\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"string\"}]}";
     var g = try compileSpec(s, &diag);
     defer g.deinit();
     const cb = switch (g.node(g.root).*) {
@@ -7862,10 +8013,21 @@ test "spec-v1 P6b: assertion keywords next to $ref conjoin (2020-12 sibling rule
     };
     try std.testing.expect(cb.kind == .allof);
     try std.testing.expectEqual(@as(usize, 2), cb.branches.len);
+    // integer and string share no value: the conjunction is empty.
+    try std.testing.expectError(error.UnsatisfiableConstraint, compileSpec("{\"$defs\":{\"d\":{\"type\":\"integer\"}},\"$ref\":\"#/$defs/d\",\"anyOf\":[{\"type\":\"string\"}]}", &diag));
     // draft-07 ignores the siblings: the ref expansion stands alone.
     var g2 = try compileSpec("{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"$defs\":{\"d\":{\"type\":\"integer\"}},\"$ref\":\"#/definitions/d\",\"definitions\":{\"d\":{\"type\":\"integer\"}},\"anyOf\":[{\"type\":\"string\"}]}", &diag);
     defer g2.deinit();
     try std.testing.expect(g2.node(g2.root).* == .int_num);
+}
+
+test "spec-v1: allOf of disjoint JSON types is an empty language" {
+    var diag: Diagnostic = .{};
+    try std.testing.expectError(error.UnsatisfiableConstraint, compileSpec("{\"allOf\":[{\"type\":\"object\"},{\"type\":\"array\",\"minItems\":1}]}", &diag));
+    try std.testing.expectError(error.UnsatisfiableConstraint, compileSpec("{\"type\":\"string\",\"anyOf\":[{\"type\":\"integer\"},{\"const\":null}]}", &diag));
+    // Nested: the property value is the empty language and the key is banned.
+    var g = try compileSpec("{\"type\":\"object\",\"properties\":{\"a\":{\"allOf\":[{\"type\":\"string\"},{\"type\":\"number\"}]}}}", &diag);
+    defer g.deinit();
 }
 
 test "spec-v1 P3: combinator parts conjoin with the typed core" {

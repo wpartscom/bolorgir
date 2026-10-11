@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example: fixed batch of independent sessions (FR-11) without Hugging Face.
+Example: fixed batch of independent sessions without Hugging Face.
 
 Each batch row is its own session with its own schema; masks are requested
 as a batch (fill_masks_batch), rows finish independently. The mini-tokenizer

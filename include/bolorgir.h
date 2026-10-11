@@ -100,7 +100,7 @@ typedef struct blg_context_config {
      * 0 => unlimited. Exceeding it returns BLG_ERR_RESOURCE_LIMIT, never a
      * partial mask. */
     uint64_t work_limit_ops;
-    /* Adaptive cache admission (FR-9): a computed mask is stored when the
+    /* Adaptive cache admission: a computed mask is stored when the
      * state was seen at least adaptive_min_hits times (0 => 2) or its
      * measured compute cost reached adaptive_min_cost_ns (0 => 50000). */
     uint64_t adaptive_min_hits;
@@ -121,6 +121,11 @@ typedef struct blg_context_config {
      * work_limit_ops counter. max_threads_per_state is NOT a CPU thread
      * count and is never repurposed as one. */
     uint64_t max_workers;
+    /* Tail-grown (ADR-0012): budgets of the compile-time probe
+     * (BLG_COMPILE_PROBE): visited parser states (0 => 256) and work ops
+     * (0 => 16M); the probe memory counts against memory_limit_bytes. */
+    uint64_t probe_max_states;
+    uint64_t probe_max_work;
 } blg_context_config;
 
 typedef struct blg_token_entry {
@@ -181,7 +186,39 @@ typedef struct blg_compile_request {
      * profile or constraint kind is BLG_ERR_UNSUPPORTED_FEATURE. */
     const uint8_t *registry_data;
     size_t registry_data_len;
+    /* Tail-grown (ADR-0012): BLG_COMPILE_PROBE* bits; 0 keeps the plain
+     * compile, an unknown bit is BLG_ERR_INVALID_ARGUMENT. Requests of the
+     * two earlier sizes (without the registry fields, without flags) are
+     * accepted. */
+    uint32_t flags;
+    uint32_t reserved1;
 } blg_compile_request;
+
+/*
+ * Compile-time generatability probe (ADR-0012): a bounded breadth-first
+ * search over the parser states reachable by tokens the mask allows,
+ * computing each state's mask on the context vocabulary.
+ * - A state whose mask fails with BLG_ERR_RESOURCE_LIMIT (an undecided
+ *   completion check) is a counterexample: the compile fails with
+ *   BLG_ERR_RESOURCE_LIMIT, the message carries the token path to that
+ *   state and json_pointer the subschema of the undecided frame.
+ * - Budget spent without a counterexample: BLG_PROBE_INCONCLUSIVE; the
+ *   compile succeeds (fails with BLG_ERR_RESOURCE_LIMIT "probe
+ *   inconclusive" under BLG_COMPILE_PROBE_STRICT). This guarantees
+ *   nothing about the states not visited.
+ * - Every reachable state visited (the set of exact parser states is
+ *   finite and closed): BLG_PROBE_PROVEN; for this grammar, vocabulary
+ *   and limits no completion check is undecided. Memory and work limits
+ *   and cancellation can still fail a call.
+ * The verdict is kept with the cached artifact together with the probe
+ * budgets; a cache hit reruns the probe only for other budgets.
+ */
+#define BLG_COMPILE_PROBE 0x1u
+#define BLG_COMPILE_PROBE_STRICT 0x2u /* implies BLG_COMPILE_PROBE */
+
+#define BLG_PROBE_NOT_RUN 0u
+#define BLG_PROBE_INCONCLUSIVE 1u
+#define BLG_PROBE_PROVEN 2u
 
 typedef struct blg_stats {
     uint32_t struct_size; /* == sizeof(blg_stats) */
@@ -205,6 +242,7 @@ typedef struct blg_stats {
     uint64_t cache_adaptive_skips;  /* computed masks not admitted by the policy */
     uint64_t precompute_states;     /* masks computed by compile-time warm-up */
     uint64_t work_ops_total;        /* ops charged against work_limit_ops */
+    uint64_t probe_runs;            /* probe searches run (ADR-0012) */
 } blg_stats;
 
 typedef struct blg_context blg_context;
@@ -248,6 +286,13 @@ blg_status blg_context_reset_cache(blg_context *ctx);
 blg_status blg_compile(blg_context *ctx, const blg_compile_request *request,
                      blg_grammar **out_grammar, blg_error *err);
 void blg_grammar_release(blg_grammar *grammar);
+
+/*
+ * ADR-0012 probe verdict kept with the grammar's artifact
+ * (BLG_PROBE_NOT_RUN / _INCONCLUSIVE / _PROVEN). Errors:
+ * BLG_ERR_INVALID_ARGUMENT for null arguments.
+ */
+blg_status blg_grammar_probe_status(const blg_grammar *grammar, uint32_t *out_status);
 
 blg_status blg_session_create(blg_context *ctx, blg_grammar *grammar,
                             blg_session **out_session, blg_error *err);
@@ -309,7 +354,10 @@ blg_status blg_cancel_flag_set(blg_context *ctx, uint8_t *flag);
  * uncertified frames are classified into this histogram (indices follow
  * the UndReason enum order in src/complete.zig: fail causes first, then
  * per-frame-kind and open-object gate sub-reasons). It exists to
- * prioritize certificate families by measured impact.
+ * prioritize certificate families by measured impact. The last entry
+ * (search_entered) is not a failure: it counts every state handed to the
+ * budgeted search after certification left it undecided, whatever the
+ * search's outcome.
  * blg_cert_stats copies up to cap entries into out and returns the full
  * histogram length; blg_cert_stats_reset zeroes it.
  */

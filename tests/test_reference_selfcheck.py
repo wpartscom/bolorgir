@@ -249,7 +249,7 @@ def test_enumeration_cap_raises():
 
 
 # ---------------------------------------------------------------------------
-# FR-3: literal alternatives
+# Literal alternatives
 # ---------------------------------------------------------------------------
 
 def test_compile_literals_basic():
@@ -310,7 +310,7 @@ def test_prefix_oracle_token_mask():
 
 
 def test_prefix_oracle_excludes_dead_end_tokens():
-    # TZ 3.1: a byte-legal token that cannot be completed is not allowed.
+    # A byte-legal token that cannot be completed is not allowed.
     spec = TokenizerSpec(tokens=(b"ab", b"a", b""), eos_ids=(2,)).validate()
     o = PrefixOracle({b"ab"})
     assert o.mask(b"", spec) == {0}

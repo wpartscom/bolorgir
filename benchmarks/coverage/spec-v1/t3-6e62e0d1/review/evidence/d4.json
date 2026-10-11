@@ -1,0 +1,188 @@
+{
+ "about": "Owner decision list D4 of the audit-fix spec (T3 item 2): every result that leaves `generatable` against dbc5eeb or 7345490f needs an owner decision. Proposals from benchmarks/t3/evidence.md; owner_decision stays null until the owner decides, and the executor never fills it. benchmarks/t3/tools/acceptance_compare.py separates a described transition (an entry matches) from an approved one (decision_format below) and lists every pending row with its exact key in the `d4_pending_rows` of its JSON report.",
+ "candidate_library_sha256": "50cbd80e874eac5d2b850637b6c34867315d5b3c00e8a751f6ec39623de91440",
+ "decision_format": {
+  "owner_decision": "null (pending) or {\"decision\": \"accept\" | \"reject\", \"candidate_library_sha256\": <64 hex of the accepted candidate>, \"rows\": [{\"corpus\", \"file\", \"tokenizer\", \"outcome\"}], \"by\": <name>, \"date\": <YYYY-MM-DD>, \"note\": <text>}",
+  "approval": "a transition row is approved only when its entry has decision accept, the decision names the candidate's library sha256 (the same hash in both corpora), and `rows` lists the row with the exact corpus, file, tokenizer and candidate outcome; a wildcard is never a row. An entry with requires_triage_class needs, in addition, that row's class in the T2c triage of the same candidate (benchmarks/triage_semantic.py --out-json) with every invalid document present and checked.",
+  "candidate": "candidate_library_sha256 above names the candidate the proposals were written for; a comparison with another candidate reports every decision as not applicable"
+ },
+ "entries": [
+  {
+   "id": "D4-1",
+   "corpus": "maskbench",
+   "file": "Github_medium---o32437.json",
+   "tokenizers": ["llama-3.1"],
+   "summary": "RESOURCE_LIMIT in 5 of 20 passes on d4e70303, fixed by the dependentRequired certificate (R2a)",
+   "cause": "open-object certificate deferred every node with dependencies to the bounded search",
+   "proposal": "no decision needed when the acceptance run shows it generatable; a remaining transition reopens R2a",
+   "evidence": "benchmarks/t3/evidence.md, section R2a; benchmarks/t3/evidence/r2_o32437_kb1154_50cbd80e.jsonl",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-2",
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_1154_Normalized.json",
+   "tokenizers": ["llama-3.1", "gpt2"],
+   "summary": "pass time limit; about 1 s per fill on a large open object on every build",
+   "cause": "pre-existing per-fill cost (dbc5eeb 1.28 s, 7345490f 1.24 s, 50cbd80e 0.98 s per sampled state), not attributable to the T3 series",
+   "proposal": "accept as a documented availability residual of an expensive path",
+   "evidence": "benchmarks/t3/evidence.md, section R2b; benchmarks/t3/evidence/kb1154_slow_prefix.hex",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-2r",
+   "corpus": "repo",
+   "file": "kb_1154_Normalized.json",
+   "tokenizers": ["llama-3.1", "gpt2"],
+   "summary": "same schema in the repository snapshot, when it is in the HF sample",
+   "cause": "as D4-2",
+   "proposal": "as D4-2",
+   "evidence": "benchmarks/t3/evidence.md, section R2b",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-3",
+   "corpus": "repo",
+   "file": "tye-schema.json",
+   "tokenizers": ["byte"],
+   "summary": "RESOURCE_LIMIT in 7 of 20 passes (2 on 7345490f) while completed_valid grows from 2 to 10",
+   "cause": "oneOf of eight open-object branches; a vote needs a key witness that fails every rival, the certificate has value witnesses only",
+   "proposal": "accept as a documented limitation; group-certificate work is future scope",
+   "evidence": "benchmarks/t3/evidence.md, section R4; benchmarks/t3/evidence/r4_repo_byte_50cbd80e.jsonl",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-3m",
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---tye-schema.json",
+   "tokenizers": ["byte"],
+   "summary": "as D4-3, MaskBench snapshot",
+   "cause": "as D4-3",
+   "proposal": "as D4-3",
+   "evidence": "benchmarks/t3/evidence/r4_maskbench_byte_50cbd80e.jsonl",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-4",
+   "corpus": "maskbench",
+   "file": "Github_hard---o32934.json",
+   "tokenizers": ["byte"],
+   "summary": "RESOURCE_LIMIT in 2 of 20 passes (9 on 7345490f, 0 on dbc5eeb)",
+   "cause": "key start in an array element under five if/then groups with closed then branches; comb_group plus dependency-gated object states stay undecided",
+   "proposal": "accept as a documented limitation; group-certificate work is future scope",
+   "evidence": "benchmarks/t3/evidence.md, section R4",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-5",
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---cryproj.53.schema.json",
+   "tokenizers": ["byte"],
+   "summary": "RESOURCE_LIMIT in 1 pass after an exponent of 40 or more inside a uniqueItems element",
+   "cause": "documented limit of semantics-spec-v1 section 1: a number in a uniqueItems element may not exceed |exp| 400",
+   "proposal": "accept as a documented limitation",
+   "evidence": "benchmarks/t3/evidence.md, section R4",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-6",
+   "corpus": "*",
+   "file": "*",
+   "match_outcome": "invalid_document",
+   "requires_triage_class": "D",
+   "summary": "results that end in an invalid_document explained by the draft-04 integer spelling (23 such transitions against dbc5eeb on 7345490f)",
+   "cause": "a random pass reaches an integral value spelled with a fraction or exponent; the reference with draft-04 integer semantics rejects it (docs/supported_features.md section 9)",
+   "proposal": "accept as the documented class D deviation, only for rows whose T2c triage on the candidate is class D with every invalid document checked; any other class reopens the row",
+   "evidence": "benchmarks/coverage/spec-v1/triage.md, section 'Generatable on dbc5eeb, not generatable on final'",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-7",
+   "corpus": "repo",
+   "file": "o81581.json",
+   "tokenizers": ["byte"],
+   "summary": "engine_defect / BLG_ERR_DEAD_END in 17 of 20 passes (7345490f: 1 completed_valid, 19 step limits; dbc5eeb: 1 completed_valid, 18 step limits, 1 engine_defect)",
+   "cause": "engine defect, class A: the open-object certificate took the finite patternProperties language ^line[1-3]$ for an infinite one, so a key already seen was admitted again and dispatch refused it at the closing quote",
+   "proposal": "no owner decision: an engine defect, not a residual; D4 does not close no_defects. Fixed on the release line (open-object certificate patch, R7); the acceptance of the next candidate must show the schema without DEAD_END, and a remaining transition reopens R7",
+   "evidence": "benchmarks/t3/evidence.md, section R7; benchmarks/t3/evidence/r7_dead_ends_50cbd80e.jsonl; benchmarks/t3/evidence/r7_walks.json",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-8",
+   "corpus": "repo",
+   "file": "o83697.json",
+   "tokenizers": ["byte"],
+   "summary": "engine_defect / BLG_ERR_DEAD_END in 8 of 20 passes (7345490f: 1 completed_valid, 19 step limits; dbc5eeb: 1 completed_valid, 17 step limits, 2 engine_defect)",
+   "cause": "engine defect, class A, as D4-7 with ^comment[1-9]$",
+   "proposal": "no owner decision: an engine defect, not a residual; D4 does not close no_defects. Fixed on the release line (open-object certificate patch, R7); the acceptance of the next candidate must show the schema without DEAD_END, and a remaining transition reopens R7",
+   "evidence": "benchmarks/t3/evidence.md, section R7; benchmarks/t3/evidence/r7_dead_ends_50cbd80e.jsonl; benchmarks/t3/evidence/r7_walks.json",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-9",
+   "corpus": "repo",
+   "file": "o81583.json",
+   "tokenizers": ["byte"],
+   "summary": "engine_defect / BLG_ERR_DEAD_END in 3 of 20 passes (7345490f and dbc5eeb: 1 completed_valid, 19 step limits)",
+   "cause": "engine defect, class B2: favoriteTopic requires tags, which is declared before it; the certificate did not check the dependency the spelled key fires by its own dispatch, so the key was admitted after tags had been skipped in schema order and dispatch refused it",
+   "proposal": "no owner decision: an engine defect, not a residual; D4 does not close no_defects. Fixed on the release line (open-object certificate patch, R7); the acceptance of the next candidate must show the schema without DEAD_END, and a remaining transition reopens R7",
+   "evidence": "benchmarks/t3/evidence.md, section R7; benchmarks/t3/evidence/r7_dead_ends_50cbd80e.jsonl; benchmarks/t3/evidence/r7_walks.json",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-10",
+   "corpus": "repo",
+   "file": "o31351.json",
+   "tokenizers": ["byte"],
+   "summary": "RESOURCE_LIMIT in 1 of 20 passes (pass 8, step 6225, 2.5 s); on dbc5eeb and 7345490f the same pass ends in the 10 s time limit near step 1600 and reaches the same state at step 6225 after 40 s with a 120 s budget",
+   "cause": "oneOf of two branches that differ only by a required key (bids or config_id) on the open ad_units item object: the vote needs a key witness that fails the rival branch, the certificate has value witnesses only (comb_group), and the bounded search runs out; pre-existing, reached within the pass budget because 50cbd80e is faster",
+   "proposal": "accept as a documented limitation (as D4-3); group-certificate work is future scope. The open-object certificate fix (R7) leaves it unchanged (same pass, step and state)",
+   "evidence": "benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-11",
+   "corpus": "repo",
+   "file": "bigquery-table.json",
+   "tokenizers": ["byte"],
+   "summary": "RESOURCE_LIMIT in 1 of 20 passes (pass 19, step 1582, 5.6 s); on dbc5eeb and 7345490f the same pass ends in the 10 s time limit near step 168 and reaches the same state at step 1582 after 81-85 s with a 120 s budget",
+   "cause": "if/then on the recursive field definition (type STRUCT or RECORD requires fields): at the value of \"type\" the comb_group state stays undecided and the bounded search runs out; pre-existing, reached within the pass budget because 50cbd80e is faster",
+   "proposal": "accept as a documented limitation (as D4-4); group-certificate work is future scope. The open-object certificate fix (R7) leaves it unchanged",
+   "evidence": "benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-12",
+   "corpus": "repo",
+   "file": "cryproj.dev.schema.json",
+   "tokenizers": ["byte"],
+   "summary": "RESOURCE_LIMIT in 1 of 20 passes (pass 10, step 5725, 3.4 s); 7345490f reaches the same state at the same step in 4.7 s (replayed with the candidate harness), dbc5eeb takes another path to the step limit",
+   "cause": "documented limit of semantics-spec-v1 section 1 inside a uniqueItems element (console_variables): the pass typed 256E165, and a further exponent digit would exceed |exp| 400",
+   "proposal": "accept as a documented limitation (as D4-5, the MaskBench cryproj.53 schema)",
+   "evidence": "benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-13",
+   "corpus": "repo",
+   "file": "o41283.json",
+   "tokenizers": ["gpt2"],
+   "summary": "time limit in 20 of 20 passes; pass 1, the one pass 7345490f completed (step 59), takes 9.3-9.9 s on every build",
+   "cause": "pass 1 sits at the edge of the 10 s pass budget on all builds with the same per-step cost (dbc5eeb 9.30 s, 7345490f 9.70 s, 50cbd80e 9.61 s, the fix 9.92 s; 0.16 s per step); whether it completes depends on machine load, not on the build",
+   "proposal": "accept as a documented environment-timing residual (as D4-2)",
+   "evidence": "benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl",
+   "owner_decision": null
+  },
+  {
+   "id": "D4-14",
+   "corpus": "repo",
+   "file": "kb_1088_Normalized.json",
+   "tokenizers": ["llama-3.1"],
+   "summary": "time limit in 20 of 20 passes; pass 1, the one pass 7345490f completed (step 21), takes 8.1-9.2 s on every build",
+   "cause": "a large normalized Kubernetes object at about 0.4 s per fill on every build (dbc5eeb 8.24 s, 7345490f 8.13 s, 50cbd80e 8.45 s, the fix 8.45 s for 21 steps), the same family as kb_1154 (D4-2); whether pass 1 completes depends on machine load",
+   "proposal": "accept as a documented environment-timing residual (as D4-2)",
+   "evidence": "benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl",
+   "owner_decision": null
+  }
+ ]
+}

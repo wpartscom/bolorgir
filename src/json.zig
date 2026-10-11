@@ -1,4 +1,5 @@
 const std = @import("std");
+const Arena = @import("alloc.zig").Arena;
 
 pub const Error = error{ InvalidSchema, ResourceLimit, OutOfMemory };
 
@@ -111,7 +112,7 @@ const Parser = struct {
 
     fn parseObject(self: *Parser, depth: u32) Error![]Pair {
         self.pos += 1;
-        var pairs: std.ArrayListUnmanaged(Pair) = .{};
+        var pairs: std.ArrayListUnmanaged(Pair) = .empty;
         var seen: std.StringHashMapUnmanaged(void) = .{};
         self.skipWs();
         if (self.peek() == @as(u8, '}')) {
@@ -145,7 +146,7 @@ const Parser = struct {
 
     fn parseArray(self: *Parser, depth: u32) Error![]*Value {
         self.pos += 1;
-        var items: std.ArrayListUnmanaged(*Value) = .{};
+        var items: std.ArrayListUnmanaged(*Value) = .empty;
         self.skipWs();
         if (self.peek() == @as(u8, ']')) {
             self.pos += 1;
@@ -169,7 +170,7 @@ const Parser = struct {
 
     fn parseString(self: *Parser) Error![]const u8 {
         self.pos += 1;
-        var out: std.ArrayListUnmanaged(u8) = .{};
+        var out: std.ArrayListUnmanaged(u8) = .empty;
         while (true) {
             const b = self.peek() orelse return self.fail(self.pos);
             if (b == '"') {
@@ -283,7 +284,7 @@ const Parser = struct {
 };
 
 test "parse nested document with escapes and surrogate pair" {
-    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    var arena = Arena.init(std.testing.allocator);
     defer arena.deinit();
     var off: u32 = 0;
     const v = try parse(arena.allocator(), "{\"a\":[1,-2.5e3,\"x\\u0041\\uD83D\\uDE00\",true,null],\"b\":{}}", &off);
@@ -302,7 +303,7 @@ test "parse nested document with escapes and surrogate pair" {
 }
 
 test "parse string escapes" {
-    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    var arena = Arena.init(std.testing.allocator);
     defer arena.deinit();
     var off: u32 = 0;
     const v = try parse(arena.allocator(), "\"a\\nb\\u0007\\t\\/\\\\\"", &off);
@@ -310,14 +311,14 @@ test "parse string escapes" {
 }
 
 test "reject duplicate object keys" {
-    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    var arena = Arena.init(std.testing.allocator);
     defer arena.deinit();
     var off: u32 = 0;
     try std.testing.expectError(error.InvalidSchema, parse(arena.allocator(), "{\"a\":1,\"a\":2}", &off));
 }
 
 test "reject malformed JSON" {
-    var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
+    var arena = Arena.init(std.testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     var off: u32 = 0;

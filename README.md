@@ -1,15 +1,27 @@
 # Bolorgir
 
 [![CI](https://github.com/wpartscom/bolorgir/actions/workflows/ci.yml/badge.svg)](https://github.com/wpartscom/bolorgir/actions/workflows/ci.yml)
+[![Zig 0.17.0](https://img.shields.io/badge/zig-0.17.0-orange.svg)](https://ziglang.org/download/)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Python 3.12-3.15](https://img.shields.io/badge/python-3.12--3.15-blue.svg)](https://www.python.org/)
 
-Embeddable structured-generation engine for LLMs: a small Zig core with a
-versioned C ABI, Python bindings, and a Hugging Face Transformers adapter.
-Given a JSON Schema (a strict Draft 2020-12 subset) or a set of literal
-strings, Bolorgir computes the set of allowed next tokens at every generation
-step - the model's output is guaranteed to match the requested structure,
-while the choice of value stays with the model.
+> **Public preview 0.2.0rc1.** A GitHub pre-release, not on PyPI: install
+> it from the [release page](https://github.com/wpartscom/bolorgir/releases/tag/v0.2.0rc1)
+> as shown in [Install](#install). The published assets carry the earlier
+> `cp310-abi3` build (core `6e62e0d1...`); this branch prepares the
+> Zig 0.17.0 line, whose rebuilt `cp312-abi3` wheel comes with the next
+> acceptance. The preview has passed the T3/R6
+> acceptance of its core but not the full T8a run, and some `spec-v1`
+> schemas are slow or end in `RESOURCE_LIMIT`: read
+> [Preview status and known limits](#preview-status-and-known-limits) first.
+
+**Structured-generation engine written in Zig, with a C ABI and Python
+bindings.** Given a JSON Schema (one of two profiles: the frozen
+`canonical-v1` subset, which is the default, or the wider, experimental
+`spec-v1`) or a set of literal strings, Bolorgir computes the set of
+allowed next tokens at every generation step - the model's output is
+guaranteed to match the requested structure, while the choice of value
+stays with the model.
 
 **Design rules:** unsupported input is rejected at compile time with a JSON
 Pointer (the engine never silently continues unconstrained); mask computation
@@ -19,13 +31,17 @@ actual backend decoder.
 Typical uses: tool-call arguments, JSON extraction for programmatic
 processing, classification via fixed value sets, agentic pipelines.
 
-**Measured performance** (pinned control series, protocol v3; CPU, GPT-2
-tokenizer, vocab 50,257): mask p99 **0.81 µs** vs XGrammar 0.2.6 3.04 µs
-(primary scenario) and vs llguidance 1.8.0 358.68 µs (secondary holdout);
-constrained generation through HF stays within **+1.7%** of XGrammar (worst
-paired-median case at a 5% threshold). These are the lowest measured mask
-latencies among the compared engines on these workloads - reports:
-`benchmarks/reports/`, conditions and caveats: [Performance](#performance).
+**Historical measurements** (profile `canonical-v1`, September 2026, not
+repeated for 0.2.0rc1; every number cites its report): schema compile time
+(TTFM) on the independent MaskBench suite with engine 0.1.0: p50
+**207 µs** vs **1,790 µs** for llguidance
+(`benchmarks/maskbench/README.md`); warm mask p99 **0.81 µs** on own
+workloads (code before the 0.1.0 release, cache-hit path, GPT-2
+vocabulary) vs 3.04 µs for XGrammar
+(`benchmarks/reports/20260919T033356_v3-run3/REPORT.md`); end-to-end
+constrained generation on par with XGrammar, worst paired-median case
+**+1.7%** (same report). They say nothing about `spec-v1`, whose masks can
+be far slower. Conditions and caveats: [Performance](#performance).
 
 ## Features
 
@@ -39,40 +55,116 @@ latencies among the compared engines on these workloads - reports:
   cache.
 - **Embeddable.** Zig core without runtime dependencies behind a versioned C
   ABI (`include/bolorgir.h`, opaque handles, `blg_status` error codes).
-- **Python first-class.** CPython 3.10+ (abi3), Hugging Face Transformers
+- **Python first-class.** CPython 3.12-3.15 (abi3), Hugging Face Transformers
   adapter, batched mask filling, GPU mask-unpacking path.
 - **Measured.** Performance claims come from a pinned acceptance protocol
   (three collections, AB/BA pairing, bootstrap CIs); reports are published in
   `benchmarks/reports/`.
 
-## Install
+## Build the core (Zig)
 
-From PyPI (wheels require no compiler; installing from the source
-distribution requires a C toolchain, Zig is not required):
+The engine is a Zig library behind a versioned C ABI; the Python bindings
+and the C example build on top of it. The published preview tag builds
+with Zig 0.15.2:
 
 ```sh
-pip install bolorgir            # core engine
-pip install "bolorgir[transformers]"   # + torch/transformers adapter
+git clone --branch v0.2.0rc1 https://github.com/wpartscom/bolorgir
+cd bolorgir
+zig build -Drelease=true -Dstrip=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=baseline
+sha256sum zig-out/lib/libbolorgir.so.0.1.0   # 6e62e0d1526c6e53...
 ```
 
-From source:
+The current `main` line (prepared for the next acceptance) builds with
+Zig 0.17.0 and the same flags; two independent builds are byte-identical
+and the next acceptance names the shipped core:
 
 ```sh
 git clone https://github.com/wpartscom/bolorgir
 cd bolorgir
-zig build -Drelease=true        # -> zig-out/lib/libbolorgir.so
-cd python && pip install .      # or: pip install ".[transformers]"
+zig build -Drelease=true -Dstrip=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=baseline
+sha256sum zig-out/lib/libbolorgir.so.0.1.0   # 38f31cfbd627f803...
 ```
 
-## Quickstart
+## Python bindings
+
+The Python side is an abi3 package for CPython 3.12-3.15 (Linux x86_64,
+glibc 2.28 or newer) plus a Hugging Face Transformers adapter. The wheel
+and the sdist ship the built core; building the extension from a
+source checkout needs a C compiler and Python 3.12 or newer.
+
+### Install
+
+0.2.0rc1 is published as a GitHub pre-release with a wheel, an sdist and
+`SHA256SUMS`; it is not on PyPI. The published wheel is
+`cp310-abi3-manylinux_2_28_x86_64`: one file for CPython 3.10, 3.11, 3.12
+and 3.13 on Linux x86_64 with glibc 2.28 or newer.
+
+The prepared next build of this line (Zig 0.17.0, abi3 floor CPython 3.12)
+will be `cp312-abi3` for CPython 3.12-3.15 with the same manylinux_2_28
+coverage; it replaces these preview assets with the next acceptance. Until
+then the `cp310-abi3` build below is the one to install.
+
+```sh
+python3 -m venv .venv && . .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install https://github.com/wpartscom/bolorgir/releases/download/v0.2.0rc1/bolorgir-0.2.0rc1-cp310-abi3-manylinux_2_28_x86_64.whl
+```
+
+To check the download against the published sums first:
+
+```sh
+base=https://github.com/wpartscom/bolorgir/releases/download/v0.2.0rc1
+curl -LO "$base/SHA256SUMS"
+curl -LO "$base/bolorgir-0.2.0rc1-cp310-abi3-manylinux_2_28_x86_64.whl"
+sha256sum --check --ignore-missing SHA256SUMS
+python -m pip install ./bolorgir-0.2.0rc1-cp310-abi3-manylinux_2_28_x86_64.whl
+```
+
+The core library inside the wheel is the one the acceptance names, sha256
+`6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914`:
+
+```sh
+python -c "import bolorgir, hashlib, pathlib; p = pathlib.Path(bolorgir.__file__).parent / '_lib' / 'libbolorgir.so.0.1.0'; print(bolorgir.__version__, hashlib.sha256(p.read_bytes()).hexdigest())"
+```
+
+The Hugging Face adapter is the `transformers` extra; it installs PyTorch
+from PyPI, so for a CPU-only setup install `torch` from the PyTorch CPU
+index first:
+
+```sh
+python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+python -m pip install "bolorgir[transformers] @ https://github.com/wpartscom/bolorgir/releases/download/v0.2.0rc1/bolorgir-0.2.0rc1-cp310-abi3-manylinux_2_28_x86_64.whl"
+```
+
+The sdist on the release page bundles the same core library; it builds
+the Python extension with a C compiler and needs no Zig.
+
+From a checkout of the tag, with the core built at `zig-out/lib` (see
+[Build the core](#build-the-core-zig)):
+
+```sh
+python3 -m venv .venv && . .venv/bin/activate
+python -m pip install --upgrade pip
+cd python && BLG_SKIP_ZIG=1 python -m pip install .   # takes the core from zig-out/lib
+```
+
+### Quickstart
+
+Without a model or any download: a byte-level vocabulary stands in for the
+tokenizer and a random choice among the allowed tokens for the model
+(`examples/quickstart.py`):
 
 ```python
-from transformers import AutoTokenizer
+import json
+import random
 
 from bolorgir import Engine, TokenizerBundle
 
-hf = AutoTokenizer.from_pretrained("openai-community/gpt2")
-bundle = TokenizerBundle.from_hf(hf, use_cache=False)
+# A byte-level vocabulary instead of a model's tokenizer: ids 0..255 are
+# single bytes, id 256 is EOS. Nothing is downloaded.
+tokens = [bytes([b]) for b in range(256)] + [b"<eos>"]
+EOS = 256
+bundle = TokenizerBundle.from_token_bytes(tokens, eos_ids=[EOS])
 
 schema = {
     "type": "object",
@@ -84,12 +176,64 @@ schema = {
     "additionalProperties": False,
 }
 
-with Engine(mode="adaptive", tokenizer=bundle, memory_limit_mb=256) as engine:
-    with engine.compile(schema, profile="canonical-v1") as constraint:
+rng = random.Random(7)  # stands in for the model: picks among allowed tokens
+out = bytearray()
+with Engine(tokenizer=bundle) as engine:
+    with engine.compile(schema) as constraint:  # profile "canonical-v1" (default)
         with constraint.create_session() as session:
-            allowed = session.allowed_token_ids()   # tokens that keep the JSON valid
-            session.accept_token(allowed[0])
+            while True:
+                allowed = session.allowed_token_ids()  # tokens that keep the JSON valid
+                if EOS in allowed and (len(allowed) == 1 or rng.random() < 0.5):
+                    session.accept_token(EOS)
+                    session.finish()
+                    break
+                token = rng.choice([t for t in allowed if t != EOS])
+                session.accept_token(token)
+                out += tokens[token]
+
+doc = json.loads(out)
+assert doc["action"] in ("buy", "sell") and isinstance(doc["amount"], int)
+print(doc)
 ```
+
+It prints `{'action': 'sell', 'amount': 36281948}`: whatever the "model"
+picks, the document is valid JSON for the schema.
+
+#### With a Hugging Face model
+
+Needs the `transformers` extra (see [Install](#install)) and downloads
+GPT-2 (about 550 MB) from the Hugging Face Hub:
+
+```python
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+from bolorgir import Engine, TokenizerBundle
+from bolorgir.transformers import constrained_generate
+
+name = "openai-community/gpt2"
+tokenizer = AutoTokenizer.from_pretrained(name)
+model = AutoModelForCausalLM.from_pretrained(name)
+
+schema = {
+    "type": "object",
+    "properties": {
+        "action": {"type": "string", "enum": ["buy", "sell"]},
+        "amount": {"type": "integer"},
+    },
+    "required": ["action", "amount"],
+    "additionalProperties": False,
+}
+
+inputs = dict(tokenizer("A trade order as JSON: ", return_tensors="pt"))
+with Engine(tokenizer=TokenizerBundle.from_hf(tokenizer)) as engine:
+    with engine.compile(schema) as constraint:
+        result = constrained_generate(model, tokenizer, constraint, inputs, max_new_tokens=48)
+        new = result.sequences[0, inputs["input_ids"].shape[1]:]
+        print(result.stop_reason[0], tokenizer.decode(new, skip_special_tokens=True))
+```
+
+`stop_reason` is `eos` when the model finished a valid document and
+`length` when `max_new_tokens` ran out first.
 
 Literal choices work without a schema:
 
@@ -103,6 +247,45 @@ with Engine(mode="lazy", tokenizer=bundle) as engine:
 A dependency-free C example lives in `examples/c_client.c`
 (`zig build example-c`).
 
+## Preview status and known limits
+
+0.2.0rc1 is a preview of 0.2.0 ([release notes](docs/release/v0.2.0rc1.md),
+[changes](CHANGELOG.md)). What it has and has not passed:
+
+- **Profiles.** `canonical-v1` is the default profile, a frozen subset.
+  `spec-v1` is experimental: it covers much more of JSON Schema and is
+  selected with `profile="spec-v1"`
+  ([Schema profiles and limitations](#schema-profiles-and-limitations)).
+- **Acceptance.** The core library of this preview (sha256 `6e62e0d1...`)
+  passed the T3 coverage acceptance and its R6 review: verdict admitted
+  ([acceptance.md](benchmarks/coverage/spec-v1/t3-6e62e0d1/review-3/acceptance.md)).
+  The full T8a run (MaskBench, `spec-v1`, Llama 3.1 tokenizer, 900 s per
+  file) is **not complete**; the stable 0.2.0 release needs it.
+- **Slow masks, `RESOURCE_LIMIT`, long runs.** On some `spec-v1` schemas
+  with a large vocabulary (128k tokens) a single mask takes about a
+  second, and a file of a few documents can exceed 900 s. For one MaskBench
+  schema (`Github_easy---o89710`) the first mask did not return within
+  120 s; with a byte-level vocabulary the same schema ends in
+  `RESOURCE_LIMIT` after about 13 s on our test host. A call fails with `RESOURCE_LIMIT`
+  whenever completion cannot be proven within its search or memory budget;
+  a token is never admitted without a proof.
+- **Memory limits are not time limits.** `memory_limit_mb` and the other
+  budgets bound memory, not the duration of a call. To bound time, use your
+  own deadline together with `work_limit_ops` (a call that spends its work
+  budget fails with `RESOURCE_LIMIT`) or a `CancelToken`
+  (`engine.cancel_token()`; the core checks the flag between bounded
+  portions of work and the call fails with `CancelledError`). How quickly
+  either stops the slow cases above was not measured for this preview.
+- **Performance figures** in this README are historical (0.1.0 and the
+  code before it, profile `canonical-v1`) and were not re-measured for
+  this preview.
+- **Platforms.** Linux x86_64 with glibc 2.28 or newer; CPython 3.12,
+  3.13, 3.14 and 3.15, each checked by installing the wheel in a clean
+  `python:3.x-slim` container. macOS, Windows and Linux aarch64 are not
+  built or tested.
+
+Problems are welcome: see [Reporting a problem](#reporting-a-problem).
+
 ## Comparison with alternatives
 
 Bolorgir is an independent constrained-decoding engine (Zig core, C ABI,
@@ -112,56 +295,192 @@ Measured comparison used XGrammar 0.2.6 and llguidance 1.8.0.
 
 ### Capabilities
 
-| | **Bolorgir** (v0.1) | XGrammar | llguidance | Outlines | lm-format-enforcer |
+| | **Bolorgir** (0.2.0rc1) | XGrammar | llguidance | Outlines | lm-format-enforcer |
 |---|---|---|---|---|---|
 | Core | Zig, C ABI, no runtime deps | C++ | Rust | Python + Rust core | Python |
 | License | Apache-2.0 | Apache-2.0 | MIT | Apache-2.0 | MIT |
-| Constraints | JSON Schema subset (`canonical-v1`), literal sets | JSON Schema, regex, EBNF/GBNF, Lark | JSON Schema subset, regex, Lark-like CFG | JSON/Pydantic, regex, grammars | JSON Schema, JSON mode, regex |
+| Constraints | JSON Schema (profiles `canonical-v1` and `spec-v1`; `spec-v1` experimental), literal sets; no standalone regex or CFG | JSON Schema, regex, EBNF/GBNF, Lark | JSON Schema subset, regex, Lark-like CFG | JSON/Pydantic, regex, grammars | JSON Schema, JSON mode, regex |
 | Unsupported input | rejected at compile time with a JSON Pointer | - | - | - | - |
 | Reachability on incomplete vocabularies | exact (finite languages) or compile-time rejection | - | - | - | - |
 | Hard memory budgets | yes (published defaults) | - | - | - | - |
 | Integrations | HF Transformers adapter; C ABI | vLLM, SGLang, TensorRT-LLM, MLC-LLM, WebLLM | OpenAI Structured Outputs, llama.cpp, Chromium, vLLM, SGLang | vLLM, Ollama, transformers, API providers | vLLM, TensorRT-LLM, ExLlamaV2, LangChain/LlamaIndex/Haystack |
-| Platforms | Linux x86_64 (glibc); CPython 3.10+ | Linux/macOS/Windows; CPU/GPU/TPU | Linux/macOS/Windows | cross-platform | cross-platform |
+| Platforms | Linux x86_64 (glibc 2.28+); CPython 3.12-3.15 | Linux/macOS/Windows; CPU/GPU/TPU | Linux/macOS/Windows | cross-platform | cross-platform |
 
 ## Performance
 
-All numbers below are from the pinned control series (protocol v3, 2026-09-19,
-CPU-only, single host, GPT-2 tokenizer, vocab 50,257). XGrammar/llguidance JSON
-profiles differ from `canonical-v1`, so latency is compared on equivalent
-schemas, not bitwise mask equality. Full reports:
-`benchmarks/reports/`, methodology: `benchmarks/README.md`.
+Two measurement series are published in this repository. Both are
+historical: they measured the `canonical-v1` profile of engine 0.1.0 and of
+the code just before it, and were not repeated for 0.2.0rc1; they do not
+cover `spec-v1` (see
+[Preview status and known limits](#preview-status-and-known-limits)).
 
-On these measurements Bolorgir has the lowest mask latency of the three
-engines (both measured scenarios); end-to-end constrained generation is at
-parity with XGrammar (last row).
+- the pinned control series on own workloads (protocol v3, 2026-09-19,
+  code before the 0.1.0 release, default profile `canonical-v1`,
+  CPU-only, single host, GPT-2 tokenizer, vocab 50,257): report
+  `benchmarks/reports/20260919T033356_v3-run3/REPORT.md`;
+- an independent MaskBench run over the jsonschemabench corpus
+  (2026-09-20, engine 0.1.0, profile `canonical-v1`, tokenizer
+  `unsloth/Meta-Llama-3.1-8B-Instruct`, 128,256 tokens): report `benchmarks/maskbench/README.md`, raw aggregates
+  `benchmarks/maskbench/results/`.
 
-| Metric | Bolorgir | XGrammar | llguidance |
-|---|---|---|---|
-| Mask build p99 (primary scenario) | 0.81 µs | 3.04 µs | - |
-| Mask build p99 (secondary holdout) | 1.02 µs | - | 358.68 µs |
-| First mask, cold, p95/p99 (n = 3000) | 586.5 / 684.1 µs | 965.0 / 1288.6 µs | - |
-| Warm compile | ~1.0 µs | ~2.1 µs | - |
-| Cold compile | ~120 µs | ~1.2 ms | - |
-| GPU mask path (full) | 47.75 µs | 49.83 µs | 126.09 µs |
-| Constrained generation e2e (HF, paired median) | worst case **+1.7%** vs XGrammar; 12/12 configurations within the 5% threshold | baseline | - |
+XGrammar/llguidance JSON profiles differ from `canonical-v1`, so latency
+is compared on equivalent schemas, not bitwise mask equality. Methodology:
+`benchmarks/README.md`.
 
-Caveats: these are our workloads under our acceptance protocol - not a
-cross-project benchmark suite. Competitor-reported figures may differ (for
-example, llguidance documents ~50 µs per token typical for a 128k-tokenizer
-JSON workload); for neutral cross-checks see
+### Schema compile time and mask time on MaskBench (canonical-v1)
+
+Paired compact-serialization run over all 11,306 schemas (engine 0.1.0,
+adaptive mode; llguidance 0.7.10, the MaskBench pin). All times in
+microseconds. Source: `benchmarks/maskbench/README.md`, section "Results";
+raw percentiles: `benchmarks/maskbench/results/blg-compact-entries.txt`
+and `llg-compact-entries.txt`.
+
+| metric | llguidance | Bolorgir |
+|---|---:|---:|
+| TBM avg | 94 | 143,457 |
+| TBM p25 | 37 | 27 |
+| TBM p50 | 55 | 125 |
+| TBM p75 | 74 | 1,767 |
+| TBM p90 | 133 | 609,222 |
+| TBM p95 | 233 | 649,598 |
+| TBM p99 | 924 | 1,393,775 |
+| TBM p99.9 | 3,370 | 1,711,274 |
+| TBM p100 | 22,686 | 1,992,204 |
+| TTFM avg | 3,446 | 268 |
+| TTFM p25 | 1,301 | 162 |
+| TTFM p50 | 1,790 | 207 |
+| TTFM p75 | 2,661 | 269 |
+| TTFM p90 | 5,337 | 369 |
+| TTFM p95 | 8,998 | 584 |
+| TTFM p99 | 39,826 | 1,599 |
+| TTFM p99.9 | 98,661 | 2,501 |
+| TTFM p100 | 590,451 | 2,501 |
+| schemas | 11,306 | 11,306 |
+| passing | 4,727 | 624 |
+| compile error | 2,377 | 10,682 |
+| validation error | 4,202 | 0 |
+| invalidation error | 0 | 0 |
+
+Reading of the table (per `benchmarks/maskbench/README.md`):
+
+- Compile time (TTFM): Bolorgir is faster at every percentile of this
+  run (p50 207 vs 1,790 µs; p99 1,599 vs 39,826 µs). The two engines
+  compile different schema sets (624 vs 8,929 files), so the rows are
+  indicative, not a like-for-like intersection.
+- Mask time (TBM): llguidance is faster at every TBM percentile except
+  p25 (27 vs 37 µs). MaskBench opens a new session per instance and most
+  files carry a single instance, so the adaptive cache almost never
+  serves a repeat: a first visit of a permissive state walks the whole
+  token trie (0.6 s per state with a 128k-token vocabulary in this run),
+  while a cache hit is 1.3 µs.
+- Semantics: 0 validation and 0 invalidation errors on the 624 schemas
+  that compiled (633 valid instances accepted, 77 invalid rejected).
+- Coverage under canonical-v1: 624 of 11,306 schemas compile (5.5%); the
+  rest use constructs outside that profile (draft-04/06/07 `$schema`,
+  `definitions`, `allOf`/`anyOf`/`oneOf`, `pattern`, boolean schemas).
+  The wider `spec-v1` profile is experimental; see
+  [Schema profiles and limitations](#schema-profiles-and-limitations).
+
+### Warm masks on own workloads (control series)
+
+Primary metric of the pinned control scenario (`benchmarks/manifest.json`,
+`control_scenario`): p99 of `fill_mask` on a repeated trace, >= 10,000
+warm observations per engine, so the adaptive engine serves the cache-hit
+path; GPT-2 vocabulary of 50,257 tokens. Bolorgir 0.81 µs vs XGrammar
+0.2.6 3.04 µs; on the secondary holdout schema 1.02 µs vs llguidance 1.8.0
+358.68 µs. Cold first mask (new engine, empty cache, n = 3000): p95/p99
+586.5/684.1 µs vs XGrammar 965.0/1288.6 µs. Source:
+`benchmarks/reports/20260919T033356_v3-run3/REPORT.md`, sections 1 and 4.
+
+### End-to-end generation
+
+Constrained generation through the Hugging Face adapter is on par with
+XGrammar: all 12 measured configurations stay within the 5% threshold,
+worst paired-median case +1.7%. Source:
+`benchmarks/reports/20260919T033356_v3-run3/REPORT.md`, section 3.
+
+Caveats: these are our workloads under our acceptance protocol plus one
+independent corpus run; competitor-reported figures may differ (for
+example, llguidance documents ~50 µs per token typical for a
+128k-tokenizer JSON workload). The MaskBench protocol measures
+first-visit masks and does not support a "fastest mask" claim on its own
+(`benchmarks/maskbench/README.md`, "Relation to the control series"). For
+neutral cross-checks see
 [MaskBench / JSONSchemaBench](https://github.com/guidance-ai/jsonschemabench).
 Reproduce locally with `python3 benchmarks/run_all.py`.
 
-## MVP scope and limitations
+## Schema profiles and limitations
+
+Two JSON Schema profiles are selected at compile time (`profile=...` in
+Python, `blg_compile_request.profile` in C). The normative support tables
+are in `docs/supported_features.md`.
+
+### canonical-v1 (default, frozen)
 
 - **JSON Schema:** `type`, `properties`/`required`,
   `additionalProperties: false`, `items`, `minItems`/`maxItems`,
-  `minLength`/`maxLength`, `enum`/`const`, local `$defs`/`$ref`, annotations.
-  Outside the MVP (rejected explicitly): `anyOf`/`oneOf`/`allOf`/`not`/
-  `if`/`then`/`else`, `pattern`, `format`, `patternProperties`, numeric bounds
-  (`minimum`/`maximum`/`multipleOf`), external references, boolean schemas.
-- **Regex and arbitrary CFG are not supported yet**; literal sets are.
-- **Platforms:** Linux x86_64 (glibc); CPython 3.10-3.13 via abi3.
+  `minLength`/`maxLength`, `enum`/`const`, local `$defs`/`$ref`,
+  annotations. Rejected with `UNSUPPORTED_FEATURE` and a JSON Pointer:
+  `anyOf`/`oneOf`/`allOf`/`not`/`if`/`then`/`else`, `pattern`, `format`,
+  `patternProperties`, numeric bounds (`minimum`/`maximum`/`multipleOf`),
+  external references, boolean schemas.
+- Output language: compact JSON (no whitespace outside strings), object
+  keys in schema declaration order (`docs/semantics.md`).
+
+### spec-v1 (experimental)
+
+Implements, on top of canonical-v1 (`docs/supported_features.md` section
+1a; normative semantics `docs/semantics-spec-v1.md`; dialects draft-04,
+draft-06, draft-07, 2019-09, 2020-12):
+
+- `anyOf`; `oneOf`/`allOf`/`if`/`then`/`else`; `not` over a fixed
+  complement subset;
+- `pattern` as an ECMA-262-subset regex compiled to a DFA
+  (`src/pattern.zig`); regex `patternProperties` (a single pattern);
+- numeric bounds `minimum`/`maximum`/`exclusiveMinimum`/
+  `exclusiveMaximum` and `multipleOf` in exact decimal arithmetic;
+- type unions, open objects, `additionalProperties` as a schema,
+  `propertyNames`, `minProperties`/`maxProperties`,
+  `dependencies`/`dependentRequired`/`dependentSchemas`,
+  `prefixItems`/tuple `items`/`additionalItems`, `contains` with
+  `minContains`/`maxContains`, `uniqueItems`, structural `enum`/`const`;
+- recursive local `$ref` (bounded unrolling), external `$ref` through an
+  explicit registry snapshot, `$dynamicRef`/`$recursiveRef`,
+  `unevaluatedProperties`/`unevaluatedItems`.
+
+Known limitations of spec-v1 (experimental):
+
+- **Runtime `RESOURCE_LIMIT`.** A compiled schema can still fail
+  `fill_mask` or `accept_token` with `BLG_ERR_RESOURCE_LIMIT` (Python
+  `ResourceLimitError`) when completion reachability cannot be proven
+  within the search budget; a token is never admitted without a proof.
+  Numeric conjunctions (bounds, `multipleOf`, `integer`, excluded
+  constants) and numeric `oneOf`/`if` groups are certified in closed form
+  (ADR-0011). The current residual is pinned row by row in
+  `tests/oracle/engine_error_residual_spec_v1.json` (33 oracle rows across
+  the five dialects, 10 of them on 2020-12, 2026-10-05). To handle it:
+  `constrained_generate(..., on_constraint_error="fail_row")` ends only the
+  affected batch row with EOS and reports the error, and
+  `engine.compile(schema, profile="spec-v1", probe="probe")` searches for
+  such states before generation (`docs/supported_features.md` section 1a,
+  [ADR-0012](docs/adr/ADR-0012-generatability-probe.md)).
+- **Compact JSON only:** no whitespace outside strings.
+- **Fixed key order:** object keys follow the schema declaration order;
+  the `bolorgir.serializer` helper reorders object keys of a value to
+  match the schema without changing the value. Inside the branches of a
+  `oneOf` with two or more live branches, `if` conditions and `contains`
+  under `maxContains` the engine accepts any key order, because those
+  keywords decide on the value (semantics-spec-v1 section 4.3).
+
+### Common limitations
+
+- **Standalone regex and arbitrary CFG are not supported** in any
+  profile; literal sets are. The `pattern` keyword above is a JSON Schema
+  constraint on string values inside a schema, not a standalone regex
+  constraint format.
+- **Platforms:** Linux x86_64 with glibc 2.28 or newer; CPython
+  3.12-3.15 through one abi3 wheel. macOS, Windows and Linux aarch64 are
+  not built or tested.
 - **Tokenizers:** byte-level BPE and SentencePiece with byte fallback, with
   exact decoder chains; other chains are rejected as `UNSUPPORTED_TOKENIZER`
   rather than approximated.
@@ -201,6 +520,25 @@ PYTHONPATH=python BLG_TEST_BACKEND=package python3 -m pytest tests/ python/tests
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the full workflow, and
 `docs/RUN_HISTORY.md` for the acceptance history behind the current verdict
 (build identities, outcomes, report links and unresolved limitations).
+
+## Reporting a problem
+
+Open an [issue](https://github.com/wpartscom/bolorgir/issues/new?template=bug_report.yml)
+with:
+
+1. the version (`python -c "import bolorgir; print(bolorgir.__version__)"`)
+   and how it was installed: the wheel or sdist of a release, or a commit;
+2. the platform: OS and version, CPU architecture, glibc and Python
+   versions;
+3. the schema (or literal set) and the profile, `canonical-v1` or `spec-v1`;
+4. the tokenizer: model name and revision, or how the `TokenizerBundle` was
+   built;
+5. a minimal script that reproduces it, with the engine mode and limits;
+6. the observed result: the exception or status with its message, the
+   generated text, or how long a call ran before you stopped it.
+
+Vulnerabilities go privately through GitHub Security Advisories, see
+[SECURITY.md](SECURITY.md).
 
 ## Documentation
 

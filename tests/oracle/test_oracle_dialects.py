@@ -136,7 +136,7 @@ def test_no_stale_known_gaps(report):
 
 def test_engine_error_residual_pinned(report):
     # Same exact-row pin as test_oracle_spec_v1.test_spec_v1_no_engine_errors,
-    # applied to all five drafts of this run (the full 196-row residual).
+    # applied to all five drafts of this run (the full multi-draft residual).
     from test_oracle_spec_v1 import pinned_residual_rows
     pinned, observed = pinned_residual_rows(report, ALL_DRAFTS)
     for r in pinned:

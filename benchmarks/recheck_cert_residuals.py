@@ -10,18 +10,20 @@ documented entry point:
                  corpus instance with the value-preserving serializer and
                  feed it byte-exactly through the engine (lazy mode, mask
                  cache disabled, byte-level synthetic tokenizer). Expected
-                 residual of the fix3 build, pinned per case below:
-                 13 accept + 1 reject (the single invalid document,
-                 Github_medium---o55595.json test 1) + 12 RESOURCE_LIMIT.
-                 Saved evidence: recheck_out.log beside the fix3 report.
+                 residual, pinned per case below: 15 accept + 1 reject
+                 (the single invalid document, Github_medium---o55595.json
+                 test 1) + 10 RESOURCE_LIMIT. Saved evidence:
+                 recheck_out.log in EVIDENCE_DIR.
 
   valid-rejects  all valid instances of the MaskBench files whose valid
                  instances were rejected in the spec-v1 semantic coverage
-                 report (74 files, 126 instances). Expected residual of the
-                 fix3 build: 75 accept / 50 RESOURCE_LIMIT / 1 reject (the
-                 single reject is the o55595 serializer key-order defect,
-                 not an engine defect). Saved evidence:
-                 recheck_valid_rejects_out.jsonl beside the fix3 report.
+                 report (74 files, 126 instances; the file set is pinned in
+                 recheck_valid_rejects_targets.json). Expected residual:
+                 87 accept / 39 RESOURCE_LIMIT (the o55595 instance, once
+                 serialized with its keys out of the outer declared
+                 order, is accepted since the serializer fix). Saved
+                 evidence:
+                 recheck_valid_rejects_out.jsonl in EVIDENCE_DIR.
 
 The pins above are a ratchet like tests/oracle/engine_error_residual_spec_v1.json:
 when a new certificate family lands, the RESOURCE_LIMIT counts must shrink and
@@ -38,9 +40,9 @@ Inputs (all explicit; nothing is read from /tmp or personal directories):
     benchmarks/external/jsonschemabench-maskbench/maskbench/data/
     (fetch instructions in bench_jsb_coverage.py; override with
     --corpus-dir);
-  - coverage report for the valid-rejects suite:
-    benchmarks/coverage/spec-v1/coverage_maskbench.json
-    (override with --coverage-report).
+  - valid-rejects file set: benchmarks/recheck_valid_rejects_targets.json,
+    pinned from the spec-v1 semantic coverage report of build c1cc2cb
+    (derive another set with --coverage-report).
 
 Usage (from anywhere; paths resolve against the repository root):
 
@@ -73,16 +75,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
 DEFAULT_LIB = os.path.join(ROOT, "zig-out", "lib", "libbolorgir.so.0")
-DEFAULT_COVERAGE_REPORT = os.path.join(
-    HERE, "coverage", "spec-v1", "coverage_maskbench.json")
-EVIDENCE_DIR = os.path.join(HERE, "reports", "20260929T_fix3_adr0007")
+DEFAULT_TARGETS = os.path.join(HERE, "recheck_valid_rejects_targets.json")
+EVIDENCE_DIR = os.path.join(HERE, "reports", "20261002T_audit_fixes")
 DEFAULT_EXPECT_CASES26 = os.path.join(EVIDENCE_DIR, "recheck_out.log")
 DEFAULT_EXPECT_VALID_REJECTS = os.path.join(
     EVIDENCE_DIR, "recheck_valid_rejects_out.jsonl")
 
-# The 26 engine-suspect MaskBench cases with the pinned fix3-build outcome:
-# (file, test index, outcome, detail). 13 accept + 1 reject (o55595 test 1,
-# the invalid document) + 12 RESOURCE_LIMIT.
+# The 26 engine-suspect MaskBench cases with the pinned outcome:
+# (file, test index, outcome, detail). 15 accept + 1 reject (o55595 test 1,
+# the invalid document) + 10 RESOURCE_LIMIT.
 CASES26 = [
     ("JsonSchemaStore---aiproj-1.1.json", 0, "accept", ""),
     ("JsonSchemaStore---aiproj-1.1.json", 1, "accept", ""),
@@ -92,11 +93,9 @@ CASES26 = [
     ("Github_ultra---o358.json", 1, "accept", ""),
     ("Github_ultra---o360.json", 0, "accept", ""),
     ("Github_ultra---o360.json", 1, "error:RESOURCE_LIMIT",
-     "fill_mask at byte 129"),
-    ("Github_ultra---o17072.json", 0, "error:RESOURCE_LIMIT",
-     "fill_mask at byte 84"),
-    ("Github_ultra---o17072.json", 1, "error:RESOURCE_LIMIT",
-     "fill_mask at byte 84"),
+     "fill_mask at byte 324"),
+    ("Github_ultra---o17072.json", 0, "accept", ""),
+    ("Github_ultra---o17072.json", 1, "accept", ""),
     ("JsonSchemaStore---v4-config.schema.json", 0, "error:RESOURCE_LIMIT",
      "fill_mask at byte 177"),
     ("JsonSchemaStore---v4-config.schema.json", 1, "error:RESOURCE_LIMIT",
@@ -105,12 +104,12 @@ CASES26 = [
     ("Github_ultra---o58926.json", 0, "accept", ""),
     ("Github_hard---o21819.json", 0, "accept", ""),
     ("Github_hard---o21819.json", 1, "accept", ""),
-    ("Github_hard---o84330.json", 0, "accept", ""),
-    ("Github_hard---o84330.json", 1, "accept", ""),
-    ("Github_medium---o35868.json", 0, "error:RESOURCE_LIMIT",
-     "fill_mask at byte 207"),
-    ("Github_medium---o35868.json", 1, "error:RESOURCE_LIMIT",
-     "fill_mask at byte 220"),
+    ("Github_hard---o84330.json", 0, "error:RESOURCE_LIMIT",
+     "fill_mask at byte 530"),
+    ("Github_hard---o84330.json", 1, "error:RESOURCE_LIMIT",
+     "fill_mask at byte 530"),
+    ("Github_medium---o35868.json", 0, "accept", ""),
+    ("Github_medium---o35868.json", 1, "accept", ""),
     ("JsonSchemaStore---github-issue-forms.json", 0, "error:RESOURCE_LIMIT",
      "fill_mask at byte 89"),
     ("JsonSchemaStore---minecraft-biome.json", 0, "error:RESOURCE_LIMIT",
@@ -124,12 +123,19 @@ CASES26 = [
     ("JsonSchemaStore---discovery.schema.json", 0, "accept", ""),
 ]
 
-# Pinned aggregate of the valid-rejects suite on the fix3 build.
+# Pinned aggregate of the valid-rejects suite.
 EXPECTED_VALID_REJECTS = {
     "files": 74,
     "valid_instances_rechecked": 126,
-    "summary": {"accept": 75, "error:RESOURCE_LIMIT": 50, "reject": 1},
+    "summary": {"accept": 87, "error:RESOURCE_LIMIT": 39},
 }
+
+
+def shown_path(path):
+    """A path as the output records it: relative to the repository root,
+    or the bare file name outside it."""
+    rel = os.path.relpath(os.path.abspath(path), ROOT)
+    return os.path.basename(path) if rel.startswith("..") else rel
 
 
 def fail_input(msg):
@@ -159,7 +165,7 @@ def load_engine(lib_path):
 
 def load_expect_cases26(path):
     """-> {(file, test): (outcome, detail)} from a recheck_out.log-style
-    evidence file (JSONL rows plus a trailing 'BAD=n of 26' line)."""
+    evidence file (JSONL rows; a trailing non-JSON line is skipped)."""
     out = {}
     with open(path, encoding="utf-8") as f:
         for line in f:
@@ -266,27 +272,39 @@ def run_cases26(blg, b, snapshot, expect_path, limit=0):
         if extra:
             print(f"EXPECT-DIFF [cases26] evidence rows outside the "
                   f"26-case pin: {sorted(extra)}", file=sys.stderr)
-        summary["expect_file"] = expect_path
+        summary["expect_file"] = shown_path(expect_path)
         summary["expect_mismatches"] = diff_rows(
             rows, want, lambda k: f"{k[0]} test {k[1]}", "cases26")
     print(json.dumps(summary, ensure_ascii=False))
     return n_bad + summary.get("expect_mismatches", 0)
 
 
-def run_valid_rejects(blg, b, snapshot, coverage_report, expect_path,
-                      limit_files=0):
+def load_targets(coverage_report, targets_path):
+    """file -> number of rejected valid instances: from a semantic
+    coverage report when given, else from the pinned targets file."""
+    if coverage_report is None:
+        if not os.path.exists(targets_path):
+            fail_input(f"targets file not found: {targets_path}")
+        with open(targets_path, encoding="utf-8") as f:
+            return json.load(f)["files"]
     if not os.path.exists(coverage_report):
         fail_input(f"coverage report not found: {coverage_report} "
                    "(use --coverage-report)")
     with open(coverage_report, encoding="utf-8") as f:
         rep = json.load(f)
-    targets = {}  # file -> number of rejected valid instances
+    targets = {}
     for rec in rep["per_file"]:
         sem = rec.get("semantic") or {}
         n = sum(1 for i in (sem.get("instances") or [])
                 if i.get("valid") and i.get("outcome") == "reject")
         if n:
             targets[rec["file"]] = n
+    return targets
+
+
+def run_valid_rejects(blg, b, snapshot, coverage_report, expect_path,
+                      limit_files=0, targets_path=None):
+    targets = load_targets(coverage_report, targets_path)
 
     serializer = b.load_value_serializer()
     ctx = blg.Context(b.byte_tokenizer_spec(), mode=0, cache_limit_bytes=0)
@@ -379,7 +397,7 @@ def run_valid_rejects(blg, b, snapshot, coverage_report, expect_path,
             print(f"EXPECT-DIFF [valid-rejects] {row[0]}: "
                   f"evidence x{want[row]} run x{got[row]}: {row[1:]!r}",
                   file=sys.stderr)
-        out["expect_file"] = expect_path
+        out["expect_file"] = shown_path(expect_path)
         out["expect_mismatches"] = mismatches
         n_bad += mismatches
     print(json.dumps(out, ensure_ascii=False))
@@ -399,12 +417,15 @@ def main():
                     help="MaskBench snapshot data directory "
                          "(default: benchmarks/external/"
                          "jsonschemabench-maskbench/maskbench/data)")
-    ap.add_argument("--coverage-report", default=DEFAULT_COVERAGE_REPORT,
-                    help="spec-v1 semantic coverage report the valid-rejects "
-                         "file set is derived from")
+    ap.add_argument("--coverage-report", default=None,
+                    help="spec-v1 semantic coverage report to derive the "
+                         "valid-rejects file set from (default: the pinned "
+                         "set in recheck_valid_rejects_targets.json)")
+    ap.add_argument("--targets", default=DEFAULT_TARGETS,
+                    help="pinned valid-rejects file set")
     ap.add_argument("--expect", nargs="?", const="", default=None,
                     help="evidence JSONL/log to diff case-by-case; default: "
-                         "the saved logs beside the fix3 report")
+                         "the saved logs in EVIDENCE_DIR")
     ap.add_argument("--no-expect", action="store_true",
                     help="skip the evidence diff (pins still apply)")
     ap.add_argument("--limit", type=int, default=0,
@@ -434,7 +455,7 @@ def main():
         n_bad += run_cases26(blg, b, snapshot, expect_cases26, args.limit)
     if args.suite in ("valid-rejects", "both"):
         n_bad += run_valid_rejects(blg, b, snapshot, args.coverage_report,
-                                   expect_vr, args.limit_files)
+                                   expect_vr, args.limit_files, args.targets)
     return 1 if n_bad else 0
 
 

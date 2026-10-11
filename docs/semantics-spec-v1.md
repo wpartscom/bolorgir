@@ -117,6 +117,16 @@ for codes >= 0x20 are forbidden; non-ASCII is written raw in UTF-8.
 - Merged objects (an approved `allOf` equivalence merge, P3): the effective
   declaration order is the order of first appearance across the merged
   subschemas, taken in schema document order.
+- Value verdicts: a branch of a `oneOf` with two or more live branches,
+  the `if` condition of `if`/`then`/`else` and a `contains` subschema under
+  a finite `maxContains` decide on the value (§1), so inside them declared
+  keys may appear in any order, each at most once, with the required ones
+  checked when the object closes. A key order that rejected a matching
+  value there would let a second matching `oneOf` branch pass alone, apply
+  `else` where `then` applies, or miss a `contains` match. The engine
+  compiles these positions to an order-free copy of their subgraph. A
+  `oneOf` with a single live branch is that branch, a conjunct like an
+  `allOf` member, and its declared order applies.
 
 ### 4.4. Numbers
 
@@ -237,6 +247,7 @@ limit: parser thread/frame caps, work limit, memory budget).
 | Key order, declared keys | schema declaration order, skippable optional keys |
 | Key order, undeclared keys (open objects) | unrestricted, unique, interleaving allowed |
 | Key order, merged objects | first appearance across subschemas in document order |
+| Key order inside `oneOf` branches, `if` conditions, `contains` under `maxContains` | unrestricted, unique |
 | Number spellings | any JSON-valid spelling; type checked by value (`1.0` is an integer) |
 | Range keywords and `multipleOf` | exact decimal comparison by value; divisors limited to 10 significant digits |
 | Content after the root value | forbidden |
@@ -314,7 +325,8 @@ the supported dialects but are **outside** the spec-v1 byte language:
 2. Alternative string escapes (`\/`, `\u0041`, uppercase hex, `\u0009` for
    tab); exactly the table of §4.2 is allowed.
 3. A declared-key order different from the schema declaration order (§4.3),
-   even though JSON Schema does not restrict key order.
+   even though JSON Schema does not restrict key order (inside the value
+   verdict positions of §4.3 any order is accepted).
 4. `NaN`, `Infinity`, hexadecimal numbers, leading zeros, `+1`, `.5`, `1.` -
    not JSON numbers.
 5. Schema keywords not implemented in the current phase are refused with

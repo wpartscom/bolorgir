@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Example: JSON Schema (FR-1/FR-2) without Hugging Face.
+Example: JSON Schema without Hugging Face.
 
 Mini-tokenizer is byte-level (ids 0..255) + EOS (id 256), assembled by hand.
 The "model" samples at random among allowed tokens; the generated document is

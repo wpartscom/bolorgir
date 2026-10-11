@@ -1,10 +1,15 @@
 # Coverage report - JSONSchemaBench repository snapshot (data/)
 
 - corpus: https://github.com/guidance-ai/jsonschemabench revision `ba103c73756198dd9b149ddc7db7867da7a077f6` (`data/`), sha256 `4c6c1d3947936f6060d4a0c0d937b1f54c41b2af2f44c09f664ab1819e97112e`
-- engine commit: `c1cc2cb315c885ec8b4cd926d1a9b51cde9ad1a2` (bolorgir 0.1.0, ABI 1), profile `spec-v1`
+- engine commit: `dbc5eeb8886dc618919373af937962e84644b2a0+dirty` (bolorgir 0.1.0, ABI 1), profile `spec-v1`
 - limits: mode=adaptive, memory_limit_bytes=268435456, cache_limit_bytes=67108864, session_limit_bytes=8388608, schema_limit_bytes=1048576, max_depth=64, max_threads_per_state=64, work_limit_ops=0
-- tokenizer: synthetic-byte-fallback @ - (257 tokens)
-- date: 2026-09-28T23:13:38Z
+- tokenizer: openai-community/gpt2 @ 607a30d783dfa663caf39e06633721c8d4cfcd7e (50257 tokens)
+- date: 2026-10-05T09:11:01Z
+- library sha256: `7345490f7ddf5710ec438f0e4baf4bf98b330a61cb6663be045580da95fa56c8`
+
+> `generatable` is the result of K generation passes on the listed tokenizers, not a proof for every continuation
+
+K = 20; tokenizers: byte, llama-3.1, gpt2.
 
 First blocker per file; a refusal is never coverage.
 
@@ -12,10 +17,10 @@ First blocker per file; a refusal is never coverage.
 
 | bucket | files |
 |---|---|
-| compiled | 9251 |
+| compiled | 9247 |
 | invalid_schema | 6 |
 | unsupported_feature | 151 |
-| resource_limit | 143 |
+| resource_limit | 147 |
 | unsatisfiable_constraint | 7 |
 | total | 9558 |
 
@@ -37,10 +42,10 @@ First blocker per file; a refusal is never coverage.
 | dataset | total | compiled | invalid_schema | unsupported_feature | resource_limit | valid ex. | invalid ex. |
 |---|---|---|---|---|---|---|---|
 | Github_easy | 1943 | 1934 | 0 | 8 | 1 | 0 | 0 |
-| Github_hard | 1240 | 1158 | 4 | 31 | 41 | 0 | 0 |
-| Github_medium | 1976 | 1946 | 0 | 18 | 12 | 0 | 0 |
+| Github_hard | 1240 | 1152 | 4 | 31 | 47 | 0 | 0 |
+| Github_medium | 1976 | 1945 | 0 | 18 | 13 | 0 | 0 |
 | Github_trivial | 444 | 439 | 0 | 3 | 1 | 0 | 0 |
-| Github_ultra | 164 | 116 | 0 | 17 | 31 | 0 | 0 |
+| Github_ultra | 164 | 119 | 0 | 17 | 28 | 0 | 0 |
 | Glaiveai2K | 1707 | 1707 | 0 | 0 | 0 | 0 | 0 |
 | JsonSchemaStore | 492 | 412 | 2 | 40 | 38 | 0 | 0 |
 | Kubernetes | 1064 | 1045 | 0 | 0 | 19 | 0 | 0 |
@@ -55,16 +60,16 @@ Each metric has its own base; compile coverage alone is not exact
 coverage. Semantic checks run on a byte-level synthetic tokenizer
 (token id = byte value, eos=256) with the `spec-v1` profile;
 instances are encoded with python/bolorgir/serializer.py serialize_value and cross-checked
-with jsonschema==4.26.0; generation budgets: 8192 steps and 10s wall time per schema. The byte context is recycled every 150 checks (plus a retry on RESOURCE_LIMIT): 93 recycles this run - engine retains generation memory in a Context across session/grammar free (R5 finding). Context destroy() failures: 0.
+with jsonschema==4.26.0; generation budgets: 8192 steps and 10s wall time per schema. The byte context is recycled every 150 checks (plus a retry on RESOURCE_LIMIT): 172 recycles this run - engine retains generation memory in a Context across session/grammar free (R5 finding). Context destroy() failures: 0.
 
 | metric | n | base | % |
 |---|---|---|---|
-| compile coverage | 9251 | 9558 | 96.79% |
-| explicit refusals (engine declines the schema) | 307 | 9558 | 3.21% |
-| session success | 9240 | 9251 | 99.88% |
-| generation success | 8901 | 9251 | 96.22% |
-| generation success (of attempted: compiled minus oversize skips) | 8901 | 9239 | 96.34% |
-| generated-doc schema validity (jsonschema) | 8874 | 8901 | 99.70% |
+| compile coverage | 9247 | 9558 | 96.75% |
+| explicit refusals (engine declines the schema) | 311 | 9558 | 3.25% |
+| session success | 9243 | 9247 | 99.96% |
+| generation success | 8908 | 9247 | 96.33% |
+| generation success (of attempted: compiled minus oversize skips) | 8908 | 9242 | 96.39% |
+| generated-doc schema validity (jsonschema) | 8863 | 8908 | 99.49% |
 | valid-instance acceptance | 0 | 0 | n/a |
 | invalid-instance rejection | 0 | 0 | n/a |
 | serialization incompatibility | 0 | 0 | n/a |
@@ -74,13 +79,13 @@ Detail counters:
 | counter | n |
 |---|---|
 | compile mismatch (byte-context compile differs) | 3 |
-| session create failed | 8 |
-| generation: dead end | 11 |
-| generation: step/time budget exhausted | 308 |
+| session create failed | 1 |
+| generation: dead end | 0 |
+| generation: step/time budget exhausted | 184 |
 | generation: oversize skip (min document size estimate > step budget; not attempted) | 1 |
-| generation: engine error | 19 |
+| generation: engine error | 150 |
 | generated doc not JSON (finish accepted it) | 0 |
-| generated doc rejected by jsonschema | 24 |
+| generated doc rejected by jsonschema | 42 |
 | generated doc validator error (no verdict) | 3 |
 | schema unusable for jsonschema (validator_error) | 3 |
 | valid instances: rejected | 0 |
@@ -94,38 +99,64 @@ Detail counters:
 
 | failure kind | count |
 |---|---|
-| generation_budget | 308 |
-| generated_schema_invalid | 24 |
-| generation_error | 19 |
-| generation_dead_end | 11 |
-| session_create_failed | 8 |
+| generation_budget | 184 |
+| generation_error | 150 |
+| generated_schema_invalid | 42 |
 | compile_mismatch | 3 |
+| session_create_failed | 1 |
 
-### generation_budget (308, first 200)
+### generation_error (150)
 
 | dataset | file | detail |
 |---|---|---|
-| Github_easy | o13129.json | time budget 10s exhausted at step 96 |
+| Github_easy | o13129.json | error:RESOURCE_LIMIT: fill_mask at step 0 |
+| Github_easy | o2231.json | error:RESOURCE_LIMIT: fill_mask at step 0 |
+| Github_easy | o39084.json | error:RESOURCE_LIMIT: fill_mask at step 45 |
+| Github_easy | o44463.json | error:RESOURCE_LIMIT: fill_mask at step 0 |
+| Github_easy | o4834.json | error:RESOURCE_LIMIT: fill_mask at step 2 |
+| Github_easy | o6187.json | error:RESOURCE_LIMIT: fill_mask at step 2 |
+| Github_easy | o65440.json | error:RESOURCE_LIMIT: fill_mask at step 7 |
+| Github_easy | o68297.json | error:RESOURCE_LIMIT: fill_mask at step 10 |
+| Github_easy | o69914.json | error:RESOURCE_LIMIT: fill_mask at step 13 |
+| Github_easy | o72111.json | error:RESOURCE_LIMIT: fill_mask at step 2 |
+| Github_easy | o81526.json | error:RESOURCE_LIMIT: fill_mask at step 2 |
+| Github_easy | o81530.json | error:RESOURCE_LIMIT: fill_mask at step 0 |
+| Github_easy | o89710.json | error:RESOURCE_LIMIT: fill_mask at step 0 |
+| Github_easy | o90246.json | error:RESOURCE_LIMIT: fill_mask at step 2 |
+| Github_easy | o90287.json | error:RESOURCE_LIMIT: fill_mask at step 0 |
+
+### generation_budget (184)
+
+| dataset | file | detail |
+|---|---|---|
 | Github_easy | o13652.json | step budget 8192 exhausted |
 | Github_easy | o15726.json | step budget 8192 exhausted |
 | Github_easy | o21040.json | step budget 8192 exhausted |
-| Github_easy | o2231.json | time budget 10s exhausted at step 2320 |
 | Github_easy | o27844.json | step budget 8192 exhausted |
 | Github_easy | o28609.json | step budget 8192 exhausted |
 | Github_easy | o28614.json | step budget 8192 exhausted |
 | Github_easy | o33825.json | step budget 8192 exhausted |
-| Github_easy | o36461.json | time budget 10s exhausted at step 4096 |
-| Github_easy | o36463.json | time budget 10s exhausted at step 4064 |
-| Github_easy | o39084.json | time budget 10s exhausted at step 2176 |
 | Github_easy | o40228.json | step budget 8192 exhausted |
 | Github_easy | o40230.json | step budget 8192 exhausted |
 | Github_easy | o41033.json | step budget 8192 exhausted |
+| Github_easy | o41049.json | step budget 8192 exhausted |
+| Github_easy | o4354.json | step budget 8192 exhausted |
+| Github_easy | o44188.json | step budget 8192 exhausted |
+| Github_easy | o47923.json | step budget 8192 exhausted |
+| Github_easy | o48547.json | step budget 8192 exhausted |
 
-### generated_schema_invalid (24)
+### generated_schema_invalid (42)
 
 | dataset | file | detail |
 |---|---|---|
 | Github_easy | o17940.json | jsonschema rejects the generated document: {"arch":"","clientId":"00000000-0000-0000-0000-000000000000","device":"","locale":"","os":"","osversion":"","seq":-0,"v" |
+| Github_easy | o36461.json | jsonschema rejects the generated document: {"value":0.0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000 |
+| Github_easy | o36463.json | jsonschema rejects the generated document: {"value":0.0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000 |
+| Github_easy | o44051.json | jsonschema rejects the generated document: {"action":"ingest","location":"https://","id":"","version":0.00000000000000000000000000000000000000000000000000000000000 |
+| Github_easy | o57656.json | jsonschema rejects the generated document: {"NumberOfImages":0.0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000 |
+| Github_easy | o83684.json | jsonschema rejects the generated document: {"functionCode":"","usageUnits":-0,"division":0.000000000000000000000000000000000000000000000000000000000000000015000000 |
+| Github_easy | o83685.json | jsonschema rejects the generated document: {"functionCode":"","usageUnits":-0,"division":0.000000000000000000000000000000000000000000000000000000000000000010000000 |
+| Github_easy | o83687.json | jsonschema rejects the generated document: {"name":"","sex":"M","age":0.0000000000000000000000000000000000000000000000000000000000000000120000000000000000000000000 |
 | Github_hard | o41192.json | jsonschema rejects the generated document: {"config":{"config":"","inputs":"","skip-bids-validation":false,"task-id":"","echo-idx":"","n_cpus":-0,"mem_mb":-0,"anat |
 | Github_hard | o41250.json | jsonschema rejects the generated document: {"inputs":{"inputs":"","config":"","api_key":{},"freesurfer_license":{}},"config":{"inputs":"","config":"","api_key":"", |
 | Github_hard | o41251.json | jsonschema rejects the generated document: {"config":{"config":"","inputs":"","skip-bids-validation":false,"task-id":"","echo-idx":"","anat-only":false,"error-on-a |
@@ -133,69 +164,19 @@ Detail counters:
 | Github_hard | o41256.json | jsonschema rejects the generated document: {"inputs":{"inputs":"","config":"","api_key":{}},"config":{"inputs":"","config":"","api_key":"","ignore_aroma_denoising_ |
 | Github_hard | o41261.json | jsonschema rejects the generated document: {"inputs":{"inputs":"","config":"","api_key":{}},"config":{"inputs":"","config":"","api_key":"","save_outputs":false,"fo |
 | Github_hard | o41263.json | jsonschema rejects the generated document: {"inputs":{"inputs":"","config":"","api_key":{},"freesurfer_license":{}},"config":{"inputs":"","config":"","api_key":"", |
-| Github_hard | o41265.json | jsonschema rejects the generated document: {"config":{"config":"","inputs":"","skip-bids-validation":false,"task-id":"","echo-idx":"","anat-only":false,"error-on-a |
-| Github_hard | o41291.json | jsonschema rejects the generated document: {"config":{"config":"","inputs":"","DWIName":"","AnatomyRegDOF":0.000000000000000000000000000000000000000000000000000000 |
-| Github_hard | o41300.json | jsonschema rejects the generated document: {"config":{"config":"","inputs":"","save-on-error":false,"dry-run":false,"fMRIName":"rfMRI_REST1_RL","BiasCorrection":"N |
-| Github_hard | o41363.json | jsonschema rejects the generated document: {"inputs":{"inputs":"","config":"","intensity_images":{},"mask_image":{}},"config":{"inputs":"","config":"","intensity_i |
-| Github_hard | o41364.json | jsonschema rejects the generated document: {"inputs":{"inputs":"","config":"","intensity_images":{},"mask_image":{}},"config":{"inputs":"","config":"","intensity_i |
-| Github_hard | o41366.json | jsonschema rejects the generated document: {"inputs":{"inputs":"","config":"","brain_template":{},"brain_probability_mask":{},"anatomical_image":{}},"config":{"inp |
-| Github_hard | o41367.json | jsonschema rejects the generated document: {"inputs":{"inputs":"","config":"","segmentation_priors":{},"anatomical_image":{},"t1_registration_template":{},"brain_t |
-
-### generation_dead_end (11)
-
-| dataset | file | detail |
-|---|---|---|
-| Github_easy | o44051.json | fill_mask dead end at step 32 |
-| Github_easy | o90314.json | fill_mask dead end at step 3 |
-| Github_hard | o14404.json | fill_mask dead end at step 15 |
-| Github_hard | o2070.json | fill_mask dead end at step 33 |
-| Github_hard | o21334.json | fill_mask dead end at step 102 |
-| Github_hard | o44713.json | fill_mask dead end at step 136 |
-| Github_hard | o47658.json | fill_mask dead end at step 105 |
-| Github_hard | o63309.json | fill_mask dead end at step 40 |
-| Github_hard | o72527.json | fill_mask dead end at step 62 |
-| Github_hard | o78043.json | fill_mask dead end at step 590 |
-| JsonSchemaStore | task.json | fill_mask dead end at step 2 |
-
-### generation_error (19)
-
-| dataset | file | detail |
-|---|---|---|
-| Github_hard | o18948.json | error:RESOURCE_LIMIT: fill_mask at step 1 |
-| Github_hard | o19225.json | error:RESOURCE_LIMIT: fill_mask at step 1 |
-| Github_hard | o41072.json | error:RESOURCE_LIMIT: fill_mask at step 1 |
-| Github_medium | o70035.json | error:INVALID_TOKEN: accept at step 19 |
-| Github_ultra | o17462.json | error:RESOURCE_LIMIT: fill_mask at step 1 |
-| Github_ultra | o21378.json | error:RESOURCE_LIMIT: fill_mask at step 90 |
-| Github_ultra | o358.json | error:INVALID_TOKEN: accept at step 31 |
-| Github_ultra | o360.json | error:INVALID_TOKEN: accept at step 31 |
-| Github_ultra | o46322.json | error:RESOURCE_LIMIT: fill_mask at step 1 |
-| Github_ultra | o57502.json | error:RESOURCE_LIMIT: fill_mask at step 1 |
-| Github_ultra | o76155.json | error:RESOURCE_LIMIT: fill_mask at step 1 |
-| Glaiveai2K | calculate_area_95058385.json | error:INVALID_TOKEN: accept at step 26 |
-| JsonSchemaStore | datahub_ingestion_schema.json | error:RESOURCE_LIMIT: fill_mask at step 19 |
-| Snowplow | sp_261_Normalized.json | error:RESOURCE_LIMIT: fill_mask at step 1 |
-| Snowplow | sp_333_Normalized.json | error:RESOURCE_LIMIT: fill_mask at step 22 |
 
 ### compile_mismatch (3)
 
 | dataset | file | detail |
 |---|---|---|
-| Github_hard | o21160.json | RESOURCE_LIMIT: blg_compile: RESOURCE_LIMIT (out of memory during compile) |
 | Github_hard | o21215.json | RESOURCE_LIMIT: blg_compile: RESOURCE_LIMIT (out of memory during compile) |
-| Github_hard | o21256.json | RESOURCE_LIMIT: blg_compile: RESOURCE_LIMIT (out of memory during compile) |
+| Github_hard | o21252.json | RESOURCE_LIMIT: blg_compile: RESOURCE_LIMIT (out of memory during compile) |
+| Github_hard | o21412.json | RESOURCE_LIMIT: blg_compile: RESOURCE_LIMIT (out of memory during compile) |
 
-### session_create_failed (8)
+### session_create_failed (1)
 
 | dataset | file | detail |
 |---|---|---|
-| Github_medium | o69248.json | RESOURCE_LIMIT: blg_session_create: RESOURCE_LIMIT (parser state init limit exceeded) |
-| Github_medium | o76785.json | RESOURCE_LIMIT: blg_session_create: RESOURCE_LIMIT (parser state init limit exceeded) |
-| Github_trivial | o35155.json | RESOURCE_LIMIT: blg_session_create: RESOURCE_LIMIT (parser state init limit exceeded) |
-| JsonSchemaStore | jsconfig.json | RESOURCE_LIMIT: blg_session_create: RESOURCE_LIMIT (parser state init limit exceeded) |
-| JsonSchemaStore | minecraft-recipe.json | RESOURCE_LIMIT: blg_session_create: RESOURCE_LIMIT (parser state init limit exceeded) |
-| JsonSchemaStore | openrewrite.json | RESOURCE_LIMIT: blg_session_create: RESOURCE_LIMIT (parser state init limit exceeded) |
-| JsonSchemaStore | saucectl.schema.json | RESOURCE_LIMIT: blg_session_create: RESOURCE_LIMIT (parser state init limit exceeded) |
 | JsonSchemaStore | ui5.yaml.json | RESOURCE_LIMIT: blg_session_create: RESOURCE_LIMIT (parser state init limit exceeded) |
 
 ## Oversize generation skips (1)
@@ -206,6 +187,289 @@ generation not attempted (a documented skip, not a failure).
 | dataset | file | detail |
 |---|---|---|
 | Github_easy | o12622.json | estimated minimum document size 17440 bytes > step budget 8192; generation not attempted |
+
+## Generatable (K passes per schema and tokenizer)
+
+K = 20. Pass 1 runs the greedy `generate_document` policy over single-byte tokens; passes 2..K run the biased random policy of `tests/generation_passes.py` (seed = sha256 of the base seed 20261002, file, tokenizer and pass index). Budgets per pass: 8192 steps and 10 s. Per schema and tokenizer: 30 s, after which the remaining passes are recorded as `skipped:schema_budget`. The run of 2026-10-04T00:10:46Z (`coverage_repo.json`, sha256 `d75de190b73699c0...`) is completed with `--complete-from`: its passes recorded as `skipped:schema_budget` ran, its invalid_document and validator_error passes were replayed by seed for their documents, and every other record is that run's. The completed report of 2026-10-05T03:08:07Z (`coverage_repo.json`, sha256 `9b2658614d4a951f...`) is completed again: its invalid_document and validator_error passes without a document were replayed with 60 s per pass. The completed report of 2026-10-05T08:55:07Z (`coverage_repo.json`, sha256 `37a62d7fd2c354fb...`) is completed again: its invalid_document and validator_error passes without a document were replayed with 60 s per pass (a replay that ended in engine_unavailable again on a fresh context ran alone in a child process). Every document is validated by jsonschema==4.26.0 over exact numbers (tests/exact_numbers.py), `pattern` by regress==2025.10.1 (ECMA-262, unicode mode). Aggregation per schema: the first matching rule of `tests/semantic_outcomes.py` `aggregate_schema_outcome`; `skipped` is outside the percentage base. Every pass record is in `coverage_repo.passes.json.gz`.
+
+| tokenizer | name | revision | vocab | single-byte tokens | schema sample |
+|---|---|---|---|---|---|
+| byte | byte-level synthetic (token id = byte value, eos=256, pad=257) | - | 258 | 256 | all |
+| llama-3.1 | unsloth/Meta-Llama-3.1-8B-Instruct | a2856192dd7c25b842431f39c179a6c2c2f627d1 | 128256 | 256 | 1 in 20 |
+| gpt2 | openai-community/gpt2 | 607a30d783dfa663caf39e06633721c8d4cfcd7e | 50257 | 256 | 1 in 20 |
+
+A sampled tokenizer runs on the compiled schemas whose sha256(dataset/file) is 0 modulo the sample size; the others are `skipped` with code `not_sampled`.
+
+| schema outcome | byte | llama-3.1 | gpt2 |
+|---|---|---|---|
+| generatable | 8108 (87.72%) | 227 (52.67%) | 284 (65.89%) |
+| invalid_document | 702 (7.59%) | 5 (1.16%) | 5 (1.16%) |
+| engine_defect | 0 (0.00%) | 0 (0.00%) | 0 (0.00%) |
+| validator_error | 0 (0.00%) | 0 (0.00%) | 0 (0.00%) |
+| engine_unavailable | 359 (3.88%) | 38 (8.82%) | 43 (9.98%) |
+| incomplete | 74 (0.80%) | 161 (37.35%) | 99 (22.97%) |
+| skipped | 4 | 8816 | 8816 |
+| schemas with an outcome / compiled | 9247 / 9247 | 9247 / 9247 | 9247 / 9247 |
+| percentage base (compiled minus skipped) | 9243 | 431 | 431 |
+| incomplete passes inside generatable schemas | 8336 | 2159 | 2689 |
+| unsuccessful results retried on a fresh context | 366 | 34 | 42 |
+| results with passes skipped by the schema budget | 0 | 0 | 0 |
+| invalid_document / validator_error passes with their document | 5168 / 5168 | 24 / 24 | 30 / 30 |
+| passes run / replayed / replays not reproduced by --complete-from | 8268 / 4898 / 0 | 5587 / 22 / 0 | 4800 / 28 / 0 |
+| replays not reproduced earlier and replayed again | 207 | 3 | 5 |
+| replays run alone in a child process | 4 | 0 | 0 |
+
+Pass outcomes:
+
+| pass outcome | byte | llama-3.1 | gpt2 |
+|---|---|---|---|
+| completed_valid | 164074 | 2519 | 3159 |
+| engine_unavailable | 4182 | 479 | 518 |
+| incomplete:step_limit | 5183 | 1 | 1 |
+| incomplete:time_limit | 6173 | 5597 | 4912 |
+| invalid_document | 5168 | 24 | 30 |
+
+### byte: schemas that are not generatable, by outcome / stage / code
+
+| outcome / stage / code | schemas |
+|---|---|
+| invalid_document / validate / REJECTED | 702 |
+| engine_unavailable / fill_mask / BLG_ERR_RESOURCE_LIMIT | 354 |
+| incomplete / fill_mask / TIME_LIMIT | 44 |
+| incomplete / fill_mask / STEP_LIMIT | 30 |
+| engine_unavailable / compile_check / BLG_ERR_RESOURCE_LIMIT | 4 |
+| skipped / None / validator_unusable | 3 |
+| engine_unavailable / session_create / BLG_ERR_RESOURCE_LIMIT | 1 |
+| skipped / None / oversize | 1 |
+
+#### byte: invalid_document (702, first 15)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o10295.json | validate | REJECTED | 139 | 139 | 45091615433753 |
+| Github_easy | o10298.json | validate | REJECTED | 122 | 122 | 150671217023881 |
+| Github_easy | o11171.json | validate | REJECTED | 2160 | 2160 | 32347229860345 |
+| Github_easy | o11173.json | validate | REJECTED | 724 | 724 | 89495875348764 |
+| Github_easy | o11787.json | validate | REJECTED | 1778 | 1778 | 140323477944184 |
+| Github_easy | o11794.json | validate | REJECTED | 4411 | 4411 | 252184730714197 |
+| Github_easy | o11796.json | validate | REJECTED | 914 | 914 | 65401027560299 |
+| Github_easy | o11798.json | validate | REJECTED | 2381 | 2381 | 58298215610278 |
+| Github_easy | o12214.json | validate | REJECTED | 29 | 29 | 38038505282179 |
+| Github_easy | o12215.json | validate | REJECTED | 87 | 87 | 231197905972954 |
+| Github_easy | o12218.json | validate | REJECTED | 55 | 55 | 1279753347323 |
+| Github_easy | o12229.json | validate | REJECTED | 665 | 665 | 206080511952768 |
+| Github_easy | o12235.json | validate | REJECTED | 191 | 191 | 187086521492550 |
+| Github_easy | o12254.json | validate | REJECTED | 1574 | 1574 | 73118666461981 |
+| Github_easy | o1316.json | validate | REJECTED | 2438 | 2438 | 254564368036305 |
+
+#### byte: skipped (4)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o12622.json | None | oversize | None | None | None |
+| Github_easy | o66201.json | None | validator_unusable | None | None | None |
+| Github_medium | o82255.json | None | validator_unusable | None | None | None |
+| Github_ultra | o15286.json | None | validator_unusable | None | None | None |
+
+#### byte: engine_unavailable (359, first 15)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o13129.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 0 | 0 | 170843361848204 |
+| Github_easy | o21847.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 16 | 16 | 205006717077277 |
+| Github_easy | o2231.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 0 | 0 | 257647683086822 |
+| Github_easy | o37786.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 2 | 2 | 84504046519752 |
+| Github_easy | o37787.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 2 | 2 | 168439545220510 |
+| Github_easy | o37788.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 2 | 2 | 189787297863731 |
+| Github_easy | o39084.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 45 | 45 | 97877682706419 |
+| Github_easy | o42523.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 10 | 10 | 122173876074744 |
+| Github_easy | o44463.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 0 | 0 | 53786771168157 |
+| Github_easy | o4834.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 2 | 2 | 148724693685082 |
+| Github_easy | o6187.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 2 | 2 | 155728708879068 |
+| Github_easy | o65361.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 49 | 49 | 15097144929608 |
+| Github_easy | o65440.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 7 | 7 | 111470740975986 |
+| Github_easy | o65451.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 364 | 364 | 23167287762041 |
+| Github_easy | o68296.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 40 | 40 | 208516781515775 |
+
+#### byte: incomplete (74, first 15)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o40228.json | fill_mask | STEP_LIMIT | 8192 | 8192 | 49591121911542 |
+| Github_easy | o40230.json | fill_mask | STEP_LIMIT | 8192 | 8192 | 268514888274268 |
+| Github_easy | o41033.json | fill_mask | STEP_LIMIT | 8192 | 8192 | 163752859520778 |
+| Github_easy | o66294.json | fill_mask | STEP_LIMIT | 8192 | 8192 | 98164003047648 |
+| Github_hard | o13152.json | fill_mask | TIME_LIMIT | 6704 | 6704 | 166989771426732 |
+| Github_hard | o16058.json | fill_mask | TIME_LIMIT | 3168 | 3168 | 55507655996951 |
+| Github_hard | o16059.json | fill_mask | TIME_LIMIT | 2752 | 2752 | 191120550729424 |
+| Github_hard | o16060.json | fill_mask | TIME_LIMIT | 2832 | 2832 | 246819743838162 |
+| Github_hard | o16064.json | fill_mask | TIME_LIMIT | 2752 | 2752 | 162501828892496 |
+| Github_hard | o31337.json | fill_mask | STEP_LIMIT | 8192 | 8192 | 66685453539506 |
+| Github_hard | o34341.json | fill_mask | TIME_LIMIT | 4160 | 4160 | 198362872818401 |
+| Github_hard | o34342.json | fill_mask | TIME_LIMIT | 4000 | 4000 | 9196068219455 |
+| Github_hard | o34343.json | fill_mask | TIME_LIMIT | 4128 | 4128 | 243683516226056 |
+| Github_hard | o37717.json | fill_mask | STEP_LIMIT | 8192 | 8192 | 112951401729417 |
+| Github_hard | o39535.json | fill_mask | TIME_LIMIT | 6512 | 6512 | 221559162609046 |
+
+### llama-3.1: schemas that are not generatable, by outcome / stage / code
+
+| outcome / stage / code | schemas |
+|---|---|
+| skipped / None / not_sampled | 8815 |
+| incomplete / fill_mask / TIME_LIMIT | 161 |
+| engine_unavailable / fill_mask / BLG_ERR_RESOURCE_LIMIT | 38 |
+| invalid_document / validate / REJECTED | 5 |
+| skipped / None / validator_unusable | 1 |
+
+#### llama-3.1: skipped (8816, first 15)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o10008.json | None | not_sampled | None | None | None |
+| Github_easy | o10009.json | None | not_sampled | None | None | None |
+| Github_easy | o10011.json | None | not_sampled | None | None | None |
+| Github_easy | o10012.json | None | not_sampled | None | None | None |
+| Github_easy | o10013.json | None | not_sampled | None | None | None |
+| Github_easy | o10014.json | None | not_sampled | None | None | None |
+| Github_easy | o10016.json | None | not_sampled | None | None | None |
+| Github_easy | o10030.json | None | not_sampled | None | None | None |
+| Github_easy | o10059.json | None | not_sampled | None | None | None |
+| Github_easy | o10065.json | None | not_sampled | None | None | None |
+| Github_easy | o10077.json | None | not_sampled | None | None | None |
+| Github_easy | o1008.json | None | not_sampled | None | None | None |
+| Github_easy | o10086.json | None | not_sampled | None | None | None |
+| Github_easy | o10088.json | None | not_sampled | None | None | None |
+| Github_easy | o10091.json | None | not_sampled | None | None | None |
+
+#### llama-3.1: incomplete (161, first 15)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o1190.json | fill_mask | TIME_LIMIT | 16 | 16 | 230508166565878 |
+| Github_easy | o14743.json | fill_mask | TIME_LIMIT | 32 | 32 | 133389109370474 |
+| Github_easy | o16739.json | fill_mask | TIME_LIMIT | 16 | 16 | 218077443574175 |
+| Github_easy | o17635.json | fill_mask | TIME_LIMIT | 32 | 32 | 3642724840449 |
+| Github_easy | o21082.json | fill_mask | TIME_LIMIT | 16 | 16 | 130709022900867 |
+| Github_easy | o21494.json | fill_mask | TIME_LIMIT | 16 | 16 | 1625357348631 |
+| Github_easy | o25406.json | fill_mask | TIME_LIMIT | 16 | 16 | 43471658734920 |
+| Github_easy | o25953.json | fill_mask | TIME_LIMIT | 16 | 16 | 260930228120305 |
+| Github_easy | o27360.json | fill_mask | TIME_LIMIT | 16 | 16 | 56021707774389 |
+| Github_easy | o29394.json | fill_mask | TIME_LIMIT | 16 | 16 | 176779163358233 |
+| Github_easy | o33695.json | fill_mask | TIME_LIMIT | 32 | 32 | 31929118979552 |
+| Github_easy | o36222.json | fill_mask | TIME_LIMIT | 16 | 16 | 42930846064126 |
+| Github_easy | o40228.json | fill_mask | TIME_LIMIT | 15 | 15 | 56111114562083 |
+| Github_easy | o42984.json | fill_mask | TIME_LIMIT | 16 | 16 | 52670508274298 |
+| Github_easy | o47038.json | fill_mask | TIME_LIMIT | 16 | 16 | 203282525798134 |
+
+#### llama-3.1: engine_unavailable (38, first 15)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o20376.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 13 | 13 | 154201134166636 |
+| Github_easy | o21149.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 17 | 17 | 224199008875043 |
+| Github_easy | o42525.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 11 | 11 | 199801099121394 |
+| Github_easy | o81531.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 9 | 9 | 161730320275191 |
+| Github_hard | o12454.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 0 | 0 | 20074793620184 |
+| Github_hard | o21256.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 39 | 39 | 162671138600896 |
+| Github_hard | o21271.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 13 | 13 | 52839403972303 |
+| Github_hard | o38538.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 11 | 11 | 30893764849049 |
+| Github_hard | o46658.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 3 | 10 | 16205245044486 |
+| Github_hard | o5347.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 14 | 14 | 153749367095251 |
+| Github_hard | o5366.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 14 | 14 | 132881121508158 |
+| Github_hard | o72193.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 42 | 104 | 21095113892163 |
+| Github_hard | o89718.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 14 | 14 | 190507698489863 |
+| Github_hard | o89746.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 14 | 14 | 186804672450050 |
+| Github_medium | o21361.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 14 | 27 | 138746382220395 |
+
+#### llama-3.1: invalid_document (5)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o36463.json | validate | REJECTED | 209 | 209 | 258987550090302 |
+| Github_hard | o37075.json | validate | REJECTED | 35 | 69 | 148007283413041 |
+| Github_hard | o56023.json | validate | REJECTED | 69 | 121 | 109658511271609 |
+| Github_hard | o9836.json | validate | REJECTED | 24 | 81 | 209532890874325 |
+| Github_medium | o81496.json | validate | REJECTED | 31 | 81 | 32844880247059 |
+
+### gpt2: schemas that are not generatable, by outcome / stage / code
+
+| outcome / stage / code | schemas |
+|---|---|
+| skipped / None / not_sampled | 8815 |
+| incomplete / fill_mask / TIME_LIMIT | 99 |
+| engine_unavailable / fill_mask / BLG_ERR_RESOURCE_LIMIT | 43 |
+| invalid_document / validate / REJECTED | 5 |
+| skipped / None / validator_unusable | 1 |
+
+#### gpt2: skipped (8816, first 15)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o10008.json | None | not_sampled | None | None | None |
+| Github_easy | o10009.json | None | not_sampled | None | None | None |
+| Github_easy | o10011.json | None | not_sampled | None | None | None |
+| Github_easy | o10012.json | None | not_sampled | None | None | None |
+| Github_easy | o10013.json | None | not_sampled | None | None | None |
+| Github_easy | o10014.json | None | not_sampled | None | None | None |
+| Github_easy | o10016.json | None | not_sampled | None | None | None |
+| Github_easy | o10030.json | None | not_sampled | None | None | None |
+| Github_easy | o10059.json | None | not_sampled | None | None | None |
+| Github_easy | o10065.json | None | not_sampled | None | None | None |
+| Github_easy | o10077.json | None | not_sampled | None | None | None |
+| Github_easy | o1008.json | None | not_sampled | None | None | None |
+| Github_easy | o10086.json | None | not_sampled | None | None | None |
+| Github_easy | o10088.json | None | not_sampled | None | None | None |
+| Github_easy | o10091.json | None | not_sampled | None | None | None |
+
+#### gpt2: incomplete (99, first 15)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o14743.json | fill_mask | TIME_LIMIT | 48 | 48 | 209787487969576 |
+| Github_easy | o16739.json | fill_mask | TIME_LIMIT | 64 | 64 | 95218242639734 |
+| Github_easy | o17635.json | fill_mask | TIME_LIMIT | 80 | 80 | 99801331076846 |
+| Github_easy | o21494.json | fill_mask | TIME_LIMIT | 48 | 48 | 271897331766059 |
+| Github_easy | o25953.json | fill_mask | TIME_LIMIT | 64 | 64 | 253747430852821 |
+| Github_easy | o29394.json | fill_mask | TIME_LIMIT | 32 | 32 | 178490434728679 |
+| Github_easy | o36222.json | fill_mask | TIME_LIMIT | 48 | 48 | 196331337641623 |
+| Github_easy | o40228.json | fill_mask | TIME_LIMIT | 32 | 32 | 209222684698721 |
+| Github_easy | o42984.json | fill_mask | TIME_LIMIT | 32 | 32 | 149049863356530 |
+| Github_easy | o47038.json | fill_mask | TIME_LIMIT | 32 | 32 | 27936194007233 |
+| Github_easy | o57230.json | fill_mask | TIME_LIMIT | 32 | 32 | 184377727378154 |
+| Github_easy | o64816.json | fill_mask | TIME_LIMIT | 64 | 64 | 56714705441444 |
+| Github_easy | o66327.json | fill_mask | TIME_LIMIT | 48 | 48 | 181105495173481 |
+| Github_easy | o83392.json | fill_mask | TIME_LIMIT | 48 | 48 | 225875872256135 |
+| Github_easy | o88584.json | fill_mask | TIME_LIMIT | 5440 | 5440 | 276804902561785 |
+
+#### gpt2: engine_unavailable (43, first 15)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o20376.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 14 | 14 | 259907497395270 |
+| Github_easy | o21149.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 17 | 17 | 182383467454605 |
+| Github_easy | o42525.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 12 | 12 | 272764561911123 |
+| Github_easy | o68324.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 27 | 27 | 5068982958506 |
+| Github_easy | o81531.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 10 | 10 | 59257215474212 |
+| Github_hard | o12454.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 0 | 0 | 148953998852298 |
+| Github_hard | o21256.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 40 | 40 | 206456167269993 |
+| Github_hard | o21271.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 14 | 14 | 77810522471580 |
+| Github_hard | o38538.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 11 | 11 | 200853643924769 |
+| Github_hard | o5347.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 15 | 15 | 220168223350903 |
+| Github_hard | o5366.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 15 | 15 | 90649408603306 |
+| Github_hard | o69965.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 96 | 203 | 58835164695316 |
+| Github_hard | o72193.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 5 | 13 | 232001569921884 |
+| Github_hard | o89718.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 15 | 15 | 250387063748584 |
+| Github_hard | o89746.json | fill_mask | BLG_ERR_RESOURCE_LIMIT | 15 | 15 | 107021325069068 |
+
+#### gpt2: invalid_document (5)
+
+| dataset | file | stage | code | step | prefix | seed |
+|---|---|---|---|---|---|---|
+| Github_easy | o36463.json | validate | REJECTED | 209 | 209 | 228273049677326 |
+| Github_hard | o47116.json | validate | REJECTED | 434 | 1210 | 158487500351454 |
+| Github_hard | o48422.json | validate | REJECTED | 183 | 358 | 152118093737595 |
+| Github_hard | o56023.json | validate | REJECTED | 77 | 216 | 268776840367015 |
+| Github_hard | o9836.json | validate | REJECTED | 30 | 84 | 164780274673311 |
 
 ## Resource-limit files
 
@@ -220,12 +484,17 @@ generation not attempted (a documented skip, not a failure).
 | Github_hard | o21074.json | out of memory during compile |
 | Github_hard | o21075.json | out of memory during compile |
 | Github_hard | o21076.json | out of memory during compile |
+| Github_hard | o21156.json | out of memory during compile |
+| Github_hard | o21157.json | out of memory during compile |
 | Github_hard | o21172.json | grammar exceeds node budget of 100000 |
+| Github_hard | o21184.json | out of memory during compile |
 | Github_hard | o21192.json | grammar exceeds node budget of 100000 |
-| Github_hard | o21284.json | out of memory during compile |
-| Github_hard | o21303.json | grammar exceeds node budget of 100000 |
+| Github_hard | o21283.json | out of memory during compile |
+| Github_hard | o21287.json | out of memory during compile |
+| Github_hard | o21303.json | out of memory during compile |
 | Github_hard | o21327.json | grammar exceeds node budget of 100000 |
 | Github_hard | o21379.json | grammar exceeds node budget of 100000 |
+| Github_hard | o21400.json | out of memory during compile |
 | Github_hard | o27039.json | grammar exceeds node budget of 100000 |
 | Github_hard | o35186.json | grammar exceeds node budget of 100000 |
 | Github_hard | o36010.json | grammar exceeds node budget of 100000 |
@@ -253,6 +522,7 @@ generation not attempted (a documented skip, not a failure).
 | Github_hard | o90924.json | grammar exceeds node budget of 100000 |
 | Github_hard | o90925.json | grammar exceeds node budget of 100000 |
 | Github_hard | o91595.json | grammar exceeds node budget of 100000 |
+| Github_hard | o9882.json | out of memory during compile |
 | Github_medium | o3626.json | grammar exceeds node budget of 100000 |
 | Github_medium | o39217.json | grammar exceeds node budget of 100000 |
 | Github_medium | o53100.json | grammar exceeds node budget of 100000 |
@@ -265,18 +535,16 @@ generation not attempted (a documented skip, not a failure).
 | Github_medium | o79622.json | grammar exceeds node budget of 100000 |
 | Github_medium | o81108.json | grammar exceeds node budget of 100000 |
 | Github_medium | o83086.json | grammar exceeds node budget of 100000 |
+| Github_medium | o9802.json | out of memory during compile |
 | Github_trivial | o47165.json | grammar exceeds node budget of 100000 |
 | Github_ultra | o18949.json | anyOf has more than 64 branches |
 | Github_ultra | o19343.json | grammar exceeds node budget of 100000 |
 | Github_ultra | o21161.json | out of memory during compile |
 | Github_ultra | o21173.json | grammar exceeds node budget of 100000 |
 | Github_ultra | o21193.json | grammar exceeds node budget of 100000 |
-| Github_ultra | o21219.json | out of memory during compile |
-| Github_ultra | o21220.json | out of memory during compile |
-| Github_ultra | o21304.json | out of memory during compile |
-| Github_ultra | o21307.json | out of memory during compile |
-| Github_ultra | o21308.json | out of memory during compile |
-| Github_ultra | o21312.json | out of memory during compile |
+| Github_ultra | o21304.json | grammar exceeds node budget of 100000 |
+| Github_ultra | o21307.json | grammar exceeds node budget of 100000 |
+| Github_ultra | o21308.json | grammar exceeds node budget of 100000 |
 | Github_ultra | o21328.json | out of memory during compile |
 | Github_ultra | o21375.json | out of memory during compile |
 | Github_ultra | o21376.json | out of memory during compile |

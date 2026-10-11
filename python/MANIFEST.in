@@ -3,3 +3,4 @@ include bolorgir/_core.c
 include bolorgir/py.typed
 include bolorgir/include/bolorgir.h
 include bolorgir/_lib/libbolorgir.so*
+include bolorgir/_lib/libbolorgir*.dylib

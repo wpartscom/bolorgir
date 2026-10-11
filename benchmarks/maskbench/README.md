@@ -103,11 +103,11 @@ Reading of the table:
 
 Re-measure of the published compact run with the value-preserving
 serializer ON (`BOLORGIR_SERIALIZER=1`, engine id `blg-ser`), on the
-post-audit build identified by its libbolorgir.so SHA-256
+post-fix build identified by its libbolorgir.so SHA-256
 `d8f936924f4323481abe7e147422843747739d794445529b744eca313285e1c0`
 (originally staged in a temporary build directory, no longer present;
 canonical-v1 profile; includes the mask fast path and the 2026-09-26
-audit fixes listed in CHANGELOG (R1-R4) plus the minLength
+fixes listed in CHANGELOG plus the minLength
 mask-normal-form fixes). Same corpus snapshot, same Llama
 tokenizer, same `--multi --blg --compact` protocol as the paired run
 above. All times in microseconds.
@@ -137,10 +137,10 @@ Reading of the table:
   633 valid instances accepted, 77 invalid rejected, 0 validation and 0
   invalidation errors) with the serializer in the path - the serializer
   preserves values exactly, including strings that look like numbers
-  (`"1"` stays a string) and arbitrary text (CHANGELOG R4; 0 serialization
+  (`"1"` stays a string) and arbitrary text (CHANGELOG; 0 serialization
   incompatible across the full corpus).
 - TBM: the tail collapse (p90 609 ms -> 247 us) is the ADR-0007 mask
-  fast path plus the audit-wave fixes; the remaining p95+ entries are
+  fast path plus the follow-up fixes; the remaining p95+ entries are
   first (cold) visits of normalized states, not cache misses of repeats.
 - tokens differ (+82) because the serializer reorders object keys to the
   schema declaration order, which retokenizes some instances.
@@ -223,6 +223,78 @@ the `serialization incompat` row of the results table). Per
 semantics-spec-v1 section 7 these schemas are a protocol artifact: they
 count neither as coverage (passing) nor as an engine refusal (compile
 error).
+
+## spec-v1 run and paired engines (T8a)
+
+`t8a/run_t8a.sh [--smoke N] <work dir> <bolorgir wheel> [threads]` runs,
+one after another, Bolorgir (`BOLORGIR_PROFILE=spec-v1`,
+`BOLORGIR_SERIALIZER=1`, `--compact`), llguidance and XGrammar at the
+MaskBench pins (0.7.10, 0.1.17) and at current releases. Both venvs get
+the same wheel and the same versions of the shared packages
+(transformers, tokenizers, huggingface_hub, numpy, torch). A venv is
+created at its final path (never moved: its scripts hold absolute paths),
+pip runs as `python -m pip`, and the venv counts only after every package
+installed and imported, marked by `.complete`; a venv directory without
+the marker is an interrupted install and stops the run. The tokenizer and the
+config come from the pinned Llama 3.1 snapshot directory, not from a
+model id. All engines consume the same serialized instances:
+`t8a/paired_runner.py` gives llguidance and XGrammar the serializer hook
+of the Bolorgir adapter, compiles XGrammar with the compact separators,
+records per instance the sha256 of the bytes and of the token ids each
+engine received and the step where it rejected, and the engine ids get
+the suffix `-t8a`. `t8a/paired_driver.py` checks every engine once on a
+trivial schema before any chunk and stops a run whose chunks produce no
+output instead of retrying them. It hands the files to the chunks itself
+(`t8a/t8a_queue.py`; pending, running, finished): a file runs in one
+chunk at a time, and a file without an output goes back to the queue only
+after its chunk ended. A file with an output (a result, or the pending
+marker MaskBench writes when a file starts and keeps after a timeout)
+never runs again; a chunk ends at its first timeout, and the files it had
+not reached go back without counting as attempts. The loop of
+`scripts/run_maskbench.py` gives files still running in one worker to the
+others once its own list is empty, and the same files ran in several
+processes at once.
+
+The work dir keeps an identity manifest (`t8a/t8a_identity.py`: wheel and
+core, the installed package files of each venv, serializer, tools and
+MaskBench code, the sha256 of every corpus file, the tokenizer files,
+parameters, the T3 verdict the core is bound to) and the reference token
+streams (`t8a/t8a_streams.py`); a resume with any other input aborts and
+names the field. The work dir lives outside any disposable worktree and
+is kept until the acceptance is closed: the report is rebuilt from its
+outputs and logs (`run.log`, per-engine logs, `out/*/log.txt`) without a
+rerun, and a changed tool, thread count or wheel needs a new work dir
+(the manifest pins them). The manifest fixes the five participants (run name,
+venv, module, engine id in `meta.txt`, installed version; the pinned
+engines at the MaskBench pins), and the report compares every `--run`
+and its `meta.txt` with them: a missing, extra, duplicated or substituted
+participant is a problem, and a report of a subset is a diagnostic. A
+full run first passes a smoke of 20 files: all five participants, every
+file finished without a crash or timeout, complete records equal to the
+reference streams (`t8a.smoke.passed`). Every process of the run has an
+address-space limit (`T8A_MEM_LIMIT_MB`, default and minimum 40960: the
+40 GB the MaskBench runner sets on its own processes and cannot raise
+above a lower hard limit), so a runaway engine fails instead of taking
+more. `t8a/t8a_report.py` writes the full-corpus table, the
+table on the schemas every engine compiled, the token-stream comparison
+with the reference and the Bolorgir validation errors, invalidation
+errors and crashes for the T2c classification. "Accepted" needs a full
+run with complete outputs in every run, equal streams, an admitted T3
+verdict of the same core and a T2c class for every Bolorgir error; a
+written report alone is not an acceptance. A class (`--t2c`, `T8A_T2C`)
+applies only with the full core sha256 of the run, a complete `protocol`
+block that equals the run's parameters (every required condition:
+threads, time and memory limits, profile, serializer, compact, smoke
+files, tokenizer revision, wheel; a missing, null, unknown or differing
+entry keeps every case open: a class is bound to the protocol it was
+decided for), the file and the exact outcome as its
+status: `validation_error`, `invalidation_error`,
+`timeout` (a pending marker whose chunk ended with exit -14, the
+runner's SIGALRM, while it ran the file, as `log.txt` shows) or
+`crash:<exit code>`; otherwise the case stays open with the reason in
+the report, and a classified timeout still fails a smoke. The run needs the accepted
+candidate (T3) and has not been made yet; no number here comes from it. The run
+instructions, the evidence rules and the recovery steps live in `t8a/README.md`.
 
 ## Reproduction
 

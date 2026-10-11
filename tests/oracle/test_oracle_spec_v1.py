@@ -35,6 +35,30 @@ def report():
     return run_oracle.run(profile="spec-v1")
 
 
+def test_compile_request_ends_before_the_flags():
+    """The harness sets no compile flags, so its request ends before them
+    and keeps the registry fields: the size every core with the registry
+    accepts. The full size is refused by a core without the flags tail
+    (dbc5eeb: "bad compile request struct_size")."""
+    import types
+    seen = []
+
+    class Lib:
+        def blg_compile(self, ctx, req, out, err):
+            r = req._obj
+            seen.append((r.struct_size, r.profile, r.registry_data_len))
+            return blg_ctypes.BLG_OK
+
+    zg = types.SimpleNamespace(**{k: getattr(blg_ctypes, k) for k in (
+        "ZgCompileRequest", "BLG_CONSTRAINT_JSON_SCHEMA", "BLG_OK", "new_error")}, LIB=Lib())
+    ctx = types.SimpleNamespace(handle=None)
+    grammar, refusal = run_oracle.compile_schema(zg, ctx, b"{}", b"spec-v1", registry=b"{\"x\":1}")
+    assert refusal is None
+    assert seen == [(blg_ctypes.ZgCompileRequest.flags.offset, b"spec-v1", 7)]
+    assert blg_ctypes.ZgCompileRequest.flags.offset > \
+        blg_ctypes.ZgCompileRequest.registry_data_len.offset
+
+
 def test_spec_v1_harness_covers_the_suite(report):
     s = report["summary"]
     assert s["rows"] > 1000, "suite snapshot looks incomplete"

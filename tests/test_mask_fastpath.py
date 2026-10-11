@@ -275,7 +275,8 @@ def test_escapes_split_across_token_boundaries():
     assert HEX_CLOSE in ids            # 1f" completes the escape and closes
     assert N_CLOSE not in ids          # 'n' is not lowercase hex
     assert BS not in ids               # backslash is not hex
-    assert ord('a') in ids             # 'a' is hex: content continuation
+    assert ord('0') in ids and ord('1') in ids  # \u000x, \u001x
+    assert ord('a') not in ids         # \u00ax is above U+001F: no \u escape
 
     # Mid-escape after "\: \" is the escaped quote (content, no string end).
     st, ids = assert_fastpath_equal(spec, schema, b'"\\')
