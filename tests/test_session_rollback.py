@@ -473,6 +473,32 @@ TRIGGERED_TWO_TAG_SPEC = {
                          "end": "</t>"}]},
 }
 
+# The end literal starts with a digit that is a dead-end JSON byte under
+# the content schema taken alone: `42` + `9` = 429 is outside [10, 42].
+TAG_DIGIT_END_SPEC = {
+    "type": "structural_tag",
+    "format": {"type": "tags_with_separator", "separator": "", "at_least_one": True,
+               "tags": [{"type": "tag", "begin": "<c>",
+                         "content": {"type": "json_schema",
+                                     "json_schema": {"type": "integer",
+                                                     "minimum": 10, "maximum": 42}},
+                         "end": "99"}]},
+}
+
+#: The `99` piece id in make_digit_end_tokenizer().
+T99 = 256
+
+
+def make_digit_end_tokenizer():
+    """Byte tokens plus a two-byte `99` piece: the closing bytes of
+    TAG_DIGIT_END_SPEC can be sampled as two tokens (`9`, `9`) or as one
+    (`99`) over the same vocabulary."""
+    from reference import TokenizerSpec
+    tokens = tuple(bytes([i]) for i in range(256)) + (b"99", b"", b"")
+    vocab = len(tokens)
+    return TokenizerSpec(tokens=tokens, eos_ids=(vocab - 2,),
+                         special_ids=(vocab - 1,)).validate()
+
 
 def _spec_of(tok_name):
     return make_byte_tokenizer() if tok_name == "byte" else make_dict_tokenizer()
@@ -575,6 +601,110 @@ def test_structural_tag_content_dead_end_prefixes_are_rejected(tok_name, mode):
             assert s.can_end()
         finally:
             s.close()
+    finally:
+        rig.close()
+
+
+@pytest.mark.parametrize("tok_name", ["byte", "digit"])
+@pytest.mark.parametrize("mode", ["lazy", "adaptive"])
+def test_structural_tag_end_literal_digit_is_alive(tok_name, mode):
+    """The digit starting the end literal `99` is a dead-end JSON byte
+    taken alone (`42` + `9` = 429 is outside [10, 42]) but alive as the
+    end literal's first byte: the mask offers it, accept and the draft
+    check take it, and only a completed literal may end the document.
+    Before the content is completable (after `<c>4`) the same digit is
+    still a dead end: no end literal may start there."""
+    spec = make_digit_end_tokenizer() if tok_name == "digit" else make_byte_tokenizer()
+    eos = spec.eos_ids[0]
+    rig = make_tag_rig(spec, mode, TAG_DIGIT_END_SPEC)
+    try:
+        s = rig.session(8)
+        try:
+            for t in b"<c>4":
+                assert s.accept(t) == BLG_OK
+            # `4` alone is not a valid integer: no content completion and
+            # no end-literal spawn, so the digit stays out of the mask.
+            assert ord("9") not in s.mask()
+            assert s.accept(ord("9")) != BLG_OK
+            for t in b"2":
+                assert s.accept(t) == BLG_OK
+            m = s.mask()
+            assert ord("9") in m and ord(".") in m and eos not in m
+            if tok_name == "digit":
+                assert T99 in m
+            # The draft check takes the literal bytes and cuts on a stray.
+            assert s.validate([ord("9"), ord("9")]) == (BLG_OK, 2)
+            assert s.validate([ord("9"), ord("x")]) == (BLG_OK, 1)
+            # One literal byte neither ends the document nor rolls the
+            # state back: the final byte stays maskable, the whole token
+            # `99` would overshoot (its second byte would have to start
+            # a new tag).
+            assert s.accept(ord("9")) == BLG_OK
+            assert not s.can_end() and eos not in s.mask()
+            assert ord("9") in s.mask()
+            if tok_name == "digit":
+                assert T99 not in s.mask()
+            assert s.rollback(1) == BLG_OK
+            assert s.mask() == m
+            for t in b"99":
+                assert s.accept(t) == BLG_OK
+            assert s.can_end() and eos in s.mask()
+        finally:
+            s.close()
+    finally:
+        rig.close()
+
+
+@pytest.mark.parametrize("mode", ["lazy", "adaptive"])
+def test_structural_tag_end_literal_same_bytes_two_splits(mode):
+    """The same closing bytes (`99`) sampled as two tokens (`9`, `9`) or
+    as one (`99`) reach the same state; a rollback of the closing count
+    re-opens both identically, and a partial literal cannot be finished
+    by a token that overshoots it."""
+    spec = make_digit_end_tokenizer()
+    eos = spec.eos_ids[0]
+    rig = make_tag_rig(spec, mode, TAG_DIGIT_END_SPEC)
+
+    def opened():
+        s = rig.session(8)
+        for t in b"<c>42":
+            assert s.accept(t) == BLG_OK
+        return s
+
+    try:
+        s0 = opened()
+        try:
+            m_open = s0.mask()
+        finally:
+            s0.close()
+        a = opened()
+        try:
+            assert a.accept(ord("9")) == BLG_OK
+            assert a.accept(ord("9")) == BLG_OK
+            assert a.can_end() and eos in a.mask()
+            m_closed = a.mask()
+            assert a.rollback(2) == BLG_OK
+            assert a.mask() == m_open and not a.can_end()
+        finally:
+            a.close()
+        b = opened()
+        try:
+            assert b.accept(T99) == BLG_OK
+            assert b.can_end() and b.mask() == m_closed
+            assert b.rollback(1) == BLG_OK
+            assert b.mask() == m_open and not b.can_end()
+            # Cross-split: a partial `9` plus the whole `99` token would
+            # feed three literal bytes; the token is refused as a whole
+            # with the state intact and the draft check cuts at it.
+            assert b.accept(ord("9")) == BLG_OK
+            before = b.mask()
+            assert b.accept(T99) != BLG_OK
+            assert b.mask() == before
+            assert b.validate([T99]) == (BLG_OK, 0)
+            assert b.rollback(1) == BLG_OK
+            assert b.mask() == m_open
+        finally:
+            b.close()
     finally:
         rig.close()
 

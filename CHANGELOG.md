@@ -103,6 +103,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the engine `Request`) passes both ids to `compile_grammar`, the trace
   is keyed by the exposed id and records the internal one per event, and
   the collector looks the trace up by the response id it observes.
+- Structural tags: the completion filter no longer withholds a live
+  end-literal prefix. The digit that starts an end like `99` after
+  `<c>42` is a dead-end JSON prefix (`429`) but the literal completes
+  mechanically and the tag closes with the content state of the spawn
+  point (`42`); the mask now offers it, the draft check takes it and
+  accept commits it, with the same bytes accepted as two tokens (`9`,
+  `9`) or as one (`99`) and with rollback restoring the exact state
+  (ABI and both Python backends).
+- Agent collector: the accept/rollback history is replayed. A rollback
+  beyond the tokens accepted so far, an undo of a terminal that is not
+  open, or a rollback that leaves an open terminal standing now reads as
+  `unknown` instead of qualifying a corrupted trace as `constrained`.
+- Agent collector: one request id is split into one stream per response
+  variant. Parallel sampling (`n > 1`) fans a request out into child
+  engine requests that share the exposed id and differ in the internal
+  one (`{index}_{internal}`, vLLM `ParentRequest.get_child_info`); the
+  collector qualifies every stream separately, requires the streams to
+  cover exactly the response's choices, and folds the row to
+  `constrained` only when every variant is (merged seq counters repeat;
+  a corrupted variant fails the whole row).
 
 ## [0.2.0] - not yet released (preview 0.2.0rc1 on GitHub, withdrawn 2026-10-11)
 

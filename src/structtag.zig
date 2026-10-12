@@ -639,12 +639,22 @@ fn needsReachability(p: *const Program) bool {
 /// can end or continue, so only content-open states are filtered: a
 /// byte-legal but unfinished content like `-` under `minimum: 10` can
 /// never satisfy the schema, and the whole tag can then never complete.
+/// An end-literal prefix in progress (`suffix_bits != 0`) is alive
+/// regardless of the JSON continuation: the spawn bit is only set where
+/// the content could end (`canEnd`), and the remaining bytes of the
+/// literal always match mechanically - a content parse failure along the
+/// way just switches to the json_dead branch. Without this the JSON
+/// check withheld the digit starting an end literal like `99` after
+/// `<c>42`: as content `429` is a dead-end prefix, as an end-literal
+/// start it completes the tag (and the content state at the spawn point,
+/// `42`, is what the tag closes with).
 /// The filter condition matches the standalone JSON constraint
 /// (mask.zig / c_api.zig): partial vocabularies over finite literal
 /// content, or any content with deferred value verdicts.
 /// ResourceLimit is UNKNOWN, not alive: the callers propagate it.
 pub fn stateAlive(p: *const Program, tok: *const tokenizer.Tokenizer, st: *const State, pool: *Pool, w: *work_mod.Work, side: *parser.Side) complete.Error!bool {
     if (st.small.phase != .json or st.small.json_dead) return true;
+    if (st.small.suffix_bits != 0) return true;
     const vi = st.small.json_variant;
     const content = &p.variants[vi].content;
     const filtered = (!tok.byte_complete and content.finite_literal) or content.needs_reachability;

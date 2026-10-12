@@ -432,7 +432,11 @@ the JSON value is the compiled tool schema and cannot be left open - a
 byte-legal but uncompletable prefix (a dead end like `-` under
 `minimum: 10`) is withheld from the mask, cuts a draft and is refused by
 accept exactly as in the standalone JSON constraint (the completion
-search of ADR-0005); the
+search of ADR-0005); the filter covers the open value only - a
+partially matched end literal is alive regardless of the JSON
+continuation, so under `end: "99"` after `<c>42` the byte `9` is
+masked in and accepted (the same closing bytes work as one token or
+two); the
 end literal is matched as a suffix-position set spawned at every byte
 boundary where the value can complete, so tokens crossing any segment
 boundary are handled exactly. EOS rules: free text can end unless the

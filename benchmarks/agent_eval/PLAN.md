@@ -95,6 +95,13 @@ response body id): the engine appends a random suffix to the id it
 receives (`InputProcessor.assign_request_id`), the patch lets the
 backend read both ids from the request, and every event records the
 engine-internal one as `internal_request_id` when the two differ.
+Parallel sampling (`n > 1`) fans one request out into child engine
+requests that share the exposed id; their internal ids carry an
+`{index}_` prefix (`ParentRequest.get_child_info`), so the collector
+splits the events of one exposed id into one stream per variant and
+qualifies each stream separately - the streams must cover exactly the
+response's choices and the row is `constrained` only when every stream
+is (merged seq counters would repeat).
 `finish` is written only when the generation is confirmed over through
 the backend: a terminal token that no rollback undoes (vLLM accepts draft
 terminals while filling masks and rolls them back in the same step, so a
@@ -143,7 +150,9 @@ A qualification needs, per request:
      begin prefix is in flight);
    - `{"event": "rollback", "tokens", "terminal_undone"}`: an engine
      rollback (`tokens` as passed to the backend, `terminal_undone` the
-     terminal that it undid); an undone terminal re-opens the trace;
+     terminal that it undid); an undone terminal re-opens the trace.
+     The depth must fit the tokens accepted so far and `terminal_undone`
+     must match the terminal state, or the trace is `unknown`;
    - `{"event": "finish", "status", "events"}`, last, with the number of
      events written before it: a trace without it, or with another count,
      is incomplete.
@@ -165,9 +174,12 @@ these rules per request id:
 - `unknown` unless the trace is complete and consistent: one start
   first, one decision, one finish last with status ok and the right
   count, seq 0..n-1, every compile and mask by the start's backend,
-  rollback events with a non-negative integer token count, one
-  consistent non-empty internal_request_id, and no mask or accept after
-  a terminal accept without an intervening rollback;
+  rollback events with a non-negative integer token count that fit the
+  accepted history (an inflated depth or a contradictory
+  terminal_undone is unknown), one consistent non-empty
+  internal_request_id per stream, streams covering the response's
+  choices exactly, and no mask or accept after a terminal accept
+  without an intervening rollback;
 - `unconstrained` only with `applied: false` and no compile or mask;
 - `constrained` only with `applied: true`, every declared constraint
   with a non-empty id and segment id, carrying a hash the client sent

@@ -331,3 +331,145 @@ def test_internal_request_id_is_checked():
     empty = [dict(e, internal_request_id="") for e in events]
     verdict, reason = q.qualify(row, empty)
     assert verdict == "unknown" and "internal_request_id" in reason, reason
+
+
+def test_rollback_history_is_replayed():
+    """An inflated rollback depth reads as a corrupted trace, not as
+    evidence: `rollback(999)` after two accepted tokens and an open
+    terminal is unknown, while the true depth of the same trace stays
+    constrained."""
+    body = {"tools": [q.tool(None)]}
+    row = {"schemas_sha256": q.sent_schemas(body)}
+    events = _trace()("r", body)
+    a1 = {"request_id": "chatcmpl-r", "event": "accept", "constraint_id": "c0",
+          "step": 1, "token": 52, "terminal": False}
+    a2 = dict(a1, step=2, token=50)
+    term = dict(a1, step=3, token=258, terminal=True)
+    rb = {"request_id": "chatcmpl-r", "event": "rollback", "tokens": 1,
+          "terminal_undone": True}
+    verdict, reason = q.qualify(row, _spliced(events, a1, a2, term, rb))
+    assert verdict == "constrained", reason
+    verdict, reason = q.qualify(row, _spliced(events, a1, a2, term, dict(rb, tokens=999)))
+    assert verdict == "unknown" and "beyond" in reason, reason
+    # Without the terminal the rollback must fit the accepted tokens too.
+    verdict, reason = q.qualify(row, _spliced(events, a1, a2, dict(rb, tokens=3, terminal_undone=False)))
+    assert verdict == "unknown" and "beyond the 2 accepted" in reason, reason
+    verdict, reason = q.qualify(row, _spliced(events, a1, a2, dict(rb, tokens=2, terminal_undone=False)))
+    assert verdict == "constrained", reason
+
+
+def test_contradictory_terminal_undone_is_unknown():
+    """`terminal_undone` must agree with the terminal state in both
+    directions: an undo without an open terminal is a contradiction, and
+    a rollback that leaves an open terminal standing is too."""
+    body = {"tools": [q.tool(None)]}
+    row = {"schemas_sha256": q.sent_schemas(body)}
+    events = _trace()("r", body)
+    a1 = {"request_id": "chatcmpl-r", "event": "accept", "constraint_id": "c0",
+          "step": 1, "token": 52, "terminal": False}
+    term = dict(a1, step=2, token=258, terminal=True)
+    rb_true = {"request_id": "chatcmpl-r", "event": "rollback", "tokens": 1,
+               "terminal_undone": True}
+    rb_false = dict(rb_true, terminal_undone=False)
+    verdict, reason = q.qualify(row, _spliced(events, a1, rb_true))
+    assert verdict == "unknown" and "not open" in reason, reason
+    verdict, reason = q.qualify(row, _spliced(events, a1, term, rb_false))
+    assert verdict == "unknown" and "does not undo the open terminal" in reason, reason
+
+
+def _parallel_events(rid, body, broken_stream=None, choices=2):
+    """Events of one n=2 parallel request for the collector: two child
+    streams sharing the exposed id, internal ids `{index}_{internal}`
+    (vLLM fans parallel sampling out this way), interleaved in file
+    order like the engine writes them. `broken_stream` drops the mask of
+    that variant; `choices` overrides how many streams are written."""
+    sent = q.sent_schemas(body)
+    h = next(iter(sent.values()))
+    ext = "chatcmpl-" + rid
+    per_stream = []
+    for idx in range(choices):
+        sid = f"{idx}_{ext}-abcd1234"
+        seq = 0
+        evs = []
+
+        def ev(d):
+            nonlocal seq
+            e = {"request_id": ext, "internal_request_id": sid, "seq": seq, **d}
+            seq += 1
+            return e
+
+        evs.append(ev({"event": "start", "format": q.TRACE_FORMAT, "backend": "bolorgir",
+                       "backend_version": "0.2.0"}))
+        evs.append(ev({"event": "decision", "applied": True, "reason": "tool_choice",
+                       "constraints": [{"constraint_id": "c0", "kind": "tool",
+                                        "segment_id": "s0", "schema_sha256": h}]}))
+        evs.append(ev({"event": "compile", "backend": "bolorgir", "constraint_id": "c0",
+                       "schema_sha256": h, "cache": "miss", "status": "ok",
+                       "compiled_from": None}))
+        if broken_stream is None or broken_stream != idx:
+            evs.append(ev({"event": "mask", "backend": "bolorgir", "constraint_id": "c0",
+                           "segment_id": "s0", "step": 0, "allowed": 3,
+                           "mask_sha256": "m" * 64}))
+        evs.append(ev({"event": "finish", "status": "ok", "events": seq}))
+        per_stream.append(evs)
+    out = []
+    for i in range(max(len(s) for s in per_stream)):
+        for s in per_stream:
+            if i < len(s):
+                out.append(s[i])
+    return out
+
+
+def _parallel_trace(**kw):
+    def events_for(rid, body):
+        return _parallel_events(rid, body, **kw)
+    return events_for
+
+
+def _two_choice_answer():
+    def choice(idx, code):
+        return {"index": idx, "finish_reason": "tool_calls",
+                "message": {"content": None, "tool_calls": [
+                    {"id": f"c{idx}", "function": {"name": "set_code",
+                                                   "arguments": json.dumps({"code": code})}}]}}
+    return {"id": "chatcmpl-1",
+            "choices": [choice(0, "zq-17-wombat"), choice(1, "xv-03-quokka")]}
+
+
+def test_parallel_variants_are_qualified_separately(tmp_path):
+    """n = 2 answers share the exposed id but not the internal one: the
+    streams must be split (merged seq counters repeat and read as
+    corrupt), each variant qualified, and the row constrained only when
+    every variant is; a missing variant or a broken stream is unknown."""
+    rc, out = _run(tmp_path, Fake(_two_choice_answer()), _parallel_trace())
+    assert rc == 0
+    assert {r["qualification"] for r in out["rows"]} == {"constrained"}
+    r0 = out["rows"][0]
+    ids = sorted(r0["trace_streams"])
+    assert ids == [f"0_chatcmpl-{r0['request_id']}-abcd1234",
+                   f"1_chatcmpl-{r0['request_id']}-abcd1234"]
+    assert all(s["qualification"] == "constrained" for s in r0["trace_streams"].values())
+
+    rc, out = _run(tmp_path / "broken", Fake(_two_choice_answer()),
+                   _parallel_trace(broken_stream=1))
+    assert rc == 1
+    assert {r["qualification"] for r in out["rows"]} == {"unknown"}
+    assert "1_chatcmpl-" in out["rows"][0]["qualification_reason"]
+
+    rc, out = _run(tmp_path / "missing", Fake(_two_choice_answer()),
+                   _parallel_trace(choices=1))
+    assert rc == 1
+    assert "2 choices" in out["rows"][0]["qualification_reason"]
+
+
+def test_trace_streams_split_by_internal_id():
+    body = {"tools": [q.tool(None)]}
+    evs = _parallel_events("r", body)
+    streams = q.trace_streams(evs)
+    assert [sid for sid, _ in streams] == ["0_chatcmpl-r-abcd1234",
+                                           "1_chatcmpl-r-abcd1234"]
+    for _sid, s in streams:
+        assert [e["seq"] for e in s] == list(range(len(s)))
+        assert q.trace_problems(s) == []
+    assert q._variant_index("1_chatcmpl-r-abcd1234") == 1
+    assert q._variant_index("chatcmpl-r-abcd1234") is None

@@ -911,6 +911,59 @@ def test_trace_carries_the_external_and_internal_request_ids(monkeypatch, tmp_pa
     assert qual == "unknown", reason
 
 
+def test_trace_of_parallel_children_stays_separate(monkeypatch, tmp_path):
+    """n = 2: vLLM fans one client request out into child engine requests
+    that share the exposed id and differ in the internal one
+    (`{index}_{parent_internal}`, ParentRequest.get_child_info). The
+    group must be split into streams, every variant qualified, and the
+    row joined back to the response's choices; one corrupted variant
+    must not ride along on the healthy one."""
+    q = _load_qualify()
+    trace_path = _enable_trace(monkeypatch, tmp_path)
+    backend = make_backend(monkeypatch)
+    schema = {"type": "integer", "minimum": 10, "maximum": 42}
+    client_id = "qualify-parallel-1"
+    external = f"chatcmpl-{client_id}"
+    parent_internal = f"{external}-89abcdef"
+    vocab = backend.model_vocab_size
+    for idx in range(2):
+        internal = f"{idx}_{parent_internal}"
+        g = backend.compile_grammar(
+            bv.StructuredOutputOptions.JSON, json.dumps(schema),
+            request_id=internal, external_request_id=external)
+        _row_of(g, vocab)
+        assert g.accept_tokens(internal, [ord("4"), ord("2")])
+        assert g.accept_tokens(internal, [EOS])
+    backend.destroy()
+
+    trace, malformed = q.load_trace(str(trace_path))
+    assert not malformed and external in trace
+    events = trace[external]
+    streams = q.trace_streams(events)
+    assert [sid for sid, _ in streams] == [f"0_{parent_internal}",
+                                           f"1_{parent_internal}"]
+    # Merged, the group is corrupt (two starts, repeated seq): splitting
+    # is what makes the evidence readable.
+    assert q.trace_problems(events, "bolorgir")
+    row = {"request_id": client_id, "response_id": external,
+           "response": {"choices": [{"index": 0}, {"index": 1}]},
+           "schemas_sha256": {"response_format": q.canonical_sha256(schema)}}
+    qual, reason, details = q.qualify_streams(row, streams, "bolorgir")
+    assert qual == "constrained", reason
+    assert sorted(details) == [f"0_{parent_internal}", f"1_{parent_internal}"]
+    assert all(d["qualification"] == "constrained" for d in details.values())
+    # A corrupted variant makes the whole row unknown, naming the stream.
+    corrupted = []
+    for e in events:
+        e = dict(e)
+        if e.get("internal_request_id") == f"1_{parent_internal}" and e["event"] == "mask":
+            e["constraint_id"] = "other"
+        corrupted.append(e)
+    qual, reason, details = q.qualify_streams(row, q.trace_streams(corrupted), "bolorgir")
+    assert qual == "unknown", reason
+    assert f"1_{parent_internal}" in reason and "undeclared constraint" in reason, reason
+
+
 def test_trace_without_a_terminal_stays_unknown(monkeypatch, tmp_path):
     q = _load_qualify()
     trace_path = _enable_trace(monkeypatch, tmp_path)

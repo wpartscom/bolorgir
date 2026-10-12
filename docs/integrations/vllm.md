@@ -151,6 +151,15 @@ being approved.
   `{"type": "integer", "minimum": 10}` the byte `-` never appears in the
   mask, a draft is cut at it and accept refuses it with the state
   unchanged.
+- **End-literal prefixes are alive**: the completion filter covers the
+  open arguments value only. A partially matched end literal is never a
+  dead end even when the JSON continuation is one, because the literal
+  completes mechanically and the tag closes with the content state of
+  the spawn point: under `end: "99"` after `<c>42` the byte `9` is
+  offered by the mask, approved in a draft and accepted, and the same
+  closing bytes work as two tokens (`9`, `9`) or as one (`99`); the
+  filter still withholds the same byte before the content can complete
+  (after `<c>4`).
 - **Structural tags**: the accepted subset and its byte-exact semantics
 are ADR-0016 Finding 3: a full trigger commits to a tag; the begin
 literal, the tool's parameters schema (spec-v1, compact) and the end
@@ -164,7 +173,10 @@ rollback, finish) for every request it compiles. The trace is keyed by
 the request id the server returns to the client (the response id); the
 patched manager passes that exposed id next to the engine-internal one,
 which every event records as `internal_request_id` when the two differ.
-Masks and accepts name the active segment (a tool's tag, or the
+Parallel sampling (`n > 1`) fans one request out into child engine
+requests sharing the exposed id; their internal ids carry an `{index}_`
+prefix, so the collector splits the events into one stream per response
+variant and qualifies each separately. Masks and accepts name the active segment (a tool's tag, or the
 `structural_tag` constraint for free text and shared begin prefixes).
 `finish` is written only when the generation is confirmed over through
 the backend: a terminal token that no rollback undoes (vLLM accepts
@@ -208,7 +220,10 @@ The qualification collector turns these events into `constrained` /
    compile of every declared constraint precedes its masks; a cache hit
    names its origin; the finish event counts the events before it; a
    terminal accept is not followed by masks or accepts until a rollback
-   undoes it). The trace format and its rules are in
+   undoes it; every rollback fits the tokens accepted so far and its
+   `terminal_undone` matches the terminal state; parallel-sampling
+   streams cover exactly the response's choices). The trace format and
+   its rules are in
    `benchmarks/agent_eval/PLAN.md`; traces are only as good as the run
    that produced them - an unfinished trace stays `unknown`, never
    `unconstrained`.

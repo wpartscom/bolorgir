@@ -145,7 +145,13 @@ Contract semantics (byte-exact, defined by this ADR for the subset):
   in the standalone JSON constraint: the completion search of ADR-0005
   runs over the content state, so the mask withholds such bytes, the
   draft check cuts there and accept refuses them with the state
-  unchanged.
+  unchanged. The filter covers the open content only: a partially
+  matched end literal is alive regardless of the JSON continuation - the
+  digit starting an end like `99` after `<c>42` is a dead-end JSON
+  prefix (`429`), but the literal completes mechanically and the tag
+  closes with the content state of the spawn point (`42`), so mask,
+  draft check and accept take it (the ABI test feeds the same bytes as
+  two tokens and as one, with rollback in between).
 - **End literal**: a suffix-position set is spawned at every byte
   boundary where the value can complete, so a token crossing the
   content/end boundary is handled exactly; the tag completes when the set
@@ -234,11 +240,12 @@ the accepted spec against the real builders.
 | Structural-tag constructs outside the subset | explicitly refused | compile refusals with the field offset; Zig unit table and adapter tests |
 | Partial begin / partial trigger endability (pinned xgrammar parity: separator begins block EOS, triggered free-text tails do not) | verified on CPU | Zig unit tests, ABI tests and `tests/test_session_rollback.py` (both backends) |
 | Nested content dead-end prefixes (the ADR-0005 completion filter, same as the standalone JSON constraint) | verified on CPU | `src/c_api.zig` ABI tests, `tests/test_session_rollback.py` (both backends) and the adapter tests |
+| End-literal prefix vs the JSON filter (the same closing bytes as one token or two, with rollback) | verified on CPU | the ABI test in `src/c_api.zig` and `tests/test_session_rollback.py` (both backends) |
 | Active-segment diagnostics (`blg_session_struct_segment`) | verified on CPU | ABI tests, `tests/test_session_rollback.py` (both backends), the trace tests of `tests/test_vllm_backend.py` |
 | Failure policy: request-local error, no unconstrained step | verified on CPU | same tests (closed-session simulation) |
 | `GRAMMAR` and `whitespace_pattern` | explicitly refused | request validation and compile refusal, with tests |
 | Unsupported tokenizer family | explicitly refused at start | error names the family and the supported ones |
-| Backend trace (`blg-agent-trace/2`) | implemented; qualification rules checked in-repo | events written when `BLG_AGENT_TRACE` is set, keyed by the exposed request id with the internal one recorded; per-segment attribution, rollback events and a deferred `finish` (vLLM rolls back draft-accepted terminals in the same step); `tests/test_vllm_backend.py` validates the traces with the A1 collector (`qualify_stack.qualify`); the GPU run is not verified |
+| Backend trace (`blg-agent-trace/2`) | implemented; qualification rules checked in-repo | events written when `BLG_AGENT_TRACE` is set, keyed by the exposed request id with the internal one recorded; per-segment attribution, rollback events and a deferred `finish` (vLLM rolls back draft-accepted terminals in the same step); the collector splits a request id into one stream per response variant (`{index}_{internal}`) and replays the accept/rollback history, so an inflated depth or a contradictory `terminal_undone` reads `unknown`; `tests/test_vllm_backend.py` (including an n = 2 pair of children) validates the traces with the A1 collector; the GPU run is not verified |
 | Server start and the OpenAI request matrix on GPU | not verified | needs the patched stack and a GPU run |
 | Speculative decoding on/off on GPU, mask audit in the server | not verified | same |
 | Agent path (`auto` with a strict tool) end to end | not verified | the kernel/adapter layers are verified on CPU; the server-side run is blocked on the GPU matrix |

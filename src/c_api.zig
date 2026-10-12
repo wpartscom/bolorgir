@@ -2172,7 +2172,7 @@ pub export fn blg_session_struct_segment(s_opt: ?*const Session, out_phase: ?*u8
     if (s.status != .active) return .wrong_state;
     _ = s.gh.g.structtag orelse return .wrong_state;
     const active = structtag.activeSegment(&s.tag.?[s.tag_cur]);
-    op.* = @intFromEnum(active.phase);
+    op.* = @backingInt(active.phase);
     ov.* = active.variant;
     return .ok;
 }
@@ -4213,7 +4213,8 @@ fn compileRegexReq(ctx: ?*Context, src: []const u8, profile: ?[*:0]const u8, fla
     return blg_compile(ctx, &req, gh, err);
 }
 
-test "abi: regex constraint masks, refusals, rollback and validation" {    var entries: [261]TokenEntry = undefined;
+test "abi: regex constraint masks, refusals, rollback and validation" {
+    var entries: [261]TokenEntry = undefined;
     var blob: [1024]u8 = undefined;
     var bufs: [256][1]u8 = undefined;
     const desc = buildByteCompleteDesc(&entries, &blob, &bufs);
@@ -4477,6 +4478,120 @@ test "abi: structural-tag content completion filter, endable and the active segm
 
     try acceptBytes(s, "<c>42</c>");
     try std.testing.expectEqual(Status.ok, blg_finish(s, &err));
+    blg_session_destroy(s);
+    blg_grammar_release(gh);
+    try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
+}
+
+const structtag_abi_digit_end_spec =
+    "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags_with_separator\",\"separator\":\"\",\"at_least_one\":true,\"tags\":[{\"type\":\"tag\",\"begin\":\"<c>\",\"content\":{\"type\":\"json_schema\",\"json_schema\":{\"type\":\"integer\",\"minimum\":10,\"maximum\":42}},\"end\":\"99\"}]}}";
+
+fn buildDigitEndDesc(entries: *[259]TokenEntry, blob: *[1024]u8, bufs: *[256][1]u8) TokenizerDesc {
+    // All 256 single bytes + the two-byte piece "99" (id 256) + eos 257 +
+    // special 258: the same closing bytes can be sampled as two tokens
+    // (`9`, `9`) or as one (`99`).
+    var tokens: [259][]const u8 = undefined;
+    for (0..256) |b| {
+        bufs[b][0] = @intCast(b);
+        tokens[b] = bufs[b][0..1];
+    }
+    tokens[256] = "99";
+    tokens[257] = "";
+    tokens[258] = "<pad>";
+    const eos = [_]u32{257};
+    const special = [_]u32{258};
+    return buildDesc(&tokens, &eos, &special, entries, blob);
+}
+
+test "abi: an end-literal prefix is offered by the completion filter (same bytes, two splits)" {
+    // The digit starting the end literal is a dead-end JSON prefix when
+    // taken alone (`42` + `9` = 429 is outside [10, 42]) but alive as the
+    // end literal's first byte; the mask must offer it, accept and the
+    // draft check must take it, rollback must re-open the partial literal,
+    // and both token splits of the same bytes must reach the same state.
+    var entries: [259]TokenEntry = undefined;
+    var blob: [1024]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildDigitEndDesc(&entries, &blob, &bufs);
+    var cfg = makeConfig(0);
+    var err = makeTestError();
+    var ctx: ?*Context = null;
+    try std.testing.expectEqual(Status.ok, blg_context_create(&cfg, &desc, &ctx, &err));
+
+    var gh: ?*GrammarHandle = null;
+    try std.testing.expectEqual(Status.ok, compileStructTagReq(ctx, structtag_abi_digit_end_spec, null, 0, &gh, &err));
+    const sc: SessionConfig = .{ .struct_size = @sizeOf(SessionConfig), .max_rollback_tokens = 8 };
+    var s: ?*Session = null;
+    try std.testing.expectEqual(Status.ok, blg_session_create_ex(ctx, gh, &sc, &s, &err));
+    var m: [9]u32 = @splat(0);
+    var m2: [9]u32 = @splat(0);
+    var mc: [9]u32 = @splat(0);
+    var ce = true;
+    var prefix: usize = 0;
+    const eos: u32 = 257;
+    const t99: u32 = 256;
+
+    // Before the content is completable the end literal cannot start:
+    // after `<c>4` the byte `9` is a dead end (`4` alone is not a valid
+    // integer, so no end-literal spawn) and stays out of the mask.
+    try acceptBytes(s, "<c>4");
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(!maskBit(&m, '9'));
+    try std.testing.expectEqual(Status.invalid_token, blg_accept_token(s, '9', &err));
+
+    // `42` completes the content: now `9` is the end literal starting.
+    try acceptBytes(s, "2");
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(maskBit(&m, '9'));
+    try std.testing.expect(maskBit(&m, t99));
+    try std.testing.expect(maskBit(&m, '.'));
+    try std.testing.expect(!maskBit(&m, eos)); // the tag is still open
+    try std.testing.expectEqual(Status.invalid_token, blg_accept_token(s, '<', &err));
+    // The draft check takes both end-literal bytes and cuts on a stray one.
+    const tail = [_]u32{ '9', '9' };
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &tail, tail.len, &prefix));
+    try std.testing.expectEqual(@as(usize, 2), prefix);
+    const stray = [_]u32{ '9', 'x' };
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &stray, stray.len, &prefix));
+    try std.testing.expectEqual(@as(usize, 1), prefix);
+
+    // A partial literal cannot end the document and stays maskable; a
+    // rollback re-opens the state byte for byte.
+    try std.testing.expectEqual(Status.ok, blg_accept_token(s, '9', &err));
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(!ce);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m2, 9, &err));
+    try std.testing.expect(maskBit(&m2, '9'));
+    // `99` would overshoot the partial literal: its first byte closes the
+    // tag and its second would have to start a new one.
+    try std.testing.expect(!maskBit(&m2, t99));
+    try std.testing.expect(!maskBit(&m2, eos));
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 1));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m2, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m, &m2);
+
+    // Split one: two single-byte tokens close the tag.
+    try std.testing.expectEqual(Status.ok, blg_accept_token(s, '9', &err));
+    try std.testing.expectEqual(Status.ok, blg_accept_token(s, '9', &err));
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(ce);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &mc, 9, &err));
+    try std.testing.expect(maskBit(&mc, eos));
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 2));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m2, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m, &m2);
+
+    // Split two: the same bytes as one token reach the same state.
+    try std.testing.expectEqual(Status.ok, blg_accept_token(s, t99, &err));
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(ce);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m2, 9, &err));
+    try std.testing.expect(maskBit(&m2, eos));
+    try std.testing.expectEqualSlices(u32, &mc, &m2);
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 1));
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(!ce);
+
     blg_session_destroy(s);
     blg_grammar_release(gh);
     try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));

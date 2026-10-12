@@ -19,16 +19,22 @@ returns to the client (the response body id): the server appends a random
 suffix to the id it receives internally, and the patched manager passes
 the exposed id explicitly (every event may also carry
 `internal_request_id`). A row without a response falls back to the id
-the client sent.
+the client sent. The events of one exposed id are split into one stream
+per engine request (per response variant): parallel sampling fans n > 1
+out into children that share the exposed id and carry an `{index}_`
+prefix on their internal id; every stream is qualified separately, the
+streams must cover exactly the response's choices, and the row is
+constrained only when every stream is.
 
 - `unknown` unless the trace of the request is complete and consistent:
   one start event first (format, backend), one decision event, one
   finish event last that counts the events before it, seq 0..n-1 in
   file order, every compile and mask event by the start's backend
   (and by --expect-backend when given), finish status ok, rollback
-  events with a non-negative integer token count, one consistent
-  non-empty internal_request_id, and no mask or accept after a terminal
-  accept without an intervening rollback;
+  events with a non-negative integer token count that fit the accepted
+  history (and whose terminal_undone agrees with the terminal state),
+  one consistent non-empty internal_request_id, and no mask or accept
+  after a terminal accept without an intervening rollback;
 - `unconstrained` when the backend decided not to apply a constraint
   (decision applied false) and the trace has no compile or mask event;
 - `constrained` when the backend decided to apply constraints (applied
@@ -197,7 +203,10 @@ def load_trace(path):
 
 def trace_problems(events, expect_backend=None):
     """Why the events of one request are not a complete, consistent
-    trace; an empty list when they are."""
+    trace; an empty list when they are. The accept/rollback history is
+    replayed: a rollback must fit the accepted tokens and its
+    ``terminal_undone`` flag must match the terminal state, so a
+    corrupted depth reads as ``unknown``, not as evidence."""
     probs = []
     kinds = [e.get("event") for e in events]
     if [e.get("seq") for e in events] != list(range(len(events))):
@@ -239,19 +248,52 @@ def trace_problems(events, expect_backend=None):
             probs.append(f"rollback at seq {i} has no non-negative integer tokens")
         if "terminal_undone" in e and not isinstance(e.get("terminal_undone"), bool):
             probs.append(f"rollback at seq {i} has a non-boolean terminal_undone")
-    # A terminal accept ends the live generation: masks or accepts after
-    # it require an intervening rollback that undoes the terminal (vLLM
-    # accepts draft terminals and rolls them back in the same step).
+    # Replay the accept/rollback history: every rollback must fit the
+    # tokens the trace has accumulated so far, and `terminal_undone` must
+    # agree with the terminal state (vLLM accepts draft terminals and
+    # rolls them back in the same step). Without the replay an inflated
+    # depth (rollback(999) after two accepted tokens) still read as a
+    # consistent trace. A terminal accept ends the live generation:
+    # masks or accepts after it require an intervening rollback that
+    # undoes the terminal.
+    active = 0
     open_terminal = False
     for i, e in enumerate(events):
         kind = e.get("event")
         if kind in ("accept", "mask") and open_terminal:
             probs.append(f"{kind} at seq {i} after a terminal accept without a rollback")
             break
-        if kind == "accept" and e.get("terminal") is True:
-            open_terminal = True
-        elif kind == "rollback" and e.get("terminal_undone") is True:
-            open_terminal = False
+        if kind == "accept":
+            if e.get("terminal") is True:
+                open_terminal = True
+            else:
+                active += 1
+        elif kind == "rollback":
+            tokens = e.get("tokens")
+            if isinstance(tokens, bool) or not isinstance(tokens, int) or tokens < 0:
+                continue  # already reported above
+            if "terminal_undone" in e and not isinstance(e.get("terminal_undone"), bool):
+                continue  # already reported above
+            undone = e.get("terminal_undone") is True
+            if undone:
+                if not open_terminal:
+                    probs.append(f"rollback at seq {i} undoes a terminal that is not open")
+                    continue
+                if tokens < 1 or tokens - 1 > active:
+                    probs.append(f"rollback at seq {i} undoes {tokens - 1} tokens "
+                                 f"beyond the {active} accepted under the open terminal")
+                    continue
+                active -= tokens - 1
+                open_terminal = False
+            else:
+                if open_terminal:
+                    probs.append(f"rollback at seq {i} does not undo the open terminal")
+                    continue
+                if tokens > active:
+                    probs.append(f"rollback at seq {i} undoes {tokens} tokens "
+                                 f"beyond the {active} accepted")
+                    continue
+                active -= tokens
     return probs
 
 
@@ -327,6 +369,91 @@ def qualify(row, events, expect_backend=None):
                            f"cache), {len(masks)} masks of {', '.join(used)}")
 
 
+def _variant_index(stream_id):
+    """The response choice index encoded in a child request id
+    (``f"{index}_{internal_id}"``, vLLM parallel sampling), or None for
+    the n == 1 ids without the prefix."""
+    if not isinstance(stream_id, str):
+        return None
+    head, sep, _rest = stream_id.partition("_")
+    return int(head) if sep and head.isdigit() else None
+
+
+def trace_streams(events):
+    """Split one request-id group into the per-engine-request streams.
+
+    The engine turns one client request into one internal request per
+    response variant: the id gets a random suffix and, for n > 1, an
+    ``{index}_`` prefix (vLLM fans parallel sampling out into child
+    requests ``f"{index}_{internal_id}"``). Every event of a stream
+    carries the same ``internal_request_id``, so the streams are the
+    events grouped by it, in file order: merged seq counters repeat and
+    the group alone reads as corrupt. A group without internal ids (no
+    suffix, another backend) is a single stream. Returns
+    ``[(stream_id, events), ...]`` in the order the streams first
+    appear."""
+    streams: dict = {}
+    order: list = []
+    for e in events:
+        sid = e.get("internal_request_id") or e.get("request_id")
+        if sid not in streams:
+            streams[sid] = []
+            order.append(sid)
+        streams[sid].append(e)
+    return [(sid, streams[sid]) for sid in order]
+
+
+def qualify_streams(row, streams, expect_backend=None):
+    """``(qualification, reason, details)`` of all trace streams of one
+    request. Every response variant is qualified separately - each child
+    request runs its own grammar and its own session - and the row folds
+    to constrained only when every stream is constrained. The streams
+    must cover exactly the response's choices: with n > 1 the choice
+    index is the prefix of the child's internal id, so a missing,
+    duplicated or foreign variant makes the evidence unknown."""
+    if not streams:
+        return "unknown", "no trace events for this request id", {}
+    resp = row.get("response")
+    choices = resp.get("choices") if isinstance(resp, dict) else None
+    expected = len(choices) if isinstance(choices, list) and choices else None
+    if expected is not None and len(streams) != expected:
+        return "unknown", (f"the response has {expected} choices, the trace has "
+                           f"{len(streams)} stream(s) for this id"), {}
+    details, quals, reasons, variant_of = {}, [], [], {}
+    for sid, evs in streams:
+        verdict, why = qualify(row, evs, expect_backend)
+        details[str(sid)] = {"qualification": verdict, "reason": why}
+        quals.append(verdict)
+        if verdict != "constrained":
+            reasons.append(f"{sid}: {why}")
+        vi = _variant_index(sid)
+        if vi is not None:
+            variant_of[sid] = vi
+    if len(streams) == 1:
+        # A non-parallel request (or a backend without internal ids): the
+        # row keeps exactly the stream's own verdict and reason.
+        return quals[0], details[str(streams[0][0])]["reason"], details
+    if expected is not None and expected > 1:
+        if len(variant_of) != len(streams):
+            return ("unknown",
+                    "a stream of this parallel request carries no choice index "
+                    "in its internal id", details)
+        idxs = [c.get("index") for c in choices]
+        if not all(isinstance(x, int) for x in idxs):
+            return "unknown", "a response choice carries no integer index", details
+        if sorted(variant_of.values()) != sorted(idxs):
+            return ("unknown",
+                    f"the trace streams cover choices {sorted(variant_of.values())}, "
+                    f"the response has {sorted(idxs)}", details)
+    if all(v == "constrained" for v in quals):
+        return ("constrained",
+                f"backend trace: all {len(streams)} response variant stream(s) "
+                f"constrained", details)
+    if all(v == "unconstrained" for v in quals):
+        return "unconstrained", "; ".join(reasons), details
+    return "unknown", "; ".join(reasons) or "the trace variants disagree", details
+
+
 def main(argv=None, post_fn=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -388,12 +515,18 @@ def main(argv=None, post_fn=None):
             # client (the response body id): the engine appends a random
             # suffix to the id it receives, and the patched manager passes
             # the exposed id explicitly. Rows without a response (an HTTP
-            # error) fall back to the id the client sent.
+            # error) fall back to the id the client sent. The group is
+            # split into one stream per engine request (per response
+            # variant): parallel sampling fans n > 1 out into children
+            # that share the exposed id but have distinct internal ids.
             r["evidence"] = "backend trace"
             key = r.get("response_id") or r["request_id"]
             r["trace_key"] = key
-            r["qualification"], r["qualification_reason"] = qualify(
-                r, trace.get(key), args.expect_backend)
+            streams = trace_streams(trace.get(key) or [])
+            r["qualification"], r["qualification_reason"], details = qualify_streams(
+                r, streams, args.expect_backend)
+            if details:
+                r["trace_streams"] = details
 
     summary = {}
     for r in rows:
