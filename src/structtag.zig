@@ -180,11 +180,12 @@ const Raw = struct {
 };
 
 const tag_keys = [_][]const u8{ "type", "begin", "content", "end", "trigger" };
-const content_keys = [_][]const u8{ "type", "json_schema", "schema", "style" };
-const triggered_keys = [_][]const u8{ "type", "triggers", "tags", "at_least_one", "stop_after_first" };
+const content_keys = [_][]const u8{ "type", "json_schema", "schema", "style", "any_order", "max_whitespace_cnt" };
+const triggered_keys = [_][]const u8{ "type", "triggers", "tags", "at_least_one", "stop_after_first", "excludes" };
 const separated_keys = [_][]const u8{ "type", "tags", "separator", "at_least_one", "stop_after_first" };
 const legacy_root_keys = [_][]const u8{ "type", "structures", "triggers" };
 const v2_root_keys = [_][]const u8{ "type", "format" };
+const any_text_keys = [_][]const u8{ "type", "excludes", "max_tokens", "max_chars" };
 
 /// Parses and validates the spec, returning views into the DOM; the
 /// temporary lists live in the DOM arena `a`.
@@ -235,7 +236,24 @@ fn parseSpec(diag: *schema.Diagnostic, root: *json.Value, a: std.mem.Allocator) 
     const fmt_type = asString(fmt_type_v) orelse return fail(diag, .invalid_schema, fmt_type_v.offset, "format type must be a string", .{});
 
     if (std.mem.eql(u8, fmt_type, "any_text")) {
-        try checkKeys(diag, format, &[_][]const u8{"type"}, "the any_text format");
+        try checkKeys(diag, format, &any_text_keys, "the any_text format");
+        // The pinned builder serializes the exclusion list and the two
+        // null-by-default length caps even for plain any_text; only the
+        // defaults are implemented.
+        if (field(format, "excludes")) |ev| {
+            if (ev.v != .null_v) {
+                const arr = asArray(ev) orelse
+                    return fail(diag, .invalid_schema, ev.offset, "excludes must be an array", .{});
+                if (arr.len != 0)
+                    return fail(diag, .unsupported_feature, ev.offset, "a non-empty excludes list is not supported", .{});
+            }
+        }
+        for ([_][]const u8{ "max_tokens", "max_chars" }) |k| {
+            if (field(format, k)) |v| {
+                if (v.v != .null_v)
+                    return fail(diag, .unsupported_feature, v.offset, "{s} is not supported", .{k});
+            }
+        }
         return .{ .mode = .triggered_tags, .at_least_one = false, .stop_after_first = false, .triggers = &.{}, .tags = &.{} };
     }
     if (std.mem.eql(u8, fmt_type, "triggered_tags")) {
@@ -253,6 +271,17 @@ fn parseSpec(diag: *schema.Diagnostic, root: *json.Value, a: std.mem.Allocator) 
         if (field(format, "stop_after_first")) |v| {
             stop_after_first = asBool(v) orelse
                 return fail(diag, .invalid_schema, v.offset, "stop_after_first must be a boolean", .{});
+        }
+        if (field(format, "excludes")) |ev| {
+            // The pinned builder serializes the exclusion list even when
+            // empty; a non-empty list would carve literals out of the
+            // free text and is not implemented.
+            if (ev.v != .null_v) {
+                const arr = asArray(ev) orelse
+                    return fail(diag, .invalid_schema, ev.offset, "excludes must be an array", .{});
+                if (arr.len != 0)
+                    return fail(diag, .unsupported_feature, ev.offset, "a non-empty excludes list is not supported", .{});
+            }
         }
         return .{ .mode = .triggered_tags, .at_least_one = at_least_one, .stop_after_first = stop_after_first, .triggers = triggers, .tags = tags };
     }
@@ -337,8 +366,30 @@ fn tagList(diag: *schema.Diagnostic, tags_v: ?*json.Value, owner: *json.Value, r
                 return fail(diag, .unsupported_feature, ct.offset, "unsupported tag content type \"{s}\"", .{cs});
         }
         if (field(content, "style")) |sv| {
-            if (sv.v != .null_v)
-                return fail(diag, .unsupported_feature, sv.offset, "a content style is not supported", .{});
+            // The pinned xgrammar builder serializes the standard JSON
+            // style explicitly ("style": "json"); any other style is a
+            // different content language and stays refused.
+            if (sv.v != .null_v) {
+                const ss = asString(sv) orelse
+                    return fail(diag, .invalid_schema, sv.offset, "content style must be a string", .{});
+                if (!std.mem.eql(u8, ss, "json"))
+                    return fail(diag, .unsupported_feature, sv.offset, "unsupported content style \"{s}\"", .{ss});
+            }
+        }
+        if (field(content, "any_order")) |av| {
+            // The pinned builder always serializes the field; only the
+            // declared-order default is implemented.
+            const order = asBool(av) orelse
+                return fail(diag, .invalid_schema, av.offset, "content any_order must be a boolean", .{});
+            if (order)
+                return fail(diag, .unsupported_feature, av.offset, "any_order=true is not supported: properties follow the schema's declared order", .{});
+        }
+        if (field(content, "max_whitespace_cnt")) |wv| {
+            // null means no explicit cap; a number would constrain the
+            // whitespace between JSON tokens, which the compact profile
+            // does not produce.
+            if (wv.v != .null_v)
+                return fail(diag, .unsupported_feature, wv.offset, "max_whitespace_cnt is not supported", .{});
         }
         const js = field(content, "json_schema");
         const sh = field(content, "schema");
@@ -934,15 +985,30 @@ pub fn fillMask(p: *const Program, tok: *const tokenizer.Tokenizer, st: *const S
             error.ResourceLimit => return error.ResourceLimit,
             error.OutOfMemory => return error.OutOfMemory,
         };
-        pool.states.items.len = top + 2;
-        pool.frames.appendAssumeCapacity(.{ .node = child, .next_edge = 0 });
+        var cur = dst;
+        if (trie.node_edge_len[node] == 1) {
+            // Single edge: descend in place; the parent state is no
+            // longer needed, so frames exist only at branching nodes and
+            // the pool sized by trie.max_stack stays sufficient on every
+            // vocabulary. A free-text walk reaches the deepest token,
+            // which can be longer than the branching depth (the real
+            // Qwen tokenizer has 61-byte tokens against max_stack 59).
+            parser.releaseState(side, &pool.states.items[top].json);
+            pool.states.items[top] = dst.*;
+            dst.json.n = 0;
+            fr.* = .{ .node = child, .next_edge = 0 };
+            cur = &pool.states.items[top];
+        } else {
+            pool.states.items.len = top + 2;
+            pool.frames.appendAssumeCapacity(.{ .node = child, .next_edge = 0 });
+        }
         const id_head = trie.node_token[child];
         if (id_head != tokenizer.NO_TOKEN) {
             // Completion filter (ADR-0005): a token whose state cannot
             // reach a completed answer is left out of the mask exactly as
             // in the standalone JSON constraint - the mask, the draft
             // check and the accept path must agree.
-            const alive = stateAlive(p, tok, dst, pool, w, side) catch |err| switch (err) {
+            const alive = stateAlive(p, tok, cur, pool, w, side) catch |err| switch (err) {
                 error.ResourceLimit => return error.ResourceLimit,
                 error.Cancelled => return error.Cancelled,
                 error.OutOfMemory => return error.OutOfMemory,
@@ -1224,6 +1290,13 @@ test "structtag: any_text accepts anything" {
     try testing.expect(f.canEnd());
 }
 
+test "structtag: the pinned xgrammar any_text serialization is accepted" {
+    var f = try Fixture.init("{\"type\":\"structural_tag\",\"format\":{\"type\":\"any_text\",\"excludes\":[],\"max_tokens\":null,\"max_chars\":null}}");
+    defer f.deinit();
+    try testing.expect(f.canEnd());
+    try testing.expect(f.feedToken("plain text"));
+}
+
 test "structtag: legacy structures shape" {
     const spec = "{\"type\":\"structural_tag\",\"structures\":[{\"begin\":\"<call>\",\"schema\":" ++ SET_CODE_PARAMS ++ ",\"end\":\"</call>\"}],\"triggers\":[\"<call>\"]}";
     var f = try Fixture.init(spec);
@@ -1242,13 +1315,46 @@ test "structtag: legacy structures shape" {
     try testing.expect(f.canEnd());
 }
 
+test "structtag: the pinned xgrammar content serialization is accepted" {
+    // The vLLM 0.31 hermes builder serializes tag contents through
+    // xgrammar: the style, any_order=false and a null whitespace cap
+    // ride along with the schema (field order as pydantic emits it).
+    const spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags_with_separator\",\"tags\":[{\"type\":\"tag\",\"begin\":\"<tool_call>{\\\"name\\\": \\\"set_code\\\", \\\"arguments\\\": \",\"content\":{\"type\":\"json_schema\",\"json_schema\":" ++ SET_CODE_PARAMS ++ ",\"style\":\"json\",\"any_order\":false,\"max_whitespace_cnt\":null},\"end\":\"}</tool_call>\"}],\"separator\":\"\",\"at_least_one\":true,\"stop_after_first\":false}}";
+    var f = try Fixture.init(spec);
+    defer f.deinit();
+    try testing.expect(f.feedToken("<tool_call>{\"name\": \"set_code\", \"arguments\": "));
+    try testing.expect(f.feedToken("{\"code\":\"zq-17-wombat\"}"));
+    try testing.expect(f.feedToken("}</tool_call>"));
+    try testing.expect(f.canEnd());
+}
+
+test "structtag: the pinned xgrammar triggered serialization is accepted" {
+    // The strict-tool auto path (triggered_tags) serializes the same
+    // content fields plus an empty excludes list.
+    const spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<call>\"],\"tags\":[{\"type\":\"tag\",\"begin\":\"<call>\",\"content\":{\"type\":\"json_schema\",\"json_schema\":" ++ SET_CODE_PARAMS ++ ",\"style\":\"json\",\"any_order\":false,\"max_whitespace_cnt\":null},\"end\":\"</call>\"}],\"at_least_one\":false,\"stop_after_first\":false,\"excludes\":[]}}";
+    var f = try Fixture.init(spec);
+    defer f.deinit();
+    try testing.expect(f.feedToken("<call>"));
+    try testing.expect(f.feedToken("{\"code\":\"zq-17-wombat\"}"));
+    try testing.expect(f.feedToken("</call>"));
+    try testing.expect(f.canEnd());
+}
+
 test "structtag: refusals name the unsupported construct" {
     const cases = [_]struct { spec: []const u8, want: CompileError }{
         .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"sequence\"}}", .want = error.UnsupportedFeature },
         .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[]}}", .want = error.UnsupportedFeature },
         .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags_with_separator\",\"separator\":\" \",\"at_least_one\":true,\"tags\":[{\"begin\":\"<\",\"content\":{\"json_schema\":{\"type\":\"integer\"}},\"end\":\">\"}]}}", .want = error.UnsupportedFeature },
         .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>{\",\"content\":{\"json_schema\":{\"type\":\"integer\"}},\"end\":\">\"},{\"begin\":\"<t>{\\\"x\",\"content\":{\"json_schema\":{\"type\":\"integer\"}},\"end\":\">\"}]}}", .want = error.UnsupportedFeature },
-        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"}},\"end\":\">\",\"style\":\"x\"}]}}", .want = error.UnsupportedFeature },
+        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"},\"style\":\"x\"},\"end\":\">\"}]}}", .want = error.UnsupportedFeature },
+        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"},\"style\":\"qwen_xml\"},\"end\":\">\"}]}}", .want = error.UnsupportedFeature },
+        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"},\"any_order\":true},\"end\":\">\"}]}}", .want = error.UnsupportedFeature },
+        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"},\"any_order\":\"no\"},\"end\":\">\"}]}}", .want = error.InvalidSchema },
+        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"},\"max_whitespace_cnt\":2},\"end\":\">\"}]}}", .want = error.UnsupportedFeature },
+        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"}},\"end\":\">\"}],\"excludes\":[\"<x>\"]}}", .want = error.UnsupportedFeature },
+        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"}},\"end\":\">\"}],\"excludes\":\"x\"}}", .want = error.InvalidSchema },
+        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"any_text\",\"max_tokens\":5}}", .want = error.UnsupportedFeature },
+        .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"any_text\",\"excludes\":[\"<x>\"]}}", .want = error.UnsupportedFeature },
         .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\",\"t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"}},\"end\":\">\"}]}}", .want = error.UnsupportedFeature },
         .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\",\"triggers\":[\"<t>\"],\"tags\":[{\"begin\":\"<t>\",\"content\":{\"json_schema\":{\"type\":\"integer\"}},\"end\":\">\"}]},\"extra\":1}", .want = error.UnsupportedFeature },
         .{ .spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags_with_separator\",\"separator\":\"\"}}", .want = error.InvalidSchema },

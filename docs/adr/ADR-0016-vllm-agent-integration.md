@@ -1,12 +1,14 @@
 # ADR-0016: vLLM backend and agent capture, connection point (A1)
 
-- Status: **proposed** (2026-10-11). The connection point is implemented
-  and functionally checked on CPU; every runtime row of the matrix below
-  is "verified in-repo", "explicitly refused" or "not verified", never
-  "verified on GPU". This revision implements the structural-tag
-  constraint kind (Finding 3) and the `blg-agent-trace/2` backend trace;
-  both are checked on CPU, the map of the earlier revision is kept by
-  `git log`.
+- Status: **proposed** (2026-10-11; the GPU stage of the T10 checks
+  executed 2026-10-12). The connection point is implemented and
+  functionally checked on CPU; runtime rows of the matrix below are
+  "verified in-repo", "verified on CPU", "explicitly refused", "verified
+  on GPU" (each such row names its evidence) or "not verified". This
+  revision implements the structural-tag constraint kind (Finding 3) and
+  the `blg-agent-trace/2` backend trace; the GPU stage then ran the
+  server-side scenarios on the pinned stack, and the map of the earlier
+  revision is kept by `git log`.
 - Context: the serving integration asks for a vLLM structured-output
   backend and for stage A1 of the agent evaluation: fix the stack, trace
   the tool schema path, define segment boundaries and the split between
@@ -113,12 +115,21 @@ ADR-0016) with the following **accepted subset** — the shapes the pinned
 - each tag is `{type: "tag", begin, content, end}` with `content` of
   type `json_schema` (or the raw-vLLM `schema` alias); the schema is a
   JSON Schema document compiled with the spec-v1 profile and the compact
-  serialization (a boolean `true` means any JSON value).
+  serialization (a boolean `true` means any JSON value);
+- the pinned builder's serialization fields are tolerated on the same
+  objects: every tag content may carry `style` (`null` or `"json"`;
+  other styles are a different content language and are refused),
+  `any_order` (`false`; `true` is refused) and `max_whitespace_cnt`
+  (`null`; numeric caps are refused); `triggered_tags` and `any_text`
+  may carry an `excludes` list (empty or `null`; a non-empty list would
+  carve literals out of the free text and is refused); `any_text` may
+  carry the null `max_tokens`/`max_chars` caps (numeric caps are
+  refused).
 
 Anything else — unknown fields, other format or content types (for
-example `sequence`, per-tag `trigger`, `style`), a non-empty separator,
-overlapping triggers, overlapping begin literals, non-empty byte
-requirements outside the caps — is refused with
+example `sequence`, per-tag `trigger`, a non-JSON content style), a
+non-empty separator, overlapping triggers, overlapping begin literals,
+non-empty byte requirements outside the caps — is refused with
 `BLG_ERR_UNSUPPORTED_FEATURE` and the offset of the offending field,
 never reinterpreted. The caps: 16 tag variants, 4 triggers (≤ 64 bytes,
 non-overlapping), begin ≤ 512 bytes, end ≤ 63 bytes, a byte-complete
@@ -179,14 +190,19 @@ Contract semantics (byte-exact, defined by this ADR for the subset):
   begin prefix shared by several variants is in flight, so the backend
   trace never attributes shared framing to one tool.
 
-Remaining risk, recorded honestly: the exact JSON serialization of
-xgrammar's `StructuralTag` models could not be introspected in this
-environment (the library is a pinned runtime dependency, not part of the
-checkout). The subset is pinned to the constructors the vLLM 0.31.0
-`hermes` registry uses (`TriggeredTagsFormat`, `TagsWithSeparatorFormat`,
-`TagFormat`, `JSONSchemaFormat`, `AnyTextFormat`); any serialization
-shape outside it is refused explicitly, and a first GPU run must confirm
-the accepted spec against the real builders.
+The serialization risk recorded in the first revision is closed: the
+exact JSON shape of xgrammar's `StructuralTag` models was confirmed
+against the real builders by the GPU stage (2026-10-12) - content
+carries `style: "json"`, `any_order: false` and `max_whitespace_cnt:
+null`, `triggered_tags`/`any_text` add an empty `excludes` list and
+`any_text` null `max_tokens`/`max_chars` caps (the kernel accepts
+exactly these defaults and refuses every other value with the field
+offset; the first GPU attempts failed because the defaults were being
+refused, see the matrix row and the CHANGELOG). The subset stays pinned
+to the constructors the vLLM 0.31.0 `hermes` registry uses
+(`TriggeredTagsFormat`, `TagsWithSeparatorFormat`, `TagFormat`,
+`JSONSchemaFormat`, `AnyTextFormat`); a serialization shape outside it
+is refused explicitly.
 
 ## Finding 4: other differences, as implemented
 
@@ -226,7 +242,7 @@ the accepted spec against the real builders.
 | Request mapping, terminals, tensor rows, failure policy, trace emission | Python adapter | `python/bolorgir/vllm.py`; no algorithm re-implemented |
 | Registration of the backend name, request-id plumbing | upstream patch | `integrations/vllm/` |
 
-## Matrix: verified / explicitly refused / not verified (2026-10-11)
+## Matrix: verified / explicitly refused / not verified (2026-10-11; GPU stage 2026-10-12)
 
 | Row | State | Evidence |
 |---|---|---|
@@ -236,19 +252,23 @@ the accepted spec against the real builders.
 | Mask row layout, zero-copy fill, vocabulary padding | verified on CPU | same tests (numpy and a real torch tensor) |
 | Stop/EOS terminal semantics, termination, rollback of the terminal | verified on CPU | same tests |
 | Rollback and draft validation under a speculative depth | verified on CPU | same tests (ADR-0014 session machinery) |
-| Structural tags of the accepted subset (hermes shapes, required/named, any_text) | verified on CPU | `tests/test_vllm_backend.py`, `tests/test_session_rollback.py` (both backends) and the ABI test in `src/c_api.zig` |
+| Structural tags of the accepted subset (hermes shapes, required/named, any_text) | verified on CPU and on GPU | `tests/test_vllm_backend.py`, `tests/test_session_rollback.py` (both backends) and the ABI test in `src/c_api.zig`; the GPU stage ran the hermes forced-tool matrix (`required`/`named`/strict `auto`) constrained in both speculative configurations (local run logs under `benchmarks/local/t10-gpu-1/`, not tracked) |
 | Structural-tag constructs outside the subset | explicitly refused | compile refusals with the field offset; Zig unit table and adapter tests |
 | Partial begin / partial trigger endability (pinned xgrammar parity: separator begins block EOS, triggered free-text tails do not) | verified on CPU | Zig unit tests, ABI tests and `tests/test_session_rollback.py` (both backends) |
 | Nested content dead-end prefixes (the ADR-0005 completion filter, same as the standalone JSON constraint) | verified on CPU | `src/c_api.zig` ABI tests, `tests/test_session_rollback.py` (both backends) and the adapter tests |
 | End-literal prefix vs the JSON filter (the same closing bytes as one token or two, with rollback) | verified on CPU | the ABI test in `src/c_api.zig` and `tests/test_session_rollback.py` (both backends) |
 | Active-segment diagnostics (`blg_session_struct_segment`) | verified on CPU | ABI tests, `tests/test_session_rollback.py` (both backends), the trace tests of `tests/test_vllm_backend.py` |
 | Failure policy: request-local error, no unconstrained step | verified on CPU | same tests (closed-session simulation) |
+| Compile-level refusals answer as request errors (HTTP 400 with the kernel's message and offset) | verified on CPU; end to end on GPU | the adapter compiles the refusing candidates (an unsupported construct, a bounded-work pattern, an external `$ref`) against a byte-complete placeholder engine (`tests/test_vllm_backend.py`); found by the GPU stage, where the refusals had surfaced as engine internal errors |
 | `GRAMMAR` and `whitespace_pattern` | explicitly refused | request validation and compile refusal, with tests |
 | Unsupported tokenizer family | explicitly refused at start | error names the family and the supported ones |
-| Backend trace (`blg-agent-trace/2`) | implemented; qualification rules checked in-repo | events written when `BLG_AGENT_TRACE` is set, keyed by the exposed request id with the internal one recorded; per-segment attribution, rollback events and a deferred `finish` (vLLM rolls back draft-accepted terminals in the same step); the collector splits a request id into one stream per response variant (`{index}_{internal}`) and replays the accept/rollback history, so an inflated depth or a contradictory `terminal_undone` reads `unknown`; `tests/test_vllm_backend.py` (including an n = 2 pair of children) validates the traces with the A1 collector; the GPU run is not verified |
-| Server start and the OpenAI request matrix on GPU | not verified | needs the patched stack and a GPU run |
-| Speculative decoding on/off on GPU, mask audit in the server | not verified | same |
-| Agent path (`auto` with a strict tool) end to end | not verified | the kernel/adapter layers are verified on CPU; the server-side run is blocked on the GPU matrix |
+| Backend trace (`blg-agent-trace/2`) | implemented; qualification rules checked in-repo | events written when `BLG_AGENT_TRACE` is set, keyed by the exposed request id with the internal one recorded; per-segment attribution, rollback events and a deferred `finish` (vLLM rolls back draft-accepted terminals in the same step); the collector splits a request id into one stream per response variant (`{index}_{internal}`) and replays the accept/rollback history, so an inflated depth or a contradictory `terminal_undone` reads `unknown`; `tests/test_vllm_backend.py` (including an n = 2 pair of children) validates the traces with the A1 collector; the GPU runs qualify both configurations (the deferred `finish` of an idle server's last request is confirmed by a sentinel request) |
+| Server start and the OpenAI request matrix on GPU | verified on GPU | the full matrix answered HTTP 200 in the nospec and ngram-spec runs on the pinned stack; forced tool modes and `response_format` qualify as `constrained`, non-strict `auto`/`none` stay `unknown` by design (vLLM does not call the backend there); local run logs under `benchmarks/local/t10-gpu-1/`, not tracked |
+| Speculative decoding on/off on GPU, mask audit in the server | verified on GPU | both configurations ran the matrix and the extra scenarios (26/26 per run: streams, length cut, aborted stream with the engine alive, n = 2 with two trace streams, mixed batch, the forbidden candidate, refusals as 400); the spec runs use ngram with five draft tokens (V1 model runner) |
+| Agent path (`auto` with a strict tool) end to end | verified on GPU | the strict `auto` row qualifies `constrained` 3/3 and its independent probe reports the mask was followed (`probe_followed` 3/3) in both configurations |
 
 A skip in these checks means "not verified", never "passed". The GPU
-matrix remains the next step of the agent workstream.
+stage of T10 ran the runtime scenarios on the pinned stack on
+2026-10-12 (both speculative configurations; local run logs under
+`benchmarks/local/t10-gpu-1/`, not tracked); the comparison report with
+XGrammar (TTFT, throughput, batch scales) remains outstanding.

@@ -9,9 +9,13 @@ design decisions and the support matrix are in
 
 > Status: the backend is implemented and functionally checked on CPU
 > (request compilation, masks, terminals, rollback, structural tags,
-> the backend trace), including on the tokenizer of the pinned model.
-> End-to-end GPU serving checks have not run yet, and each row of the
-> matrix marks "verified", "explicitly refused" or "not verified".
+> the backend trace), including on the tokenizer of the pinned model,
+> and the GPU stage of the T10 checks has run the server-side scenarios
+> on the pinned stack for both speculative configurations (request
+> matrix, extra harness, trace qualifications; local run logs, not
+> tracked). The comparison report against XGrammar and the fresh
+> acceptance remain outstanding, and each row of the matrix marks
+> "verified", "explicitly refused" or "not verified".
 
 ## Pinned stack
 
@@ -46,6 +50,21 @@ pip install "/path/to/bolorgir/python[vllm]"
 vllm serve Qwen/Qwen2.5-0.5B-Instruct \
     --structured-outputs-config '{"backend": "bolorgir"}'
 ```
+
+For tool calling add the tool-mode flags (needed for any `tool_choice`):
+
+```bash
+vllm serve Qwen/Qwen2.5-0.5B-Instruct \
+    --structured-outputs-config '{"backend": "bolorgir"}' \
+    --enable-auto-tool-choice --tool-call-parser hermes
+```
+
+With `hermes`, `tool_choice: "required"`, a named function and `auto`
+with `"strict": true` route the tool schema to the backend as a
+structural tag. `tool_choice: "none"` and non-strict `auto` carry no
+mask at all: vLLM keeps `auto` parser-driven there and never asks the
+backend, so such requests stay `unknown` in a trace qualification - the
+agent keeps its freedom to answer without a tool.
 
 The server log prints one line when the backend is created:
 
@@ -127,6 +146,14 @@ an observation collector) is in
   syntax table is section 3.1 of
   [supported_features.md](../supported_features.md); unsupported
   constructs fail the request with a byte offset, never by falling back.
+- **Refusals are frontend errors**: a constraint the kernel cannot
+  compile (an unsupported regex construct, a non-local `$ref`, a
+  bounded-work pattern over the limits, a structural-tag shape outside
+  the subset) fails the request with HTTP 400 carrying the kernel's
+  message and byte offset. The adapter compiles every candidate
+  constraint against a byte-complete placeholder engine before the
+  request reaches the engine; the engine-side compile remains the
+  final authority.
 - **Compact JSON**: no whitespace between tokens; trailing whitespace is
   not producible. If you need the model to emit whitespace-friendly
   output, this backend is not the one.

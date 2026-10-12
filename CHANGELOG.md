@@ -123,6 +123,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cover exactly the response's choices, and folds the row to
   `constrained` only when every variant is (merged seq counters repeat;
   a corrupted variant fails the whole row).
+- vLLM adapter / structural tags: the pinned xgrammar serialization
+  fields are tolerated instead of refused. The hermes `required`/`named`
+  and strict-tool tags carry `style: "json"`, `any_order: false` and
+  `max_whitespace_cnt: null` on every content, an empty `excludes` list
+  on `triggered_tags` and the null `max_tokens`/`max_chars` caps of
+  `any_text`; the kernel accepts exactly those defaults (the refusals
+  made the real engine's forced-tool requests fail with an internal
+  error) and still refuses any other value with the field offset
+  (`any_order: true`, numeric whitespace or length caps, a non-JSON
+  style, a non-empty `excludes`). Found by the GPU stage of the T10
+  checks on the pinned vLLM 0.31.0 stack; the stand-in tests now build
+  the spec with the serialized fields, and the kernel table covers the
+  accepted and refused values.
+- Structural tags: the free-text mask walk no longer lifts a frame per
+  vocabulary byte. The structtag walk kept one DFS frame for every trie
+  edge, so a walk over the whole vocabulary (triggered tags and
+  `any_text` start in free text) needed the longest token's byte depth
+  while the pool is sized by the branching depth (`trie.max_stack`); on
+  the real Qwen tokenizer (61-byte tokens, `max_stack` 59) the first
+  fill overran the pool and aborted the engine core. Single-child
+  chains now descend in place exactly like the standalone mask walk
+  (`src/mask.zig`), frames exist only at branching nodes, and an ABI
+  regression test covers a free-text walk over a vocabulary with an
+  80-byte token.
+- vLLM adapter: compile-level refusals answer as HTTP 400 with the
+  kernel's diagnostic instead of an internal error. The request
+  validation compiles every candidate constraint (regex, JSON, choice,
+  structural tag) against a byte-complete placeholder engine, so a
+  request the kernel would refuse at compile time (an unsupported
+  regex construct, a non-local `$ref`, an oversized bounded-work
+  pattern) is rejected with the kernel's message and the field offset;
+  the engine-side compile stays the final authority. Found by the GPU
+  stage of the T10 checks: the refusals had surfaced as engine internal
+  errors (HTTP 500).
 
 ## [0.2.0] - not yet released (preview 0.2.0rc1 on GitHub, withdrawn 2026-10-11)
 

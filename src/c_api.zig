@@ -4596,3 +4596,58 @@ test "abi: an end-literal prefix is offered by the completion filter (same bytes
     blg_grammar_release(gh);
     try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
 }
+
+const structtag_abi_free_text_spec =
+    "{\"type\":\"structural_tag\",\"format\":{\"type\":\"triggered_tags\"," ++
+    "\"triggers\":[\"<c>\"],\"tags\":[{\"type\":\"tag\",\"begin\":\"<c>\"," ++
+    "\"content\":{\"type\":\"json_schema\",\"json_schema\":{\"type\":\"integer\"}}," ++
+    "\"end\":\"</c>\"}]}}";
+
+fn buildLongTokenDesc(entries: *[259]TokenEntry, blob: *[2048]u8, bufs: *[256][1]u8) TokenizerDesc {
+    // 256 single bytes + an 80-byte token "aa..a" (id 256) + eos 257 +
+    // special 258. A free-text walk reaches the deepest token; frames
+    // exist only at branching nodes, so the pool sized by max_stack must
+    // survive it (the real Qwen tokenizer: 61-byte tokens, max_stack 59).
+    var tokens: [259][]const u8 = undefined;
+    for (0..256) |b| {
+        bufs[b][0] = @intCast(b);
+        tokens[b] = bufs[b][0..1];
+    }
+    var long: [80]u8 = undefined;
+    @memset(long[0..], 'a');
+    tokens[256] = long[0..];
+    tokens[257] = "";
+    tokens[258] = "<pad>";
+    const eos = [_]u32{257};
+    const special = [_]u32{258};
+    return buildDesc(&tokens, &eos, &special, entries, blob);
+}
+
+test "abi: the free-text walk tolerates tokens deeper than the frame budget" {
+    // A triggered tag's free text accepts every byte, so the mask walk
+    // descends to the deepest vocabulary token. With one frame per byte
+    // the walk outgrew the pool on the real Qwen tokenizer and the
+    // release build aborted; frames exist only at branching nodes and
+    // the single-child chains descend in place.
+    var entries: [259]TokenEntry = undefined;
+    var blob: [2048]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildLongTokenDesc(&entries, &blob, &bufs);
+    var cfg = makeConfig(0);
+    var err = makeTestError();
+    var ctx: ?*Context = null;
+    try std.testing.expectEqual(Status.ok, blg_context_create(&cfg, &desc, &ctx, &err));
+    var gh: ?*GrammarHandle = null;
+    try std.testing.expectEqual(Status.ok, compileStructTagReq(ctx, structtag_abi_free_text_spec, null, 0, &gh, &err));
+    const sc: SessionConfig = .{ .struct_size = @sizeOf(SessionConfig), .max_rollback_tokens = 0 };
+    var s: ?*Session = null;
+    try std.testing.expectEqual(Status.ok, blg_session_create_ex(ctx, gh, &sc, &s, &err));
+    var m: [9]u32 = @splat(0);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    // Free text offers every non-special byte and the deep token.
+    try std.testing.expect(maskBit(&m, 'a'));
+    try std.testing.expect(maskBit(&m, 256));
+    blg_session_destroy(s);
+    blg_grammar_release(gh);
+    try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
+}

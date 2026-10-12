@@ -1012,6 +1012,28 @@ class BolorgirGrammar(StructuredOutputGrammar):
                 f"terminated={self._terminated}, failed={self._failed})")
 
 
+_VALIDATOR_ENGINE = None
+
+
+def _validator_engine():
+    """The compile-only engine behind the frontend validation.
+
+    It compiles against a byte-complete placeholder table: every byte is
+    a single token and the table is never vocabulary-incomplete, so the
+    construct-level verdicts (regex syntax and size limits, schema
+    resolution, satisfiability) match the engine-side compile without
+    adding refusals that depend on the real vocabulary. The engine-side
+    compile with the real tokenizer stays the authority.
+    """
+    global _VALIDATOR_ENGINE
+    if _VALIDATOR_ENGINE is None:
+        tokens = [bytes([i]) for i in range(256)] + [b"\x00", b"\x00"]
+        bundle = bolorgir.TokenizerBundle.from_token_bytes(
+            tokens, eos_ids=[256], special_ids=[257])
+        _VALIDATOR_ENGINE = bolorgir.Engine(tokenizer=bundle)
+    return _VALIDATOR_ENGINE
+
+
 def validate_bolorgir_request(params: Any) -> None:
     """Fail-fast request validation for the patched vLLM frontend.
 
@@ -1056,3 +1078,32 @@ def validate_bolorgir_request(params: Any) -> None:
             refuse("structured_outputs.regex must be a non-empty pattern.")
         if "\x00" in so.regex:
             refuse("structured_outputs.regex must not contain a NUL character.")
+
+    # Compile-level refusals are frontend 400s. The engine-side compile
+    # stays the authority (it holds the real tokenizer); this check
+    # reproduces the construct-level diagnostics - regex syntax and size
+    # limits, external $ref, unsatisfiable schemas - against the
+    # byte-complete placeholder table of ``_validator_engine``.
+    def compile_checked(label: str, compile_call) -> None:
+        try:
+            compile_call(_validator_engine())
+        except bolorgir.ZigConstraintsError as exc:
+            refuse(f"The bolorgir backend refuses this {label} request: "
+                   f"{type(exc).__name__}: {exc}")
+
+    if getattr(so, "regex", None) is not None and isinstance(so.regex, str) \
+            and so.regex and "\x00" not in so.regex:
+        compile_checked("REGEX", lambda eng: eng.compile_regex(so.regex))
+    if getattr(so, "json", None) is not None \
+            and isinstance(so.json, (str, dict)) \
+            and not (isinstance(so.json, str) and not so.json.strip()):
+        compile_checked("JSON",
+                        lambda eng: eng.compile(so.json, profile=SPEC_PROFILE))
+    if getattr(so, "choice", None) is not None \
+            and isinstance(so.choice, list) and so.choice \
+            and all(isinstance(c, str) for c in so.choice):
+        compile_checked("CHOICE", lambda eng: eng.compile_literals(so.choice))
+    if getattr(so, "structural_tag", None) is not None \
+            and isinstance(so.structural_tag, str) and so.structural_tag.strip():
+        compile_checked("STRUCTURAL_TAG",
+                        lambda eng: eng.compile_structural_tag(so.structural_tag))

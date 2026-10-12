@@ -126,7 +126,9 @@ SET_CODE_PARAMS = {
 
 def hermes_structural_tag(name: str = "set_code", params=None, **fmt):
     """The spec the pinned vLLM hermes builder produces for ``auto``:
-    a triggered tag per tool in both begin formats of the parser."""
+    a triggered tag per tool in both begin formats of the parser, with
+    the xgrammar-serialized content fields the builder always emits
+    (style, any_order, max_whitespace_cnt)."""
     params = SET_CODE_PARAMS if params is None else params
     tags = []
     for begin_head, end in (('<tool_call>\n{"name": "', "}\n</tool_call>"),
@@ -134,7 +136,9 @@ def hermes_structural_tag(name: str = "set_code", params=None, **fmt):
         tags.append({
             "type": "tag",
             "begin": f'{begin_head}{name}", "arguments": ',
-            "content": {"type": "json_schema", "json_schema": params},
+            "content": {"type": "json_schema", "json_schema": params,
+                        "style": "json", "any_order": False,
+                        "max_whitespace_cnt": None},
             "end": end,
         })
     return {"type": "structural_tag",
@@ -245,6 +249,15 @@ def test_validate_request_refusals():
         exc(_params(choice=["a", 1]))
     with pytest.raises(bv.VLLMValidationError):
         exc(_params(regex="a\x00b"))
+    # Compile-level refusals are caught at the frontend against the
+    # byte-complete placeholder table (regex constructs and size limits,
+    # external $ref).
+    with pytest.raises(bv.VLLMValidationError):
+        exc(_params(regex="(?<=a)b"))
+    with pytest.raises(bv.VLLMValidationError):
+        exc(_params(regex="a{1,20000}"))
+    with pytest.raises(bv.VLLMValidationError):
+        exc(_params(json={"$ref": "https://example.com/ext.json"}))
     # The supported kinds pass; a structural tag is validated by the
     # engine compile (unsupported variants are request errors there).
     exc(_params(json={"type": "object"}))
@@ -549,6 +562,29 @@ def test_structural_tag_wrong_argument_value_is_refused(monkeypatch):
     assert accept_bytes(grammar, b"\"zq")
     assert not grammar.accept_tokens("r", [ord("X")])
     assert accept_bytes(grammar, b"-17-wombat\"}")
+    backend.destroy()
+
+
+def test_structural_tag_pinned_serialization_is_tolerated(monkeypatch):
+    # The pinned builder serializes style/any_order/max_whitespace_cnt in
+    # every tag content and an empty excludes list on triggered tags: the
+    # defaults compile, any other values are explicit refusals.
+    backend = make_backend(monkeypatch)
+    backend.compile_grammar(bv.StructuredOutputOptions.STRUCTURAL_TAG,
+                            json.dumps(hermes_structural_tag(excludes=[])))
+    for field, value in (("any_order", True),
+                         ("max_whitespace_cnt", 2),
+                         ("style", "qwen_xml")):
+        spec = hermes_structural_tag()
+        spec["format"]["tags"][0]["content"][field] = value
+        with pytest.raises(bv.BolorgirRequestError):
+            backend.compile_grammar(bv.StructuredOutputOptions.STRUCTURAL_TAG,
+                                    json.dumps(spec))
+    spec = hermes_structural_tag()
+    spec["format"]["excludes"] = ["<x>"]
+    with pytest.raises(bv.BolorgirRequestError):
+        backend.compile_grammar(bv.StructuredOutputOptions.STRUCTURAL_TAG,
+                                json.dumps(spec))
     backend.destroy()
 
 
