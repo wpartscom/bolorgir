@@ -25,13 +25,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `pattern` user.
 - **vLLM structured-output backend** (ADR-0016): `bolorgir.vllm`
   implements the vLLM 0.31.0 backend interface for JSON Schema (spec-v1),
-  `json_object`, choice and regex requests, with zero-copy mask rows,
-  terminal (EOS/stop) semantics, rollback and draft validation, and a
-  request-local failure policy. Registration needs the pinned upstream
-  patch in `integrations/vllm/` (`bolorgir[vllm]` alone cannot register a
-  backend); `GRAMMAR` and `STRUCTURAL_TAG` requests are refused explicitly.
+  `json_object`, choice, regex and structural-tag requests, with zero-copy
+  mask rows, terminal (EOS/stop) semantics, rollback and draft validation,
+  and a request-local failure policy. Registration needs the pinned
+  upstream patch in `integrations/vllm/` (`bolorgir[vllm]` alone cannot
+  register a backend); `GRAMMAR` requests are refused explicitly.
   `Session.fill_mask_into(buffer)` writes a mask into a caller-owned
   writable buffer without an intermediate allocation.
+- **Structural-tag constraint** (ADR-0016 Finding 3):
+  `BLG_CONSTRAINT_STRUCTURAL_TAG = 3` and
+  `Engine.compile_structural_tag(spec)` compile tool-call framing - free
+  text with triggers, per-tool begin literal, spec-v1 JSON arguments and
+  end literal - for the accepted subset (`triggered_tags`,
+  `tags_with_separator` with the empty separator, `any_text`, the legacy
+  `structures`/`triggers` shape). Segments, triggers, rollback across
+  boundaries and draft validation live in the Zig session; constructs
+  outside the subset are refused with the offending field's offset. A
+  byte-complete vocabulary is required, like the regex kind.
+- **Backend trace** (ADR-0016): with `BLG_AGENT_TRACE=<path>` the vLLM
+  backend appends `blg-agent-trace/2` events (start, decision, compile,
+  mask, accept, finish) per request; the pinned patch passes the request
+  id to the backend. The A1 qualification collector turns the events into
+  `constrained` / `unconstrained` / `unknown` verdicts; an unfinished
+  trace stays `unknown`.
 - **Agent evaluation preparation**: `benchmarks/agent_eval/` (observation
   collector for the serving request matrix, experiment plan with the
   backend-trace format) and its negative tests; the collector treats a
@@ -43,6 +59,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - README: the withdrawn `0.2.0rc1` links are replaced by the source install
   of the development line, and the preview status separates the rc1 verdict
   (which names the earlier core) from the current candidate.
+- vLLM adapter: draft validation now applies the same terminal rule as
+  the mask and `accept_tokens` (a stop token is approved exactly at a
+  completing state and cuts the draft elsewhere), and a refused
+  `rollback` leaves `is_terminated` and the session as they were.
 
 ## [0.2.0] - not yet released (preview 0.2.0rc1 on GitHub, withdrawn 2026-10-11)
 

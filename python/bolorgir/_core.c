@@ -1134,6 +1134,7 @@ PyMODINIT_FUNC PyInit__core(void) {
     if (PyModule_AddIntConstant(mod, "KIND_JSON_SCHEMA", BLG_CONSTRAINT_JSON_SCHEMA) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "KIND_LITERAL_SET", BLG_CONSTRAINT_LITERAL_SET) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "KIND_REGEX", BLG_CONSTRAINT_REGEX) < 0) goto fail;
+    if (PyModule_AddIntConstant(mod, "KIND_STRUCTURAL_TAG", BLG_CONSTRAINT_STRUCTURAL_TAG) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "MAX_ROLLBACK_TOKENS", BLG_MAX_ROLLBACK_TOKENS) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "MODE_LAZY", BLG_MODE_LAZY) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "COMPILE_PROBE", BLG_COMPILE_PROBE) < 0) goto fail;

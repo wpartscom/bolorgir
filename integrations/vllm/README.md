@@ -29,11 +29,14 @@ git clone --branch v0.31.0 --depth 1 https://github.com/vllm-project/vllm.git
 cd vllm
 git apply /path/to/bolorgir/integrations/vllm/vllm-0.31.0-bolorgir.patch
 pip install -e .          # or the build command of your platform
-pip install "bolorgir[vllm]"
+pip install "/path/to/bolorgir/python[vllm]"   # from source until the package
+                                               # is published; bare
+                                               # `pip install bolorgir[vllm]`
+                                               # is not available yet
 ```
 
 Patch identity (sha256):
-`38c0272a5cea02fd040258e85d2459c6a2c97acb2668c2155fa33c943b8cbf2b`.
+`15e267a10d4f823b33c3e28df8457d873c13b4d7475087b53cdd933e31c8f30f`.
 
 Revert with `git apply -R ...` or by checking out the three files.
 

@@ -8,10 +8,10 @@ design decisions and the support matrix are in
 [ADR-0016](../adr/ADR-0016-vllm-agent-integration.md).
 
 > Status: the backend is implemented and functionally checked on CPU
-> (request compilation, masks, terminals, rollback, failure policy),
-> including on the tokenizer of the pinned model. End-to-end GPU serving
-> checks have not run yet, and each row of the matrix marks "verified",
-> "explicitly refused" or "not verified".
+> (request compilation, masks, terminals, rollback, structural tags,
+> the backend trace), including on the tokenizer of the pinned model.
+> End-to-end GPU serving checks have not run yet, and each row of the
+> matrix marks "verified", "explicitly refused" or "not verified".
 
 ## Pinned stack
 
@@ -68,8 +68,9 @@ to its structured-output types:
 | `response_format={"type": "json_object"}` | `JSON_OBJECT` | any JSON object |
 | `structured_outputs={"choice": [...]}` | `CHOICE` | one literal of the list |
 | `structured_outputs={"regex": "..."}` | `REGEX` | full match of the pattern (ECMA-262 subset, ADR-0015) |
+| `structured_outputs={"structural_tag": "..."}` | `STRUCTURAL_TAG` | tool-call framing over the accepted subset (ADR-0016): `triggered_tags` / `tags_with_separator` / `any_text` with `json_schema` tag contents, and the legacy `structures`/`triggers` shape |
 | `structured_outputs={"grammar": "..."}` | `GRAMMAR` | **refused** (request error) |
-| `structured_outputs={"structural_tag": "..."}` | `STRUCTURAL_TAG` | **refused** (request error; see ADR-0016 Finding 3) |
+| structural-tag constructs outside the subset | - | **refused** (request error naming the field); see ADR-0016 Finding 3 |
 | `structured_outputs={"whitespace_pattern": ...}` | - | **refused**; the backend generates compact JSON only |
 
 Examples:
@@ -137,7 +138,24 @@ an observation collector) is in
 - **Speculative decoding**: supported through the session rollback and
   draft validation (`blg_session_rollback` / `blg_validate_tokens`,
   ADR-0014); the rollback depth is derived from the engine's speculative
-  configuration.
+configuration. Structural-tag sessions roll back across every segment
+boundary (free text, begin literal, arguments value, end literal), and a
+terminal token that cannot end the language cuts a draft instead of
+being approved.
+- **Structural tags**: the accepted subset and its byte-exact semantics
+are ADR-0016 Finding 3: a full trigger commits to a tag; the begin
+literal, the tool's parameters schema (spec-v1, compact) and the end
+literal follow; `at_least_one` / `stop_after_first` control when the
+document may end; tags repeat when the format allows it. The constraint
+needs a byte-complete vocabulary, like the regex kind. Unsupported
+constructs are refused with the field offset in the error message.
+- **Backend trace**: with `BLG_AGENT_TRACE=<path>` the backend appends
+`blg-agent-trace/2` JSON lines (start, decision, compile, mask, accept,
+finish) for every request it compiles; `finish` is written when the
+constrained generation ends through the backend (a terminal token or a
+failure), so a request cut elsewhere leaves a visibly unfinished trace.
+The qualification collector turns these events into `constrained` /
+`unconstrained` / `unknown` verdicts.
 - **Failures are request-local**: a failing mask computation or a
   rejected accepted token terminates exactly that request with an error;
   it never switches to another backend and never continues
@@ -161,16 +179,19 @@ an observation collector) is in
 1. The startup log line above names the backend, the extension file and
    the tokenizer.
 2. A request whose format is refused fails with the request error text
-   from the backend; `GRAMMAR` and `STRUCTURAL_TAG` are the expected
-   refusals.
-3. For a positive check, the qualification collector
-   (`benchmarks/agent_eval/qualify_stack.py`) sends a probe schema with
-   implausible literals and records the answers; a row is only
-   "qualified" when a complete backend trace shows the compile and the
-   masks of the request. The trace format and its rules are in
-   `benchmarks/agent_eval/PLAN.md`; the serving backend does not emit
-   that trace yet (instrumentation is an integration-stage step), so
-   without a trace every row stays an observation.
+   from the backend; `GRAMMAR` and structural-tag constructs outside the
+   subset are the expected refusals.
+3. For a positive check, start the server with `BLG_AGENT_TRACE=<path>`
+   in its environment and run the qualification collector
+   (`benchmarks/agent_eval/qualify_stack.py`) with `--backend-trace
+   <path>`; it records the answers and turns the backend events into a
+   per-request verdict. A row is only "qualified" when the trace is
+   complete and consistent (the compile of every declared constraint
+   precedes its masks; a cache hit names its origin; the finish event
+   counts the events before it). The trace format and its rules are in
+   `benchmarks/agent_eval/PLAN.md`; traces are only as good as the run
+   that produced them - an unfinished trace stays `unknown`, never
+   `unconstrained`.
 
 ## Troubleshooting
 
@@ -180,4 +201,5 @@ an observation collector) is in
 | `ModuleNotFoundError: bolorgir` at backend creation | Bolorgir is not installed in the server's environment | install the `[vllm]` extra into the same environment |
 | Request fails with `unsupported tokenizer for the bolorgir backend` | tokenizer family outside the exact byte-table set | use an HF tokenizer of the supported families or another backend for this model |
 | Request fails with `bolorgir cannot compile the REGEX request: ...` | unsupported construct or malformed pattern | see the message's byte offset and the syntax table |
-| Request fails with `does not support STRUCTURAL_TAG` | tool-call framing is not implemented yet | use `required`/named tools with a parser without a structural tag model, or another backend for tool calls |
+| Request fails with `does not support GRAMMAR` | EBNF/Lark grammars are out of scope | use JSON, choice, json_object, regex or the structural-tag subset |
+| Request fails with `UnsupportedFeatureError: unsupported structural-tag format/style/field ...` | the structural tag is outside the accepted subset | see ADR-0016 Finding 3; the error names the offset of the offending field |

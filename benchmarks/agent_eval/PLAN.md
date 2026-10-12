@@ -14,8 +14,8 @@ this directory has run yet; no number below is a result.
 | T9 rollback and draft validation | implemented in `main` (ADR-0014 proposed); functional checks green; the overhead bound measurement is recorded with the candidate | speculative decoding rows of T10 |
 | T12 standalone regex | implemented in `main` (ADR-0015 proposed); differential checks against an ECMA reference green on the byte vocabulary | regex requests in modes B/X |
 | T10 vLLM backend | implemented (`python/bolorgir/vllm.py`) with the pinned patch (`integrations/vllm/`); CPU functional checks green; GPU serving checks pending | A2 |
-| Structural-tag constraint kind | not implemented; the backend refuses `STRUCTURAL_TAG` explicitly (ADR-0016 Finding 3) | mode B for the agent's `auto` |
-| Backend trace for the qualification | not written (format below); instrumentation is an A2 step | every "verified" row of ADR-0016 |
+| Structural-tag constraint kind | implemented in `main` (ADR-0016 Finding 3) for the accepted subset; CPU checks green; the pass over the real builders and GPU serving is pending | mode B for the agent's `auto` |
+| Backend trace for the qualification | implemented (`BLG_AGENT_TRACE`, format below); the collector rules are checked in-repo on synthetic and real backend flows; a GPU run is pending | every "verified" row of ADR-0016 |
 | Pins of Harbor, OpenCode, model, template, server settings | candidates only (ADR-0016) | A2 |
 
 ## Fixed configuration (to pin in A1.3, before any A3 measurement)
@@ -85,10 +85,14 @@ schema, if any, the backend masked. Every mode stays "not verified"
 until a backend trace qualifies it; `tests/test_agent_qualify.py`
 covers the collector on synthetic answers and traces.
 
-## Evidence format (to be produced by an instrumented backend)
+## Evidence format (produced by the serving backend)
 
-Trace format `blg-agent-trace/2`; the serving backend does not write it yet
-(instrumentation is an A2 step).
+Trace format `blg-agent-trace/2`; the serving backend writes it when
+`BLG_AGENT_TRACE=<path>` is set in the server environment (events
+`start`, `decision`, `compile`, `mask`, `accept`, `finish`; `finish` is
+written only when the constrained generation ends through the backend - a
+terminal token or a failure - so a request cut elsewhere leaves a visibly
+incomplete trace).
 A qualification needs, per request:
 
 1. Correlation: the client's `X-Request-Id` (also returned by the
@@ -150,5 +154,5 @@ these rules per request id:
 Absent events are never read as "no constraint": a truncated trace, a
 grammar reused from a cache without its origin or a request the backend
 did not decide on stays `unknown`. `tests/test_agent_qualify.py` holds
-synthetic negative cases for each rule. The backend instrumentation and
-the GPU runs are later steps.
+synthetic negative cases for each rule, and `tests/test_vllm_backend.py`
+runs the rules over real backend traces. The GPU runs are later steps.

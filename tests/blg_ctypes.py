@@ -514,6 +514,21 @@ def compile_regex(ctx: Context, pattern: str) -> ctypes.c_void_p:
     return compile_grammar(ctx, pattern.encode("utf-8"), BLG_CONSTRAINT_REGEX, profile=None)
 
 
+BLG_CONSTRAINT_STRUCTURAL_TAG = 3
+
+
+def compile_structural_tag(ctx: Context, spec) -> ctypes.c_void_p:
+    """BLG_CONSTRAINT_STRUCTURAL_TAG (ADR-0016); profile NULL."""
+    import json as _json
+    if isinstance(spec, (bytes, bytearray)):
+        data = bytes(spec)
+    elif isinstance(spec, str):
+        data = spec.encode("utf-8")
+    else:
+        data = _json.dumps(spec, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return compile_grammar(ctx, data, BLG_CONSTRAINT_STRUCTURAL_TAG, profile=None)
+
+
 def compile_literals(ctx: Context, strings) -> ctypes.c_void_p:
     import json as _json
     data = _json.dumps(list(strings), ensure_ascii=False).encode("utf-8")

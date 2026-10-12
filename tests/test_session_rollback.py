@@ -325,3 +325,108 @@ def test_rollback_needs_a_depth_and_an_active_session():
             s.close()
     finally:
         rig.close()
+
+
+# ---------------------------------------------------------------------------
+# BLG_CONSTRAINT_STRUCTURAL_TAG sessions through both backends (ADR-0016)
+# ---------------------------------------------------------------------------
+
+TAG_SPEC = {
+    "type": "structural_tag",
+    "format": {"type": "tags_with_separator", "separator": "", "at_least_one": True,
+               "tags": [{"type": "tag", "begin": "<c>",
+                         "content": {"type": "json_schema",
+                                     "json_schema": {"type": "integer"}},
+                         "end": "</c>"}]},
+}
+
+
+class PackageStructTagRig:
+    def __init__(self, spec, mode, tag_spec):
+        import bolorgir as zg
+        from conftest import PackageBackend
+        self.zg = zg
+        self.engine = zg.Engine(mode=mode)
+        self.bundle = PackageBackend._make_tokenizer(zg, spec)
+        self.constraint = self.engine.compile_structural_tag(tag_spec, tokenizer=self.bundle)
+
+    def session(self, depth):
+        return PackageSessionRig(
+            self.zg, self.constraint.create_session(max_rollback_tokens=depth))
+
+    def close(self):
+        self.constraint.close()
+        self.engine.close()
+
+
+class CtypesStructTagRig:
+    def __init__(self, spec, mode, tag_spec):
+        import blg_ctypes
+        self.zg = blg_ctypes
+        code = {"lazy": blg_ctypes.BLG_MODE_LAZY,
+                "adaptive": blg_ctypes.BLG_MODE_ADAPTIVE}[mode]
+        self.ctx = blg_ctypes.Context(spec, code)
+        self.grammar = blg_ctypes.compile_structural_tag(self.ctx, tag_spec)
+
+    def session(self, depth):
+        return CtypesSessionRig(
+            self.zg.Session(self.ctx, self.grammar, max_rollback_tokens=depth))
+
+    def close(self):
+        self.zg.grammar_release(self.grammar)
+        self.ctx.destroy()
+
+
+def make_tag_rig(spec, mode, tag_spec):
+    kind = os.environ.get("BLG_TEST_BACKEND", "auto")
+    if kind in ("package", "auto"):
+        try:
+            return PackageStructTagRig(spec, mode, tag_spec)
+        except ImportError:
+            if kind == "package":
+                skip_or_fail("bolorgir package is not importable")
+    try:
+        return CtypesStructTagRig(spec, mode, tag_spec)
+    except ImportError as e:
+        skip_or_fail(f"core unavailable: {e}")
+
+
+@pytest.mark.parametrize("tok_name", ["byte", "dict"])
+@pytest.mark.parametrize("mode", ["lazy", "adaptive"])
+def test_structural_tag_session_ops(tok_name, mode):
+    """Masks, accepts, rollback and draft validation of a structural-tag
+    session through the selected backend: no end before the tag, the
+    content masks the arguments language, the end literal closes the tag,
+    and a refused draft leaves the session bit-identical."""
+    spec = make_byte_tokenizer() if tok_name == "byte" else make_dict_tokenizer()
+    rig = make_tag_rig(spec, mode, TAG_SPEC)
+    try:
+        s = rig.session(8)
+        try:
+            assert not s.can_end()
+            assert set(s.mask()) == {ord("<")}
+            for t in b"<c>":
+                assert s.accept(t) == BLG_OK
+            assert not s.can_end()
+            m = s.mask()
+            assert ord("4") in m and ord("<") not in m
+            # Feed and roll back: mask and can_end are restored.
+            assert s.accept(ord("4")) == BLG_OK
+            assert s.rollback(1) == BLG_OK
+            assert s.mask() == m and not s.can_end()
+            # Draft validation matches consecutive accepts and preserves state.
+            assert s.validate([ord("4"), ord("<"), ord("/"), ord("c"), ord(">")]) == (BLG_OK, 5)
+            assert s.validate([ord("4"), ord("x")]) == (BLG_OK, 1)
+            assert s.mask() == m
+            # The tag completes and the language can now end.
+            for t in b"4</c>":
+                assert s.accept(t) == BLG_OK
+            assert s.can_end()
+            # Roll the whole session back to the start.
+            assert s.rollback(8) == BLG_OK
+            assert set(s.mask()) == {ord("<")}
+            assert not s.can_end()
+        finally:
+            s.close()
+    finally:
+        rig.close()

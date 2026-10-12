@@ -15,6 +15,7 @@ const precompute = @import("precompute.zig");
 const probe = @import("probe.zig");
 const io_mod = @import("io.zig");
 const regex = @import("regex.zig");
+const structtag = @import("structtag.zig");
 
 pub const ABI_VERSION: u32 = 1;
 pub const ERROR_MESSAGE_CAP = 256;
@@ -202,7 +203,7 @@ comptime {
 
 const Mode = enum { lazy, adaptive, precompute };
 const SessionStatus = enum { active, finished, aborted };
-const ConstraintKind = enum { json_schema, literal_set, regex };
+const ConstraintKind = enum { json_schema, literal_set, regex, structural_tag };
 
 /// Counter of memory actually retained by a grammar.
 /// Every arena allocation of the grammar goes through this allocator, so
@@ -497,10 +498,13 @@ pub const SessionConfig = extern struct {
 pub const MAX_ROLLBACK_TOKENS: u32 = 65535;
 
 /// ADR-0014: one record per accept: the parser state it left (JSON
-/// grammars) or the regex state (BLG_CONSTRAINT_REGEX).
+/// grammars), the regex state (BLG_CONSTRAINT_REGEX) or the structural-tag
+/// small state plus its JSON content snapshot (BLG_CONSTRAINT_STRUCTURAL_TAG).
 const Record = struct {
     snap: parser.Snapshot = .{},
     rx: regex.State = .{},
+    tag: structtag.SmallState = .{},
+    has_snap: bool = false,
 };
 
 /// ADR-0014: records of the states the last accepts left, oldest at
@@ -560,6 +564,13 @@ pub const Session = struct {
     history: History,
     /// Session state of a BLG_CONSTRAINT_REGEX grammar (`states` unused).
     rx: regex.State,
+    /// Slot states of a BLG_CONSTRAINT_STRUCTURAL_TAG grammar: the current
+    /// state plus two chain scratches; the current slot is never overwritten
+    /// while a token is fed, so a rejected token leaves the session as it
+    /// was (ADR-0016). `states[0..1]` serve as JSON feed scratches.
+    tag: ?[*]structtag.State = null,
+    tag_cur: u8 = 0,
+    tag_pool: structtag.Pool = .{},
 };
 
 inline fn curState(s: anytype) @TypeOf(&s.states[0]) {
@@ -695,6 +706,7 @@ fn compileGrammar(ctx: *Context, kind: ConstraintKind, bytes: []const u8, regist
         .json_schema => try schema.compileWith(ga, bytes, ctx.max_depth, diag, w, strip, profile, registry, .{ .record_pointers = record_pointers }),
         .literal_set => try literals.compileLiterals(ga, bytes, ctx.max_depth, diag, w, strip),
         .regex => return compileRegexGrammar(ctx, bytes, diag, ga),
+        .structural_tag => return compileStructuralTagGrammar(ctx, bytes, diag, w, ga),
     };
     errdefer g.deinit();
     // Reject constraints the tokenizer cannot fully express instead of
@@ -760,6 +772,41 @@ fn compileRegexGrammar(ctx: *Context, bytes: []const u8, diag: *schema.Diagnosti
     };
 }
 
+/// BLG_CONSTRAINT_STRUCTURAL_TAG (ADR-0016): tool-call framing (see
+/// src/structtag.zig). Like the regex constraint it needs a byte-complete
+/// vocabulary: the begin/end literals and the tag contents span the exact
+/// byte table. The accepted spec subset and the explicit refusals are
+/// documented in ADR-0016 and docs/supported_features.md.
+fn compileStructuralTagGrammar(ctx: *Context, bytes: []const u8, diag: *schema.Diagnostic, w: *work_mod.Work, ga: std.mem.Allocator) CompileError!grammar.Grammar {
+    if (!ctx.tok.byte_complete) {
+        schema.report(diag, .unsupported_feature, NO_OFFSET, "a structural-tag constraint needs a byte-complete vocabulary", .{});
+        return error.UnsupportedTokenizer;
+    }
+    var arena = alloc.Arena.init(ga);
+    errdefer arena.deinit();
+    const prog = arena.allocator().create(structtag.Program) catch return error.OutOfMemory;
+    prog.* = structtag.compile(ga, bytes, ctx.max_depth, ctx.tok.strip_lead_space, diag, w) catch |e| return switch (e) {
+        error.InvalidSchema => error.InvalidSchema,
+        error.UnsupportedFeature => error.UnsupportedFeature,
+        error.Unsatisfiable => error.UnsatisfiableConstraint,
+        error.ResourceLimit => error.ResourceLimit,
+        error.Cancelled => error.Cancelled,
+        error.OutOfMemory => error.OutOfMemory,
+    };
+    const ident = grammar.identityOf(.structural_tag, bytes);
+    return .{
+        .kind = .structural_tag,
+        .nodes = &.{},
+        .literal_pool = &.{},
+        .root = 0,
+        .id = ident.lo,
+        .id_hi = ident.hi,
+        .finite_literal = false,
+        .structtag = prog,
+        .arena = arena,
+    };
+}
+
 fn mapCompileError(e: CompileError, diag: *const schema.Diagnostic, err: ?*ZgError) Status {
     const msg: []const u8 = if (diag.message_len > 0) diag.text() else switch (e) {
         error.InvalidSchema => "invalid schema",
@@ -818,6 +865,17 @@ fn fillMaskInner(s: *Session, mask_raw: [*]align(1) u32, mask_words: usize, err:
     var timer = startTimer();
     if (g.regex) |rp| {
         regex.fillMask(rp, &ctx.tok, s.rx, out, &w) catch |e| return maskFail(err, e);
+        const ns = elapsedNs(&timer);
+        s.stats.recordMaskCall(ns);
+        ctx.mutex.lock();
+        ctx.stats.recordMaskCall(ns);
+        ctx.stats.addWorkOps(w.ops);
+        ctx.mutex.unlock();
+        clearError(err);
+        return .ok;
+    }
+    if (g.structtag) |sp| {
+        structtag.fillMask(sp, &ctx.tok, &s.tag.?[s.tag_cur], out, &w, &s.tag_pool, &s.states[1], &s.mask_buf.spare, &s.side) catch |e| return maskFail(err, e);
         const ns = elapsedNs(&timer);
         s.stats.recordMaskCall(ns);
         ctx.mutex.lock();
@@ -1227,12 +1285,16 @@ pub export fn blg_compile(
     const flags: u32 = if (req.struct_size == @sizeOf(CompileRequest)) req.flags else 0;
     if (flags & ~(COMPILE_PROBE | COMPILE_PROBE_STRICT) != 0)
         return fail(err, .invalid_argument, "unknown compile request flags");
-    if (req.kind > 2)
+    if (req.kind > 3)
         return fail(err, .invalid_argument, "unknown constraint kind");
     const kind: ConstraintKind = @fromBackingInt(@intCast(req.kind));
     if (kind == .regex and req.profile != null)
         return fail(err, .invalid_argument, "profile must be NULL for a regex constraint");
     if (kind == .regex and flags != 0)
+        return fail(err, .unsupported_feature, "the probe applies to JSON Schema constraints");
+    if (kind == .structural_tag and req.profile != null)
+        return fail(err, .invalid_argument, "profile must be NULL for a structural-tag constraint");
+    if (kind == .structural_tag and flags != 0)
         return fail(err, .unsupported_feature, "the probe applies to JSON Schema constraints");
     var profile: schema.Profile = .canonical_v1;
     if (req.profile) |p| {
@@ -1337,7 +1399,7 @@ pub export fn blg_compile(
     // warm-up has its OWN work account: it must not consume the
     // call's work_limit_ops; its bounds are precompute_max_states, the temp
     // memory budget and the cancel flag. Only cancel propagates.
-    if (ctx.mode == .precompute and ctx.cache.budget > 0 and kind != .regex) {
+    if (ctx.mode == .precompute and ctx.cache.budget > 0 and kind != .regex and kind != .structural_tag) {
         var warm_w = work_mod.Work.init(0, cancel);
         const n = precompute.run(
             ctx.accounting.allocator(.temp),
@@ -1579,6 +1641,9 @@ fn sessionCreate(
         .side = undefined,
         .history = .{ .cap = @intCast(max_rollback_tokens) },
         .rx = .{},
+        .tag = null,
+        .tag_cur = 0,
+        .tag_pool = .{},
     };
     // The whole mask scratch goes to the context temp budget: at
     // MAX_THREADS_CAP 128 one inline parser.State is ~256 KiB and the
@@ -1586,6 +1651,7 @@ fn sessionCreate(
     // tokenizer), which alone would exhaust the 8 MiB session budget
     // before any search chunk fits (measured on maskbench o77317).
     s.mask_buf = mask.MaskBuf.init(ctx.accounting.allocator(.temp), ctx.accounting.allocator(.temp));
+    s.tag_pool = structtag.Pool.init(ctx.accounting.allocator(.temp));
     // The allocator must wrap the heap-resident account: `sa` above points
     // at the stack local, which dies when this function returns (release
     // builds reuse the slot; the first side allocation then reads garbage).
@@ -1594,6 +1660,23 @@ fn sessionCreate(
     if (gh.g.regex) |rp| {
         s.states[0].n = 0;
         s.rx = regex.initial(rp);
+    } else if (gh.g.structtag) |sp| {
+        // Three slot states: the current one and two chain scratches; the
+        // current slot is never overwritten while a token is fed, so a
+        // rejected token leaves the session untouched (ADR-0016).
+        s.states[0].n = 0;
+        const slots = sa.alloc(structtag.State, 3) catch {
+            parser.releaseState(&s.side, &s.states[0]);
+            parser.releaseState(&s.side, &s.states[1]);
+            s.side.deinit();
+            sa.destroy(s);
+            return fail(err, .resource_limit, "session allocation failed");
+        };
+        slots[0] = structtag.initState(sp, ctx.max_threads);
+        slots[1].json.n = 0;
+        slots[2].json.n = 0;
+        s.tag = slots.ptr;
+        s.tag_cur = 0;
     } else {
         s.states[0] = parser.initState(&gh.g, ctx.max_threads, &s.side) catch {
             s.side.deinit();
@@ -1616,6 +1699,12 @@ pub export fn blg_session_destroy(s_opt: ?*Session) callconv(.c) void {
     releaseGrammarRef(s.gh);
     parser.releaseState(&s.side, &s.states[0]);
     parser.releaseState(&s.side, &s.states[1]);
+    if (s.tag) |slots| {
+        for (slots[0..3]) |*st| parser.releaseState(&s.side, &st.json);
+        s.account.allocator(.session).free(slots[0..3]);
+        s.tag = null;
+    }
+    s.tag_pool.deinit(&s.side);
     s.history.deinit(s.account.allocator(.session), &s.side);
     // mask_buf's completion-search scratch states may hold chunk references
     // into the side store (spec-v1 open objects/repeat taps): it must be
@@ -1712,6 +1801,7 @@ fn acceptTokenInner(s: *Session, token_id: u32, err: ?*ZgError) Status {
     if (tok.is_special[token_id])
         return fail(err, .invalid_token, "special token not allowed in document");
     if (s.gh.g.regex) |rp| return acceptRegex(s, rp, token_id, err);
+    if (s.gh.g.structtag) |sp| return acceptStructTag(s, sp, token_id, err);
 
     var timer = startTimer();
     if (tok.is_eos[token_id]) {
@@ -1783,8 +1873,66 @@ fn acceptRegex(s: *Session, rp: *const regex.Program, token_id: u32, err: ?*ZgEr
     return .ok;
 }
 
+/// Feeds one token through the structural-tag chain (ADR-0016): the
+/// current slot is never overwritten, so a rejected token leaves the
+/// session byte-identical; the fed state becomes current only after the
+/// whole token succeeded and the pre-accept state was recorded for
+/// rollback (ADR-0014).
+fn acceptStructTag(s: *Session, sp: *const structtag.Program, token_id: u32, err: ?*ZgError) Status {
+    const ctx = s.ctx;
+    var timer = startTimer();
+    const slots = s.tag.?;
+    if (ctx.tok.is_eos[token_id]) {
+        if (!structtag.canEnd(&slots[s.tag_cur]))
+            return fail(err, .invalid_token, "EOS not allowed before the structural tag can end");
+        if (s.history.cap != 0 and !recordHistory(s))
+            return fail(err, .resource_limit, "rollback history exceeds the session budget");
+    } else {
+        const orig = s.tag_cur;
+        const o1: u8 = (orig + 1) % 3;
+        const o2: u8 = (orig + 2) % 3;
+        var src: u8 = orig;
+        var src_is_orig = true;
+        var dst: u8 = o1;
+        for (ctx.tok.bytes[token_id]) |b| {
+            structtag.feedByteInto(sp, &s.side, &slots[src], b, &s.states[1], &s.mask_buf.spare, &slots[dst]) catch |e| switch (e) {
+                error.Parse => {
+                    if (!src_is_orig) parser.releaseState(&s.side, &slots[src].json);
+                    return fail(err, .invalid_token, "token rejected by the structural tag");
+                },
+                error.ResourceLimit, error.OutOfMemory => {
+                    if (!src_is_orig) parser.releaseState(&s.side, &slots[src].json);
+                    return fail(err, .resource_limit, "structural-tag feed limit exceeded");
+                },
+            };
+            if (!src_is_orig) parser.releaseState(&s.side, &slots[src].json);
+            src = dst;
+            src_is_orig = false;
+            dst = if (dst == o1) o2 else o1;
+        }
+        if (!src_is_orig) {
+            // The current slot still holds the pre-accept state: record it
+            // before the commit, then make the fed state current.
+            if (s.history.cap != 0 and !recordHistory(s)) {
+                parser.releaseState(&s.side, &slots[src].json);
+                return fail(err, .resource_limit, "rollback history exceeds the session budget");
+            }
+            parser.releaseState(&s.side, &slots[orig].json);
+            s.tag_cur = src;
+        }
+    }
+    const ns = elapsedNs(&timer);
+    s.stats.recordAccept(ns);
+    ctx.mutex.lock();
+    ctx.stats.recordAccept(ns);
+    ctx.mutex.unlock();
+    clearError(err);
+    return .ok;
+}
+
 fn sessionCanEnd(s: *const Session) bool {
     if (s.gh.g.regex) |rp| return regex.canEnd(rp, s.rx);
+    if (s.gh.g.structtag != null) return structtag.canEnd(&s.tag.?[s.tag_cur]);
     return parser.canEnd(&s.gh.g, curState(s));
 }
 
@@ -1795,8 +1943,17 @@ fn recordHistory(s: *Session) bool {
     if (s.history.cap == 0) return true;
     const a = s.account.allocator(.session);
     var rec: Record = .{ .rx = s.rx };
-    if (s.gh.g.regex == null)
+    if (s.gh.g.structtag != null) {
+        const st = &s.tag.?[s.tag_cur];
+        rec.tag = st.small;
+        if (st.small.phase == .json and !st.small.json_dead) {
+            rec.snap = parser.snapshotState(a, &s.side, &st.json) catch return false;
+            rec.has_snap = true;
+        }
+    } else if (s.gh.g.regex == null) {
         rec.snap = parser.snapshotState(a, &s.side, curState(s)) catch return false;
+        rec.has_snap = true;
+    }
     s.history.makeRoom(a, &s.side) catch {
         parser.dropSnapshot(a, &s.side, &rec.snap);
         return false;
@@ -1821,7 +1978,16 @@ pub export fn blg_session_rollback(s_opt: ?*Session, n_tokens: u32) callconv(.c)
         parser.dropSnapshot(a, &s.side, &newer.snap);
     }
     var target = s.history.popNewest();
-    if (s.gh.g.regex != null) {
+    if (s.gh.g.structtag != null) {
+        const st = &s.tag.?[s.tag_cur];
+        if (target.has_snap) {
+            parser.restoreSnapshot(a, &s.side, &target.snap, &st.json);
+        } else {
+            parser.releaseState(&s.side, &st.json);
+            st.json.n = 0;
+        }
+        st.small = target.tag;
+    } else if (s.gh.g.regex != null) {
         s.rx = target.rx;
     } else {
         parser.restoreSnapshot(a, &s.side, &target.snap, curState(s));
@@ -1860,6 +2026,42 @@ pub export fn blg_validate_tokens(
             } else {
                 rx = regex.feed(rp, rx, tok.bytes[id]) orelse return .ok;
             }
+            out.* = i + 1;
+        }
+        return .ok;
+    }
+    if (g.structtag) |sp| {
+        // Two temp states ping-pong through the token chain; the session
+        // slots are not touched and the logical state stays as it is.
+        const ta = ctx.accounting.allocator(.temp);
+        const tmp = ta.alloc(structtag.State, 2) catch return .resource_limit;
+        tmp[0] = s.tag.?[s.tag_cur];
+        if (tmp[0].small.phase == .json and !tmp[0].small.json_dead)
+            parser.retainState(&s.side, &tmp[0].json);
+        tmp[1].json.n = 0;
+        var cur: u1 = 0;
+        defer {
+            parser.releaseState(&s.side, &tmp[0].json);
+            parser.releaseState(&s.side, &tmp[1].json);
+            ta.free(tmp);
+        }
+        for (ids.?[0..n], 0..) |id, i| {
+            if (id >= tok.vocab_size or tok.is_special[id]) return .ok;
+            if (tok.is_eos[id]) {
+                if (!structtag.canEnd(&tmp[cur])) return .ok;
+                out.* = i + 1;
+                continue;
+            }
+            var rejected = false;
+            for (tok.bytes[id]) |b| {
+                structtag.feedByteInto(sp, &s.side, &tmp[cur], b, &s.states[1], &s.mask_buf.spare, &tmp[cur ^ 1]) catch |e| switch (e) {
+                    error.Parse => rejected = true,
+                    error.ResourceLimit, error.OutOfMemory => return .resource_limit,
+                };
+                if (rejected) break;
+                cur ^= 1;
+            }
+            if (rejected) return .ok;
             out.* = i + 1;
         }
         return .ok;
@@ -3957,8 +4159,7 @@ fn compileRegexReq(ctx: ?*Context, src: []const u8, profile: ?[*:0]const u8, fla
     return blg_compile(ctx, &req, gh, err);
 }
 
-test "abi: regex constraint masks, refusals, rollback and validation" {
-    var entries: [261]TokenEntry = undefined;
+test "abi: regex constraint masks, refusals, rollback and validation" {    var entries: [261]TokenEntry = undefined;
     var blob: [1024]u8 = undefined;
     var bufs: [256][1]u8 = undefined;
     const desc = buildByteCompleteDesc(&entries, &blob, &bufs);
@@ -4023,6 +4224,105 @@ test "abi: regex constraint masks, refusals, rollback and validation" {
     const tc = try setupEnumCtx(0);
     var gh2: ?*GrammarHandle = null;
     try std.testing.expectEqual(Status.unsupported_tokenizer, compileRegexReq(tc.ctx, "a", null, 0, &gh2, &err));
+    blg_grammar_release(tc.gh);
+    try std.testing.expectEqual(Status.ok, blg_context_destroy(tc.ctx));
+}
+
+// --- ADR-0016 structural-tag constraint ---
+
+fn compileStructTagReq(ctx: ?*Context, spec: []const u8, profile: ?[*:0]const u8, flags: u32, gh: *?*GrammarHandle, err: *ZgError) Status {
+    var req: CompileRequest = .{
+        .struct_size = @sizeOf(CompileRequest),
+        .kind = 3,
+        .profile = profile,
+        .data = spec.ptr,
+        .data_len = spec.len,
+        .flags = flags,
+    };
+    return blg_compile(ctx, &req, gh, err);
+}
+
+const structtag_abi_spec =
+    "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags_with_separator\",\"separator\":\"\",\"at_least_one\":true,\"tags\":[{\"type\":\"tag\",\"begin\":\"<c>\",\"content\":{\"type\":\"json_schema\",\"json_schema\":{\"type\":\"integer\"}},\"end\":\"</c>\"}]}}";
+
+test "abi: structural-tag constraint masks, rollback and validation" {
+    var entries: [261]TokenEntry = undefined;
+    var blob: [1024]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildByteCompleteDesc(&entries, &blob, &bufs);
+    var cfg = makeConfig(0);
+    var err = makeTestError();
+    var ctx: ?*Context = null;
+    try std.testing.expectEqual(Status.ok, blg_context_create(&cfg, &desc, &ctx, &err));
+
+    var gh: ?*GrammarHandle = null;
+    try std.testing.expectEqual(Status.invalid_argument, compileStructTagReq(ctx, structtag_abi_spec, "spec-v1", 0, &gh, &err));
+    try std.testing.expectEqual(Status.unsupported_feature, compileStructTagReq(ctx, structtag_abi_spec, null, COMPILE_PROBE, &gh, &err));
+    try std.testing.expectEqual(Status.unsupported_feature, compileStructTagReq(ctx, "{\"type\":\"structural_tag\",\"format\":{\"type\":\"sequence\"}}", null, 0, &gh, &err));
+    try std.testing.expectEqual(Status.invalid_schema, compileStructTagReq(ctx, "{", null, 0, &gh, &err));
+
+    try std.testing.expectEqual(Status.ok, compileStructTagReq(ctx, structtag_abi_spec, null, 0, &gh, &err));
+    const sc: SessionConfig = .{ .struct_size = @sizeOf(SessionConfig), .max_rollback_tokens = 8 };
+    var s: ?*Session = null;
+    try std.testing.expectEqual(Status.ok, blg_session_create_ex(ctx, gh, &sc, &s, &err));
+    var m0: [9]u32 = @splat(0);
+    var m: [9]u32 = @splat(0);
+    var ce = true;
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(!ce); // at least one tag required
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m0, 9, &err));
+    try std.testing.expect(maskBit(&m0, '<'));
+    try std.testing.expect(!maskBit(&m0, 'x'));
+    try std.testing.expect(!maskBit(&m0, 259));
+    // A plain-text start is rejected without touching the session.
+    try std.testing.expectEqual(Status.invalid_token, blg_accept_token(s, 'x', &err));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m0, &m);
+    // Feed "<c>" then the content; a wrong byte inside the content is
+    // rejected with the state intact.
+    try acceptBytes(s, "<c>");
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(maskBit(&m, '4'));
+    try std.testing.expect(!maskBit(&m, 'a'));
+    try std.testing.expect(!maskBit(&m, 259));
+    try acceptBytes(s, "4");
+    try std.testing.expectEqual(Status.invalid_token, blg_accept_token(s, 'a', &err));
+    // Rollback inside the content restores the mask.
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 1));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(maskBit(&m, '5'));
+    try std.testing.expect(!maskBit(&m, 'a'));
+    // Draft validation leaves the session where it is; the draft completes
+    // the tag and may take the EOS, and a wrong byte cuts the draft.
+    const draft = [_]u32{ '5', '<', '/', 'c', '>', 259 };
+    var prefix: usize = 0;
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &draft, draft.len, &prefix));
+    try std.testing.expectEqual(@as(usize, 6), prefix);
+    const bad = [_]u32{ '5', 'x' };
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &bad, bad.len, &prefix));
+    try std.testing.expectEqual(@as(usize, 1), prefix);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(maskBit(&m, '6'));
+    // Complete the tag, then roll the whole session back to the start:
+    // the mask matches the initial one bit for bit. Eight accepts were
+    // committed ("<c>" 3, "4" 1, then five more); one was undone above.
+    try acceptBytes(s, "5</c>");
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(ce);
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 8));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m0, &m);
+    // Roll forward again and finish the session.
+    try acceptBytes(s, "<c>6</c>");
+    try std.testing.expectEqual(Status.ok, blg_finish(s, &err));
+    blg_session_destroy(s);
+    blg_grammar_release(gh);
+    try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
+
+    // A vocabulary without every single byte is refused at compile time.
+    const tc = try setupEnumCtx(0);
+    var gh3: ?*GrammarHandle = null;
+    try std.testing.expectEqual(Status.unsupported_tokenizer, compileStructTagReq(tc.ctx, structtag_abi_spec, null, 0, &gh3, &err));
     blg_grammar_release(tc.gh);
     try std.testing.expectEqual(Status.ok, blg_context_destroy(tc.ctx));
 }

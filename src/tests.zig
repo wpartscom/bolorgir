@@ -15,5 +15,7 @@ test {
     _ = @import("probe.zig");
     _ = @import("c_api.zig");
     _ = @import("numcert.zig");
+    _ = @import("regex.zig");
+    _ = @import("structtag.zig");
     _ = @import("test_hooks.zig");
 }

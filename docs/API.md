@@ -163,11 +163,11 @@ blg_status blg_grammar_probe_status(const blg_grammar *grammar, uint32_t *out_st
 
 | Field | Meaning |
 |---|---|
-| `kind` | `BLG_CONSTRAINT_JSON_SCHEMA`, `BLG_CONSTRAINT_LITERAL_SET` or `BLG_CONSTRAINT_REGEX`. |
-| `profile` | `"canonical-v1"` (also `NULL`), or `"spec-v1"`. Any other value is `UNSUPPORTED_FEATURE`. Literal sets and regex constraints use `NULL` (a non-`NULL` profile with a regex is `INVALID_ARGUMENT`). |
-| `data`, `data_len` | The schema as UTF-8 JSON, or a JSON array of strings for a literal set, or the UTF-8 pattern for a regex constraint. |
+| `kind` | `BLG_CONSTRAINT_JSON_SCHEMA`, `BLG_CONSTRAINT_LITERAL_SET`, `BLG_CONSTRAINT_REGEX` or `BLG_CONSTRAINT_STRUCTURAL_TAG`. |
+| `profile` | `"canonical-v1"` (also `NULL`), or `"spec-v1"`. Any other value is `UNSUPPORTED_FEATURE`. Literal sets, regex and structural-tag constraints use `NULL` (a non-`NULL` profile with them is `INVALID_ARGUMENT`). |
+| `data`, `data_len` | The schema as UTF-8 JSON, or a JSON array of strings for a literal set, or the UTF-8 pattern for a regex constraint, or the structural-tag document (see below). |
 | `registry_data`, `registry_data_len` | Optional, `spec-v1` only: an immutable snapshot of external schemas, `{"version": "...", "documents": {"<uri>": <schema>, ...}}`. An external `$ref` whose base URI matches a `documents` key resolves inside that document; the engine never accesses the network. Without a registry every external `$ref` is `UNSUPPORTED_FEATURE`. |
-| `flags` | `0`, or `BLG_COMPILE_PROBE` / `BLG_COMPILE_PROBE_STRICT` (below). Unknown bits are `INVALID_ARGUMENT`; the probe flags with a regex constraint are `UNSUPPORTED_FEATURE` (the probe is defined for JSON grammars). |
+| `flags` | `0`, or `BLG_COMPILE_PROBE` / `BLG_COMPILE_PROBE_STRICT` (below). Unknown bits are `INVALID_ARGUMENT`; the probe flags with a regex or structural-tag constraint are `UNSUPPORTED_FEATURE` (the probe is defined for JSON grammars). |
 
 Behavior:
 
@@ -184,6 +184,17 @@ Behavior:
   `UNSATISFIABLE_CONSTRAINT`. The supported syntax is section 3.1 of
   [supported_features.md](supported_features.md#31-standalone-regex-constraint-blg_constraint_regex);
   the design is [ADR-0015](adr/ADR-0015-regex-constraint.md).
+- A `BLG_CONSTRAINT_STRUCTURAL_TAG` request compiles a tool-call framing
+document (free text with triggers, tags of a begin literal, a JSON
+arguments value and an end literal). The accepted JSON subset and the
+byte-exact semantics are section 3.2 of
+[supported_features.md](supported_features.md#32-structural-tag-constraint-blg_constraint_structural_tag)
+and Finding 3 of [ADR-0016](adr/ADR-0016-vllm-agent-integration.md). It
+needs a byte-complete vocabulary (`UNSUPPORTED_TOKENIZER` otherwise);
+constructs outside the subset are `UNSUPPORTED_FEATURE` with the byte
+offset of the offending field in `schema_offset`, malformed documents
+are `INVALID_SCHEMA`, and a language that can never match is
+`UNSATISFIABLE_CONSTRAINT`.
 - Compilation also checks that the tokenizer can produce every document of
   the constraint (the coverage gate); if not, the result is
   `UNSUPPORTED_TOKENIZER` with an explanation. See
@@ -386,9 +397,15 @@ mask/accept steps. Build and run it with `zig build example-c`.
 ## 3. Python API
 
 ```sh
-pip install bolorgir                    # core
+pip install bolorgir                    # core (once the package is published)
 pip install "bolorgir[transformers]"    # + Hugging Face adapter
 ```
+
+Nothing is on PyPI yet: the two lines above are the target interface, and
+until the release is published the package is installed from a checkout
+(see the README install section; the sdist bundles the core library and
+needs no Zig). The status of a local candidate and of the published
+package are kept separate.
 
 The package imports without torch, numpy or transformers. The bridge is a
 CPython extension built against the Limited API (abi3, CPython 3.12+); the
@@ -452,6 +469,7 @@ for another tokenizer.
 | `compile(schema, tokenizer=None, profile="canonical-v1", probe=None) -> Constraint` | `schema` is a `dict`, JSON `str` or `bytes`; `profile` is `"canonical-v1"` or `"spec-v1"`. `probe="probe"` or `"strict"` runs the compile-time probe of section 2.4; a found state raises `ResourceLimitError` with the token path and the subschema pointer in the message. |
 | `compile_literals(literals, tokenizer=None) -> Constraint` | A non-empty list of strings; the answer is exactly one of them. |
 | `compile_regex(pattern, tokenizer=None) -> Constraint` | A standalone regular expression: the whole generated text must match, ECMA-262 `^(?:pattern)$` over Unicode scalar values, with the JSON Schema `pattern` syntax (section 3.1 of supported_features.md). Needs a byte-complete vocabulary. `UnsupportedFeatureError` (with the byte offset) separates unsupported constructs from malformed ones (`InvalidSchemaError`). |
+| `compile_structural_tag(spec, tokenizer=None) -> Constraint` | A structural-tag document (tool-call framing; section 3.2 of supported_features.md, ADR-0016): `dict`, `str` or `bytes`. Needs a byte-complete vocabulary. Constructs outside the accepted subset raise `UnsupportedFeatureError` with the byte offset of the offending field. |
 | `stats() -> dict` | Context statistics: the timing and cache counters of section 2.7 plus `mem_used` / `mem_peak` dicts keyed by category name. |
 | `mode`, `vocab_size`, `mask_words`, `eos_ids` | Read-only properties. |
 | `cancel_token() -> CancelToken` | Creates and registers a cancellation token. |

@@ -89,7 +89,19 @@ typedef enum blg_constraint_kind {
      * malformed patterns: BLG_ERR_INVALID_SCHEMA with the offset where
      * parsing stopped; a pattern that matches nothing:
      * BLG_ERR_UNSATISFIABLE_CONSTRAINT. */
-    BLG_CONSTRAINT_REGEX = 2
+    BLG_CONSTRAINT_REGEX = 2,
+    /* ADR-0016: data is a structural-tag document (tool-call framing) in
+     * the accepted JSON subset: the legacy {structures, triggers} shape
+     * or {type:"structural_tag", format:{type:"triggered_tags" |
+     * "tags_with_separator" | "any_text", ...}} with tag items whose
+     * content is a json_schema. Needs a byte-complete vocabulary
+     * (BLG_ERR_UNSUPPORTED_TOKENIZER otherwise); profile and flags must
+     * be NULL and 0 (BLG_ERR_INVALID_ARGUMENT / _UNSUPPORTED_FEATURE).
+     * Any construct outside the subset is refused explicitly:
+     * BLG_ERR_UNSUPPORTED_FEATURE with the byte offset of the offending
+     * field in schema_offset; malformed JSON: BLG_ERR_INVALID_SCHEMA; a
+     * language that can never match: BLG_ERR_UNSATISFIABLE_CONSTRAINT. */
+    BLG_CONSTRAINT_STRUCTURAL_TAG = 3
 } blg_constraint_kind;
 
 /* Sentinel for blg_context_config.cache_limit_bytes: use the default budget.

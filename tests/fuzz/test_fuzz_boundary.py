@@ -224,9 +224,10 @@ def sc_compile(rng, counters):
             req.struct_size = rng.choice([0, 8, ctypes.sizeof(ZgCompileRequest) + 4])
             expect = INV_ARG
         elif choice == 1:
-            # Kind 2 is BLG_CONSTRAINT_REGEX since ADR-0015; unknown kinds
-            # start above it.
-            req.kind = rng.choice([3, 5, 100, U32_MAX])
+            # Kinds 2 and 3 are BLG_CONSTRAINT_REGEX and
+            # BLG_CONSTRAINT_STRUCTURAL_TAG since ADR-0015/ADR-0016;
+            # unknown kinds start above them.
+            req.kind = rng.choice([4, 5, 100, U32_MAX])
             expect = INV_ARG
         elif choice == 2:
             req.profile = rng.choice([b"bogus", b"canonical-v2", b""])

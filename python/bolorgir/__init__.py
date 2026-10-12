@@ -306,6 +306,31 @@ class Engine:
         grammar = ctx.compile(kind=_core.KIND_REGEX, data=pattern.encode("utf-8"), profile=None)
         return Constraint(self, grammar)
 
+    def compile_structural_tag(
+        self,
+        spec: Union[dict, str, bytes],
+        tokenizer: Optional[TokenizerLike] = None,
+    ) -> "Constraint":
+        """Compile a structural-tag document (ADR-0016): tool-call framing
+        over free text with a supported subset of the xgrammar-style
+        shapes used by the pinned vLLM agent path. Needs a byte-complete
+        vocabulary. Unsupported variants raise UnsupportedFeatureError
+        with the offset of the offending field, malformed documents
+        InvalidSchemaError."""
+        ctx = self._ensure_context(tokenizer)
+        if isinstance(spec, dict):
+            data = json.dumps(spec, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        elif isinstance(spec, str):
+            data = spec.encode("utf-8")
+        elif isinstance(spec, (bytes, bytearray)):
+            data = bytes(spec)
+        else:
+            raise InvalidArgumentError(
+                f"spec: expected dict|str|bytes, got {type(spec).__name__}"
+            )
+        grammar = ctx.compile(kind=_core.KIND_STRUCTURAL_TAG, data=data, profile=None)
+        return Constraint(self, grammar)
+
     def stats(self) -> dict:
         """Context statistics."""
         self._require_ctx()

@@ -1,5 +1,5 @@
 {
- "about": "Composition of the 0.2.0 release line: the core and the C/Python bindings of the working tree, pinned per file by git blob id in core.manifest and bindings.manifest, the packaging and acceptance tooling. 2026-10-10: squashed onto v0.1.0 for the public preview; the manifest replaced the base-revision comparison. 2026-10-11: repinned for the Zig 0.17.0 migration and the CPython 3.12-3.15 preparation (Py_LIMITED_API 0x030C0000, abi3 floor cp312); python/bolorgir/_core.c repinned for the explicit (PyObject *) casts of the limited-API build under GCC 14 (manylinux_2_28). Later on 2026-10-11: the line absorbs the session rollback and draft validation (ADR-0014: blg_session_create_ex, blg_session_rollback, blg_validate_tokens; the three symbols join the base ABI), the standalone regex constraint (ADR-0015, BLG_CONSTRAINT_REGEX, src/regex.zig) and the vLLM backend with its pinned patch and agent-evaluation material (ADR-0016, integrations/vllm, benchmarks/agent_eval); core and bindings manifests repinned accordingly and the implemented paths leave later_line_absent. The R6 verdict on record still names the earlier core 6e62e0d1 only, so the release gate stays closed until a new acceptance names the core of these sources; the preview block is untouched for the same reason. Remaining later-line items: ADR-0013 (interop numbers), ADR-0017 (bounded whitespace), the platform workflows and the tokenizer survey/metaspace work (T13/T14 queue).",
+ "about": "Composition of the 0.2.0 release line: the core and the C/Python bindings of the working tree, pinned per file by git blob id in core.manifest and bindings.manifest, the packaging and acceptance tooling. 2026-10-10: squashed onto v0.1.0 for the public preview; the manifest replaced the base-revision comparison. 2026-10-11: repinned for the Zig 0.17.0 migration and the CPython 3.12-3.15 preparation (Py_LIMITED_API 0x030C0000, abi3 floor cp312); python/bolorgir/_core.c repinned for the explicit (PyObject *) casts of the limited-API build under GCC 14 (manylinux_2_28). Later on 2026-10-11: the line absorbs the session rollback and draft validation (ADR-0014: blg_session_create_ex, blg_session_rollback, blg_validate_tokens; the three symbols join the base ABI), the standalone regex constraint (ADR-0015, BLG_CONSTRAINT_REGEX, src/regex.zig) and the vLLM backend with its pinned patch and agent-evaluation material (ADR-0016, integrations/vllm, benchmarks/agent_eval); core and bindings manifests repinned accordingly and the implemented paths leave later_line_absent. Later on 2026-10-11 the review of 454c460 was closed: the adapter's draft validation follows the terminal-token set of the mask and acceptance path, a refused rollback leaves the session untouched, the structural-tag kernel (src/structtag.zig, BLG_CONSTRAINT_STRUCTURAL_TAG) implements the 9.2 subset, the backend writes blg-agent-trace/2 traces, and the checks are reproduced against one measured candidate; the core and bindings manifests were repinned again (candidate core 374738d4887746b3e4a09a34963ca252c67f59762b75b4bb834274ff118aef67, x86_64 baseline, the flags below). The R6 verdict on record still names the earlier core 6e62e0d1 only, so the release gate stays closed until a new acceptance names the core of these sources; the preview block is untouched for the same reason. Remaining later-line items: ADR-0013 (interop numbers), ADR-0017 (bounded whitespace), the platform workflows and the tokenizer survey/metaspace work (T13/T14 queue).",
  "version": "0.2.0",
  "core": {
   "paths": [
@@ -9,14 +9,14 @@
   ],
   "manifest": {
    "build.zig": "3ffb74876b93b3c035db37d0a80e21719e29657d",
-   "include/bolorgir.h": "9eb88f6d2d4a4b3bcf4c19cf6d2335415e504738",
+   "include/bolorgir.h": "6ae825eb392c8e3855c6916149c6167dfb77cf44",
    "src/alloc.zig": "398e3a2ce4ec56017f6dd185a9b6f09cd117f099",
-   "src/c_api.zig": "0df9df091082a3114423903f2dd2c7abf8f1ffad",
+   "src/c_api.zig": "07f7eb82c22054a51279cb670a6e693391582c6e",
    "src/cache.zig": "75d6c45f23a638e9a6d885a2421802c09bd57a39",
    "src/complete.zig": "2934b11de5498c2c03f0442c39357db40bff1f8e",
    "src/coverage.zig": "29981eaf0558e7b7632648b22ef47ccd711b83a7",
    "src/fuzz_main.zig": "6dd848d07ed06ef1bb758678e22e0dee54c6afb7",
-   "src/grammar.zig": "48cdae1d03ad80371c5e3e4c51d2e850b4426371",
+   "src/grammar.zig": "c76732b2df4ac98f81bb3bfb596fa35a964ed721",
    "src/io.zig": "2440d3b42a7bd2c60a13497474ba7644aba2288f",
    "src/json.zig": "5ad97efba974af8fb4ef4894be6ac1e66d81663e",
    "src/literals.zig": "8bbbfe2ae411576692562bd5fda772e8c1b35b3a",
@@ -30,9 +30,10 @@
    "src/root.zig": "2b30524dd28ecacb2d584992d05e0acb22f3001f",
    "src/schema.zig": "427aecee1689aea302f9103edf9a47fec19dd188",
    "src/stats.zig": "4702e70dd29945bc5b1c95173028f5c4419d7550",
+   "src/structtag.zig": "bd560122332e4013e950fe49aed65bd0a311f8a8",
    "src/synth.zig": "3679f5f7c20f7b2485303fb83f5361fb4f7b1986",
    "src/test_hooks.zig": "71b52dcb2ffbd187310e8e12831a877427e55481",
-   "src/tests.zig": "7ddb840042632e6aa6bd2d517ced63391e3ea6df",
+   "src/tests.zig": "88121e60ab15eab2edb603f9dc6a49448bae014f",
    "src/tokenizer.zig": "3911a18197fd62cb458f06a430e585ebd89f0263",
    "src/witset.zig": "0b604314cf7b0c53298525ee2ee9b580d4ccb43b",
    "src/work.zig": "0d5525b3a3bbb6b573f7f925bd6fb8ee6d189023"
@@ -43,7 +44,7 @@
  },
  "bindings": {
   "manifest": {
-   "python/bolorgir/_core.c": "5c7cc7bbdddc02e7b83314cae17320dd88a0d859",
+   "python/bolorgir/_core.c": "6266985f2c780c36409fb68710e0c340d7c40e16",
    "python/bolorgir/tokenizers.py": "b87d1162f6ebe6d623da78dc8b527bbc466434d5"
   }
  },

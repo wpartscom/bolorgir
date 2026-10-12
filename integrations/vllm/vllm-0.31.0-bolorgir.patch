@@ -37,7 +37,7 @@ index 1565799..724267f 100644
              backend == "auto"
              and is_mistral_tokenizer(tokenizer)
 diff --git a/vllm/v1/structured_output/__init__.py b/vllm/v1/structured_output/__init__.py
-index 3b35d39..f69fcbb 100644
+index 3b35d39..26be366 100644
 --- a/vllm/v1/structured_output/__init__.py
 +++ b/vllm/v1/structured_output/__init__.py
 @@ -161,6 +161,16 @@ class StructuredOutputManager:
@@ -57,3 +57,20 @@ index 3b35d39..f69fcbb 100644
              else:
                  raise ValueError(f"Unsupported structured output backend: {backend}")
  
+@@ -190,6 +200,16 @@ class StructuredOutputManager:
+                 if request.sampling_params is not None
+                 else None
+             )
++            if getattr(self.backend, "accepts_request_id", False):
++                # Added by the bolorgir backend patch: a backend may need
++                # the request id for its per-request diagnostics (the
++                # blg-agent-trace/2 backend trace).
++                return self.backend.compile_grammar(
++                    request_type,
++                    grammar_spec,
++                    stop_token_ids=stop_token_ids,
++                    request_id=request.request_id,
++                )
+             return self.backend.compile_grammar(
+                 request_type, grammar_spec, stop_token_ids=stop_token_ids
+             )

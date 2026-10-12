@@ -56,9 +56,11 @@ be far slower. Conditions and caveats: [Performance](#performance).
 - **Serving-ready sessions.** Rollback of accepted tokens and draft-token
   validation for speculative decoding (`Session.rollback`,
   `Session.validate_tokens`; [ADR-0014](docs/adr/ADR-0014-session-rollback.md)),
-  and a standalone regex constraint (`Engine.compile_regex`,
-  [ADR-0015](docs/adr/ADR-0015-regex-constraint.md)); both live in the same
-  C ABI as the JSON profiles.
+  a standalone regex constraint (`Engine.compile_regex`,
+  [ADR-0015](docs/adr/ADR-0015-regex-constraint.md)) and tool-call
+  framing (`Engine.compile_structural_tag`, the accepted subset of the
+  vLLM structural tags, [ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md));
+  all live in the same C ABI as the JSON profiles.
 - **Bounded.** Hard byte budgets for context, mask cache, session and schema;
   flag-based cancellation; per-call work limits; immutable compile-artifact
   cache.
@@ -66,8 +68,10 @@ be far slower. Conditions and caveats: [Performance](#performance).
   ABI (`include/bolorgir.h`, opaque handles, `blg_status` error codes).
 - **Python first-class.** CPython 3.12-3.15 (abi3), Hugging Face Transformers
   adapter, batched mask filling, GPU mask-unpacking path.
-- **Servers.** A vLLM 0.31.0 structured-output backend with a pinned
-  source patch and an explicit-refusal policy
+- **Servers.** A vLLM 0.31.0 structured-output backend (JSON Schema,
+  `json_object`, choice, regex and structural-tag requests) with a pinned
+  source patch, an explicit-refusal policy and an optional per-request
+  backend trace (`BLG_AGENT_TRACE`)
   ([docs/integrations/vllm.md](docs/integrations/vllm.md),
   [ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md)).
 - **Measured.** Performance claims come from a pinned acceptance protocol
@@ -239,7 +243,8 @@ as a historical document, [docs/release/v0.2.0rc1.md](docs/release/v0.2.0rc1.md)
 no package is currently published. The `main` line adds session rollback
 and draft validation ([ADR-0014](docs/adr/ADR-0014-session-rollback.md)),
 a standalone regex constraint ([ADR-0015](docs/adr/ADR-0015-regex-constraint.md))
-and the vLLM backend ([ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md));
+and tool-call framing plus the vLLM backend with its backend trace
+([ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md));
 the next preview (planned as `0.2.0rc2`) waits for a fresh acceptance that
 names the new core. What this line has and has not passed:
 
@@ -278,9 +283,10 @@ names the new core. What this line has and has not passed:
   is published right now; the source install above is the supported path.
   macOS, Windows and Linux aarch64 are not built or tested.
 - **vLLM.** The backend is functionally checked on CPU (request
-  compilation, masks, terminals, rollback, failure policy) including on
-  the pinned model tokenizer; end-to-end GPU serving checks have not run
-  yet. See [docs/integrations/vllm.md](docs/integrations/vllm.md).
+  compilation, masks, terminals, rollback, failure policy, structural
+  tags, the backend trace) including on the pinned model tokenizer;
+  end-to-end GPU serving checks have not run yet. See
+  [docs/integrations/vllm.md](docs/integrations/vllm.md).
 
 Problems are welcome: see [Reporting a problem](#reporting-a-problem).
 
@@ -472,18 +478,20 @@ Known limitations of spec-v1 (experimental):
 
 ### Common limitations
 
-- **Standalone regex and arbitrary CFG are not supported** in any
-  profile; literal sets are. The `pattern` keyword above is a JSON Schema
-  constraint on string values inside a schema, not a standalone regex
-  constraint format.
+- **Arbitrary CFG (EBNF/GBNF/Lark) is not supported** in any profile.
+  Standalone constraints are the regex kind (`Engine.compile_regex`),
+  literal sets and the structural-tag subset for tool-call framing; the
+  `pattern` keyword above is a JSON Schema constraint on string values
+  inside a schema.
 - **Platforms:** Linux x86_64 with glibc 2.28 or newer; CPython
   3.12-3.15 through one abi3 wheel. macOS, Windows and Linux aarch64 are
   not built or tested.
 - **Tokenizers:** byte-level BPE and SentencePiece with byte fallback, with
   exact decoder chains; other chains are rejected as `UNSUPPORTED_TOKENIZER`
   rather than approximated.
-- **Integrations:** Hugging Face Transformers adapter and the C ABI today;
-  serving-engine wrappers (vLLM/SGLang) are not available yet.
+- **Integrations:** Hugging Face Transformers adapter, the C ABI, and the
+  pinned vLLM 0.31.0 structured-output backend (`[vllm]` extra plus the
+  reproducible patch); SGLang is not available yet.
 
 Details: `docs/supported_features.md`.
 

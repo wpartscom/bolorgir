@@ -363,6 +363,7 @@ custom metaschema vocabulary (5).
 | `BLG_CONSTRAINT_JSON_SCHEMA` | Supported (§1 table). |
 | `BLG_CONSTRAINT_LITERAL_SET` | Supported (FR-3): non-empty JSON array of UTF-8 strings; common prefixes, empty string, Unicode; duplicates are removed. Not mixed with regex. |
 | `BLG_CONSTRAINT_REGEX` | Supported (§3.1): full match of the whole text, byte-complete vocabularies only. |
+| `BLG_CONSTRAINT_STRUCTURAL_TAG` | Supported for the accepted subset (§3.2, ADR-0016): tool-call framing; byte-complete vocabularies only. |
 | Arbitrary CFG/EBNF | Not supported (plan 1.1): `UNSUPPORTED_FEATURE`. |
 
 ### 3.1. Standalone regex constraint (BLG_CONSTRAINT_REGEX)
@@ -408,6 +409,43 @@ Requirements and limits:
   values above U+10FFFF are illegal bytes.
 - A strip-lead-space decoder is modeled like for JSON grammars: one
   leading space of the whole text is dropped.
+
+### 3.2. Structural-tag constraint (BLG_CONSTRAINT_STRUCTURAL_TAG)
+
+Tool-call framing: free text with triggers, tags of a begin literal, a
+JSON arguments value and an end literal, then free text again. The
+accepted JSON subset and the byte-exact semantics are defined in
+[ADR-0016](adr/ADR-0016-vllm-agent-integration.md) Finding 3:
+
+| Shape | Status |
+|---|---|
+| `{type:"structural_tag", format:{type:"triggered_tags", triggers, tags, at_least_one?, stop_after_first?}}` | Supported; `tags` are `tag` items (§ below) |
+| `{type:"structural_tag", format:{type:"tags_with_separator", tags, separator:"", at_least_one, stop_after_first?}}` | Supported; the empty separator only |
+| `{type:"structural_tag", format:{type:"any_text"}}` | Supported (equivalent to unconstrained text) |
+| `{structures:[{begin, schema, end}], triggers:[...]}` (legacy) | Supported |
+| tag content `{type:"json_schema", json_schema}` (alias `schema`) | Supported: spec-v1 profile, compact serialization, number_format `value`; a boolean `true` means any JSON value |
+| other format or content types (`sequence`, per-tag `trigger`, `style`, non-empty `separator`, ...) | `UNSUPPORTED_FEATURE` with the byte offset of the offending field |
+
+Semantics: a complete trigger commits to a tag; the begin literal must
+follow byte-exactly (begins must be prefix-free, checked at compile);
+the JSON value is the compiled tool schema and cannot be left open; the
+end literal is matched as a suffix-position set spawned at every byte
+boundary where the value can complete, so tokens crossing any segment
+boundary are handled exactly. EOS rules: free text can end unless the
+format requires a tag (`at_least_one`, `tags_with_separator`);
+`stop_after_first` closes the language after the first tag.
+
+Requirements and limits:
+
+- The vocabulary must be byte-complete; other vocabularies are refused
+  at compile time (`UNSUPPORTED_TOKENIZER`), like the regex constraint.
+- Caps: 16 tag variants, 4 triggers (≤ 64 bytes, non-overlapping),
+  begin literals ≤ 512 bytes, end literals ≤ 63 bytes; larger shapes are
+  refused (`UNSUPPORTED_FEATURE`).
+- `profile` must be NULL; the probe flags do not apply.
+- Sessions support masks, accepts, `blg_session_rollback` and
+  `blg_validate_tokens` across every segment boundary; a rejected token
+  leaves the session byte-identical.
 
 ## 4. Computation modes (blg_mode)
 

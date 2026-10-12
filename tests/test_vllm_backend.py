@@ -39,7 +39,7 @@ import bolorgir  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PATCH_PATH = os.path.join(ROOT, "integrations", "vllm", "vllm-0.31.0-bolorgir.patch")
-PATCH_SHA256 = "38c0272a5cea02fd040258e85d2459c6a2c97acb2668c2155fa33c943b8cbf2b"
+PATCH_SHA256 = "15e267a10d4f823b33c3e28df8457d873c13b4d7475087b53cdd933e31c8f30f"
 VLLM_SRC = os.environ.get("BLG_VLLM_SRC")
 
 EOS = 256
@@ -110,6 +110,44 @@ def json_backend(monkeypatch, schema, **kw):
 
 def accept_bytes(grammar, text: bytes, request_id: str = "r0") -> bool:
     return grammar.accept_tokens(request_id, list(text))
+
+
+# ---------------------------------------------------------------------------
+# Structural tags (ADR-0016): the pinned agent-path spec shapes
+# ---------------------------------------------------------------------------
+
+SET_CODE_PARAMS = {
+    "type": "object",
+    "properties": {"code": {"type": "string", "enum": ["zq-17-wombat"]}},
+    "required": ["code"],
+    "additionalProperties": False,
+}
+
+
+def hermes_structural_tag(name: str = "set_code", params=None, **fmt):
+    """The spec the pinned vLLM hermes builder produces for ``auto``:
+    a triggered tag per tool in both begin formats of the parser."""
+    params = SET_CODE_PARAMS if params is None else params
+    tags = []
+    for begin_head, end in (('<tool_call>\n{"name": "', "}\n</tool_call>"),
+                            ('<tool_call>{"name": "', "}</tool_call>")):
+        tags.append({
+            "type": "tag",
+            "begin": f'{begin_head}{name}", "arguments": ',
+            "content": {"type": "json_schema", "json_schema": params},
+            "end": end,
+        })
+    return {"type": "structural_tag",
+            "format": {"type": "triggered_tags", "triggers": ["<tool_call>"],
+                       "tags": tags, **fmt}}
+
+
+def required_structural_tag(name: str = "set_code", params=None, **fmt):
+    spec = hermes_structural_tag(name, params)
+    fmt = {"separator": "", "at_least_one": True, **fmt}
+    spec["format"] = {"type": "tags_with_separator",
+                      "tags": spec["format"]["tags"], **fmt}
+    return spec
 
 
 # ---------------------------------------------------------------------------
@@ -190,7 +228,7 @@ def test_validate_request_refusals():
     with pytest.raises(bv.VLLMValidationError):
         exc(_params(grammar="root ::= 'a'"))
     with pytest.raises(bv.VLLMValidationError):
-        exc(_params(structural_tag='{"structures": []}'))
+        exc(_params(structural_tag="   "))
     with pytest.raises(bv.VLLMValidationError):
         exc(_params(json='{"type": "object"}', whitespace_pattern=" *"))
     with pytest.raises(bv.VLLMValidationError):
@@ -201,14 +239,16 @@ def test_validate_request_refusals():
         exc(_params(choice=["a", 1]))
     with pytest.raises(bv.VLLMValidationError):
         exc(_params(regex="a\x00b"))
-    # The supported kinds pass.
+    # The supported kinds pass; a structural tag is validated by the
+    # engine compile (unsupported variants are request errors there).
     exc(_params(json={"type": "object"}))
     exc(_params(choice=["reply", "escalate"]))
     exc(_params(regex="[a-z]+"))
+    exc(_params(structural_tag=json.dumps(hermes_structural_tag())))
     exc(types.SimpleNamespace(structured_outputs=_params(json={"type": "integer"})))
 
 
-def test_compile_refuses_grammar_and_structural_tag(monkeypatch):
+def test_compile_refuses_grammar_and_nonsense_structural_tag(monkeypatch):
     backend = make_backend(monkeypatch)
     with pytest.raises(bv.BolorgirRequestError):
         backend.compile_grammar(bv.StructuredOutputOptions.GRAMMAR, "root ::= 'a'")
@@ -383,6 +423,320 @@ def test_mid_generation_mask_excludes_nonstop_terminal(monkeypatch):
     assert accept_bytes(grammar, b"a")
     allowed = _allowed(_row_of(grammar, vocab), vocab)
     assert allowed == {ord("a"), EOS, X}  # the language can end now
+    backend.destroy()
+
+
+def test_terminal_at_a_completing_state_is_accepted_by_drafts(monkeypatch):
+    # A stop token at a state where the language can end: the mask offers
+    # it, accept_tokens takes it, and draft validation must approve it —
+    # without changing the session.
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.REGEX, "a+", stop_token_ids={EOS, X})
+    vocab = backend.model_vocab_size
+    assert accept_bytes(grammar, b"a")
+    before = _row_of(grammar, vocab).copy()
+    assert grammar.validate_tokens([X]) == [X]
+    assert grammar.validate_tokens([X, ord("a")]) == [X]
+    assert grammar.validate_tokens([EOS]) == [EOS]
+    assert grammar.validate_tokens([ord("a"), X]) == [ord("a"), X]
+    # State unchanged by the drafts, and the mask still offers the set.
+    assert np.array_equal(_row_of(grammar, vocab), before)
+    assert not grammar.is_terminated()
+    assert grammar.accepted_tokens == 1
+    backend.destroy()
+
+
+def test_terminal_that_cannot_end_cuts_the_draft(monkeypatch):
+    # A stop token whose bytes could continue the language is still a
+    # terminal: while the language cannot end the mask clears it, accept
+    # refuses it, and draft validation must cut the prefix there instead
+    # of approving the byte reading. Here "a+x" with stop 'a' leaves no
+    # legal token at all: the mask row is empty and the request fails on
+    # its next accept.
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.REGEX, "a+x", stop_token_ids={EOS, ord("a")})
+    vocab = backend.model_vocab_size
+    assert _allowed(_row_of(grammar, vocab), vocab) == set()
+    assert grammar.validate_tokens([ord("a"), ord("x")]) == []
+    assert grammar.validate_tokens([ord("a")]) == []
+    # Refusal leaves the state alone: no termination, empty row preserved.
+    assert not grammar.accept_tokens("r", [ord("a")])
+    assert not grammar.is_terminated()
+    assert _allowed(_row_of(grammar, vocab), vocab) == set()
+    backend.destroy()
+
+
+def test_terminal_override_keeps_valid_drafts_working(monkeypatch):
+    # With the stop set as a terminal override, the default EOS is not
+    # terminal: a draft that would take it is cut, and after the override
+    # token completes the language the EOS is re-offered.
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.REGEX, "a+", stop_token_ids={X})
+    vocab = backend.model_vocab_size
+    assert EOS not in _allowed(_row_of(grammar, vocab), vocab)
+    assert grammar.validate_tokens([ord("a"), EOS]) == [ord("a")]
+    assert accept_bytes(grammar, b"a")
+    assert grammar.validate_tokens([EOS]) == []  # not terminal here
+    assert grammar.validate_tokens([X]) == [X]
+    assert grammar.validate_tokens([X, ord("a")]) == [X]
+    backend.destroy()
+
+
+# ---------------------------------------------------------------------------
+# Structural tags (ADR-0016): the pinned hermes agent path
+# ---------------------------------------------------------------------------
+
+def test_structural_tag_triggered_flow(monkeypatch):
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.STRUCTURAL_TAG,
+        json.dumps(hermes_structural_tag()))
+    vocab = backend.model_vocab_size
+
+    # Free text with a reachable end before any tag.
+    allowed = _allowed(_row_of(grammar, vocab), vocab)
+    assert ord("a") in allowed and EOS in allowed
+    assert accept_bytes(grammar, b"Hello ")
+    # A full trigger commits: only the two begin continuations survive.
+    assert accept_bytes(grammar, b"<tool_call>")
+    assert _allowed(_row_of(grammar, vocab), vocab) == {ord("\n"), ord("{")}
+    # The arguments value is the compiled tool schema; the tag cannot end
+    # while the content is open.
+    assert accept_bytes(grammar, b"\n{\"name\": \"set_code\", \"arguments\": ")
+    allowed = _allowed(_row_of(grammar, vocab), vocab)
+    assert allowed == {ord("{")}
+    assert accept_bytes(grammar, b"{\"code\":\"zq-17-wombat\"}")
+    # Only the end literal continues (the content is complete).
+    assert _allowed(_row_of(grammar, vocab), vocab) == {ord("}")}
+    assert accept_bytes(grammar, b"}\n</tool_call>")
+    # Text resumes: the document can end or another tag may start.
+    allowed = _allowed(_row_of(grammar, vocab), vocab)
+    assert ord("d") in allowed and EOS in allowed
+    assert accept_bytes(grammar, b"done ")
+    # A second tag in the other begin format; then the terminal token.
+    assert accept_bytes(grammar, b"<tool_call>{\"name\": \"set_code\", \"arguments\": ")
+    assert accept_bytes(grammar, b"{\"code\":\"zq-17-wombat\"}")
+    assert accept_bytes(grammar, b"}</tool_call>")
+    assert grammar.accept_tokens("r", [EOS])
+    assert grammar.is_terminated()
+    backend.destroy()
+
+
+def test_structural_tag_wrong_argument_value_is_refused(monkeypatch):
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.STRUCTURAL_TAG,
+        json.dumps(hermes_structural_tag()))
+    vocab = backend.model_vocab_size
+    assert accept_bytes(grammar, b"<tool_call>\n{\"name\": \"set_code\", \"arguments\": ")
+    assert accept_bytes(grammar, b"{\"code\":")
+    before = _row_of(grammar, vocab).copy()
+    # One bad token inside the value is refused atomically (a whole token
+    # that cannot be fed leaves the session alone).
+    assert not grammar.accept_tokens("r", [ord("X")])
+    assert np.array_equal(_row_of(grammar, vocab), before)
+    # A value outside the enum dies the same way: feed the wrong literal
+    # one token at a time and check the refusal on the first mismatch.
+    assert accept_bytes(grammar, b"\"zq")
+    assert not grammar.accept_tokens("r", [ord("X")])
+    assert accept_bytes(grammar, b"-17-wombat\"}")
+    backend.destroy()
+
+
+def test_structural_tag_required_and_stop_after_first(monkeypatch):
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.STRUCTURAL_TAG,
+        json.dumps(required_structural_tag()))
+    forced = backend.compile_grammar(
+        bv.StructuredOutputOptions.STRUCTURAL_TAG,
+        json.dumps(required_structural_tag(stop_after_first=True)))
+    vocab = backend.model_vocab_size
+    # No free text before the first tag, and no end either.
+    assert _allowed(_row_of(grammar, vocab), vocab) == {ord("<")}
+    assert accept_bytes(grammar, b"<tool_call>{\"name\": \"set_code\", \"arguments\": ")
+    assert accept_bytes(grammar, b"{\"code\":\"zq-17-wombat\"}")
+    assert accept_bytes(grammar, b"}</tool_call>")
+    allowed = _allowed(_row_of(grammar, vocab), vocab)
+    assert EOS in allowed and ord("<") in allowed  # repeat or end
+
+    assert accept_bytes(forced, b"<tool_call>{\"name\": \"set_code\", \"arguments\": ")
+    assert accept_bytes(forced, b"{\"code\":\"zq-17-wombat\"}")
+    assert accept_bytes(forced, b"}</tool_call>")
+    allowed = _allowed(_row_of(forced, vocab), vocab)
+    assert EOS in allowed and ord("<") not in allowed  # exactly one tag
+    assert not forced.accept_tokens("r", [ord("<")])
+    assert forced.accept_tokens("r", [EOS])
+    assert forced.is_terminated()
+    backend.destroy()
+
+
+def test_structural_tag_rollback_and_draft_validation(monkeypatch):
+    backend = make_backend(monkeypatch, num_spec_tokens=4)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.STRUCTURAL_TAG,
+        json.dumps(hermes_structural_tag()))
+    vocab = backend.model_vocab_size
+    assert accept_bytes(grammar, b"<tool_call>{\"name\": \"set_code\", \"arguments\": ")
+    before = _row_of(grammar, vocab).copy()
+    # Drafts inside the arguments value; the state never moves.
+    assert grammar.validate_tokens([ord("{"), ord("n")]) == [ord("{")]
+    assert grammar.validate_tokens([ord("a")]) == []
+    assert np.array_equal(_row_of(grammar, vocab), before)
+    # Feed a few value bytes and roll them back: the mask is restored.
+    assert accept_bytes(grammar, b"{\"co")
+    grammar.rollback(4)
+    assert np.array_equal(_row_of(grammar, vocab), before)
+    # The whole value; a draft that completes the tag is approved and the
+    # state stays put (the rollback depth is the speculative count).
+    assert accept_bytes(grammar, b"{\"code\":\"zq-17-wombat\"}")
+    value_mask = _row_of(grammar, vocab).copy()
+    tail = list(b"}</tool_call>")
+    assert grammar.validate_tokens(tail) == tail
+    assert np.array_equal(_row_of(grammar, vocab), value_mask)
+    # A refused rollback changes nothing observable.
+    with pytest.raises(RuntimeError):
+        grammar.rollback(100)
+    assert np.array_equal(_row_of(grammar, vocab), value_mask)
+    backend.destroy()
+
+
+def test_structural_tag_unsupported_variant_is_a_request_error(monkeypatch):
+    backend = make_backend(monkeypatch)
+    with pytest.raises(bv.BolorgirRequestError) as exc:
+        backend.compile_grammar(
+            bv.StructuredOutputOptions.STRUCTURAL_TAG,
+            json.dumps({"type": "structural_tag", "format": {"type": "sequence"}}))
+    assert "UnsupportedFeatureError" in str(exc.value)
+    with pytest.raises(bv.BolorgirRequestError):
+        backend.compile_grammar(
+            bv.StructuredOutputOptions.STRUCTURAL_TAG,
+            json.dumps({"type": "structural_tag",
+                        "format": {"type": "tags_with_separator", "separator": " ",
+                                   "tags": required_structural_tag()["format"]["tags"]}}))
+    backend.destroy()
+
+
+# ---------------------------------------------------------------------------
+# Backend trace (blg-agent-trace/2, benchmarks/agent_eval/PLAN.md)
+# ---------------------------------------------------------------------------
+
+def _load_qualify():
+    """The A1 qualification collector, imported by path like the tests of
+    test_agent_qualify.py do."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "qualify_stack", os.path.join(ROOT, "benchmarks", "agent_eval", "qualify_stack.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def _enable_trace(monkeypatch, tmp_path):
+    trace_path = tmp_path / "trace.jsonl"
+    monkeypatch.setenv(bv.TRACE_ENV, str(trace_path))
+    monkeypatch.setattr(bv, "_trace_writer", None)
+    monkeypatch.setattr(bv, "_trace_writer_checked", False)
+    return trace_path
+
+
+def _trace_events(path):
+    events = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line:
+                events.append(json.loads(line))
+    return events
+
+
+def test_trace_of_a_json_request_qualifies(monkeypatch, tmp_path):
+    q = _load_qualify()
+    trace_path = _enable_trace(monkeypatch, tmp_path)
+    backend = make_backend(monkeypatch)
+    schema = {"type": "integer", "minimum": 10, "maximum": 42}
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.JSON, json.dumps(schema), request_id="req-json")
+    vocab = backend.model_vocab_size
+
+    _row_of(grammar, vocab)
+    assert grammar.accept_tokens("req-json", [ord("4")])
+    _row_of(grammar, vocab)
+    assert grammar.accept_tokens("req-json", [ord("2")])
+    _row_of(grammar, vocab)
+    assert grammar.accept_tokens("req-json", [EOS])
+    assert grammar.is_terminated()
+    backend.destroy()
+
+    events = _trace_events(trace_path)
+    assert [e["seq"] for e in events] == list(range(len(events)))
+    assert q.trace_problems(events, "bolorgir") == []
+    row = {"schemas_sha256": {"response_format": q.canonical_sha256(schema)}}
+    qual, reason = q.qualify(row, events, "bolorgir")
+    assert qual == "constrained", reason
+
+
+def test_trace_of_a_tool_request_names_the_compiled_schema(monkeypatch, tmp_path):
+    q = _load_qualify()
+    trace_path = _enable_trace(monkeypatch, tmp_path)
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.STRUCTURAL_TAG,
+        json.dumps(hermes_structural_tag()), request_id="req-tool")
+    vocab = backend.model_vocab_size
+
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"<tool_call>{\"name\": \"set_code\", \"arguments\": ",
+                        "req-tool")
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"{\"code\":\"zq-17-wombat\"}", "req-tool")
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"}</tool_call>", "req-tool")
+    _row_of(grammar, vocab)
+    assert grammar.accept_tokens("req-tool", [EOS])
+    backend.destroy()
+
+    events = _trace_events(trace_path)
+    row = {"schemas_sha256": {"tool:set_code": q.canonical_sha256(SET_CODE_PARAMS)}}
+    qual, reason = q.qualify(row, events, "bolorgir")
+    assert qual == "constrained", reason
+    # The declared constraint carries the client's schema hash exactly.
+    decision = next(e for e in events if e["event"] == "decision")
+    assert decision["constraints"] == [{
+        "constraint_id": "set_code", "kind": "tool", "segment_id": "set_code",
+        "schema_sha256": q.canonical_sha256(SET_CODE_PARAMS)}]
+
+
+def test_trace_without_a_terminal_stays_unknown(monkeypatch, tmp_path):
+    q = _load_qualify()
+    trace_path = _enable_trace(monkeypatch, tmp_path)
+    backend = make_backend(monkeypatch)
+    schema = {"type": "integer", "minimum": 10, "maximum": 42}
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.JSON, json.dumps(schema), request_id="req-cut")
+    _row_of(grammar, backend.model_vocab_size)
+    assert grammar.accept_tokens("req-cut", [ord("4")])
+    backend.destroy()
+    events = _trace_events(trace_path)
+    # No finish event: the request did not end through the backend, and
+    # an absent event is never read as "no constraint".
+    qual, reason = q.qualify(
+        {"schemas_sha256": {}}, events, "bolorgir")
+    assert qual == "unknown", reason
+
+
+def test_tracing_is_off_without_the_environment(monkeypatch):
+    monkeypatch.delenv(bv.TRACE_ENV, raising=False)
+    monkeypatch.setattr(bv, "_trace_writer", None)
+    monkeypatch.setattr(bv, "_trace_writer_checked", False)
+    assert bv._trace_writer_for_process() is None
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.REGEX, "a+", request_id="req-off")
+    assert grammar._trace is None
     backend.destroy()
 
 

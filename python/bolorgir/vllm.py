@@ -11,9 +11,11 @@ name. See ``docs/integrations/vllm.md`` for installation and limits.
 Contract highlights (documented in full in the docs and ADR-0016):
 
 - request types: ``JSON`` (spec-v1 profile, ``number_format=value``,
-  compact serialization), ``JSON_OBJECT``, ``CHOICE`` (literal set) and
-  ``REGEX`` (ADR-0015). ``GRAMMAR`` and ``STRUCTURAL_TAG`` are refused
-  explicitly; there is no fallback to another backend.
+  compact serialization), ``JSON_OBJECT``, ``CHOICE`` (literal set),
+  ``REGEX`` (ADR-0015) and ``STRUCTURAL_TAG`` for the pinned agent path
+  (tool-call framing over the accepted spec subset, ADR-0016). ``GRAMMAR``
+  is refused explicitly, as is any structural-tag construct outside the
+  subset; there is no fallback to another backend.
 - tokenizer: an HF tokenizer is extracted to an exact byte table by
   ``TokenizerBundle.from_hf`` (byte-level BPE or SentencePiece with byte
   fallback); any other tokenizer is refused at server start with the
@@ -26,11 +28,21 @@ Contract highlights (documented in full in the docs and ADR-0016):
   exactly the terminal set (the stop ids passed by vLLM, or the
   tokenizer EOS ids when vLLM passes none). A terminal token that the
   engine samples marks the grammar terminated; tokens after it are
-  ignored, like the reference backends.
+  ignored, like the reference backends. Draft validation obeys the same
+  terminal rule: a terminal is accepted exactly at a completing state
+  and cuts the prefix otherwise.
 - rollback and draft validation map to the session history
   (``blg_session_rollback``) and the state-preserving
   ``blg_validate_tokens``; the session depth is the speculative token
-  count plus one.
+  count plus one. A refused rollback leaves every observable flag as it
+  was.
+- traces: with ``BLG_AGENT_TRACE=<path>`` the backend appends
+  ``blg-agent-trace/2`` JSON lines (start, decision, compile, mask,
+  accept, finish) for every constrained request; the request id comes
+  from the patched vLLM manager. A trace is written only for requests
+  the backend actually compiled, and ``finish`` only when the
+  constrained generation ends through the backend (a terminal token or a
+  failure), so a truncated trace stays visibly incomplete.
 - failures: a failing mask fill or a rejected accepted token marks the
   grammar failed. ``accept_tokens`` then returns False, which makes vLLM
   terminate exactly that request with an error; no unconstrained
@@ -39,11 +51,14 @@ Contract highlights (documented in full in the docs and ADR-0016):
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import os
+import re
 import threading
 from dataclasses import dataclass, field
-from typing import Any, FrozenSet, Optional
+from typing import Any, FrozenSet, List, Optional, Tuple
 
 import bolorgir
 
@@ -74,6 +89,11 @@ SPEC_PROFILE = "spec-v1"
 #: targets the exact upstream tag.
 SUPPORTED_VLLM_TAG = "v0.31.0"
 
+#: Backend trace (benchmarks/agent_eval/PLAN.md, "Evidence format").
+TRACE_FORMAT = "blg-agent-trace/2"
+TRACE_BACKEND = "bolorgir"
+TRACE_ENV = "BLG_AGENT_TRACE"
+
 
 class BolorgirBackendError(RuntimeError):
     """Backend setup failure (tokenizer, vocabulary, configuration)."""
@@ -85,6 +105,188 @@ class BolorgirRequestError(ValueError):
     Raised while compiling; vLLM carries it to the scheduler as the
     failing request's error, never falls back to another backend.
     """
+
+
+def _canonical_sha256(value: Any) -> str:
+    """sha256 of the canonical JSON text (sorted keys, no spaces, UTF-8).
+
+    The qualification collector hashes client schemas the same way; the
+    trace ``schema_sha256`` of a constraint is this value of the schema
+    the backend actually compiled.
+    """
+    text = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _spec_json(spec: Any) -> Any:
+    return json.loads(spec) if isinstance(spec, (str, bytes, bytearray)) else spec
+
+
+class _TraceWriter:
+    """One append-only JSONL file for all requests of this process."""
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+        self._lock = threading.Lock()
+
+    def write(self, event: dict) -> None:
+        line = json.dumps(event, ensure_ascii=False) + "\n"
+        with self._lock:
+            with open(self.path, "a", encoding="utf-8") as f:
+                f.write(line)
+
+
+class _RequestTrace:
+    """The blg-agent-trace/2 events of one request, in write order.
+
+    ``seq`` is assigned under the lock, so the file order is the event
+    order; nothing is written after ``finish``.
+    """
+
+    def __init__(self, writer: _TraceWriter, request_id: str, backend_version: str) -> None:
+        self._writer = writer
+        self.request_id = request_id
+        self._backend_version = backend_version
+        self._lock = threading.Lock()
+        self._seq = 0
+        self._finished = False
+
+    def _event(self, name: str, **fields: Any) -> None:
+        with self._lock:
+            if self._finished:
+                return
+            self._writer.write({"event": name, "request_id": self.request_id,
+                                "seq": self._seq, **fields})
+            self._seq += 1
+
+    def start(self) -> None:
+        self._event("start", format=TRACE_FORMAT, backend=TRACE_BACKEND,
+                    backend_version=self._backend_version)
+
+    def decision(self, constraints: List[dict]) -> None:
+        self._event("decision", applied=True, constraints=constraints,
+                    reason="structured output request compiled by the bolorgir backend")
+
+    def compile_ok(self, constraint_id: str, schema_sha256: str) -> None:
+        # The adapter compiles per request; the kernel artifact cache is
+        # transparent here, so every constraint of a request is a miss.
+        self._event("compile", backend=TRACE_BACKEND, constraint_id=constraint_id,
+                    schema_sha256=schema_sha256, status="ok", cache="miss",
+                    compiled_from=None)
+
+    def mask(self, constraint_id: str, segment_id: str, step: int,
+             allowed: int, mask_sha256: str) -> None:
+        self._event("mask", backend=TRACE_BACKEND, constraint_id=constraint_id,
+                    segment_id=segment_id, step=step, allowed=allowed,
+                    mask_sha256=mask_sha256)
+
+    def accept(self, constraint_id: str, step: int, token: int, terminal: bool) -> None:
+        self._event("accept", constraint_id=constraint_id, step=step,
+                    token=token, terminal=terminal)
+
+    def finish(self, status: str) -> None:
+        with self._lock:
+            if self._finished:
+                return
+            self._finished = True
+            self._writer.write({"event": "finish", "request_id": self.request_id,
+                                "seq": self._seq, "status": status,
+                                "events": self._seq})
+            self._seq += 1
+
+
+_trace_writer: Optional[_TraceWriter] = None
+_trace_writer_checked = False
+
+
+def _trace_writer_for_process() -> Optional[_TraceWriter]:
+    """The process trace writer from ``BLG_AGENT_TRACE`` (checked once)."""
+    global _trace_writer, _trace_writer_checked
+    if not _trace_writer_checked:
+        _trace_writer_checked = True
+        path = os.environ.get(TRACE_ENV, "")
+        if path:
+            _trace_writer = _TraceWriter(path)
+            logger.info("bolorgir agent trace enabled: %s", path)
+    return _trace_writer
+
+
+_TOOL_NAME_RE = re.compile(r'"name"\s*:\s*"([^"]*)"')
+
+
+def _structural_tags_of(spec: Any) -> List[dict]:
+    """The tag items of an accepted structural-tag spec, best effort (the
+    Zig compiler validates the spec; this only derives trace records)."""
+    if not isinstance(spec, dict):
+        return []
+    if isinstance(spec.get("structures"), list):
+        return [t for t in spec["structures"] if isinstance(t, dict)]
+    fmt = spec.get("format")
+    if isinstance(fmt, dict) and isinstance(fmt.get("tags"), list):
+        return [t for t in fmt["tags"] if isinstance(t, dict)]
+    return []
+
+
+def _tag_content_schema(tag: dict) -> Any:
+    content = tag.get("content")
+    if not isinstance(content, dict):
+        return None
+    if "json_schema" in content:
+        return content["json_schema"]
+    return content.get("schema")
+
+
+def _trace_constraints(request_type: Any, grammar_spec: Any) -> List[dict]:
+    """The constraints the backend declares for a request.
+
+    ``schema_sha256`` is the canonical hash of the schema the backend
+    compiled: the client's ``tool:<name>`` parameters schema for tool
+    segments, the response schema for ``JSON`` requests, and the literal
+    list / pattern for choice and regex requests (no client schema).
+    """
+    opts = StructuredOutputOptions
+    if request_type == opts.JSON:
+        schema = _spec_json(grammar_spec)
+        return [{"constraint_id": "response_format", "kind": "response_format",
+                 "segment_id": "response_format",
+                 "schema_sha256": _canonical_sha256(schema)}]
+    if request_type == opts.JSON_OBJECT:
+        return [{"constraint_id": "response_format", "kind": "response_format",
+                 "segment_id": "response_format",
+                 "schema_sha256": _canonical_sha256({"type": "object"})}]
+    if request_type == opts.CHOICE:
+        return [{"constraint_id": "response_format", "kind": "response_format",
+                 "segment_id": "response_format",
+                 "schema_sha256": _canonical_sha256(_spec_json(grammar_spec))}]
+    if request_type == opts.REGEX:
+        return [{"constraint_id": "response_format", "kind": "response_format",
+                 "segment_id": "response_format",
+                 "schema_sha256": _canonical_sha256(str(grammar_spec))}]
+    if request_type == opts.STRUCTURAL_TAG:
+        spec = _spec_json(grammar_spec)
+        out: List[dict] = []
+        seen = set()
+        for i, tag in enumerate(_structural_tags_of(spec)):
+            schema = _tag_content_schema(tag)
+            if not isinstance(schema, dict):
+                continue
+            digest = _canonical_sha256(schema)
+            m = _TOOL_NAME_RE.search(str(tag.get("begin", "")))
+            label = m.group(1) if m else f"tag{i}"
+            if (label, digest) in seen:
+                continue
+            seen.add((label, digest))
+            cid = label
+            if any(c["constraint_id"] == cid for c in out):
+                cid = f"{label}#{i}"
+            out.append({"constraint_id": cid, "kind": "tool", "segment_id": cid,
+                        "schema_sha256": digest})
+        if not out:
+            out.append({"constraint_id": "structural_tag", "kind": "structural_tag",
+                        "segment_id": "structural_tag",
+                        "schema_sha256": _canonical_sha256(spec)})
+        return out
+    return []
 
 
 def _hf_tokenizer_of(tokenizer: Any) -> Any:
@@ -203,11 +405,16 @@ class BolorgirBackend(StructuredOutputBackend):
 
     # -- engine-level interface -------------------------------------------
 
+    #: The patched vLLM manager passes the request id to ``compile_grammar``
+    #: when the backend announces this attribute (trace correlation).
+    accepts_request_id = True
+
     def compile_grammar(
         self,
         request_type: StructuredOutputOptions,
         grammar_spec: str,
         stop_token_ids: Optional[Any] = None,
+        request_id: Optional[str] = None,
     ) -> "BolorgirGrammar":
         terminals = _terminal_ids_of(
             frozenset(stop_token_ids) if stop_token_ids else None,
@@ -225,12 +432,18 @@ class BolorgirBackend(StructuredOutputBackend):
             raise BolorgirRequestError(
                 f"bolorgir cannot compile the {request_type.name} request: "
                 f"{type(exc).__name__}: {exc}") from exc
+        trace = None
+        if request_id:
+            writer = _trace_writer_for_process()
+            if writer is not None:
+                trace = _RequestTrace(writer, str(request_id), bolorgir.__version__)
         return BolorgirGrammar(
             backend=self,
             constraint=constraint,
             request_type=request_type,
             grammar_spec=grammar_spec,
             terminals=terminals,
+            trace=trace,
         )
 
     def _compile(self, request_type: StructuredOutputOptions, grammar_spec: str):
@@ -259,15 +472,13 @@ class BolorgirBackend(StructuredOutputBackend):
         if request_type == opts.GRAMMAR:
             raise BolorgirRequestError(
                 "the bolorgir backend does not support GRAMMAR (EBNF/Lark) "
-                "requests; use JSON, choice, json_object or regex")
+                "requests; use JSON, choice, json_object, regex or the "
+                "structural-tag subset")
         if request_type == opts.STRUCTURAL_TAG:
-            raise BolorgirRequestError(
-                "the bolorgir backend does not support STRUCTURAL_TAG "
-                "(tool-call framing) requests yet; the structural-tag "
-                "constraint kind is not implemented (ADR-0016 finding 3). "
-                "This is an explicit refusal, not a fallback: set an "
-                "explicit tool strictness that emits JSON arguments, or "
-                "use another backend for this request")
+            if not isinstance(grammar_spec, str) or not grammar_spec.strip():
+                raise BolorgirRequestError(
+                    "STRUCTURAL_TAG spec must be a non-empty JSON document")
+            return self._engine.compile_structural_tag(grammar_spec)
         raise BolorgirRequestError(f"unsupported request type {request_type!r}")
 
     def allocate_token_bitmask(self, max_num_seqs: int):
@@ -319,6 +530,7 @@ class BolorgirGrammar(StructuredOutputGrammar):
         request_type: StructuredOutputOptions,
         grammar_spec: str,
         terminals: Optional[FrozenSet[int]],
+        trace: Optional[_RequestTrace] = None,
     ) -> None:
         import hashlib
 
@@ -345,6 +557,25 @@ class BolorgirGrammar(StructuredOutputGrammar):
         self.accepted_tokens = 0
         self.rolled_back_tokens = 0
         self.validations = 0
+        # Backend trace (blg-agent-trace/2): start, decision and one
+        # compile event per declared constraint, all before any mask.
+        self._trace: Optional[_RequestTrace] = None
+        self._trace_primary: Optional[Tuple[str, str]] = None
+        if trace is not None:
+            try:
+                constraints = _trace_constraints(request_type, grammar_spec)
+            except Exception:  # noqa: BLE001 - tracing must never fail a request
+                logger.exception(
+                    "bolorgir: cannot derive the trace constraints; "
+                    "tracing is off for this request")
+            else:
+                self._trace = trace
+                self._trace_primary = (constraints[0]["constraint_id"],
+                                       constraints[0]["segment_id"])
+                trace.start()
+                trace.decision(constraints)
+                for c in constraints:
+                    trace.compile_ok(c["constraint_id"], c["schema_sha256"])
 
     # -- StructuredOutputGrammar interface --------------------------------
 
@@ -362,6 +593,10 @@ class BolorgirGrammar(StructuredOutputGrammar):
             if tok in self._effective_terminals:
                 if self._can_end():
                     self._terminated = True
+                    if self._trace is not None:
+                        cid, _seg = self._trace_primary
+                        self._trace.accept(cid, self.accepted_tokens + 1, tok, True)
+                        self._trace.finish("ok")
                     return True
                 # The mask only offers a terminal token when the language
                 # can complete; reaching this point means the caller
@@ -379,45 +614,69 @@ class BolorgirGrammar(StructuredOutputGrammar):
                 return False
             self._session_tokens += 1
             self.accepted_tokens += 1
+            if self._trace is not None:
+                cid, _seg = self._trace_primary
+                self._trace.accept(cid, self.accepted_tokens, tok, False)
         return True
 
     def validate_tokens(self, tokens: list) -> list:
         """Longest prefix consecutive accepts would take, without changing
-        the session. Never raises: a failing probe fails the grammar so
-        that the next accept terminates exactly this request."""
+        the session. Terminal tokens (the request's stop ids, or the
+        tokenizer EOS ids when vLLM passes none) obey the same rule as
+        ``accept_tokens``: a terminal is accepted exactly at a state
+        where the language can end, ends the prefix there, and cuts the
+        prefix at a state that cannot end. Never raises: a failing probe
+        fails the grammar so that the next accept terminates exactly this
+        request."""
         if self._terminated or self._failed:
             return []
         tokens = [int(t) for t in tokens]
         if not tokens:
             return []
         self.validations += 1
-        try:
-            n = self._session.validate_tokens(tokens)
-        except bolorgir.ZigConstraintsError as exc:
-            self._fail(f"validate_tokens failed: {exc}")
-            return []
-        if n <= 0:
-            return []
-        accepted = tokens[:n]
-        for i, tok in enumerate(accepted):
-            if tok in self._effective_terminals:
-                if self._can_end_at(i, accepted):
-                    return accepted[: i + 1]
-            elif tok in self._default_eos:
-                # The kernel accepted an EOS that an exclusive override set
-                # does not make terminal; the reference backends would not
-                # accept it either.
-                return accepted[:i]
-        return accepted
+        # The kernel validator has no notion of the adapter-level terminal
+        # set: cut the draft at the first token whose semantics differ,
+        # validate the byte prefix through the kernel, then apply the
+        # terminal rule at that position.
+        cut = len(tokens)
+        for i, tok in enumerate(tokens):
+            if tok in self._effective_terminals or (
+                    tok in self._default_eos
+                    and tok not in self._effective_terminals):
+                cut = i
+                break
+        head = tokens[:cut]
+        if head:
+            try:
+                n = self._session.validate_tokens(head)
+            except bolorgir.ZigConstraintsError as exc:
+                self._fail(f"validate_tokens failed: {exc}")
+                return []
+            if n < len(head):
+                return tokens[:n]
+        if cut == len(tokens):
+            return head
+        tok = tokens[cut]
+        if tok in self._effective_terminals:
+            if self._can_end_after(head):
+                return head + [tok]
+            return head
+        # A default EOS that an exclusive override set does not make
+        # terminal: the mask clears it and the reference backends would
+        # not accept it either.
+        return head
 
     def rollback(self, num_tokens: int) -> None:
+        """Undo the last ``num_tokens`` sampled tokens (a terminal counts
+        as one; undoing it re-opens generation). An invalid depth raises
+        before any observable state changes."""
         if num_tokens < 0:
             raise ValueError("num_tokens must be >= 0")
+        was_terminated = self._terminated
         to_undo = int(num_tokens)
-        if self._terminated:
+        if was_terminated:
             if to_undo == 0:
                 return
-            self._terminated = False
             to_undo -= 1
         if to_undo > self._session_tokens:
             raise RuntimeError(
@@ -425,9 +684,14 @@ class BolorgirGrammar(StructuredOutputGrammar):
                 f"({self._session_tokens}); the session depth is "
                 f"{self._depth}")
         if to_undo:
+            # The kernel rollback either applies fully or raises with the
+            # session unchanged; the adapter keeps the same order so a
+            # refused rollback leaves every flag as it was.
             self._session.rollback(to_undo)
             self._session_tokens -= to_undo
             self.rolled_back_tokens += to_undo
+        if was_terminated:
+            self._terminated = False
 
     def fill_bitmask(self, bitmask, batch_index: int) -> None:
         """Fill one int32 row of the shared tensor (bit t%32 of word t/32;
@@ -468,6 +732,7 @@ class BolorgirGrammar(StructuredOutputGrammar):
         if self._terminals is None:
             # No override set: the kernel mask already carries the
             # tokenizer EOS bits exactly at completing states.
+            self._trace_mask(urow)
             return
         if can_end:
             # The mask offers exactly the request's terminal set.
@@ -478,6 +743,17 @@ class BolorgirGrammar(StructuredOutputGrammar):
         else:
             for t in self._terminals:
                 clear_bit(t)
+        self._trace_mask(urow)
+
+    def _trace_mask(self, urow) -> None:
+        """Records the applied mask row (blg-agent-trace/2)."""
+        if self._trace is None:
+            return
+        cid, seg = self._trace_primary
+        allowed = sum(int(w).bit_count() for w in urow)
+        digest = hashlib.sha256(
+            urow.astype("<i4", copy=False).tobytes()).hexdigest()
+        self._trace.mask(cid, seg, self.mask_fills, allowed, digest)
 
     def is_terminated(self) -> bool:
         return self._terminated or self._failed
@@ -507,22 +783,24 @@ class BolorgirGrammar(StructuredOutputGrammar):
         except bolorgir.ZigConstraintsError:
             return False
 
-    def _can_end_at(self, i: int, accepted: list) -> bool:
-        """Whether the language can complete after the first i tokens.
-
-        Probed through the state-preserving validator: appending the
-        tokenizer EOS to the prefix is accepted exactly at completing
-        states. Without a tokenizer EOS the completion state is unknown
-        and a terminal token is taken at face value.
-        """
+    def _can_end_after(self, prefix: list) -> bool:
+        """Whether the language can complete after the kernel-validated
+        draft prefix, without consuming the prefix. Probed through the
+        state-preserving validator: appending a tokenizer EOS is accepted
+        exactly at completing states. Without a tokenizer EOS the
+        completion state cannot be probed and a terminal is taken at face
+        value."""
         probe = None
         for e in self._backend.eos_ids:
             probe = e
             break
         if probe is None:
             return True
+        if not prefix:
+            return self._can_end()
         try:
-            return self._session.validate_tokens(list(accepted[:i]) + [probe]) == i + 1
+            return self._session.validate_tokens(
+                list(prefix) + [probe]) == len(prefix) + 1
         except bolorgir.ZigConstraintsError:
             return False
 
@@ -532,6 +810,8 @@ class BolorgirGrammar(StructuredOutputGrammar):
                 "bolorgir grammar failed (request type %s, spec sha256 %s): %s",
                 self.request_type.name, self.spec_sha256[:16], reason)
         self._failed = True
+        if self._trace is not None:
+            self._trace.finish("error")
 
     def __repr__(self) -> str:  # pragma: no cover - diagnostics only
         return (f"BolorgirGrammar({self.request_type.name}, "
@@ -559,10 +839,11 @@ def validate_bolorgir_request(params: Any) -> None:
     if getattr(so, "grammar", None) is not None:
         refuse("The bolorgir backend does not support EBNF/Lark grammar "
                "requests; use json, choice, json_object or regex.")
-    if getattr(so, "structural_tag", None) is not None:
-        refuse("The bolorgir backend does not support structural_tag "
-               "(tool-call framing) requests yet; it refuses the request "
-               "instead of falling back to another backend.")
+    st = getattr(so, "structural_tag", None)
+    if st is not None:
+        if not isinstance(st, str) or not st.strip():
+            refuse("structured_outputs.structural_tag must be a non-empty "
+                   "JSON document.")
     if getattr(so, "whitespace_pattern", None) is not None:
         refuse("The bolorgir backend generates compact JSON only and does "
                "not support whitespace_pattern.")

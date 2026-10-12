@@ -3,7 +3,10 @@
 - Status: **proposed** (2026-10-11). The connection point is implemented
   and functionally checked on CPU; every runtime row of the matrix below
   is "verified in-repo", "explicitly refused" or "not verified", never
-  "verified on GPU".
+  "verified on GPU". This revision implements the structural-tag
+  constraint kind (Finding 3) and the `blg-agent-trace/2` backend trace;
+  both are checked on CPU, the map of the earlier revision is kept by
+  `git log`.
 - Context: the serving integration asks for a vLLM structured-output
   backend and for stage A1 of the agent evaluation: fix the stack, trace
   the tool schema path, define segment boundaries and the split between
@@ -37,7 +40,7 @@ stays as it is and the stack gets its own environment.
 
 A `bolorgir[vllm]` package therefore cannot register itself. The delivery
 is a reproducible patch against the pinned tag
-(`integrations/vllm/vllm-0.31.0-bolorgir.patch`, sha256 `38c0272a…`) that
+(`integrations/vllm/vllm-0.31.0-bolorgir.patch`, sha256 `15e267a1…`) that
 adds the name `bolorgir` in the three places and imports the backend
 class from `bolorgir.vllm`; the same change is the material for an
 upstream PR. A monkeypatch from a general vLLM plugin is not equivalent:
@@ -45,13 +48,17 @@ the `Literal` is checked by pydantic before plugins could act.
 
 Implemented interface (`python/bolorgir/vllm.py`):
 `StructuredOutputBackend.compile_grammar(request_type, grammar_spec,
-stop_token_ids)`, `allocate_token_bitmask(max_num_seqs)`, `destroy()`;
+stop_token_ids, request_id)`, `allocate_token_bitmask(max_num_seqs)`,
+`destroy()`;
 `StructuredOutputGrammar.accept_tokens(request_id, tokens) -> bool`,
 `validate_tokens(tokens) -> list[int]`, `rollback(num_tokens)`,
 `fill_bitmask(bitmask, batch_index)`, `is_terminated()`, `reset()`.
-Request types: `JSON`, `JSON_OBJECT`, `REGEX`, `GRAMMAR`, `CHOICE`,
-`STRUCTURAL_TAG`; the first four are implemented, `GRAMMAR` and
-`STRUCTURAL_TAG` are refused explicitly (never a fallback).
+Request types: `JSON`, `JSON_OBJECT`, `REGEX`, `CHOICE` and
+`STRUCTURAL_TAG` (the accepted subset, Finding 3) are implemented;
+`GRAMMAR` and structural-tag constructs outside the subset are refused
+explicitly (never a fallback). The `request_id` keyword and the
+`accepts_request_id` backend attribute are the patch's second addition:
+the manager passes the id so the backend trace can correlate events.
 
 ## Finding 2: how a tool schema reaches the backend
 
@@ -81,45 +88,75 @@ qualification must show which of the modes actually reaches the backend
 (`benchmarks/agent_eval/qualify_stack.py` sends the matrix and records
 the answers and traces).
 
-## Finding 3: the missing contract is the structural tag
+## Finding 3: the structural-tag contract, as implemented
 
-Bolorgir has JSON Schema, literal sets and regex. It has no constraint
-for "free text until a trigger, then a tagged JSON segment, then free
-text again" (the `STRUCTURAL_TAG` formats `TriggeredTags`,
-`TagsWithSeparator`, `Tag`, `ConstString`, `AnyText`, `JSONSchema`). A
-JSON-only backend serves `required`/named only for parsers without a
-structural tag model, and nothing of `auto`, which is what the agent
-uses. Until the kind exists, the backend refuses `STRUCTURAL_TAG` with a
-clear request error and the agent path (`auto`) stays "not verified".
+Bolorgir has JSON Schema, literal sets and regex; the agent path needs
+the `STRUCTURAL_TAG` shape: free text until a trigger, then a tagged
+JSON segment, then free text again. The kind is now implemented in the
+kernel (`BLG_CONSTRAINT_STRUCTURAL_TAG = 3`, additive; src/structtag.zig,
+ADR-0016) with the following **accepted subset** — the shapes the pinned
+`hermes` builder produces plus their legacy equivalents:
 
-Required contract (input for the next specification revision, not
-implemented):
+- `{"type": "structural_tag", "format": {...}}` with
+  `triggered_tags` (free text with triggers; optional `at_least_one` and
+  `stop_after_first`) or `tags_with_separator` (adjacent tags; the empty
+  separator only; `at_least_one`, `stop_after_first`) or `any_text`;
+- the legacy `{structures: [{begin, schema, end}], triggers: [...]}``
+  shape;
+- each tag is `{type: "tag", begin, content, end}` with `content` of
+  type `json_schema` (or the raw-vLLM `schema` alias); the schema is a
+  JSON Schema document compiled with the spec-v1 profile and the compact
+  serialization (a boolean `true` means any JSON value).
 
-- A new constraint kind compiled from the structural tag JSON subset the
-  chosen parser emits (`hermes`: TriggeredTags with tags of ConstString
-  begin, JSONSchema content, ConstString end; TagsWithSeparator with
-  `at_least_one` and `stop_after_first`; AnyText).
-- Free-text segments track the triggers with an automaton over bytes, so
-  a token that crosses a trigger boundary is handled exactly; searching
-  decoded text for a substring is not a mask.
-- A JSON segment reuses the spec-v1 grammar of the tool's parameters
-  (compiled per tool and cached); its end is the JSON value boundary
-  followed by the end literal.
-- EOS is allowed in free text (`auto`) and only after a completed tag
-  sequence (`required`); every mask keeps the ADR-0005 reachability
-  guarantee across segment changes.
-- The C ABI gains the kind additively; session state (segment, trigger
-  automaton state, inner JSON state) lives in the kernel, so rollback
-  (ADR-0014) covers it.
+Anything else — unknown fields, other format or content types (for
+example `sequence`, per-tag `trigger`, `style`), a non-empty separator,
+overlapping triggers, overlapping begin literals, non-empty byte
+requirements outside the caps — is refused with
+`BLG_ERR_UNSUPPORTED_FEATURE` and the offset of the offending field,
+never reinterpreted. The caps: 16 tag variants, 4 triggers (≤ 64 bytes,
+non-overlapping), begin ≤ 512 bytes, end ≤ 63 bytes, a byte-complete
+vocabulary (like the regex constraint, ADR-0015) and a schema resource
+budget shared with the JSON kind.
 
-Reproducer for the later integration stage: a chat request with one
-`strict: true` tool and `tool_choice: "auto"` to a server with
-`--tool-call-parser hermes` reaches `compile_grammar(STRUCTURAL_TAG,
-...)`; until the kind exists, the backend must refuse it with an
-explicit error, never serve it unconstrained. Estimate: one ADR and a
-kernel change comparable to the ADR-0012 probe (new compile path,
-session state, masks across segment boundaries, tests per format); the
-JSON machinery is reused.
+Contract semantics (byte-exact, defined by this ADR for the subset):
+
+- **Free text and triggers**: the text state carries one shift-and
+  prefix mask per trigger, so a token that crosses a trigger boundary is
+  handled byte by byte; a complete trigger commits to the tag (the
+  trigger is matched as text, never by searching the decoded output).
+- **Begin literal**: after a commit, the begin literals of the variants
+  sharing the trigger are matched byte-exactly; a completion enters the
+  content. Begin literals must be prefix-free (checked at compile); for
+  the hermes shapes the distinct names end at the `"` after the name,
+  so at most one chain is alive past a commit and one JSON state per
+  session suffices.
+- **Content**: the tool's parameters schema compiled by the JSON
+  machinery (spec-v1, compact); the tag cannot end while the value is
+  open, and a byte outside the value is rejected with the session state
+  unchanged.
+- **End literal**: a suffix-position set is spawned at every byte
+  boundary where the value can complete, so a token crossing the
+  content/end boundary is handled exactly; the tag completes when the set
+  reaches the end literal's length.
+- **Ending**: free text can end at any point (`auto`, `at_least_one`
+  false); `at_least_one` forbids EOS until one tag completed;
+  `tags_with_separator` requires the first tag before any end;
+  `stop_after_first` closes the language after the first tag (the named
+  tool path); tags may repeat when the format allows it.
+- **Session state**: segment, trigger masks, begin positions and the
+  inner JSON state live in the kernel session, so rollback (ADR-0014)
+  covers every segment boundary and `blg_validate_tokens` answers draft
+  checks across them; a rejected token is fed through scratch slots and
+  leaves the session byte-identical.
+
+Remaining risk, recorded honestly: the exact JSON serialization of
+xgrammar's `StructuralTag` models could not be introspected in this
+environment (the library is a pinned runtime dependency, not part of the
+checkout). The subset is pinned to the constructors the vLLM 0.31.0
+`hermes` registry uses (`TriggeredTagsFormat`, `TagsWithSeparatorFormat`,
+`TagFormat`, `JSONSchemaFormat`, `AnyTextFormat`); any serialization
+shape outside it is refused explicitly, and a first GPU run must confirm
+the accepted spec against the real builders.
 
 ## Finding 4: other differences, as implemented
 
@@ -153,11 +190,11 @@ JSON machinery is reused.
 
 | Mechanism | Place | State |
 |---|---|---|
-| Schema, regex and (later) structural-tag compilation, masks, reachability, segment transitions | Zig kernel | grammar artifacts, cached by the kernel per compile identity |
-| Per-request session, rollback history, draft validation, termination flag, memory and work budgets | Zig kernel, C ABI | `blg_session`; the adapter holds one per request |
+| Schema, regex and structural-tag compilation, masks, reachability, segment transitions | Zig kernel | grammar artifacts, cached by the kernel per compile identity |
+| Per-request session, rollback history, draft validation, termination flag, memory and work budgets | Zig kernel, C ABI | `blg_session`; the adapter holds one per request; structural-tag slots included |
 | Tokenizer extraction (exact byte table) and fingerprinting | Python adapter | `TokenizerBundle.from_hf`, cached per process |
-| Request mapping, terminals, tensor rows, failure policy | Python adapter | `python/bolorgir/vllm.py`; no algorithm re-implemented |
-| Registration of the backend name | upstream patch | `integrations/vllm/` |
+| Request mapping, terminals, tensor rows, failure policy, trace emission | Python adapter | `python/bolorgir/vllm.py`; no algorithm re-implemented |
+| Registration of the backend name, request-id plumbing | upstream patch | `integrations/vllm/` |
 
 ## Matrix: verified / explicitly refused / not verified (2026-10-11)
 
@@ -169,14 +206,15 @@ JSON machinery is reused.
 | Mask row layout, zero-copy fill, vocabulary padding | verified on CPU | same tests (numpy and a real torch tensor) |
 | Stop/EOS terminal semantics, termination, rollback of the terminal | verified on CPU | same tests |
 | Rollback and draft validation under a speculative depth | verified on CPU | same tests (ADR-0014 session machinery) |
+| Structural tags of the accepted subset (hermes shapes, required/named, any_text) | verified on CPU | `tests/test_vllm_backend.py`, `tests/test_session_rollback.py` (both backends) and the ABI test in `src/c_api.zig` |
+| Structural-tag constructs outside the subset | explicitly refused | compile refusals with the field offset; Zig unit table and adapter tests |
 | Failure policy: request-local error, no unconstrained step | verified on CPU | same tests (closed-session simulation) |
-| `GRAMMAR`, `STRUCTURAL_TAG`, `whitespace_pattern` | explicitly refused | request validation and compile refusal, with tests |
+| `GRAMMAR` and `whitespace_pattern` | explicitly refused | request validation and compile refusal, with tests |
 | Unsupported tokenizer family | explicitly refused at start | error names the family and the supported ones |
+| Backend trace (`blg-agent-trace/2`) | implemented; qualification rules checked in-repo | events written when `BLG_AGENT_TRACE` is set; `tests/test_vllm_backend.py` validates the traces with the A1 collector (`qualify_stack.qualify`); the GPU run is not verified |
 | Server start and the OpenAI request matrix on GPU | not verified | needs the patched stack and a GPU run |
 | Speculative decoding on/off on GPU, mask audit in the server | not verified | same |
-| Agent path (`auto` with a strict tool) | not verified | blocked by Finding 3 (structural tag kind) |
-| Backend trace (`blg-agent-trace/2`) | not implemented | format and rules in `benchmarks/agent_eval/PLAN.md`; instrumentation is an integration-stage step |
+| Agent path (`auto` with a strict tool) end to end | not verified | the kernel/adapter layers are verified on CPU; the server-side run is blocked on the GPU matrix |
 
 A skip in these checks means "not verified", never "passed". The GPU
-matrix and the trace instrumentation are the next steps of the agent
-workstream.
+matrix remains the next step of the agent workstream.
