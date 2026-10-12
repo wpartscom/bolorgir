@@ -50,10 +50,19 @@ Contract highlights (documented in full in the docs and ADR-0016):
   confirmed over through the backend (a terminal token that no rollback
   undoes - vLLM rolls back draft-accepted terminals within the same
   step - or a failure), so a truncated trace stays visibly incomplete.
+  Every ``mask`` event records the tensor row (the batch index the
+  adapter filled) in its ``row`` field, so a harness can check the
+  request-to-row mapping across steps of one batch.
 - failures: a failing mask fill or a rejected accepted token marks the
   grammar failed. ``accept_tokens`` then returns False, which makes vLLM
   terminate exactly that request with an error; no unconstrained
   generation is produced and other requests of the batch continue.
+- diagnostics: ``BLG_AGENT_STATS=<path>`` appends engine-statistics
+  snapshots (``mem_used`` categories, mask/accept counters) on grammar
+  creation/release and on a timer; ``BLG_MEMORY_LIMIT_MB``,
+  ``BLG_SESSION_LIMIT_MB`` and ``BLG_WORK_LIMIT_OPS`` override the
+  engine budgets for controlled resource-limit harnesses (unset keeps
+  the serving defaults).
 """
 
 from __future__ import annotations
@@ -64,6 +73,7 @@ import logging
 import os
 import re
 import threading
+import time
 import weakref
 from dataclasses import dataclass, field
 from typing import Any, FrozenSet, List, Optional, Set, Tuple
@@ -102,6 +112,16 @@ TRACE_FORMAT = "blg-agent-trace/2"
 TRACE_BACKEND = "bolorgir"
 TRACE_ENV = "BLG_AGENT_TRACE"
 
+#: Engine-budget overrides for controlled-failure harnesses (integers;
+#: unset keeps the serving defaults; documented in docs/integrations/vllm.md).
+MEMORY_LIMIT_ENV = "BLG_MEMORY_LIMIT_MB"
+SESSION_LIMIT_ENV = "BLG_SESSION_LIMIT_MB"
+WORK_LIMIT_ENV = "BLG_WORK_LIMIT_OPS"
+
+#: Engine-statistics snapshots (JSONL) for evidence runs.
+STATS_ENV = "BLG_AGENT_STATS"
+STATS_INTERVAL_ENV = "BLG_AGENT_STATS_INTERVAL_MS"
+
 
 class BolorgirBackendError(RuntimeError):
     """Backend setup failure (tokenizer, vocabulary, configuration)."""
@@ -128,6 +148,23 @@ def _canonical_sha256(value: Any) -> str:
 
 def _spec_json(spec: Any) -> Any:
     return json.loads(spec) if isinstance(spec, (str, bytes, bytearray)) else spec
+
+
+def _env_int(name: str) -> Optional[int]:
+    """A non-negative integer environment override; unset or malformed
+    values are ignored (malformed ones with a warning)."""
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        logger.warning("bolorgir: ignoring non-numeric %s=%r", name, raw)
+        return None
+    if value < 0:
+        logger.warning("bolorgir: ignoring negative %s=%r", name, raw)
+        return None
+    return value
 
 
 class _TraceWriter:
@@ -215,10 +252,10 @@ class _RequestTrace:
                     compiled_from=None)
 
     def mask(self, constraint_id: str, segment_id: str, step: int,
-             allowed: int, mask_sha256: str) -> None:
+             allowed: int, mask_sha256: str, row: Optional[int] = None) -> None:
         self._event("mask", backend=TRACE_BACKEND, constraint_id=constraint_id,
                     segment_id=segment_id, step=step, allowed=allowed,
-                    mask_sha256=mask_sha256)
+                    mask_sha256=mask_sha256, row=row)
 
     def accept(self, constraint_id: str, step: int, token: int, terminal: bool) -> None:
         self._event("accept", constraint_id=constraint_id, step=step,
@@ -284,6 +321,82 @@ def _trace_writer_for_process() -> Optional[_TraceWriter]:
             _trace_writer = _TraceWriter(path)
             logger.info("bolorgir agent trace enabled: %s", path)
     return _trace_writer
+
+
+class _StatsWriter:
+    """Append-only JSONL snapshots of the engine statistics
+    (``BLG_AGENT_STATS``): the ``mem_used`` categories and the
+    mask/accept counters. The backend samples the engine on grammar
+    creation/release and on a timer, so a harness can verify that session
+    memory returns after a request ends - success, failure or abort."""
+
+    def __init__(self, path: str, interval_s: float) -> None:
+        self.path = path
+        self.interval_s = interval_s
+        self._lock = threading.Lock()
+        self._seq = 0
+        self._engine = None
+        self._stop = threading.Event()
+        self._thread = threading.Thread(
+            target=self._loop, name="bolorgir-stats", daemon=True)
+        self._thread.start()
+
+    def attach(self, engine: Any) -> None:
+        self._engine = engine
+
+    def detach(self) -> None:
+        self._engine = None
+        self._stop.set()
+
+    def _loop(self) -> None:
+        while not self._stop.wait(self.interval_s):
+            self.snapshot("tick")
+
+    def snapshot(self, event: str, **fields: Any) -> None:
+        engine = self._engine
+        if engine is None:
+            return
+        try:
+            stats = engine.stats()
+        except Exception:  # noqa: BLE001 - diagnostics only
+            return
+        with self._lock:
+            record = {
+                "event": event,
+                "t": time.time(),
+                "seq": self._seq,
+                "pid": os.getpid(),
+                "mem_used": stats.get("mem_used"),
+                "mask_calls": stats.get("mask_calls"),
+                "tokens_accepted": stats.get("tokens_accepted"),
+            }
+            if fields:
+                record.update(fields)
+            try:
+                with open(self.path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            except OSError:  # pragma: no cover - diagnostics only
+                return
+            self._seq += 1
+
+
+_stats_writer: Optional[_StatsWriter] = None
+_stats_writer_checked = False
+
+
+def _stats_writer_for_process() -> Optional[_StatsWriter]:
+    """The process stats writer from ``BLG_AGENT_STATS`` (checked once)."""
+    global _stats_writer, _stats_writer_checked
+    if not _stats_writer_checked:
+        _stats_writer_checked = True
+        path = os.environ.get(STATS_ENV, "")
+        if path:
+            interval_ms = _env_int(STATS_INTERVAL_ENV)
+            interval = max(interval_ms, 50) / 1000.0 if interval_ms else 0.5
+            _stats_writer = _StatsWriter(path, interval)
+            logger.info("bolorgir engine stats enabled: %s (interval %.3fs)",
+                        path, interval)
+    return _stats_writer
 
 
 _TOOL_NAME_RE = re.compile(r'"name"\s*:\s*"([^"]*)"')
@@ -474,6 +587,8 @@ class BolorgirBackend(StructuredOutputBackend):
     session_limit_mb: int = 8
     _engine: Any = field(init=False, repr=False, default=None)
     _bundle: Any = field(init=False, repr=False, default=None)
+    _memory_limit_mb: int = field(init=False, repr=False, default=256)
+    _work_limit_ops: int = field(init=False, repr=False, default=0)
 
     def __post_init__(self) -> None:
         self._model_vocab_size = int(self.vocab_size)
@@ -486,11 +601,23 @@ class BolorgirBackend(StructuredOutputBackend):
                 f"the tokenizer table ({bundle.vocab_size}); refusing to serve")
         self._bundle = bundle
         self._fingerprint = _TokenFingerprint(bundle)
-        self._engine = bolorgir.Engine(
-            mode=self.mode,
-            tokenizer=bundle,
-            session_limit_mb=self.session_limit_mb,
-        )
+        memory_limit_mb = _env_int(MEMORY_LIMIT_ENV)
+        session_limit_mb = _env_int(SESSION_LIMIT_ENV)
+        work_limit_ops = _env_int(WORK_LIMIT_ENV)
+        if session_limit_mb is not None:
+            self.session_limit_mb = session_limit_mb
+        engine_kwargs: dict = {
+            "mode": self.mode,
+            "tokenizer": bundle,
+            "session_limit_mb": self.session_limit_mb,
+        }
+        if memory_limit_mb is not None:
+            engine_kwargs["memory_limit_mb"] = memory_limit_mb
+        if work_limit_ops is not None:
+            engine_kwargs["work_limit_ops"] = work_limit_ops
+        self._memory_limit_mb = memory_limit_mb if memory_limit_mb is not None else 256
+        self._work_limit_ops = work_limit_ops if work_limit_ops is not None else 0
+        self._engine = bolorgir.Engine(**engine_kwargs)
         self._model_words = (self._model_vocab_size + 31) // 32
         self._num_spec_tokens = 0
         speculative = getattr(self.vllm_config, "speculative_config", None)
@@ -504,7 +631,8 @@ class BolorgirBackend(StructuredOutputBackend):
         logger.info(
             "bolorgir structured-output backend active: extension=%s "
             "bolorgir=%s mode=%s vocab=%d tokenizer_vocab=%d eos=%s "
-            "config_vocab=%d num_spec_tokens=%d",
+            "config_vocab=%d num_spec_tokens=%d "
+            "budgets[memory=%dMiB session=%dMiB work_ops=%d]",
             getattr(bolorgir._core, "__file__", "?"),
             bolorgir.__version__,
             self.mode,
@@ -513,7 +641,14 @@ class BolorgirBackend(StructuredOutputBackend):
             self._fingerprint.eos_ids,
             self._model_vocab_size,
             self._num_spec_tokens,
+            self._memory_limit_mb,
+            self.session_limit_mb,
+            self._work_limit_ops,
         )
+        stats_writer = _stats_writer_for_process()
+        if stats_writer is not None:
+            stats_writer.attach(self._engine)
+            stats_writer.snapshot("backend_init")
 
     # -- engine-level interface -------------------------------------------
 
@@ -553,14 +688,15 @@ class BolorgirBackend(StructuredOutputBackend):
                 f"bolorgir cannot compile the {request_type.name} request: "
                 f"{type(exc).__name__}: {exc}") from exc
         trace = None
+        request_key = None
         if request_id or external_request_id:
+            external = str(external_request_id) if external_request_id else None
+            internal = str(request_id) if request_id else None
+            request_key = external or internal
             writer = _trace_writer_for_process()
             if writer is not None:
-                external = str(external_request_id) if external_request_id else None
-                internal = str(request_id) if request_id else None
-                key = external or internal
                 record = internal if external and internal and internal != external else None
-                trace = _RequestTrace(writer, key, bolorgir.__version__,
+                trace = _RequestTrace(writer, request_key, bolorgir.__version__,
                                       internal_id=record)
         return BolorgirGrammar(
             backend=self,
@@ -569,6 +705,7 @@ class BolorgirBackend(StructuredOutputBackend):
             grammar_spec=grammar_spec,
             terminals=terminals,
             trace=trace,
+            request_key=request_key,
         )
 
     def _compile(self, request_type: StructuredOutputOptions, grammar_spec: str):
@@ -622,6 +759,9 @@ class BolorgirBackend(StructuredOutputBackend):
             # another engine step is final; a generation cut elsewhere
             # leaves no pending terminal and stays visibly incomplete.
             writer.flush_pending()
+        stats_writer = _stats_writer_for_process()
+        if stats_writer is not None:
+            stats_writer.snapshot("destroy")
         engine, self._engine = self._engine, None
         if engine is not None:
             try:
@@ -633,6 +773,8 @@ class BolorgirBackend(StructuredOutputBackend):
                 logger.warning(
                     "bolorgir backend stopped with live sessions; their "
                     "memory returns when the requests are collected")
+        if stats_writer is not None:
+            stats_writer.detach()
         logger.info("bolorgir structured-output backend stopped")
 
     # -- helpers used by the grammar --------------------------------------
@@ -662,6 +804,7 @@ class BolorgirGrammar(StructuredOutputGrammar):
         grammar_spec: str,
         terminals: Optional[FrozenSet[int]],
         trace: Optional[_RequestTrace] = None,
+        request_key: Optional[str] = None,
     ) -> None:
         import hashlib
 
@@ -691,6 +834,7 @@ class BolorgirGrammar(StructuredOutputGrammar):
         # Backend trace (blg-agent-trace/2): start, decision and one
         # compile event per declared constraint, all before any mask.
         self._trace: Optional[_RequestTrace] = None
+        self._request_key = request_key
         self._trace_primary: Optional[Tuple[str, str]] = None
         # Structural tags: constraint id per tag variant index (None ->
         # the free-text constraint) and the free-text constraint id.
@@ -718,6 +862,7 @@ class BolorgirGrammar(StructuredOutputGrammar):
                 trace.decision(constraints)
                 for c in constraints:
                     trace.compile_ok(c["constraint_id"], c["schema_sha256"])
+        self._stats_snapshot("grammar_open")
 
     # -- StructuredOutputGrammar interface --------------------------------
 
@@ -881,7 +1026,7 @@ class BolorgirGrammar(StructuredOutputGrammar):
         if self._terminals is None:
             # No override set: the kernel mask already carries the
             # tokenizer EOS bits exactly at completing states.
-            self._trace_mask(urow)
+            self._trace_mask(urow, batch_index)
             return
         if can_end:
             # The mask offers exactly the request's terminal set.
@@ -892,18 +1037,18 @@ class BolorgirGrammar(StructuredOutputGrammar):
         else:
             for t in self._terminals:
                 clear_bit(t)
-        self._trace_mask(urow)
+        self._trace_mask(urow, batch_index)
 
-    def _trace_mask(self, urow) -> None:
+    def _trace_mask(self, urow, row: int) -> None:
         """Records the applied mask row (blg-agent-trace/2) with the
-        active segment of the current state."""
+        active segment of the current state and the tensor row filled."""
         if self._trace is None:
             return
         cid, seg = self._trace_segment()
         allowed = sum(int(w).bit_count() for w in urow)
         digest = hashlib.sha256(
             urow.astype("<i4", copy=False).tobytes()).hexdigest()
-        self._trace.mask(cid, seg, self.mask_fills, allowed, digest)
+        self._trace.mask(cid, seg, self.mask_fills, allowed, digest, row=row)
 
     def is_terminated(self) -> bool:
         return self._terminated or self._failed
@@ -924,10 +1069,19 @@ class BolorgirGrammar(StructuredOutputGrammar):
         if self._session is not None:
             self._session.close()
             self._session = None  # type: ignore[assignment]
+            self._stats_snapshot("grammar_close")
 
     def __del__(self) -> None:  # pragma: no cover - GC path
         try:
             self._finish_pending()
+        except Exception:  # noqa: BLE001 - never raise from __del__
+            pass
+        try:
+            session = getattr(self, "_session", None)
+            if session is not None:
+                session.close()
+                self._session = None  # type: ignore[assignment]
+                self._stats_snapshot("grammar_gc")
         except Exception:  # noqa: BLE001 - never raise from __del__
             pass
 
@@ -955,6 +1109,16 @@ class BolorgirGrammar(StructuredOutputGrammar):
             if cid:
                 return (cid, cid)
         return (self._trace_text_id, self._trace_text_id)
+
+    def _stats_snapshot(self, event: str) -> None:
+        """An engine-statistics snapshot (BLG_AGENT_STATS): annotates the
+        grammar lifecycle so a harness can verify that session memory
+        returns after success, failure and abort."""
+        writer = _stats_writer_for_process()
+        if writer is None:
+            return
+        key = self._trace.request_id if self._trace is not None else self._request_key
+        writer.snapshot(event, request_id=key)
 
     def _flush_foreign_traces(self) -> None:
         """An engine step on this request confirms every other request's

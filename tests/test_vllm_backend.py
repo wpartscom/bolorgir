@@ -870,6 +870,78 @@ def test_trace_attributes_calls_to_the_active_tool(monkeypatch, tmp_path):
     assert qual == "constrained", reason
 
 
+def test_trace_mask_events_record_the_tensor_row(monkeypatch, tmp_path):
+    """Every mask event carries the tensor row (batch index) the adapter
+    filled - the record a batch-reorder audit replays."""
+    trace_path = _enable_trace(monkeypatch, tmp_path)
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.REGEX, "v[0-9]{1,3}", request_id="req-row")
+    vocab = backend.model_vocab_size
+    words = (vocab + 31) // 32
+
+    bitmask = FakeBitmask(3, words)
+    grammar.fill_bitmask(bitmask, 1)
+    grammar.fill_bitmask(bitmask, 0)
+    backend.destroy()
+
+    masks = [e for e in _trace_events(trace_path) if e["event"] == "mask"]
+    assert [m["row"] for m in masks] == [1, 0]
+
+
+def test_budget_overrides_reach_the_engine(monkeypatch):
+    """BLG_MEMORY_LIMIT_MB / BLG_SESSION_LIMIT_MB / BLG_WORK_LIMIT_OPS
+    override the engine budgets (the controlled-failure knobs); unset
+    variables keep the serving defaults."""
+    backend = make_backend(monkeypatch)
+    cfg = backend._engine._config
+    assert cfg["work_limit_ops"] == 0
+    assert cfg["session_limit_bytes"] == 8 << 20
+    backend.destroy()
+
+    monkeypatch.setenv(bv.MEMORY_LIMIT_ENV, "64")
+    monkeypatch.setenv(bv.SESSION_LIMIT_ENV, "2")
+    monkeypatch.setenv(bv.WORK_LIMIT_ENV, "4096")
+    backend = make_backend(monkeypatch)
+    cfg = backend._engine._config
+    assert cfg["memory_limit_bytes"] == 64 << 20
+    assert cfg["session_limit_bytes"] == 2 << 20
+    assert cfg["work_limit_ops"] == 4096
+    assert backend._memory_limit_mb == 64 and backend.session_limit_mb == 2
+    assert backend._work_limit_ops == 4096
+    backend.destroy()
+
+
+def test_stats_writer_records_the_grammar_lifecycle(monkeypatch, tmp_path):
+    """BLG_AGENT_STATS snapshots the engine statistics on lifecycle
+    events: a harness reads mem_used and the counters from here."""
+    stats_path = tmp_path / "stats.jsonl"
+    monkeypatch.setenv(bv.STATS_ENV, str(stats_path))
+    monkeypatch.setattr(bv, "_stats_writer", None)
+    monkeypatch.setattr(bv, "_stats_writer_checked", False)
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.REGEX, "v[0-9]{1,3}", request_id="req-stats")
+    vocab = backend.model_vocab_size
+    _row_of(grammar, vocab)
+    grammar.close()
+    backend.destroy()
+
+    events = _trace_events(stats_path)
+    kinds = [e["event"] for e in events]
+    assert kinds[0] == "backend_init"
+    assert "grammar_open" in kinds and "grammar_close" in kinds
+    assert kinds.count("destroy") == 1
+    opened = next(e for e in events if e["event"] == "grammar_open")
+    closed = next(e for e in events if e["event"] == "grammar_close")
+    assert opened["request_id"] == "req-stats" == closed["request_id"]
+    for e in (opened, closed):
+        assert isinstance(e["mem_used"], dict) and "session" in e["mem_used"]
+    # The session allocation is visible while open and released at close.
+    assert opened["mem_used"]["session"] > 0
+    assert closed["mem_used"]["session"] == 0
+
+
 def test_trace_of_several_sequential_calls(monkeypatch, tmp_path):
     """Two sequential tool calls (the required mode): each call's events
     name its own tool, in order."""

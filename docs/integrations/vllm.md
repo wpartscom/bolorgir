@@ -12,10 +12,14 @@ design decisions and the support matrix are in
 > the backend trace), including on the tokenizer of the pinned model,
 > and the GPU stage of the T10 checks has run the server-side scenarios
 > on the pinned stack for both speculative configurations (request
-> matrix, extra harness, trace qualifications; local run logs, not
-> tracked). The comparison report against XGrammar and the fresh
-> acceptance remain outstanding, and each row of the matrix marks
-> "verified", "explicitly refused" or "not verified".
+> matrix, extra harness, trace qualifications, controlled resource-limit
+> scenarios; local run logs, not tracked). The review of the first GPU
+> evidence was closed by the round-7 runs: the limit scenarios, the
+> forbidden-candidate probe, the batch row reorder with the mask replay
+> and the run5 manifests with the EngineCore maps records are in place.
+> The comparison report against XGrammar and the fresh acceptance remain
+> outstanding, and each row of the matrix marks "verified", "explicitly
+> refused" or "not verified".
 
 ## Pinned stack
 
@@ -66,15 +70,35 @@ mask at all: vLLM keeps `auto` parser-driven there and never asks the
 backend, so such requests stay `unknown` in a trace qualification - the
 agent keeps its freedom to answer without a tool.
 
-The server log prints one line when the backend is created:
+The adapter logs one line when the backend is created
+(logger `bolorgir.vllm`, level INFO). vLLM configures only its own
+loggers, so the line appears in the server log when the process runs
+with a root logging configuration that passes INFO; independently of
+logging, `BLG_AGENT_STATS` (below) records the engine statistics. The
+request-level errors below (and the statistics) are how a run shows
+which backend actually applied masks; an HTTP 200 alone does not prove
+it.
 
-```
-bolorgir structured-output backend active: extension=.../bolorgir/_core.abi3.so
-bolorgir=... mode=adaptive vocab=... tokenizer_vocab=... eos=(...) ...
-```
+## Diagnostics and controlled limits
 
-That line (and the request-level errors below) is how a run shows which
-backend actually applied masks; an HTTP 200 alone does not prove it.
+| Variable | Effect |
+|---|---|
+| `BLG_AGENT_TRACE=<path>` | append-only `blg-agent-trace/2` JSONL: `start`, `decision`, one `compile` per constraint, `mask` (with the filled tensor `row`), `accept`, `rollback` and a deferred `finish` |
+| `BLG_AGENT_STATS=<path>` | append-only JSONL engine-statistics snapshots: `backend_init`, `grammar_open`, `grammar_close` / `grammar_gc`, `destroy` and periodic `tick`s with the `mem_used` categories, `mask_calls` and `tokens_accepted`; written by the EngineCore process (the `pid` field) |
+| `BLG_WORK_LIMIT_OPS=<n>` | per-call work budget of the engine (kernel `work_limit_ops`); exceeding it fails exactly the offending call with a resource-limit error |
+| `BLG_SESSION_LIMIT_MB=<n>` | per-request-session memory budget (kernel `session_limit`); a session that does not fit fails its request at the allocation |
+| `BLG_MEMORY_LIMIT_MB=<n>` | whole-context memory budget (kernel `memory_limit_bytes`, default 256) |
+
+The budget overrides exist for controlled-failure harnesses; unset
+variables keep the serving defaults (8 MiB per session, no per-call
+work limit, 256 MiB per context). A budget failure is request-local: the
+grammar is marked failed, the request terminates with an error (no
+unconstrained generation), other requests of the batch continue, and
+the session memory returns to the accounting when the request's objects
+are collected. `benchmarks/local/t10-gpu-1/` carries the calibration
+(`calibrate_limits.py`), the scenario harnesses (`limits_checks.py`,
+`forbid_probe.py`, `replay_masks.py`, `maps_probe.py`) and the round-7
+run records.
 
 ## Requests
 

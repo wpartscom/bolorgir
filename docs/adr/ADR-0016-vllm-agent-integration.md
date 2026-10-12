@@ -9,6 +9,34 @@
   the `blg-agent-trace/2` backend trace; the GPU stage then ran the
   server-side scenarios on the pinned stack, and the map of the earlier
   revision is kept by `git log`.
+- Status note (2026-10-12, round 7): the review of the round-6 evidence
+  was closed with the round-7 runs. Controlled resource-limit failures
+  are modelled on the pinned stack (a per-call work budget that dies
+  inside the mask fill during generation, and a session budget that
+  rejects the structural-tag session allocation; both request-local,
+  the regex neighbour completes, and the engine statistics show every
+  released session), the forbidden high-score candidate is evidenced by
+  a concrete token id with a measured pre-mask advantage and its
+  exclusion after the mask in both speculative configurations, the
+  batch row reorder is shown by the request-to-row mapping before and
+  after the neighbour's completion with a replay audit of every applied
+  mask, and the evidence is bound to the frozen candidate `9a5baf3e…`
+  (run5 manifests plus live `maps` records of the EngineCore process).
+  Full pytest runs are regression checks; the fresh T3/R6 acceptance of
+  the current core (for a stable release an adopted T8a as well) and the
+  XGrammar comparison report remain outstanding.
+- Status note (2026-10-12, round 7b): two follow-ups of the intermediate
+  review were closed. The resource-limit checks now also cover a failure
+  while a healthy neighbour request is generating in the same engine
+  batch (the limits re-runs pass 10/10 in both configurations: the
+  stream keeps producing tokens after the failure, finishes with a valid
+  constrained result and both sessions release through the next pump),
+  and the batch-row-reorder verdict was moved from the per-request `seq`
+  counters (which restart at zero per request) to the positions of the
+  events in the shared trace JSONL, guarded by a built-in negative
+  control; the saved traces were re-evaluated without new traffic
+  (`reorder-nospec-run5b.json`, `reorder-spec-run5b.json`, mask audit
+  2/2 + 25/25 in both modes).
 - Context: the serving integration asks for a vLLM structured-output
   backend and for stage A1 of the agent evaluation: fix the stack, trace
   the tool schema path, define segment boundaries and the split between
@@ -258,17 +286,31 @@ is refused explicitly.
 | Nested content dead-end prefixes (the ADR-0005 completion filter, same as the standalone JSON constraint) | verified on CPU | `src/c_api.zig` ABI tests, `tests/test_session_rollback.py` (both backends) and the adapter tests |
 | End-literal prefix vs the JSON filter (the same closing bytes as one token or two, with rollback) | verified on CPU | the ABI test in `src/c_api.zig` and `tests/test_session_rollback.py` (both backends) |
 | Active-segment diagnostics (`blg_session_struct_segment`) | verified on CPU | ABI tests, `tests/test_session_rollback.py` (both backends), the trace tests of `tests/test_vllm_backend.py` |
-| Failure policy: request-local error, no unconstrained step | verified on CPU | same tests (closed-session simulation) |
+| Failure policy: request-local error, no unconstrained step | verified on CPU; end to end on GPU | same tests (closed-session simulation); the round-7 limit runs die request-locally during generation (work budget) and at the session allocation (memory budget) while the neighbour answers 200 |
+| Controlled resource-limit failures during the request (work budget inside the mask fill, session budget at the allocation) | verified on GPU | `benchmarks/local/t10-gpu-1/limits_checks.py` on servers started with `BLG_WORK_LIMIT_OPS=1110` / `BLG_SESSION_LIMIT_MB=1`, both speculative configurations: the JSON string request dies at its first fill (`mask computation limit exceeded`, HTTP 500, trace finish `error`), the forced-tool request at the session allocation (`session allocation failed`, HTTP 500, no trace events), the regex neighbour answers 200 before and after; the thresholds were measured by `calibrate_limits.py` on the pinned tokenizer (fill minima 256–297 ops for the neighbours, 1111 for the string schema); the round-7b re-run adds the concurrent isolation (scenario 5b, 10/10 per mode): with a healthy regex stream in flight (10 chunks received), the second request dies inside its fill (`mask_error_log_delta=1` in the log), the stream continues after the failure (117 more chunks nospec, 27 spec), finishes `stop` with a valid `[0-9]{128}` and both sessions release (`limits-{nospec,spec}-run5b.json`) |
+| Session release after success, error and abort (engine statistics) | verified on GPU | `BLG_AGENT_STATS` snapshots of the limits runs: a `grammar_gc` per request id returns the session category to the baseline; the newest request's session is the only residual, freed when the next traffic advances; the aborted stream leaves no `finish` |
+| Batch row reorder: request-to-row mapping and an applied-mask audit | verified on GPU | the extra scenario: the long request's tensor row moves `[1] → [0]` (draft rows visible under spec) when the short neighbour completes mid-generation; “before/after” is read from the positions of the events in the shared trace JSONL (per-request `seq` counters restart at zero), and a negative control (`rows_unchanged`, `increase_around_finish`, `decrease_before_finish`, `no_after_side`) must pass; `replay_masks.py` re-derives every mask of both requests from the traced accept/rollback history (including the vLLM stop set `{151643, 151645}`) and matches digest and allowed count (2/2 and 25/25 in both configurations); the saved traces were re-evaluated without new traffic in round 7b (`reorder-nospec-run5b.json`, `reorder-spec-run5b.json`: `a_finish_pos` 1334/1026, `rows_before=[1,1]` → `rows_after=[0,…]`) |
+| Forbidden high-score candidate: concrete token id, advantage before the mask, exclusion after it | verified on GPU | `forbid_probe.py` in both configurations: the baseline greedy top-1 is the forbidden `2` (token id 17 for `v202`, advantage ≈ 5.37 nats over the best allowed candidate), the constrained request (`regex v20[01]`) samples `v201`, the forbidden token carries the masked-out sentinel (logprob −9999) and the text matches the regex |
+| Evidence bound to the frozen candidate (run5 manifests, live EngineCore maps) | verified on GPU | `stack-manifest-{nospec,spec}-run5.json` and `stack-manifest-limits-{nospec,spec}-run5.json` (plus the round-7b limits re-run manifests `stack-manifest-limits-{nospec,spec}-run5b.json`) name core `9a5baf3e…`; live `/proc/<pid>/maps` records of the EngineCore process show `libbolorgir.so.0.1.0 sha256=9a5baf3e…`; the historical manifests are kept alongside |
 | Compile-level refusals answer as request errors (HTTP 400 with the kernel's message and offset) | verified on CPU; end to end on GPU | the adapter compiles the refusing candidates (an unsupported construct, a bounded-work pattern, an external `$ref`) against a byte-complete placeholder engine (`tests/test_vllm_backend.py`); found by the GPU stage, where the refusals had surfaced as engine internal errors |
 | `GRAMMAR` and `whitespace_pattern` | explicitly refused | request validation and compile refusal, with tests |
 | Unsupported tokenizer family | explicitly refused at start | error names the family and the supported ones |
-| Backend trace (`blg-agent-trace/2`) | implemented; qualification rules checked in-repo | events written when `BLG_AGENT_TRACE` is set, keyed by the exposed request id with the internal one recorded; per-segment attribution, rollback events and a deferred `finish` (vLLM rolls back draft-accepted terminals in the same step); the collector splits a request id into one stream per response variant (`{index}_{internal}`) and replays the accept/rollback history, so an inflated depth or a contradictory `terminal_undone` reads `unknown`; `tests/test_vllm_backend.py` (including an n = 2 pair of children) validates the traces with the A1 collector; the GPU runs qualify both configurations (the deferred `finish` of an idle server's last request is confirmed by a sentinel request) |
+| Backend trace (`blg-agent-trace/2`) | implemented; qualification rules checked in-repo | events written when `BLG_AGENT_TRACE` is set, keyed by the exposed request id with the internal one recorded; per-segment attribution, rollback events and a deferred `finish` (vLLM rolls back draft-accepted terminals in the same step); the collector splits a request id into one stream per response variant (`{index}_{internal}`) and replays the accept/rollback history, so an inflated depth or a contradictory `terminal_undone` reads `unknown`; `tests/test_vllm_backend.py` (including an n = 2 pair of children) validates the traces with the A1 collector; the GPU runs qualify both configurations (the deferred `finish` of an idle server's last request is confirmed by a sentinel request); every `mask` event records the filled tensor row (`row`), which the round-7 reorder audit replays |
 | Server start and the OpenAI request matrix on GPU | verified on GPU | the full matrix answered HTTP 200 in the nospec and ngram-spec runs on the pinned stack; forced tool modes and `response_format` qualify as `constrained`, non-strict `auto`/`none` stay `unknown` by design (vLLM does not call the backend there); local run logs under `benchmarks/local/t10-gpu-1/`, not tracked |
-| Speculative decoding on/off on GPU, mask audit in the server | verified on GPU | both configurations ran the matrix and the extra scenarios (26/26 per run: streams, length cut, aborted stream with the engine alive, n = 2 with two trace streams, mixed batch, the forbidden candidate, refusals as 400); the spec runs use ngram with five draft tokens (V1 model runner) |
+| Speculative decoding on/off on GPU, mask audit in the server | verified on GPU | both configurations ran the matrix, the extra scenarios (25/25 per run: streams, length cut, aborted stream with the engine alive, n = 2 with two trace streams, the batch row reorder with the applied-mask audit, the forbidden-candidate probe, refusals as 400) and the controlled limit scenarios (10/10 per run in the round-7b re-runs; 6/6 before the concurrent-isolation scenario existed); the spec runs use ngram with five draft tokens (V1 model runner) |
 | Agent path (`auto` with a strict tool) end to end | verified on GPU | the strict `auto` row qualifies `constrained` 3/3 and its independent probe reports the mask was followed (`probe_followed` 3/3) in both configurations |
 
 A skip in these checks means "not verified", never "passed". The GPU
 stage of T10 ran the runtime scenarios on the pinned stack on
 2026-10-12 (both speculative configurations; local run logs under
-`benchmarks/local/t10-gpu-1/`, not tracked); the comparison report with
+`benchmarks/local/t10-gpu-1/`, not tracked); the round-6 review findings
+were closed on the same day by the round-7 runs row by row (controlled
+resource limits with the release audit, the forbidden-candidate probe,
+the batch row reorder with the mask replay, and the run5 manifests with
+the EngineCore maps records), and two intermediate-review follow-ups
+(concurrent resource-limit isolation, positional reorder analyzer with
+the recomputed reorder evidence) closed by the round-7b re-runs. Full
+pytest runs are regression checks and
+do not replace a fresh T3/R6 acceptance of the current core (for a
+stable release, an adopted T8a as well). The comparison report with
 XGrammar (TTFT, throughput, batch scales) remains outstanding.

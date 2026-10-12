@@ -53,6 +53,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   qualification collector turns the events into `constrained` /
   `unconstrained` / `unknown` verdicts; an unfinished trace stays
   `unknown`.
+- **vLLM adapter diagnostics and controlled-limit knobs** (ADR-0016):
+  with `BLG_AGENT_STATS=<path>` the backend appends engine-statistics
+  snapshots (`backend_init`, `grammar_open`, `grammar_close` /
+  `grammar_gc`, `destroy` and periodic ticks with the `mem_used`
+  categories, `mask_calls` and `tokens_accepted`; written by the
+  EngineCore process, recorded in the `pid` field); every trace `mask`
+  event records the tensor row it filled (`row`);
+  `BLG_MEMORY_LIMIT_MB`, `BLG_SESSION_LIMIT_MB` and
+  `BLG_WORK_LIMIT_OPS` override the engine budgets for controlled
+  resource-limit harnesses (unset keeps the serving defaults). The
+  round-7 evidence runs use them for request-local work and session
+  budget failures with a surviving neighbour and a session-release
+  audit.
 - **Agent evaluation preparation**: `benchmarks/agent_eval/` (observation
   collector for the serving request matrix, experiment plan with the
   backend-trace format) and its negative tests; the collector treats a
