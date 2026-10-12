@@ -36,9 +36,14 @@ pip install "/path/to/bolorgir/python[vllm]"   # from source until the package
 ```
 
 Patch identity (sha256):
-`15e267a10d4f823b33c3e28df8457d873c13b4d7475087b53cdd933e31c8f30f`.
+`d0b8ea80d3ad02946ceab71ee93da811ec6dc9250e63481aedc932b1a1aa065a`.
 
-Revert with `git apply -R ...` or by checking out the three files.
+The patch touches four files: the backend-name literal, the request
+validation hook, the manager (backend construction plus the
+``compile_grammar`` call that passes both the engine-internal and the
+exposed request id to the backend) and ``vllm/v1/request.py`` (the
+engine Request keeps ``external_req_id`` so the manager can read it).
+Revert with `git apply -R ...` or by checking out those files.
 
 ## Run
 

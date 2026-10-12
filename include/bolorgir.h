@@ -397,6 +397,20 @@ blg_status blg_accept_token(blg_session *session, uint32_t token_id,
 
 blg_status blg_can_end(const blg_session *session, bool *out_can_end);
 
+/*
+ * Diagnostics for structural-tag sessions (BLG_CONSTRAINT_STRUCTURAL_TAG,
+ * ADR-0016; not part of the generation semantics): the active segment for
+ * trace attribution. *out_phase: 0 = free text, 1 = begin literal,
+ * 2 = JSON content or end literal, 3 = closed (stop_after_first).
+ * *out_variant: the active tag variant index, or 0xFF when no single
+ * variant is active (free text, or a begin prefix shared by several
+ * variants - no single tag has been chosen yet). Read-only.
+ * BLG_ERR_WRONG_STATE for another constraint kind or an inactive session;
+ * NULL out pointers are BLG_ERR_INVALID_ARGUMENT.
+ */
+blg_status blg_session_struct_segment(const blg_session *session,
+                                    uint8_t *out_phase, uint8_t *out_variant);
+
 /* finish requires can_end, otherwise BLG_ERR_WRONG_STATE. */
 blg_status blg_finish(blg_session *session, blg_error *err);
 blg_status blg_abort(blg_session *session);

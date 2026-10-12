@@ -14,13 +14,21 @@ other than the one sent. Without a backend trace every row stays an
 observation and every mode `not verified`. With --backend-trace (JSONL
 written by an instrumented backend, format TRACE_FORMAT in
 benchmarks/agent_eval/PLAN.md, "Evidence format") a row is qualified by
-the events of its request id:
+the events of its request id. The trace is keyed by the id the server
+returns to the client (the response body id): the server appends a random
+suffix to the id it receives internally, and the patched manager passes
+the exposed id explicitly (every event may also carry
+`internal_request_id`). A row without a response falls back to the id
+the client sent.
 
 - `unknown` unless the trace of the request is complete and consistent:
   one start event first (format, backend), one decision event, one
   finish event last that counts the events before it, seq 0..n-1 in
   file order, every compile and mask event by the start's backend
-  (and by --expect-backend when given), finish status ok;
+  (and by --expect-backend when given), finish status ok, rollback
+  events with a non-negative integer token count, one consistent
+  non-empty internal_request_id, and no mask or accept after a terminal
+  accept without an intervening rollback;
 - `unconstrained` when the backend decided not to apply a constraint
   (decision applied false) and the trace has no compile or mask event;
 - `constrained` when the backend decided to apply constraints (applied
@@ -97,10 +105,22 @@ MODES = [
 
 
 def sent_schemas(body):
-    """{name: canonical sha256} of the schemas a request carries."""
+    """{name: canonical sha256} of the schemas a request carries.
+
+    With tools, also the fingerprint of the served structural tag's
+    free-text constraint: the canonical hash of the sorted unique tool
+    names, which the instrumented backend reports as the schema_sha256 of
+    its ``structural_tag`` constraint (free-text and ambiguous-framing
+    masks). The tag spec itself is built server-side from the tool list
+    and is not part of the client request.
+    """
     out = {}
-    for t in body.get("tools") or []:
+    tools = body.get("tools") or []
+    for t in tools:
         out[f"tool:{t['function']['name']}"] = canonical_sha256(t["function"]["parameters"])
+    names = sorted({t["function"]["name"] for t in tools})
+    if names:
+        out["structural_tag"] = canonical_sha256(names)
     rf = body.get("response_format") or {}
     if rf.get("type") == "json_schema":
         out["response_format"] = canonical_sha256(rf["json_schema"]["schema"])
@@ -206,6 +226,32 @@ def trace_problems(events, expect_backend=None):
     if other:
         probs.append(f"{other[0].get('event')} by backend {other[0].get('backend')!r}, "
                      f"the trace is {backend!r}")
+    # The engine-internal request id, when recorded, is the same on every
+    # event and non-empty: it is the explicit client/internal mapping.
+    iids = [e.get("internal_request_id") for e in events if "internal_request_id" in e]
+    if any(not _named(v) for v in iids) or len(set(iids)) > 1:
+        probs.append("internal_request_id is empty or differs between events")
+    for i, e in enumerate(events):
+        if e.get("event") != "rollback":
+            continue
+        tokens = e.get("tokens")
+        if isinstance(tokens, bool) or not isinstance(tokens, int) or tokens < 0:
+            probs.append(f"rollback at seq {i} has no non-negative integer tokens")
+        if "terminal_undone" in e and not isinstance(e.get("terminal_undone"), bool):
+            probs.append(f"rollback at seq {i} has a non-boolean terminal_undone")
+    # A terminal accept ends the live generation: masks or accepts after
+    # it require an intervening rollback that undoes the terminal (vLLM
+    # accepts draft terminals and rolls them back in the same step).
+    open_terminal = False
+    for i, e in enumerate(events):
+        kind = e.get("event")
+        if kind in ("accept", "mask") and open_terminal:
+            probs.append(f"{kind} at seq {i} after a terminal accept without a rollback")
+            break
+        if kind == "accept" and e.get("terminal") is True:
+            open_terminal = True
+        elif kind == "rollback" and e.get("terminal_undone") is True:
+            open_terminal = False
     return probs
 
 
@@ -338,9 +384,16 @@ def main(argv=None, post_fn=None):
             r["qualification"], r["qualification_reason"] = (
                 "unknown", f"the trace has {len(malformed)} malformed lines, e.g. line {malformed[0]}")
         else:
+            # The trace is keyed by the id the server returns to the
+            # client (the response body id): the engine appends a random
+            # suffix to the id it receives, and the patched manager passes
+            # the exposed id explicitly. Rows without a response (an HTTP
+            # error) fall back to the id the client sent.
             r["evidence"] = "backend trace"
+            key = r.get("response_id") or r["request_id"]
+            r["trace_key"] = key
             r["qualification"], r["qualification_reason"] = qualify(
-                r, trace.get(r["request_id"]), args.expect_backend)
+                r, trace.get(key), args.expect_backend)
 
     summary = {}
     for r in rows:

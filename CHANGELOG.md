@@ -44,10 +44,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   byte-complete vocabulary is required, like the regex kind.
 - **Backend trace** (ADR-0016): with `BLG_AGENT_TRACE=<path>` the vLLM
   backend appends `blg-agent-trace/2` events (start, decision, compile,
-  mask, accept, finish) per request; the pinned patch passes the request
-  id to the backend. The A1 qualification collector turns the events into
-  `constrained` / `unconstrained` / `unknown` verdicts; an unfinished
-  trace stays `unknown`.
+  mask, accept, rollback, finish) per request, keyed by the request id
+  the server exposes to the client (the response id) with the
+  engine-internal one recorded explicitly; the pinned patch passes both
+  ids. Masks and accepts name the active structural-tag segment; a
+  terminal accept defers `finish` until the request is confirmed over
+  (vLLM rolls back draft-accepted terminals within one step). The A1
+  qualification collector turns the events into `constrained` /
+  `unconstrained` / `unknown` verdicts; an unfinished trace stays
+  `unknown`.
 - **Agent evaluation preparation**: `benchmarks/agent_eval/` (observation
   collector for the serving request matrix, experiment plan with the
   backend-trace format) and its negative tests; the collector treats a
@@ -63,6 +68,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the mask and `accept_tokens` (a stop token is approved exactly at a
   completing state and cuts the draft elsewhere), and a refused
   `rollback` leaves `is_terminated` and the session as they were.
+
+### Fixed
+
+- Structural tags: a started (partial) begin literal no longer leaves the
+  document endable. `tags_with_separator` rejected EOS at every partial
+  begin only after the full literal; now the first byte that advances any
+  begin clears the endable flag, so mask, draft check, accept and
+  rollback agree (the pinned xgrammar 0.2.7 blocks EOS there; a partial
+  trigger in the triggered modes stays free text and may end, also
+  xgrammar parity).
+- Structural tags: the nested parameters schema applies the completion
+  filter of the standalone JSON constraint: a byte-legal but
+  uncompletable prefix (a dead end like `-` under `minimum: 10`) is
+  withheld from the mask, cuts a draft and is refused by accept with the
+  session unchanged (`src/complete.zig` search over the content state).
+- vLLM adapter: a speculative terminal no longer closes the trace. vLLM
+  accepts draft tokens (a terminal among them) during bitmask fill and
+  rolls them back in the same step; the adapter now defers `finish`
+  until the request is confirmed over, records a `rollback` event (with
+  the undone terminal), and keeps the events after a speculative
+  rollback.
+- vLLM adapter: masks and accepts name the active segment instead of a
+  constant first constraint: the tool tag that owns the current bytes,
+  or the `structural_tag` constraint for free text and a begin prefix
+  shared by several variants (new read-only ABI
+  `blg_session_struct_segment` / `Session.struct_segment()`); the
+  decision of a structural-tag request declares that free-text
+  constraint with the canonical hash of the sorted unique tool names,
+  which the collector recomputes from the request.
+- vLLM patch and collector: the request-id mapping is explicit. The
+  serving layer exposes `chatcmpl-<X-Request-Id>` and the engine appends
+  a random suffix; the patch (now also carrying `external_req_id` onto
+  the engine `Request`) passes both ids to `compile_grammar`, the trace
+  is keyed by the exposed id and records the internal one per event, and
+  the collector looks the trace up by the response id it observes.
 
 ## [0.2.0] - not yet released (preview 0.2.0rc1 on GitHub, withdrawn 2026-10-11)
 

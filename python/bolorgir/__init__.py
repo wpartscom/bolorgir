@@ -511,6 +511,15 @@ class Session:
     def can_end(self) -> bool:
         return self._s.can_end()
 
+    def struct_segment(self) -> tuple:
+        """Active segment of a structural-tag session (ADR-0016
+        diagnostics): a ``(phase, variant)`` tuple; phase 0 = free text,
+        1 = begin literal, 2 = JSON content or end literal, 3 = closed
+        (stop_after_first); variant is the active tag variant index or
+        0xFF when no single variant is active. Read-only; raises
+        WrongStateError for other constraint kinds or a closed session."""
+        return self._s.struct_segment()
+
     def rollback(self, n_tokens: int) -> None:
         """Undo the last n_tokens successful accept_token calls (EOS
         included); masks are then exactly those before them. Needs

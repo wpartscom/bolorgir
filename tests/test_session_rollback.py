@@ -81,6 +81,9 @@ class PackageSessionRig:
     def can_end(self):
         return self.s.can_end()
 
+    def struct_segment(self):
+        return self.s.struct_segment()
+
     def _status(self, fn, *args):
         from conftest import _status_code_of_exception
         try:
@@ -132,6 +135,12 @@ class CtypesSessionRig:
 
     def can_end(self):
         return self.s.can_end()
+
+    def struct_segment(self):
+        import blg_ctypes
+        if not blg_ctypes.has_struct_segment():
+            skip_or_fail("the loaded library predates blg_session_struct_segment")
+        return self.s.struct_segment()
 
     def accept(self, t):
         return self.s.accept(t)
@@ -426,6 +435,193 @@ def test_structural_tag_session_ops(tok_name, mode):
             assert s.rollback(8) == BLG_OK
             assert set(s.mask()) == {ord("<")}
             assert not s.can_end()
+        finally:
+            s.close()
+    finally:
+        rig.close()
+
+
+TAG_RANGE_SPEC = {
+    "type": "structural_tag",
+    "format": {"type": "tags_with_separator", "separator": "", "at_least_one": True,
+               "tags": [{"type": "tag", "begin": "<c>",
+                         "content": {"type": "json_schema",
+                                     "json_schema": {"type": "integer",
+                                                     "minimum": 10, "maximum": 42}},
+                         "end": "</c>"}]},
+}
+
+TAG_OPTIONAL_SPEC = {
+    "type": "structural_tag",
+    "format": {"type": "tags_with_separator", "separator": "", "at_least_one": False,
+               "tags": [{"type": "tag", "begin": "<c>",
+                         "content": {"type": "json_schema",
+                                     "json_schema": {"type": "integer"}},
+                         "end": "</c>"}]},
+}
+
+TRIGGERED_TWO_TAG_SPEC = {
+    "type": "structural_tag",
+    "format": {"type": "triggered_tags", "triggers": ["<t>"],
+               "tags": [{"type": "tag", "begin": "<t>aaa",
+                         "content": {"type": "json_schema",
+                                     "json_schema": {"type": "integer"}},
+                         "end": "</t>"},
+                        {"type": "tag", "begin": "<t>bbb",
+                         "content": {"type": "json_schema",
+                                     "json_schema": {"type": "integer"}},
+                         "end": "</t>"}]},
+}
+
+
+def _spec_of(tok_name):
+    return make_byte_tokenizer() if tok_name == "byte" else make_dict_tokenizer()
+
+
+@pytest.mark.parametrize("tok_name", ["byte", "dict"])
+@pytest.mark.parametrize("mode", ["lazy", "adaptive"])
+def test_structural_tag_partial_begin_blocks_eos(tok_name, mode):
+    """A started (partial) begin of a new tag is an unfinished tag: the
+    mask withholds EOS, accept refuses it, the draft check cuts there, and
+    rollback re-opens the boundary exactly."""
+    spec = _spec_of(tok_name)
+    eos = spec.eos_ids[0]
+    rig = make_tag_rig(spec, mode, TAG_SPEC)
+    try:
+        s = rig.session(8)
+        try:
+            for t in b"<c>4</c>":
+                assert s.accept(t) == BLG_OK
+            assert s.can_end()
+            m_boundary = s.mask()
+            assert eos in m_boundary and ord("<") in m_boundary
+            # The second tag starts: any partial begin byte blocks the end.
+            assert s.accept(ord("<")) == BLG_OK
+            assert not s.can_end()
+            m_partial = s.mask()
+            assert eos not in m_partial and ord("c") in m_partial
+            assert s.accept(eos) != BLG_OK
+            assert s.mask() == m_partial  # refused terminal, state intact
+            assert s.validate([ord("c"), eos]) == (BLG_OK, 1)
+            assert s.mask() == m_partial
+            # Rollback of the partial begin re-opens the boundary.
+            assert s.rollback(1) == BLG_OK
+            assert s.can_end() and s.mask() == m_boundary
+        finally:
+            s.close()
+    finally:
+        rig.close()
+
+
+@pytest.mark.parametrize("tok_name", ["byte", "dict"])
+@pytest.mark.parametrize("mode", ["lazy", "adaptive"])
+def test_structural_tag_optional_first_begin_blocks_eos(tok_name, mode):
+    """The same rule for the first tag when tags are optional: the empty
+    document may end, a partial begin of the first tag may not."""
+    spec = _spec_of(tok_name)
+    eos = spec.eos_ids[0]
+    rig = make_tag_rig(spec, mode, TAG_OPTIONAL_SPEC)
+    try:
+        s = rig.session(8)
+        try:
+            assert s.can_end()
+            assert eos in s.mask() and ord("<") in s.mask()
+            assert s.accept(ord("<")) == BLG_OK
+            assert not s.can_end()
+            assert eos not in s.mask()
+            assert s.accept(eos) != BLG_OK
+            assert s.validate([ord("c"), eos]) == (BLG_OK, 1)
+            assert s.rollback(1) == BLG_OK
+            assert s.can_end() and eos in s.mask()
+            # The tag still completes, and a second partial begin blocks.
+            for t in b"<c>4</c>":
+                assert s.accept(t) == BLG_OK
+            assert s.can_end()
+            assert s.accept(ord("<")) == BLG_OK
+            assert not s.can_end() and eos not in s.mask()
+        finally:
+            s.close()
+    finally:
+        rig.close()
+
+
+@pytest.mark.parametrize("tok_name", ["byte", "dict"])
+@pytest.mark.parametrize("mode", ["lazy", "adaptive"])
+def test_structural_tag_content_dead_end_prefixes_are_rejected(tok_name, mode):
+    """The nested content applies the same completion filter as the
+    standalone JSON constraint: under minimum 10 and maximum 42, '-' and
+    '9' can never complete, so the mask withholds them, accept refuses
+    them with the state intact, and the draft check cuts at them."""
+    spec = _spec_of(tok_name)
+    rig = make_tag_rig(spec, mode, TAG_RANGE_SPEC)
+    try:
+        s = rig.session(8)
+        try:
+            for t in b"<c>":
+                assert s.accept(t) == BLG_OK
+            m = s.mask()
+            assert ord("4") in m and ord("0") in m
+            assert ord("-") not in m and ord("9") not in m and ord("5") not in m
+            assert s.accept(ord("-")) != BLG_OK
+            assert s.mask() == m
+            assert s.validate([ord("-"), ord("4")]) == (BLG_OK, 0)
+            assert s.mask() == m
+            assert s.accept(ord("4")) == BLG_OK
+            m4 = s.mask()
+            assert ord("2") in m4 and ord("3") not in m4
+            assert s.validate([ord("2"), ord("3")]) == (BLG_OK, 1)
+            for t in b"2</c>":
+                assert s.accept(t) == BLG_OK
+            assert s.can_end()
+        finally:
+            s.close()
+    finally:
+        rig.close()
+
+
+@pytest.mark.parametrize("tok_name", ["byte", "dict"])
+@pytest.mark.parametrize("mode", ["lazy", "adaptive"])
+def test_structural_tag_active_segment_reports_the_variant(tok_name, mode):
+    """The segment query follows the state machine: begin literal, JSON
+    content (variant 0 for the single tag), then the tag boundary again."""
+    spec = _spec_of(tok_name)
+    rig = make_tag_rig(spec, mode, TAG_SPEC)
+    try:
+        s = rig.session(0)
+        try:
+            assert s.struct_segment() == (1, 0)
+            for t in b"<c>":
+                assert s.accept(t) == BLG_OK
+            assert s.struct_segment() == (2, 0)
+            for t in b"4</c>":
+                assert s.accept(t) == BLG_OK
+            assert s.struct_segment() == (1, 0)
+        finally:
+            s.close()
+    finally:
+        rig.close()
+
+
+@pytest.mark.parametrize("tok_name", ["byte", "dict"])
+@pytest.mark.parametrize("mode", ["lazy", "adaptive"])
+def test_structural_tag_ambiguous_begin_prefix(tok_name, mode):
+    """A begin prefix shared by several variants reports no single variant
+    (0xFF); the first distinguishing byte pins the active one (the trace
+    must not attribute the shared framing to one tool)."""
+    spec = _spec_of(tok_name)
+    rig = make_tag_rig(spec, mode, TRIGGERED_TWO_TAG_SPEC)
+    try:
+        s = rig.session(0)
+        try:
+            assert s.struct_segment() == (0, 0xFF)  # free text
+            for t in b"<t>":
+                assert s.accept(t) == BLG_OK
+            assert s.struct_segment() == (1, 0xFF)  # both variants alive
+            assert s.accept(ord("b")) == BLG_OK
+            assert s.struct_segment() == (1, 1)  # only <t>bbb remains
+            for t in b"bb":
+                assert s.accept(t) == BLG_OK
+            assert s.struct_segment() == (2, 1)
         finally:
             s.close()
     finally:

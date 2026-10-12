@@ -36,8 +36,36 @@ index 1565799..724267f 100644
          elif (
              backend == "auto"
              and is_mistral_tokenizer(tokenizer)
+diff --git a/vllm/v1/request.py b/vllm/v1/request.py
+index 4b1b9ec..8435d24 100644
+--- a/vllm/v1/request.py
++++ b/vllm/v1/request.py
+@@ -79,9 +79,15 @@ class Request:
+         reasoning_ended: bool | None = None,
+         reasoning_parser_kwargs: dict[str, Any] | None = None,
+         abort_immediately: bool = False,
++        # Added by the bolorgir backend patch: the user-provided
++        # request id kept by InputProcessor.assign_request_id, so a
++        # backend diagnostics trace can be keyed by the id the
++        # client observes and record the internal one.
++        external_req_id: str | None = None,
+         kv_hints: KvHintsEnvelope | None = None,
+     ) -> None:
+         self.request_id = request_id
++        self.external_req_id = external_req_id
+         self.client_index = client_index
+         self.priority = priority
+         self.sampling_params = sampling_params
+@@ -248,6 +254,7 @@ class Request:
+     ) -> "Request":
+         return cls(
+             request_id=request.request_id,
++            external_req_id=request.external_req_id,
+             client_index=request.client_index,
+             prompt_token_ids=request.prompt_token_ids,
+             prompt_embeds=request.prompt_embeds,
 diff --git a/vllm/v1/structured_output/__init__.py b/vllm/v1/structured_output/__init__.py
-index 3b35d39..26be366 100644
+index 3b35d39..eda7522 100644
 --- a/vllm/v1/structured_output/__init__.py
 +++ b/vllm/v1/structured_output/__init__.py
 @@ -161,6 +161,16 @@ class StructuredOutputManager:
@@ -57,19 +85,25 @@ index 3b35d39..26be366 100644
              else:
                  raise ValueError(f"Unsupported structured output backend: {backend}")
  
-@@ -190,6 +200,16 @@ class StructuredOutputManager:
+@@ -190,6 +200,22 @@ class StructuredOutputManager:
                  if request.sampling_params is not None
                  else None
              )
 +            if getattr(self.backend, "accepts_request_id", False):
 +                # Added by the bolorgir backend patch: a backend may need
 +                # the request id for its per-request diagnostics (the
-+                # blg-agent-trace/2 backend trace).
++                # blg-agent-trace/2 backend trace). The engine appends a
++                # random suffix to the id it receives
++                # (InputProcessor.assign_request_id keeps the original in
++                # external_req_id), so the backend gets both ids: its trace
++                # is keyed by the id the client observes (the response id)
++                # and records the internal one explicitly.
 +                return self.backend.compile_grammar(
 +                    request_type,
 +                    grammar_spec,
 +                    stop_token_ids=stop_token_ids,
 +                    request_id=request.request_id,
++                    external_request_id=getattr(request, "external_req_id", None),
 +                )
              return self.backend.compile_grammar(
                  request_type, grammar_spec, stop_token_ids=stop_token_ids

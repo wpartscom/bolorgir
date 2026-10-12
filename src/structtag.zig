@@ -32,6 +32,7 @@
 
 const std = @import("std");
 const Arena = @import("alloc.zig").Arena;
+const complete = @import("complete.zig");
 const grammar = @import("grammar.zig");
 const json = @import("json.zig");
 const parser = @import("parser.zig");
@@ -604,6 +605,53 @@ pub fn canEnd(st: *const State) bool {
     return st.small.endable;
 }
 
+pub const ActiveSegment = struct { phase: Phase, variant: u8 };
+
+/// The active segment of a state for trace attribution: the phase and, when
+/// exactly one tag variant is alive (or the stream is inside its content),
+/// that variant index; NO_VARIANT for free text and for a begin prefix
+/// shared by several variants (no single tag has been chosen yet).
+/// Read-only: no session state changes.
+pub fn activeSegment(st: *const State) ActiveSegment {
+    switch (st.small.phase) {
+        .text => return .{ .phase = .text, .variant = NO_VARIANT },
+        .begin => return .{
+            .phase = .begin,
+            .variant = if (st.small.n_begin == 1) st.small.begin_items[0].variant else NO_VARIANT,
+        },
+        .json, .final => return .{ .phase = st.small.phase, .variant = st.small.json_variant },
+    }
+}
+
+/// Whether the program holds any content grammar with deferred value
+/// verdicts (ADR-0005): only then the mask walk and the draft checks need
+/// the completion filter at all.
+fn needsReachability(p: *const Program) bool {
+    for (p.variants) |v| {
+        if (v.content.needs_reachability) return true;
+    }
+    return false;
+}
+
+/// Whether a structtag state can still reach a document completion
+/// (ADR-0005 semantics, mirrored for the tag content). Outside an open
+/// JSON content the remaining literals can always be fed and the program
+/// can end or continue, so only content-open states are filtered: a
+/// byte-legal but unfinished content like `-` under `minimum: 10` can
+/// never satisfy the schema, and the whole tag can then never complete.
+/// The filter condition matches the standalone JSON constraint
+/// (mask.zig / c_api.zig): partial vocabularies over finite literal
+/// content, or any content with deferred value verdicts.
+/// ResourceLimit is UNKNOWN, not alive: the callers propagate it.
+pub fn stateAlive(p: *const Program, tok: *const tokenizer.Tokenizer, st: *const State, pool: *Pool, w: *work_mod.Work, side: *parser.Side) complete.Error!bool {
+    if (st.small.phase != .json or st.small.json_dead) return true;
+    const vi = st.small.json_variant;
+    const content = &p.variants[vi].content;
+    const filtered = (!tok.byte_complete and content.finite_literal) or content.needs_reachability;
+    if (!filtered) return true;
+    return complete.stateAlive(content, tok, &st.json, pool.completionFor(vi), w, side);
+}
+
 /// Feeds one byte; `out` is fully written and may alias neither `in` nor
 /// the scratch states. `jout`/`work` are caller scratch parser states,
 /// left empty on return; on Parse both `in` and the logical state are
@@ -685,6 +733,14 @@ pub fn feedByteInto(p: *const Program, side: *parser.Side, in: *const State, b: 
                 }
             }
             small.n_begin = n;
+            // Every byte that survives here advances at least one begin
+            // literal (a byte matching none rejects the feed): from this
+            // point the stream is inside the tag's begin and the document
+            // cannot end until the tag completes. Without this a partial
+            // begin in tags_with_separator (or after a completed tag)
+            // kept the pre-tag endable flag and the mask offered EOS
+            // inside an unfinished tag.
+            small.endable = false;
             if (enter != NO_VARIANT) {
                 // Prefix-free begins: no other item can be alive here.
                 small.n_begin = 0;
@@ -775,9 +831,15 @@ pub const Pool = struct {
     states: std.ArrayListUnmanaged(State) = .empty,
     frames: std.ArrayListUnmanaged(Frame) = .empty,
     inited: usize = 0,
+    /// Completion-search memo and scratch for the JSON content of the
+    /// active tag variant (ADR-0005 filter); `completion_variant` records
+    /// which variant's content grammar the memo is keyed for, since the
+    /// memo must not be shared between different grammars.
+    completion: complete.Cache = undefined,
+    completion_variant: u8 = NO_VARIANT,
 
     pub fn init(a: std.mem.Allocator) Pool {
-        return .{ .a = a };
+        return .{ .a = a, .completion = complete.Cache.init(a) };
     }
 
     pub fn deinit(self: *Pool, side: *parser.Side) void {
@@ -785,7 +847,20 @@ pub const Pool = struct {
         for (self.states.items) |*s| parser.releaseState(side, &s.json);
         self.states.deinit(a);
         self.frames.deinit(a);
+        self.completion.deinit();
         self.* = .{ .a = a };
+        self.completion = undefined;
+    }
+
+    /// The completion cache prepared for the content grammar of variant
+    /// `vi` (memoized verdicts are per grammar: switching variants drops
+    /// them; the scratch pool is kept).
+    fn completionFor(self: *Pool, vi: u8) *complete.Cache {
+        if (self.completion_variant != vi) {
+            self.completion.reset();
+            self.completion_variant = vi;
+        }
+        return &self.completion;
     }
 
     fn ensure(self: *Pool, max_stack: u32) !void {
@@ -808,6 +883,11 @@ pub fn fillMask(p: *const Program, tok: *const tokenizer.Tokenizer, st: *const S
     const mw = tok.maskWords();
     std.debug.assert(out.len >= mw);
     @memset(out[0..mw], 0);
+    if (needsReachability(p)) {
+        pool.completion.reset();
+        pool.completion.fill_budget = complete.fillBudget();
+        pool.completion_variant = NO_VARIANT;
+    }
     const trie = &tok.trie;
     try pool.ensure(trie.max_stack);
     pool.states.items.len = 0;
@@ -846,11 +926,25 @@ pub fn fillMask(p: *const Program, tok: *const tokenizer.Tokenizer, st: *const S
         };
         pool.states.items.len = top + 2;
         pool.frames.appendAssumeCapacity(.{ .node = child, .next_edge = 0 });
-        var id = trie.node_token[child];
-        while (id != tokenizer.NO_TOKEN) : (id = tok.token_chain[id]) {
-            if (!tok.is_eos[id] and !tok.is_special[id]) {
-                setBit(out, id);
-                any = true;
+        const id_head = trie.node_token[child];
+        if (id_head != tokenizer.NO_TOKEN) {
+            // Completion filter (ADR-0005): a token whose state cannot
+            // reach a completed answer is left out of the mask exactly as
+            // in the standalone JSON constraint - the mask, the draft
+            // check and the accept path must agree.
+            const alive = stateAlive(p, tok, dst, pool, w, side) catch |err| switch (err) {
+                error.ResourceLimit => return error.ResourceLimit,
+                error.Cancelled => return error.Cancelled,
+                error.OutOfMemory => return error.OutOfMemory,
+            };
+            if (alive) {
+                var id = id_head;
+                while (id != tokenizer.NO_TOKEN) : (id = tok.token_chain[id]) {
+                    if (!tok.is_eos[id] and !tok.is_special[id]) {
+                        setBit(out, id);
+                        any = true;
+                    }
+                }
             }
         }
     }
@@ -884,6 +978,9 @@ const SEPARATED_SPEC = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags
     "{\"type\":\"tag\",\"begin\":\"<c>\",\"content\":{\"type\":\"json_schema\",\"json_schema\":{\"type\":\"integer\"}},\"end\":\"</c>\"}]}}";
 
 const SEPARATED_FIRST_SPEC = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags_with_separator\",\"separator\":\"\",\"at_least_one\":true,\"stop_after_first\":true,\"tags\":[" ++
+    "{\"type\":\"tag\",\"begin\":\"<c>\",\"content\":{\"type\":\"json_schema\",\"json_schema\":{\"type\":\"integer\"}},\"end\":\"</c>\"}]}}";
+
+const SEPARATED_OPTIONAL_SPEC = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags_with_separator\",\"separator\":\"\",\"at_least_one\":false,\"tags\":[" ++
     "{\"type\":\"tag\",\"begin\":\"<c>\",\"content\":{\"type\":\"json_schema\",\"json_schema\":{\"type\":\"integer\"}},\"end\":\"</c>\"}]}}";
 
 /// Test driver that mirrors the session contract: three state slots, the
@@ -1014,10 +1111,90 @@ test "structtag: tags_with_separator requires adjacent tags and supports repetit
     try testing.expect(!f.canEnd());
     try testing.expect(f.feedToken("</c>"));
     try testing.expect(f.canEnd());
+    const seg = module.activeSegment(&f.slots[f.cur]);
+    try testing.expectEqual(Phase.begin, seg.phase);
+    try testing.expectEqual(@as(u8, 0), seg.variant);
     try testing.expect(f.feedToken("<c>"));
     try testing.expect(f.feedToken("5"));
     try testing.expect(f.feedToken("</c>"));
     try testing.expect(f.canEnd());
+}
+
+test "structtag: a partial begin in tags_with_separator cannot end" {
+    var f = try Fixture.init(SEPARATED_SPEC);
+    defer f.deinit();
+    try testing.expect(!f.canEnd()); // at least one tag required
+    try testing.expect(f.feedToken("<c>4</c>"));
+    try testing.expect(f.canEnd());
+    // A second tag may start at the boundary, but once its first byte is
+    // there the document cannot end until the tag completes (the pinned
+    // xgrammar blocks EOS at every partial begin of tags_with_separator).
+    try testing.expect(f.feedToken("<"));
+    try testing.expect(!f.canEnd());
+    try testing.expect(!f.feedToken("x")); // neither a begin continuation nor EOS
+    try testing.expect(!f.canEnd());
+    try testing.expect(f.feedToken("c>"));
+    try testing.expect(!f.canEnd());
+    try testing.expect(f.feedToken("5</c>"));
+    try testing.expect(f.canEnd());
+}
+
+test "structtag: an optional tag can end only before its first byte" {
+    var f = try Fixture.init(SEPARATED_OPTIONAL_SPEC);
+    defer f.deinit();
+    try testing.expect(f.canEnd()); // the empty document is valid
+    try testing.expect(f.feedToken("<"));
+    try testing.expect(!f.canEnd()); // the partial begin must complete
+    try testing.expect(f.feedToken("c>4</c>"));
+    try testing.expect(f.canEnd());
+    try testing.expect(f.feedToken("<c"));
+    try testing.expect(!f.canEnd());
+    try testing.expect(f.feedToken(">4</c>"));
+    try testing.expect(f.canEnd());
+}
+
+test "structtag: a partial trigger stays free text and can end" {
+    // Triggered mode keeps the xgrammar behavior: text that ends inside a
+    // trigger prefix is a free-text tail and may end; only a committed
+    // tag blocks EOS (the separator begins above are the blocking case).
+    var f = try Fixture.init(TRIGGERED_SPEC);
+    defer f.deinit();
+    try testing.expect(f.feedToken("hello <tool_"));
+    try testing.expect(f.canEnd());
+    try testing.expect(f.feedToken("call>")); // commits the trigger
+    try testing.expect(!f.canEnd());
+    try testing.expect(f.feedText("\n{\"name\": \"set_code\", \"arguments\": "));
+    try testing.expect(!f.canEnd());
+    try testing.expect(f.feedToken("{\"code\":\"zq-17-wombat\"}"));
+    try testing.expect(f.feedToken("}\n</tool_call>"));
+    try testing.expect(f.canEnd());
+}
+
+test "structtag: activeSegment names the variant or stays ambiguous" {
+    var f = try Fixture.init(TRIGGERED_SPEC);
+    defer f.deinit();
+    var seg = module.activeSegment(&f.slots[f.cur]);
+    try testing.expectEqual(Phase.text, seg.phase);
+    try testing.expectEqual(NO_VARIANT, seg.variant);
+    // The trigger is shared by both variants: the begin prefix is ambiguous.
+    try testing.expect(f.feedToken("<tool_call>"));
+    seg = module.activeSegment(&f.slots[f.cur]);
+    try testing.expectEqual(Phase.begin, seg.phase);
+    try testing.expectEqual(NO_VARIANT, seg.variant);
+    // The newline picks one variant chain: the active tag is known.
+    try testing.expect(f.feedToken("\n"));
+    seg = module.activeSegment(&f.slots[f.cur]);
+    try testing.expectEqual(Phase.begin, seg.phase);
+    try testing.expectEqual(@as(u8, 0), seg.variant);
+    try testing.expect(f.feedText("{\"name\": \"set_code\", \"arguments\": "));
+    seg = module.activeSegment(&f.slots[f.cur]);
+    try testing.expectEqual(Phase.json, seg.phase);
+    try testing.expectEqual(@as(u8, 0), seg.variant);
+    try testing.expect(f.feedToken("{\"code\":\"zq-17-wombat\"}"));
+    try testing.expect(f.feedToken("}\n</tool_call>"));
+    seg = module.activeSegment(&f.slots[f.cur]);
+    try testing.expectEqual(Phase.text, seg.phase);
+    try testing.expectEqual(NO_VARIANT, seg.variant);
 }
 
 test "structtag: stop_after_first closes the language" {

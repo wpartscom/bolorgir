@@ -1911,6 +1911,28 @@ fn acceptStructTag(s: *Session, sp: *const structtag.Program, token_id: u32, err
             dst = if (dst == o1) o2 else o1;
         }
         if (!src_is_orig) {
+            // Completion filter (ADR-0005), mirroring the standalone JSON
+            // accept: a token the tag content can never finish from (a
+            // dead-end prefix like `-` under `minimum: 10`) is refused
+            // before any observable change.
+            {
+                var w = work_mod.Work{};
+                s.tag_pool.completion.fill_budget = complete.fillBudget();
+                const alive = structtag.stateAlive(sp, &ctx.tok, &slots[src], &s.tag_pool, &w, &s.side) catch |e| switch (e) {
+                    error.ResourceLimit, error.OutOfMemory => {
+                        parser.releaseState(&s.side, &slots[src].json);
+                        return fail(err, .resource_limit, "completion check limit exceeded");
+                    },
+                    error.Cancelled => {
+                        parser.releaseState(&s.side, &slots[src].json);
+                        return fail(err, .cancelled, "cancelled");
+                    },
+                };
+                if (!alive) {
+                    parser.releaseState(&s.side, &slots[src].json);
+                    return fail(err, .invalid_token, "token would lead to a dead end");
+                }
+            }
             // The current slot still holds the pre-accept state: record it
             // before the commit, then make the fed state current.
             if (s.history.cap != 0 and !recordHistory(s)) {
@@ -2062,6 +2084,18 @@ pub export fn blg_validate_tokens(
                 cur ^= 1;
             }
             if (rejected) return .ok;
+            // Completion filter (ADR-0005), mirroring the standalone JSON
+            // branch: a byte-legal token the content can never finish from
+            // cuts the prefix like any other rejection.
+            {
+                var w = work_mod.Work{};
+                s.tag_pool.completion.fill_budget = complete.fillBudget();
+                const alive = structtag.stateAlive(sp, tok, &tmp[cur], &s.tag_pool, &w, &s.side) catch |e| switch (e) {
+                    error.ResourceLimit, error.OutOfMemory => return .resource_limit,
+                    error.Cancelled => return .cancelled,
+                };
+                if (!alive) return .ok;
+            }
             out.* = i + 1;
         }
         return .ok;
@@ -2121,6 +2155,26 @@ pub export fn blg_can_end(s_opt: ?*const Session, out_can_end: ?*bool) callconv(
         },
         .aborted => return .wrong_state,
     }
+}
+
+/// Active segment of a structural-tag session (BLG_CONSTRAINT_STRUCTURAL_TAG,
+/// ADR-0016 diagnostics for the backend trace): out_phase 0 = free text,
+/// 1 = begin literal, 2 = JSON content or end literal, 3 = closed
+/// (stop_after_first); out_variant = the active tag variant index, or 0xFF
+/// when no single variant is active (free text, or a begin prefix shared by
+/// several variants). Read-only. BLG_ERR_WRONG_STATE for other grammar
+/// kinds or an inactive session; NULL out pointers are
+/// BLG_ERR_INVALID_ARGUMENT.
+pub export fn blg_session_struct_segment(s_opt: ?*const Session, out_phase: ?*u8, out_variant: ?*u8) callconv(.c) Status {
+    const s = s_opt orelse return .invalid_argument;
+    const op = out_phase orelse return .invalid_argument;
+    const ov = out_variant orelse return .invalid_argument;
+    if (s.status != .active) return .wrong_state;
+    _ = s.gh.g.structtag orelse return .wrong_state;
+    const active = structtag.activeSegment(&s.tag.?[s.tag_cur]);
+    op.* = @intFromEnum(active.phase);
+    ov.* = active.variant;
+    return .ok;
 }
 
 pub export fn blg_finish(s_opt: ?*Session, err: ?*ZgError) callconv(.c) Status {
@@ -4325,4 +4379,105 @@ test "abi: structural-tag constraint masks, rollback and validation" {
     try std.testing.expectEqual(Status.unsupported_tokenizer, compileStructTagReq(tc.ctx, structtag_abi_spec, null, 0, &gh3, &err));
     blg_grammar_release(tc.gh);
     try std.testing.expectEqual(Status.ok, blg_context_destroy(tc.ctx));
+}
+
+const structtag_abi_range_spec =
+    "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags_with_separator\",\"separator\":\"\",\"at_least_one\":true,\"tags\":[{\"type\":\"tag\",\"begin\":\"<c>\",\"content\":{\"type\":\"json_schema\",\"json_schema\":{\"type\":\"integer\",\"minimum\":10,\"maximum\":42}},\"end\":\"</c>\"}]}}";
+
+test "abi: structural-tag content completion filter, endable and the active segment" {
+    var entries: [261]TokenEntry = undefined;
+    var blob: [1024]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildByteCompleteDesc(&entries, &blob, &bufs);
+    var cfg = makeConfig(0);
+    var err = makeTestError();
+    var ctx: ?*Context = null;
+    try std.testing.expectEqual(Status.ok, blg_context_create(&cfg, &desc, &ctx, &err));
+
+    var gh: ?*GrammarHandle = null;
+    try std.testing.expectEqual(Status.ok, compileStructTagReq(ctx, structtag_abi_range_spec, null, 0, &gh, &err));
+    const sc: SessionConfig = .{ .struct_size = @sizeOf(SessionConfig), .max_rollback_tokens = 8 };
+    var s: ?*Session = null;
+    try std.testing.expectEqual(Status.ok, blg_session_create_ex(ctx, gh, &sc, &s, &err));
+    var m: [9]u32 = @splat(0);
+    var ce = true;
+    var phase: u8 = 0;
+    var variant: u8 = 0;
+    // The single tag variant is the only continuation: the segment query
+    // reports it even at the boundary.
+    try std.testing.expectEqual(Status.ok, blg_session_struct_segment(s, &phase, &variant));
+    try std.testing.expectEqual(@as(u8, 1), phase); // begin
+    try std.testing.expectEqual(@as(u8, 0), variant);
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(!ce);
+    // NULL arguments are invalid; the segment query is read-only.
+    try std.testing.expectEqual(Status.invalid_argument, blg_session_struct_segment(null, &phase, &variant));
+    try std.testing.expectEqual(Status.invalid_argument, blg_session_struct_segment(s, null, &variant));
+    try std.testing.expectEqual(Status.invalid_argument, blg_session_struct_segment(s, &phase, null));
+
+    try acceptBytes(s, "<c>");
+    try std.testing.expectEqual(Status.ok, blg_session_struct_segment(s, &phase, &variant));
+    try std.testing.expectEqual(@as(u8, 2), phase); // JSON content
+    try std.testing.expectEqual(@as(u8, 0), variant);
+
+    // Dead-end prefixes of the content are filtered exactly like the
+    // standalone JSON constraint: '-' and '9' can never satisfy
+    // minimum 10 and maximum 42, so the mask withholds them, the draft
+    // check cuts at them, and accept refuses them with the state intact.
+    var m0: [9]u32 = @splat(0);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m0, 9, &err));
+    try std.testing.expect(maskBit(&m0, '4'));
+    try std.testing.expect(maskBit(&m0, '1'));
+    try std.testing.expect(maskBit(&m0, '0')); // e.g. 0.42e2 = 42 stays reachable
+    try std.testing.expect(!maskBit(&m0, '-'));
+    try std.testing.expect(!maskBit(&m0, '9'));
+    try std.testing.expect(!maskBit(&m0, 259)); // EOS: content open
+    var prefix: usize = 0;
+    const dead = [_]u32{ '-', '4' };
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &dead, dead.len, &prefix));
+    try std.testing.expectEqual(@as(usize, 0), prefix);
+    try std.testing.expectEqual(Status.invalid_token, blg_accept_token(s, '-', &err));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m0, &m);
+
+    // '4' is alive (40..42 remain reachable); after it '3' would make 43.
+    try acceptBytes(s, "4");
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(maskBit(&m, '2'));
+    try std.testing.expect(!maskBit(&m, '3'));
+    const tail = [_]u32{ '2', '3' };
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &tail, tail.len, &prefix));
+    try std.testing.expectEqual(@as(usize, 1), prefix);
+    try acceptBytes(s, "2</c>");
+
+    // A completed tag can end; a partial begin of the next one cannot
+    // (EOS leaves the mask, accept refuses it, and rollback re-opens).
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(ce);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(maskBit(&m, 259));
+    try std.testing.expect(maskBit(&m, '<'));
+    try acceptBytes(s, "<");
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(!ce);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(!maskBit(&m, 259));
+    try std.testing.expect(maskBit(&m, 'c'));
+    try std.testing.expectEqual(Status.invalid_token, blg_accept_token(s, 259, &err));
+    const draft_eos = [_]u32{ 'c', 259 };
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &draft_eos, draft_eos.len, &prefix));
+    try std.testing.expectEqual(@as(usize, 1), prefix);
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 1));
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(ce);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(maskBit(&m, 259));
+    try std.testing.expectEqual(Status.ok, blg_session_struct_segment(s, &phase, &variant));
+    try std.testing.expectEqual(@as(u8, 1), phase); // back to the tag boundary
+
+    try acceptBytes(s, "<c>42</c>");
+    try std.testing.expectEqual(Status.ok, blg_finish(s, &err));
+    blg_session_destroy(s);
+    blg_grammar_release(gh);
+    try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
 }

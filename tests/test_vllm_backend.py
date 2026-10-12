@@ -39,7 +39,7 @@ import bolorgir  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PATCH_PATH = os.path.join(ROOT, "integrations", "vllm", "vllm-0.31.0-bolorgir.patch")
-PATCH_SHA256 = "15e267a10d4f823b33c3e28df8457d873c13b4d7475087b53cdd933e31c8f30f"
+PATCH_SHA256 = "d0b8ea80d3ad02946ceab71ee93da811ec6dc9250e63481aedc932b1a1aa065a"
 VLLM_SRC = os.environ.get("BLG_VLLM_SRC")
 
 EOS = 256
@@ -206,10 +206,16 @@ def test_tracked_patch_identity_and_targets():
     text = data.decode()
     for target in ("vllm/config/structured_outputs.py",
                    "vllm/sampling_params.py",
+                   "vllm/v1/request.py",
                    "vllm/v1/structured_output/__init__.py"):
         assert f"diff --git a/{target} b/{target}" in text
     assert text.count('"bolorgir"') >= 1
     assert "from bolorgir.vllm import" in text
+    # The explicit request-id mapping: the manager passes the exposed id
+    # (the response id) next to the engine-internal one, carried on the
+    # engine Request by the request.py hunk.
+    assert "external_request_id=getattr(request, \"external_req_id\", None)" in text
+    assert "external_req_id=request.external_req_id" in text
 
 
 # ---------------------------------------------------------------------------
@@ -700,14 +706,209 @@ def test_trace_of_a_tool_request_names_the_compiled_schema(monkeypatch, tmp_path
     backend.destroy()
 
     events = _trace_events(trace_path)
-    row = {"schemas_sha256": {"tool:set_code": q.canonical_sha256(SET_CODE_PARAMS)}}
+    row = {"schemas_sha256": {
+        "tool:set_code": q.canonical_sha256(SET_CODE_PARAMS),
+        "structural_tag": q.canonical_sha256(["set_code"])}}
     qual, reason = q.qualify(row, events, "bolorgir")
     assert qual == "constrained", reason
-    # The declared constraint carries the client's schema hash exactly.
+    # The declared constraints carry the client's schema hash exactly,
+    # plus the free-text fingerprint both sides compute from the tool
+    # names.
     decision = next(e for e in events if e["event"] == "decision")
     assert decision["constraints"] == [{
         "constraint_id": "set_code", "kind": "tool", "segment_id": "set_code",
-        "schema_sha256": q.canonical_sha256(SET_CODE_PARAMS)}]
+        "schema_sha256": q.canonical_sha256(SET_CODE_PARAMS)}, {
+        "constraint_id": "structural_tag", "kind": "structural_tag",
+        "segment_id": "structural_tag",
+        "schema_sha256": q.canonical_sha256(["set_code"])}]
+
+
+def test_trace_of_a_speculative_terminal_rollback(monkeypatch, tmp_path):
+    """vLLM accepts draft tokens (a terminal among them) while filling
+    masks and rolls them back in the same step: the finish must not be
+    written before the request is really over, and the events after the
+    rollback must be kept."""
+    q = _load_qualify()
+    trace_path = _enable_trace(monkeypatch, tmp_path)
+    backend = make_backend(monkeypatch, num_spec_tokens=2)
+    schema = {"type": "integer", "minimum": 10, "maximum": 42}
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.JSON, json.dumps(schema), request_id="req-term")
+    vocab = backend.model_vocab_size
+
+    _row_of(grammar, vocab)
+    assert grammar.accept_tokens("req-term", [ord("4"), ord("2")])
+    # The draft terminal: accepted, then rolled back by the engine.
+    assert grammar.accept_tokens("req-term", [EOS])
+    assert grammar.is_terminated()
+    grammar.rollback(1)
+    assert not grammar.is_terminated()
+    _row_of(grammar, vocab)
+    # The generation continues and ends for real.
+    assert grammar.accept_tokens("req-term", [EOS])
+
+    # Another request's engine step confirms the deferred terminal.
+    other = backend.compile_grammar(
+        bv.StructuredOutputOptions.JSON, json.dumps(schema), request_id="req-other")
+    _row_of(other, vocab)
+    assert other.accept_tokens("req-other", [ord("1")])
+    backend.destroy()
+
+    events = [e for e in _trace_events(trace_path) if e["request_id"] == "req-term"]
+    kinds = [e["event"] for e in events]
+    assert kinds.count("finish") == 1 and kinds[-1] == "finish", kinds
+    assert kinds.count("rollback") == 1
+    rb = next(i for i, e in enumerate(events) if e["event"] == "rollback")
+    assert events[rb]["tokens"] == 1 and events[rb]["terminal_undone"] is True
+    # Events after the rollback are present: the terminal accept, then the
+    # final one, and the finish that closes the trace.
+    terminals = [i for i, e in enumerate(events)
+                 if e["event"] == "accept" and e.get("terminal")]
+    assert len(terminals) == 2 and terminals[0] < rb < terminals[1]
+    assert q.trace_problems(events, "bolorgir") == []
+    qual, reason = q.qualify(
+        {"schemas_sha256": {"response_format": q.canonical_sha256(schema)}},
+        events, "bolorgir")
+    assert qual == "constrained", reason
+
+
+def _two_tool_structural_tag(required: bool = False):
+    """The pinned \"auto\"/\"required\" shape for two tools: first and
+    second, each in both begin formats of the hermes parser."""
+    spec = hermes_structural_tag("first")
+    tags = list(spec["format"]["tags"])
+    tags += list(hermes_structural_tag("second")["format"]["tags"])
+    if required:
+        return {"type": "structural_tag",
+                "format": {"type": "tags_with_separator", "separator": "",
+                           "at_least_one": True, "tags": tags}}
+    return {"type": "structural_tag",
+            "format": {"type": "triggered_tags", "triggers": ["<tool_call>"],
+                       "tags": tags}}
+
+
+def test_trace_attributes_calls_to_the_active_tool(monkeypatch, tmp_path):
+    """The second tool is chosen: masks and accepts of its framing and
+    arguments name ``second``; free text and the shared begin prefix name
+    the structural-tag constraint, never the first tool."""
+    q = _load_qualify()
+    trace_path = _enable_trace(monkeypatch, tmp_path)
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.STRUCTURAL_TAG,
+        json.dumps(_two_tool_structural_tag()), request_id="req-second")
+    vocab = backend.model_vocab_size
+
+    _row_of(grammar, vocab)  # free text
+    assert accept_bytes(grammar, b"I will call ", "req-second")
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"<tool_call>\n{\"name\": \"second\", \"arguments\": ",
+                        "req-second")
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"{\"code\":\"zq-17-wombat\"}", "req-second")
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"}\n</tool_call>", "req-second")
+    _row_of(grammar, vocab)
+    assert grammar.accept_tokens("req-second", [EOS])
+    backend.destroy()
+
+    events = _trace_events(trace_path)
+    accepts = [e for e in events if e["event"] == "accept"]
+    masks = [e for e in events if e["event"] == "mask"]
+    # The arguments and the rest of the chosen tag belong to second.
+    assert any(e["constraint_id"] == "second" for e in accepts)
+    assert any(e["constraint_id"] == "second" for e in masks)
+    # Nothing is attributed to the tool that was not chosen.
+    assert not any(e["constraint_id"] == "first" for e in accepts + masks)
+    # Free text belongs to the structural_tag constraint, not to a tool.
+    assert masks[0]["constraint_id"] == "structural_tag"
+    assert masks[0]["segment_id"] == "structural_tag"
+    # The chosen tool's masks agree with the declared segment.
+    second_masks = [e for e in masks if e["constraint_id"] == "second"]
+    assert all(e["segment_id"] == "second" for e in second_masks)
+    row = {"schemas_sha256": {
+        "tool:first": q.canonical_sha256(SET_CODE_PARAMS),
+        "tool:second": q.canonical_sha256(SET_CODE_PARAMS),
+        "structural_tag": q.canonical_sha256(["first", "second"])}}
+    qual, reason = q.qualify(row, events, "bolorgir")
+    assert qual == "constrained", reason
+
+
+def test_trace_of_several_sequential_calls(monkeypatch, tmp_path):
+    """Two sequential tool calls (the required mode): each call's events
+    name its own tool, in order."""
+    q = _load_qualify()
+    trace_path = _enable_trace(monkeypatch, tmp_path)
+    backend = make_backend(monkeypatch)
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.STRUCTURAL_TAG,
+        json.dumps(_two_tool_structural_tag(required=True)), request_id="req-seq")
+    vocab = backend.model_vocab_size
+
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"<tool_call>\n{\"name\": \"first\", \"arguments\": ",
+                        "req-seq")
+    assert accept_bytes(grammar, b"{\"code\":\"zq-17-wombat\"}", "req-seq")
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"}\n</tool_call>", "req-seq")
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"<tool_call>\n{\"name\": \"second\", \"arguments\": ",
+                        "req-seq")
+    assert accept_bytes(grammar, b"{\"code\":\"zq-17-wombat\"}", "req-seq")
+    _row_of(grammar, vocab)
+    assert accept_bytes(grammar, b"}\n</tool_call>", "req-seq")
+    _row_of(grammar, vocab)
+    assert grammar.accept_tokens("req-seq", [EOS])
+    backend.destroy()
+
+    events = _trace_events(trace_path)
+    accept_cids = [e["constraint_id"] for e in events if e["event"] == "accept"]
+    assert "first" in accept_cids and "second" in accept_cids
+    # The first call's events come before the second call's.
+    assert accept_cids.index("first") < len(accept_cids) - 1 - accept_cids[::-1].index("second")
+    row = {"schemas_sha256": {
+        "tool:first": q.canonical_sha256(SET_CODE_PARAMS),
+        "tool:second": q.canonical_sha256(SET_CODE_PARAMS),
+        "structural_tag": q.canonical_sha256(["first", "second"])}}
+    qual, reason = q.qualify(row, events, "bolorgir")
+    assert qual == "constrained", reason
+
+
+def test_trace_carries_the_external_and_internal_request_ids(monkeypatch, tmp_path):
+    """The patched vLLM passes the exposed request id (the response id)
+    together with the engine-internal one: the trace is keyed by the id
+    the collector observes and records the mapping explicitly."""
+    q = _load_qualify()
+    trace_path = _enable_trace(monkeypatch, tmp_path)
+    backend = make_backend(monkeypatch)
+    schema = {"type": "integer", "minimum": 10, "maximum": 42}
+    client_id = "qualify-probe-1"
+    external = f"chatcmpl-{client_id}"      # built by the serving layer from X-Request-Id
+    internal = f"{external}-01234567"        # InputProcessor.assign_request_id appends 8 chars
+    grammar = backend.compile_grammar(
+        bv.StructuredOutputOptions.JSON, json.dumps(schema),
+        request_id=internal, external_request_id=external)
+    vocab = backend.model_vocab_size
+    _row_of(grammar, vocab)
+    assert grammar.accept_tokens(internal, [ord("4"), ord("2")])
+    assert grammar.accept_tokens(internal, [EOS])
+    backend.destroy()
+
+    trace, malformed = q.load_trace(str(trace_path))
+    assert not malformed
+    assert external in trace
+    events = trace[external]
+    assert all(e["request_id"] == external for e in events)
+    assert all(e.get("internal_request_id") == internal for e in events)
+    assert q.trace_problems(events, "bolorgir") == []
+    # The collector joins by the id it observes (the response id).
+    row = {"request_id": client_id, "response_id": external,
+           "schemas_sha256": {"response_format": q.canonical_sha256(schema)}}
+    qual, reason = q.qualify(row, trace.get(row["response_id"]), "bolorgir")
+    assert qual == "constrained", reason
+    # The bare client id resolves to nothing: the trace is not keyed by it.
+    qual, reason = q.qualify(row, trace.get(row["request_id"]), "bolorgir")
+    assert qual == "unknown", reason
 
 
 def test_trace_without_a_terminal_stays_unknown(monkeypatch, tmp_path):

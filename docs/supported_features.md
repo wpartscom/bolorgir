@@ -428,12 +428,19 @@ accepted JSON subset and the byte-exact semantics are defined in
 
 Semantics: a complete trigger commits to a tag; the begin literal must
 follow byte-exactly (begins must be prefix-free, checked at compile);
-the JSON value is the compiled tool schema and cannot be left open; the
+the JSON value is the compiled tool schema and cannot be left open - a
+byte-legal but uncompletable prefix (a dead end like `-` under
+`minimum: 10`) is withheld from the mask, cuts a draft and is refused by
+accept exactly as in the standalone JSON constraint (the completion
+search of ADR-0005); the
 end literal is matched as a suffix-position set spawned at every byte
 boundary where the value can complete, so tokens crossing any segment
 boundary are handled exactly. EOS rules: free text can end unless the
-format requires a tag (`at_least_one`, `tags_with_separator`);
-`stop_after_first` closes the language after the first tag.
+format requires a tag (`at_least_one`, `tags_with_separator`); a partial
+begin (including the next tag after a completed one) cannot end until
+the begin completes; a partial trigger in the triggered modes stays free
+text and may end (the pinned xgrammar parity); `stop_after_first` closes
+the language after the first tag.
 
 Requirements and limits:
 
@@ -445,7 +452,10 @@ Requirements and limits:
 - `profile` must be NULL; the probe flags do not apply.
 - Sessions support masks, accepts, `blg_session_rollback` and
   `blg_validate_tokens` across every segment boundary; a rejected token
-  leaves the session byte-identical.
+  leaves the session byte-identical. `blg_session_struct_segment`
+  reports the active phase (free text / begin / content / closed) and
+  tag variant for diagnostics (`0xFF` while free text or a shared begin
+  prefix is in flight).
 
 ## 4. Computation modes (blg_mode)
 

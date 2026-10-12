@@ -142,6 +142,15 @@ configuration. Structural-tag sessions roll back across every segment
 boundary (free text, begin literal, arguments value, end literal), and a
 terminal token that cannot end the language cuts a draft instead of
 being approved.
+- **When the document can end**: an unfinished tag never can. Free text
+  may end in the triggered modes; a committed trigger, any started begin
+  literal (including a partial begin of the next tag and the first
+  optional tag) and an open arguments value all mask EOS out and cut a
+  draft terminal. The nested parameters schema also refuses dead-end
+  prefixes exactly like the standalone JSON constraint: under
+  `{"type": "integer", "minimum": 10}` the byte `-` never appears in the
+  mask, a draft is cut at it and accept refuses it with the state
+  unchanged.
 - **Structural tags**: the accepted subset and its byte-exact semantics
 are ADR-0016 Finding 3: a full trigger commits to a tag; the begin
 literal, the tool's parameters schema (spec-v1, compact) and the end
@@ -151,9 +160,17 @@ needs a byte-complete vocabulary, like the regex kind. Unsupported
 constructs are refused with the field offset in the error message.
 - **Backend trace**: with `BLG_AGENT_TRACE=<path>` the backend appends
 `blg-agent-trace/2` JSON lines (start, decision, compile, mask, accept,
-finish) for every request it compiles; `finish` is written when the
-constrained generation ends through the backend (a terminal token or a
-failure), so a request cut elsewhere leaves a visibly unfinished trace.
+rollback, finish) for every request it compiles. The trace is keyed by
+the request id the server returns to the client (the response id); the
+patched manager passes that exposed id next to the engine-internal one,
+which every event records as `internal_request_id` when the two differ.
+Masks and accepts name the active segment (a tool's tag, or the
+`structural_tag` constraint for free text and shared begin prefixes).
+`finish` is written only when the generation is confirmed over through
+the backend: a terminal token that no rollback undoes (vLLM accepts
+draft terminals during bitmask fill and rolls them back in the same
+step), a failure, or release/shutdown - so a request cut elsewhere
+leaves a visibly unfinished trace.
 The qualification collector turns these events into `constrained` /
 `unconstrained` / `unknown` verdicts.
 - **Failures are request-local**: a failing mask computation or a
@@ -185,10 +202,13 @@ The qualification collector turns these events into `constrained` /
    in its environment and run the qualification collector
    (`benchmarks/agent_eval/qualify_stack.py`) with `--backend-trace
    <path>`; it records the answers and turns the backend events into a
-   per-request verdict. A row is only "qualified" when the trace is
-   complete and consistent (the compile of every declared constraint
-   precedes its masks; a cache hit names its origin; the finish event
-   counts the events before it). The trace format and its rules are in
+   per-request verdict (it looks the trace up by the response id, the
+   id the server derived from the client's `X-Request-Id`). A row is
+   only "qualified" when the trace is complete and consistent (the
+   compile of every declared constraint precedes its masks; a cache hit
+   names its origin; the finish event counts the events before it; a
+   terminal accept is not followed by masks or accepts until a rollback
+   undoes it). The trace format and its rules are in
    `benchmarks/agent_eval/PLAN.md`; traces are only as good as the run
    that produced them - an unfinished trace stays `unknown`, never
    `unconstrained`.

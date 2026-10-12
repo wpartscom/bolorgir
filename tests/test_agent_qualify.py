@@ -57,7 +57,12 @@ class Fake:
             with open(path, "a", encoding="utf-8") as f:
                 for e in events_for(rid, body):
                     f.write(json.dumps(e) + "\n")
-        return self.status, self.answer, {"X-Request-Id": rid}, 0.01
+        answer = self.answer
+        if isinstance(answer, dict) and isinstance(answer.get("id"), str):
+            # The serving layer builds the response id from X-Request-Id
+            # (chatcmpl-<client>); the trace is keyed by it.
+            answer = {**answer, "id": f"chatcmpl-{rid}"}
+        return self.status, answer, {"X-Request-Id": rid}, 0.01
 
 
 def test_probe_followed_without_trace_is_only_an_observation(tmp_path):
@@ -99,7 +104,7 @@ def _trace(schema_ok=True, masks=True, compile_ok=True, other_id=False, applied=
     events 0..n-1."""
     def events_for(rid, body):
         sent = q.sent_schemas(body)
-        rid = rid + ("-x" if other_id else "")
+        rid = "chatcmpl-" + rid + ("-x" if other_id else "")
         h = next(iter(sent.values()))
         by_kind = {}
         if decision:
@@ -205,7 +210,7 @@ def test_out_of_order_traces_have_correct_numbering_and_count(tmp_path):
 def test_decision_not_to_apply_with_masks_is_unknown(tmp_path):
     def events_for(rid, body):
         evs = _trace(applied=False)(rid, body)
-        mask = {"request_id": rid, "event": "mask", "backend": "bolorgir", "constraint_id": "c0",
+        mask = {"request_id": f"chatcmpl-{rid}", "event": "mask", "backend": "bolorgir", "constraint_id": "c0",
                 "segment_id": "s0", "step": 0}
         evs = evs[:-1] + [mask, dict(evs[-1], events=len(evs))]
         return [dict(e, seq=i) for i, e in enumerate(evs)]
@@ -246,3 +251,83 @@ def test_canonical_hash_ignores_key_order():
     a = {"type": "object", "properties": {"x": {"type": "string"}}}
     b = {"properties": {"x": {"type": "string"}}, "type": "object"}
     assert q.canonical_sha256(a) == q.canonical_sha256(b)
+
+
+def _spliced(events, *extra):
+    """``extra`` events inserted before the finish, seq renumbered and the
+    finish count fixed."""
+    evs = events[:-1] + list(extra) + [events[-1]]
+    out = [dict(e, seq=i) for i, e in enumerate(evs)]
+    if out[-1].get("event") == "finish":
+        out[-1]["events"] = len(out) - 1
+    return out
+
+
+def test_sent_schemas_carries_the_tool_name_fingerprint():
+    """The free-text constraint of a served structural tag is verifiable:
+    the client's tool-name set canonicalizes to the hash the backend
+    declares for it."""
+    sent = q.sent_schemas({"tools": [q.tool(None), q.tool(True)]})
+    assert sent["structural_tag"] == q.canonical_sha256(["set_code"])
+    assert sent["tool:set_code"] == q.canonical_sha256(q.tool(None)["function"]["parameters"])
+    assert q.sent_schemas({"tools": []}) == {}
+
+
+def test_terminal_accept_needs_a_rollback_to_continue():
+    """A terminal accept ends the live generation: masks or accepts after
+    it are contradictions unless a rollback undid the terminal (vLLM's
+    speculative draft cycle)."""
+    body = {"tools": [q.tool(None)]}
+    row = {"schemas_sha256": q.sent_schemas(body)}
+    events = _trace()("r", body)
+    term = {"request_id": "chatcmpl-r", "event": "accept", "constraint_id": "c0",
+            "step": 1, "token": 258, "terminal": True}
+    rb = {"request_id": "chatcmpl-r", "event": "rollback", "tokens": 1,
+          "terminal_undone": True}
+    mask2 = {"request_id": "chatcmpl-r", "event": "mask", "backend": "bolorgir",
+             "constraint_id": "c0", "segment_id": "s0", "step": 1}
+    acc2 = {"request_id": "chatcmpl-r", "event": "accept", "constraint_id": "c0",
+            "step": 2, "token": 65, "terminal": False}
+
+    verdict, reason = q.qualify(row, _spliced(events, term, mask2))
+    assert verdict == "unknown" and "without a rollback" in reason, reason
+    verdict, reason = q.qualify(row, _spliced(events, term, acc2))
+    assert verdict == "unknown" and "without a rollback" in reason, reason
+    # The rollback lifts the terminal; later events are kept.
+    verdict, reason = q.qualify(row, _spliced(events, term, rb, mask2, acc2))
+    assert verdict == "constrained", reason
+    # A rollback that does not undo the terminal does not lift it.
+    rb2 = dict(rb, terminal_undone=False)
+    verdict, reason = q.qualify(row, _spliced(events, term, rb2, mask2))
+    assert verdict == "unknown" and "without a rollback" in reason, reason
+
+
+def test_rollback_event_shape_is_checked():
+    body = {"tools": [q.tool(None)]}
+    row = {"schemas_sha256": q.sent_schemas(body)}
+    events = _trace()("r", body)
+    bad_tokens = {"request_id": "chatcmpl-r", "event": "rollback", "tokens": -1}
+    verdict, reason = q.qualify(row, _spliced(events, bad_tokens))
+    assert verdict == "unknown" and "tokens" in reason, reason
+    bad_flag = {"request_id": "chatcmpl-r", "event": "rollback", "tokens": 1,
+                "terminal_undone": "yes"}
+    verdict, reason = q.qualify(row, _spliced(events, bad_flag))
+    assert verdict == "unknown" and "terminal_undone" in reason, reason
+
+
+def test_internal_request_id_is_checked():
+    """The explicit client/internal id mapping: every event carries the
+    same non-empty internal id when it is recorded at all."""
+    body = {"tools": [q.tool(None)]}
+    row = {"schemas_sha256": q.sent_schemas(body)}
+    events = _trace()("r", body)
+    consistent = [dict(e, internal_request_id="chatcmpl-r-01") for e in events]
+    verdict, reason = q.qualify(row, consistent)
+    assert verdict == "constrained", reason
+    mixed = [dict(e) for e in consistent]
+    mixed[2]["internal_request_id"] = "chatcmpl-r-02"
+    verdict, reason = q.qualify(row, mixed)
+    assert verdict == "unknown" and "internal_request_id" in reason, reason
+    empty = [dict(e, internal_request_id="") for e in events]
+    verdict, reason = q.qualify(row, empty)
+    assert verdict == "unknown" and "internal_request_id" in reason, reason

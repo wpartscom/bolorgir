@@ -249,6 +249,8 @@ blg_status blg_validate_tokens(const blg_session *session,
                                const uint32_t *ids, size_t n,
                                size_t *out_accepted_prefix);
 blg_status blg_can_end(const blg_session *session, bool *out_can_end);
+blg_status blg_session_struct_segment(const blg_session *session,
+                                      uint8_t *out_phase, uint8_t *out_variant);
 blg_status blg_finish(blg_session *session, blg_error *err);
 blg_status blg_abort(blg_session *session);
 ```
@@ -287,6 +289,18 @@ call with that status and the tokens decided before the failing one in
 `NULL` ids with `n > 0` is `INVALID_ARGUMENT`. Calls on one session are
 serialized like any other session call (the validator uses the session's
 scratch storage).
+
+#### blg_session_struct_segment
+
+Diagnostics for structural-tag sessions
+(`BLG_CONSTRAINT_STRUCTURAL_TAG`, [ADR-0016](adr/ADR-0016-vllm-agent-integration.md));
+not part of the generation semantics. `*out_phase`: `0` free text,
+`1` begin literal, `2` JSON content or end literal, `3` closed
+(`stop_after_first`). `*out_variant`: the active tag variant index, or
+`0xFF` when no single variant is active (free text, or a begin prefix
+shared by several variants). Read-only. `WRONG_STATE` for another
+constraint kind or an inactive session; `NULL` out pointers are
+`INVALID_ARGUMENT`.
 
 #### blg_fill_mask
 

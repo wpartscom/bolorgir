@@ -89,17 +89,27 @@ covers the collector on synthetic answers and traces.
 
 Trace format `blg-agent-trace/2`; the serving backend writes it when
 `BLG_AGENT_TRACE=<path>` is set in the server environment (events
-`start`, `decision`, `compile`, `mask`, `accept`, `finish`; `finish` is
-written only when the constrained generation ends through the backend - a
-terminal token or a failure - so a request cut elsewhere leaves a visibly
-incomplete trace).
+`start`, `decision`, `compile`, `mask`, `accept`, `rollback`, `finish`).
+The trace is keyed by the id the server returns to the client (the
+response body id): the engine appends a random suffix to the id it
+receives (`InputProcessor.assign_request_id`), the patch lets the
+backend read both ids from the request, and every event records the
+engine-internal one as `internal_request_id` when the two differ.
+`finish` is written only when the generation is confirmed over through
+the backend: a terminal token that no rollback undoes (vLLM accepts draft
+terminals while filling masks and rolls them back in the same step, so a
+terminal is confirmed by a later engine step of any request, by release
+of the grammar or by backend shutdown) or a failure; a request cut
+elsewhere leaves a visibly incomplete trace.
 A qualification needs, per request:
 
 1. Correlation: the client's `X-Request-Id` (also returned by the
-   server) is the key of every record below; the stack manifest (vLLM
-   version and patch hash, model and tokenizer revisions, chat template
-   hash, server flags, backend versions) is recorded once per run with
-   its sha256.
+   server) is recorded for every request; the qualification looks the
+   trace up by the response id the server derived from it (and falls
+   back to the sent id when no response arrived). The stack manifest
+   (vLLM version and patch hash, model and tokenizer revisions, chat
+   template hash, server flags, backend versions) is recorded once per
+   run with its sha256.
 2. Schema before and after the transfer: the client records the
    canonical sha256 (sorted keys, no spaces, UTF-8) of each schema it
    sends; the backend records the same hash of each schema it applies,
@@ -112,15 +122,28 @@ A qualification needs, per request:
      "constraints": [{"constraint_id", "kind": "tool"|"response_format"|
      "structural_tag", "segment_id", "schema_sha256"}]}`, exactly one:
      whether the backend applies constraints to this request and which;
-     `constraint_id` and `segment_id` are non-empty strings;
+     `constraint_id` and `segment_id` are non-empty strings. With tools,
+     a served structural tag declares one `tool` constraint per named tag
+     (the tag's content hash - the client's parameters schema for strict
+     tools) plus one `structural_tag` constraint for the free text and
+     any begin prefix shared by several variants, whose hash is the
+     canonical hash of the sorted unique tool names: both the backend
+     (from the compiled spec) and the collector (from the request's
+     tools) can compute it;
    - `{"event": "compile", "backend", "constraint_id", "schema_sha256",
      "status", "cache": "miss"|"hit", "compiled_from"}`, one per declared
      constraint; a cache hit names in `compiled_from` the request id or
      cache key the grammar was compiled for;
    - `{"event": "mask", "backend", "constraint_id", "segment_id", "step",
      "allowed", "mask_sha256"}` and `{"event": "accept", "constraint_id",
-     "step", "token"}`; the mask's `segment_id` is non-empty and equal
-     to the declared one;
+     "step", "token", "terminal"}`; the mask's `segment_id` is non-empty
+     and equal to the declared one; masks and accepts name the active
+     segment (for a structural tag: the tag that owns the current bytes,
+     or the `structural_tag` constraint while free text or an ambiguous
+     begin prefix is in flight);
+   - `{"event": "rollback", "tokens", "terminal_undone"}`: an engine
+     rollback (`tokens` as passed to the backend, `terminal_undone` the
+     terminal that it undid); an undone terminal re-opens the trace;
    - `{"event": "finish", "status", "events"}`, last, with the number of
      events written before it: a trace without it, or with another count,
      is incomplete.
@@ -130,7 +153,9 @@ A qualification needs, per request:
    resolution, for a hit) before every mask of that constraint, finish
    last. Consecutive numbers do not make an order valid: a mask written
    before the compile of its constraint, even one followed by that
-   compile, was not shown to come from it.
+   compile, was not shown to come from it. Masks and accepts after a
+   terminal accept require an intervening rollback that undid the
+   terminal: the grammar re-opens only through a rollback.
 4. The answer to the agent: every tool call (name, arguments) and the
    text, as the client received them.
 
@@ -139,7 +164,10 @@ these rules per request id:
 
 - `unknown` unless the trace is complete and consistent: one start
   first, one decision, one finish last with status ok and the right
-  count, seq 0..n-1, every compile and mask by the start's backend;
+  count, seq 0..n-1, every compile and mask by the start's backend,
+  rollback events with a non-negative integer token count, one
+  consistent non-empty internal_request_id, and no mask or accept after
+  a terminal accept without an intervening rollback;
 - `unconstrained` only with `applied: false` and no compile or mask;
 - `constrained` only with `applied: true`, every declared constraint
   with a non-empty id and segment id, carrying a hash the client sent

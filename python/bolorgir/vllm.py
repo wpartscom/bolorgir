@@ -38,11 +38,18 @@ Contract highlights (documented in full in the docs and ADR-0016):
   was.
 - traces: with ``BLG_AGENT_TRACE=<path>`` the backend appends
   ``blg-agent-trace/2`` JSON lines (start, decision, compile, mask,
-  accept, finish) for every constrained request; the request id comes
-  from the patched vLLM manager. A trace is written only for requests
-  the backend actually compiled, and ``finish`` only when the
-  constrained generation ends through the backend (a terminal token or a
-  failure), so a truncated trace stays visibly incomplete.
+  accept, rollback, finish) for every constrained request. The trace is
+  keyed by the request id the client observes (the response id): the
+  patched vLLM manager passes the external id together with the
+  engine-internal one, which every event records explicitly when they
+  differ. Masks and accepts name the active segment: the tool tag that
+  owns the current bytes of a structural tag, or the ``structural_tag``
+  constraint for free text and a begin prefix shared by several
+  variants. A trace is written only for requests the backend actually
+  compiled, and ``finish`` only when the constrained generation is
+  confirmed over through the backend (a terminal token that no rollback
+  undoes - vLLM rolls back draft-accepted terminals within the same
+  step - or a failure), so a truncated trace stays visibly incomplete.
 - failures: a failing mask fill or a rejected accepted token marks the
   grammar failed. ``accept_tokens`` then returns False, which makes vLLM
   terminate exactly that request with an error; no unconstrained
@@ -57,8 +64,9 @@ import logging
 import os
 import re
 import threading
+import weakref
 from dataclasses import dataclass, field
-from typing import Any, FrozenSet, List, Optional, Tuple
+from typing import Any, FrozenSet, List, Optional, Set, Tuple
 
 import bolorgir
 
@@ -128,6 +136,12 @@ class _TraceWriter:
     def __init__(self, path: str) -> None:
         self.path = path
         self._lock = threading.Lock()
+        # Traces whose request accepted a terminal token that no rollback
+        # has undone yet: the finish is deferred until the request is
+        # confirmed over (another engine step, release, shutdown), because
+        # vLLM temporarily accepts speculative draft tokens during bitmask
+        # fill and rolls them back in the same step.
+        self._pending: "weakref.WeakSet[_RequestTrace]" = weakref.WeakSet()
 
     def write(self, event: dict) -> None:
         line = json.dumps(event, ensure_ascii=False) + "\n"
@@ -135,28 +149,54 @@ class _TraceWriter:
             with open(self.path, "a", encoding="utf-8") as f:
                 f.write(line)
 
+    def pending_add(self, trace: "_RequestTrace") -> None:
+        with self._lock:
+            self._pending.add(trace)
+
+    def pending_discard(self, trace: "_RequestTrace") -> None:
+        with self._lock:
+            self._pending.discard(trace)
+
+    def flush_pending(self, exclude: Optional["_RequestTrace"] = None) -> None:
+        """Confirms every deferred terminal except ``exclude`` (the
+        request whose own operation is in flight)."""
+        with self._lock:
+            items = [t for t in self._pending if t is not exclude]
+        for t in items:
+            t.confirm_terminal()
+
 
 class _RequestTrace:
     """The blg-agent-trace/2 events of one request, in write order.
 
     ``seq`` is assigned under the lock, so the file order is the event
-    order; nothing is written after ``finish``.
+    order; nothing is written after ``finish``. ``request_id`` is the
+    correlation key the client observes (the response id / the id the
+    patch passes as ``external_request_id``); ``internal_request_id``
+    records the engine-internal id explicitly when the two differ.
     """
 
-    def __init__(self, writer: _TraceWriter, request_id: str, backend_version: str) -> None:
+    def __init__(self, writer: _TraceWriter, request_id: str, backend_version: str,
+                 internal_id: Optional[str] = None) -> None:
         self._writer = writer
         self.request_id = request_id
+        self._internal_id = internal_id
         self._backend_version = backend_version
         self._lock = threading.Lock()
         self._seq = 0
         self._finished = False
+        self._pending_terminal = False
 
     def _event(self, name: str, **fields: Any) -> None:
         with self._lock:
             if self._finished:
                 return
-            self._writer.write({"event": name, "request_id": self.request_id,
-                                "seq": self._seq, **fields})
+            event = {"event": name, "request_id": self.request_id,
+                     "seq": self._seq}
+            if self._internal_id is not None:
+                event["internal_request_id"] = self._internal_id
+            event.update(fields)
+            self._writer.write(event)
             self._seq += 1
 
     def start(self) -> None:
@@ -184,15 +224,50 @@ class _RequestTrace:
         self._event("accept", constraint_id=constraint_id, step=step,
                     token=token, terminal=terminal)
 
+    def rollback(self, num_tokens: int, terminal_undone: bool) -> None:
+        """Records an engine rollback; a rolled-back terminal re-opens the
+        trace, so later events are kept."""
+        if terminal_undone:
+            self.clear_terminal()
+        self._event("rollback", tokens=num_tokens, terminal_undone=terminal_undone)
+
+    def note_terminal(self) -> None:
+        """A terminal token was accepted: defer the finish until the
+        request is confirmed over (vLLM may roll the token back)."""
+        with self._lock:
+            if self._finished or self._pending_terminal:
+                return
+            self._pending_terminal = True
+        self._writer.pending_add(self)
+
+    def clear_terminal(self) -> None:
+        """The terminal was undone (or generation continued): no finish."""
+        with self._lock:
+            self._pending_terminal = False
+        self._writer.pending_discard(self)
+
+    def confirm_terminal(self) -> None:
+        """Writes ``finish ok`` when a terminal is still pending: the
+        request is over. A no-op otherwise (no terminal ever accepted, a
+        rollback undid it, or the trace already finished)."""
+        with self._lock:
+            if self._finished or not self._pending_terminal:
+                return
+        self.finish("ok")
+
     def finish(self, status: str) -> None:
         with self._lock:
             if self._finished:
                 return
             self._finished = True
-            self._writer.write({"event": "finish", "request_id": self.request_id,
-                                "seq": self._seq, "status": status,
-                                "events": self._seq})
+            self._pending_terminal = False
+            event = {"event": "finish", "request_id": self.request_id,
+                     "seq": self._seq, "status": status, "events": self._seq}
+            if self._internal_id is not None:
+                event["internal_request_id"] = self._internal_id
+            self._writer.write(event)
             self._seq += 1
+        self._writer.pending_discard(self)
 
 
 _trace_writer: Optional[_TraceWriter] = None
@@ -236,6 +311,65 @@ def _tag_content_schema(tag: dict) -> Any:
     return content.get("schema")
 
 
+def _structural_trace_plan(spec: Any) -> Tuple[List[dict], List[Optional[str]], str]:
+    """Trace plan of an accepted structural-tag spec.
+
+    Returns ``(constraints, variant_ids, text_id)``: the declared
+    constraints, one constraint id per tag variant index (``None`` falls
+    back to the free-text constraint), and the id of the free-text /
+    whole-language constraint.
+
+    Constraints: one per named tag whose content is a schema document
+    (``kind: "tool"``, the tag's content hash - the client's parameters
+    schema for strict tools) plus one ``kind: "structural_tag"`` for the
+    free text and any begin prefix shared by several variants
+    (``constraint_id == segment_id == "structural_tag"``). The free-text
+    constraint's hash is the canonical hash of the sorted unique tag-name
+    set: both the adapter (from the compiled spec) and the qualification
+    collector (from the request's tools) can compute it, so free-text and
+    ambiguous-framing masks stay verifiable against the client request.
+    """
+    tags = _structural_tags_of(spec)
+    out: List[dict] = []
+    seen: dict = {}
+    variant_ids: List[Optional[str]] = []
+    names: List[str] = []
+    for i, tag in enumerate(tags):
+        m = _TOOL_NAME_RE.search(str(tag.get("begin", "")))
+        label = m.group(1) if m else None
+        cid: Optional[str] = None
+        if label is not None:
+            names.append(label)
+            schema = _tag_content_schema(tag)
+            if isinstance(schema, dict):
+                digest = _canonical_sha256(schema)
+                key = (label, digest)
+                if key in seen:
+                    cid = seen[key]
+                else:
+                    cid = label
+                    if any(c["constraint_id"] == cid for c in out):
+                        cid = f"{label}#{i}"
+                    seen[key] = cid
+                    out.append({"constraint_id": cid, "kind": "tool",
+                                "segment_id": cid, "schema_sha256": digest})
+        variant_ids.append(cid)
+    text_id = "structural_tag"
+    if names:
+        text_hash = _canonical_sha256(sorted(set(names)))
+    else:
+        text_hash = _canonical_sha256(spec)
+    if not out:
+        # Nothing derivable (any_text, nameless tags): the whole-language
+        # constraint is the only declared one.
+        return ([{"constraint_id": text_id, "kind": "structural_tag",
+                  "segment_id": text_id, "schema_sha256": text_hash}],
+                variant_ids, text_id)
+    out.append({"constraint_id": text_id, "kind": "structural_tag",
+                "segment_id": text_id, "schema_sha256": text_hash})
+    return out, variant_ids, text_id
+
+
 def _trace_constraints(request_type: Any, grammar_spec: Any) -> List[dict]:
     """The constraints the backend declares for a request.
 
@@ -263,29 +397,7 @@ def _trace_constraints(request_type: Any, grammar_spec: Any) -> List[dict]:
                  "segment_id": "response_format",
                  "schema_sha256": _canonical_sha256(str(grammar_spec))}]
     if request_type == opts.STRUCTURAL_TAG:
-        spec = _spec_json(grammar_spec)
-        out: List[dict] = []
-        seen = set()
-        for i, tag in enumerate(_structural_tags_of(spec)):
-            schema = _tag_content_schema(tag)
-            if not isinstance(schema, dict):
-                continue
-            digest = _canonical_sha256(schema)
-            m = _TOOL_NAME_RE.search(str(tag.get("begin", "")))
-            label = m.group(1) if m else f"tag{i}"
-            if (label, digest) in seen:
-                continue
-            seen.add((label, digest))
-            cid = label
-            if any(c["constraint_id"] == cid for c in out):
-                cid = f"{label}#{i}"
-            out.append({"constraint_id": cid, "kind": "tool", "segment_id": cid,
-                        "schema_sha256": digest})
-        if not out:
-            out.append({"constraint_id": "structural_tag", "kind": "structural_tag",
-                        "segment_id": "structural_tag",
-                        "schema_sha256": _canonical_sha256(spec)})
-        return out
+        return _structural_trace_plan(_spec_json(grammar_spec))[0]
     return []
 
 
@@ -415,7 +527,15 @@ class BolorgirBackend(StructuredOutputBackend):
         grammar_spec: str,
         stop_token_ids: Optional[Any] = None,
         request_id: Optional[str] = None,
+        external_request_id: Optional[str] = None,
     ) -> "BolorgirGrammar":
+        """Compiles one request. ``request_id`` is the engine-internal id
+        (vLLM appends a random suffix to the id it receives);
+        ``external_request_id`` is the id the server exposes to the
+        client (the response id). The backend trace is keyed by the
+        external id when it is passed and records the internal one
+        explicitly, so the qualification collector finds the events by an
+        id it observes."""
         terminals = _terminal_ids_of(
             frozenset(stop_token_ids) if stop_token_ids else None,
             self._fingerprint.eos_ids,
@@ -433,10 +553,15 @@ class BolorgirBackend(StructuredOutputBackend):
                 f"bolorgir cannot compile the {request_type.name} request: "
                 f"{type(exc).__name__}: {exc}") from exc
         trace = None
-        if request_id:
+        if request_id or external_request_id:
             writer = _trace_writer_for_process()
             if writer is not None:
-                trace = _RequestTrace(writer, str(request_id), bolorgir.__version__)
+                external = str(external_request_id) if external_request_id else None
+                internal = str(request_id) if request_id else None
+                key = external or internal
+                record = internal if external and internal and internal != external else None
+                trace = _RequestTrace(writer, key, bolorgir.__version__,
+                                      internal_id=record)
         return BolorgirGrammar(
             backend=self,
             constraint=constraint,
@@ -491,6 +616,12 @@ class BolorgirBackend(StructuredOutputBackend):
         )
 
     def destroy(self) -> None:
+        writer = _trace_writer_for_process()
+        if writer is not None:
+            # Shutdown: a deferred terminal of a request that will not run
+            # another engine step is final; a generation cut elsewhere
+            # leaves no pending terminal and stays visibly incomplete.
+            writer.flush_pending()
         engine, self._engine = self._engine, None
         if engine is not None:
             try:
@@ -561,15 +692,26 @@ class BolorgirGrammar(StructuredOutputGrammar):
         # compile event per declared constraint, all before any mask.
         self._trace: Optional[_RequestTrace] = None
         self._trace_primary: Optional[Tuple[str, str]] = None
+        # Structural tags: constraint id per tag variant index (None ->
+        # the free-text constraint) and the free-text constraint id.
+        self._trace_variant_ids: Optional[List[Optional[str]]] = None
+        self._trace_text_id: Optional[str] = None
         if trace is not None:
             try:
-                constraints = _trace_constraints(request_type, grammar_spec)
+                if request_type == StructuredOutputOptions.STRUCTURAL_TAG:
+                    constraints, variant_ids, text_id = _structural_trace_plan(
+                        _spec_json(grammar_spec))
+                else:
+                    constraints = _trace_constraints(request_type, grammar_spec)
+                    variant_ids, text_id = None, constraints[0]["constraint_id"]
             except Exception:  # noqa: BLE001 - tracing must never fail a request
                 logger.exception(
                     "bolorgir: cannot derive the trace constraints; "
                     "tracing is off for this request")
             else:
                 self._trace = trace
+                self._trace_variant_ids = variant_ids
+                self._trace_text_id = text_id
                 self._trace_primary = (constraints[0]["constraint_id"],
                                        constraints[0]["segment_id"])
                 trace.start()
@@ -580,6 +722,7 @@ class BolorgirGrammar(StructuredOutputGrammar):
     # -- StructuredOutputGrammar interface --------------------------------
 
     def accept_tokens(self, request_id: str, tokens: list) -> bool:
+        self._flush_foreign_traces()
         if self._failed:
             return False
         if self._terminated:
@@ -590,13 +733,16 @@ class BolorgirGrammar(StructuredOutputGrammar):
             tok = int(tok)
             if tok < 0 or tok >= self._vocab_size:
                 return False
+            cid, _seg = self._trace_segment()
             if tok in self._effective_terminals:
                 if self._can_end():
                     self._terminated = True
                     if self._trace is not None:
-                        cid, _seg = self._trace_primary
                         self._trace.accept(cid, self.accepted_tokens + 1, tok, True)
-                        self._trace.finish("ok")
+                        # The finish is deferred: vLLM also accepts draft
+                        # tokens (a terminal among them) while filling
+                        # masks and rolls them back in the same step.
+                        self._trace.note_terminal()
                     return True
                 # The mask only offers a terminal token when the language
                 # can complete; reaching this point means the caller
@@ -615,7 +761,6 @@ class BolorgirGrammar(StructuredOutputGrammar):
             self._session_tokens += 1
             self.accepted_tokens += 1
             if self._trace is not None:
-                cid, _seg = self._trace_primary
                 self._trace.accept(cid, self.accepted_tokens, tok, False)
         return True
 
@@ -628,6 +773,7 @@ class BolorgirGrammar(StructuredOutputGrammar):
         prefix at a state that cannot end. Never raises: a failing probe
         fails the grammar so that the next accept terminates exactly this
         request."""
+        self._flush_foreign_traces()
         if self._terminated or self._failed:
             return []
         tokens = [int(t) for t in tokens]
@@ -668,8 +814,9 @@ class BolorgirGrammar(StructuredOutputGrammar):
 
     def rollback(self, num_tokens: int) -> None:
         """Undo the last ``num_tokens`` sampled tokens (a terminal counts
-        as one; undoing it re-opens generation). An invalid depth raises
-        before any observable state changes."""
+        as one; undoing it re-opens generation and the trace). An invalid
+        depth raises before any observable state changes."""
+        self._flush_foreign_traces()
         if num_tokens < 0:
             raise ValueError("num_tokens must be >= 0")
         was_terminated = self._terminated
@@ -692,6 +839,8 @@ class BolorgirGrammar(StructuredOutputGrammar):
             self.rolled_back_tokens += to_undo
         if was_terminated:
             self._terminated = False
+        if self._trace is not None and (to_undo or was_terminated):
+            self._trace.rollback(int(num_tokens), was_terminated)
 
     def fill_bitmask(self, bitmask, batch_index: int) -> None:
         """Fill one int32 row of the shared tensor (bit t%32 of word t/32;
@@ -746,10 +895,11 @@ class BolorgirGrammar(StructuredOutputGrammar):
         self._trace_mask(urow)
 
     def _trace_mask(self, urow) -> None:
-        """Records the applied mask row (blg-agent-trace/2)."""
+        """Records the applied mask row (blg-agent-trace/2) with the
+        active segment of the current state."""
         if self._trace is None:
             return
-        cid, seg = self._trace_primary
+        cid, seg = self._trace_segment()
         allowed = sum(int(w).bit_count() for w in urow)
         digest = hashlib.sha256(
             urow.astype("<i4", copy=False).tobytes()).hexdigest()
@@ -759,6 +909,7 @@ class BolorgirGrammar(StructuredOutputGrammar):
         return self._terminated or self._failed
 
     def reset(self) -> None:
+        self._flush_foreign_traces()
         self._session.close()
         self._session = self._constraint.create_session(
             max_rollback_tokens=self._depth)
@@ -767,15 +918,57 @@ class BolorgirGrammar(StructuredOutputGrammar):
         self._session_tokens = 0
 
     def close(self) -> None:
-        """Release the native session (called by tests and on destroy)."""
+        """Release the native session (called by tests and on destroy): a
+        deferred terminal is confirmed first - the request is over."""
+        self._finish_pending()
         if self._session is not None:
             self._session.close()
             self._session = None  # type: ignore[assignment]
+
+    def __del__(self) -> None:  # pragma: no cover - GC path
+        try:
+            self._finish_pending()
+        except Exception:  # noqa: BLE001 - never raise from __del__
+            pass
 
     # -- internals ---------------------------------------------------------
 
     def _is_default_eos(self, tok: int) -> bool:
         return tok in self._backend.eos_ids
+
+    def _trace_segment(self) -> Tuple[Optional[str], Optional[str]]:
+        """``(constraint_id, segment_id)`` of the active segment: for
+        structural-tag requests the tag variant that owns the current
+        bytes; free text and a begin prefix shared by several variants
+        (no single tag chosen yet) belong to the ``structural_tag``
+        constraint. Other requests have a single constraint."""
+        if self._trace is None:
+            return (None, None)
+        if self._trace_variant_ids is None:
+            return self._trace_primary
+        try:
+            phase, variant = self._session.struct_segment()
+        except Exception:  # noqa: BLE001 - diagnostics only
+            return self._trace_primary
+        if phase != 0 and variant != 0xFF and variant < len(self._trace_variant_ids):
+            cid = self._trace_variant_ids[variant]
+            if cid:
+                return (cid, cid)
+        return (self._trace_text_id, self._trace_text_id)
+
+    def _flush_foreign_traces(self) -> None:
+        """An engine step on this request confirms every other request's
+        deferred terminal: vLLM accepts draft tokens (a terminal among
+        them) and rolls them back within one bitmask-fill step, so a
+        terminal that survived another request's step is final."""
+        writer = (self._trace._writer if self._trace is not None
+                  else _trace_writer_for_process())
+        if writer is not None:
+            writer.flush_pending(exclude=self._trace)
+
+    def _finish_pending(self) -> None:
+        if self._trace is not None:
+            self._trace.confirm_terminal()
 
     def _can_end(self) -> bool:
         try:

@@ -265,6 +265,11 @@ def _load():
             ctypes.POINTER(ctypes.c_size_t)]
         lib.blg_validate_tokens.restype = ctypes.c_int
 
+    if hasattr(lib, "blg_session_struct_segment"):  # absent before ADR-0016 diagnostics
+        lib.blg_session_struct_segment.argtypes = [
+            void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.POINTER(ctypes.c_uint8)]
+        lib.blg_session_struct_segment.restype = ctypes.c_int
+
     lib.blg_fill_mask.argtypes = [
         void_p, ctypes.POINTER(ctypes.c_uint32), ctypes.c_size_t,
         ctypes.POINTER(ZgError)]
@@ -556,6 +561,10 @@ def has_rollback() -> bool:
     return hasattr(LIB, "blg_session_rollback")
 
 
+def has_struct_segment() -> bool:
+    return hasattr(LIB, "blg_session_struct_segment")
+
+
 class Session:
     def __init__(self, ctx: Context, grammar, max_rollback_tokens: int = 0):
         self.ctx = ctx
@@ -582,6 +591,17 @@ class Session:
         out = ctypes.c_size_t(0)
         status = LIB.blg_validate_tokens(self.handle, arr, len(ids), ctypes.byref(out))
         return status, out.value
+
+    def struct_segment(self) -> tuple[int, int]:
+        """-> (phase, variant): active structural-tag segment (ADR-0016
+        diagnostics); raises CoreFailure for another constraint kind."""
+        phase = ctypes.c_uint8(0)
+        variant = ctypes.c_uint8(0xFF)
+        status = LIB.blg_session_struct_segment(
+            self.handle, ctypes.byref(phase), ctypes.byref(variant))
+        if status != BLG_OK:
+            raise CoreFailure(status, "blg_session_struct_segment")
+        return phase.value, variant.value
 
     def fill_mask_words(self, words: int | None = None):
         """-> (status, list[int] words). Too few words -> BUFFER_TOO_SMALL."""

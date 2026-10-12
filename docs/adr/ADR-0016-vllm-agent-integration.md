@@ -40,7 +40,7 @@ stays as it is and the stack gets its own environment.
 
 A `bolorgir[vllm]` package therefore cannot register itself. The delivery
 is a reproducible patch against the pinned tag
-(`integrations/vllm/vllm-0.31.0-bolorgir.patch`, sha256 `15e267a1…`) that
+(`integrations/vllm/vllm-0.31.0-bolorgir.patch`, sha256 `d0b8ea80…`) that
 adds the name `bolorgir` in the three places and imports the backend
 class from `bolorgir.vllm`; the same change is the material for an
 upstream PR. A monkeypatch from a general vLLM plugin is not equivalent:
@@ -59,6 +59,13 @@ Request types: `JSON`, `JSON_OBJECT`, `REGEX`, `CHOICE` and
 explicitly (never a fallback). The `request_id` keyword and the
 `accepts_request_id` backend attribute are the patch's second addition:
 the manager passes the id so the backend trace can correlate events.
+The traffic between the id forms is explicit: the serving layer builds
+the exposed id from `X-Request-Id`, `InputProcessor.assign_request_id`
+keeps it in `external_req_id` and appends eight random characters to the
+internal `request_id`, the request.py hunk carries `external_req_id` onto
+the engine Request, and the manager passes both to `compile_grammar`;
+the trace is keyed by the exposed id (the response id the collector
+observes) and records the internal one on every event.
 
 ## Finding 2: how a tool schema reaches the backend
 
@@ -133,6 +140,11 @@ Contract semantics (byte-exact, defined by this ADR for the subset):
 - **Content**: the tool's parameters schema compiled by the JSON
   machinery (spec-v1, compact); the tag cannot end while the value is
   open, and a byte outside the value is rejected with the session state
+  unchanged. A byte-legal but uncompletable prefix (a dead end, `-`
+  under `minimum: 10` or `9` under the same bound) is refused exactly as
+  in the standalone JSON constraint: the completion search of ADR-0005
+  runs over the content state, so the mask withholds such bytes, the
+  draft check cuts there and accept refuses them with the state
   unchanged.
 - **End literal**: a suffix-position set is spawned at every byte
   boundary where the value can complete, so a token crossing the
@@ -142,12 +154,24 @@ Contract semantics (byte-exact, defined by this ADR for the subset):
   false); `at_least_one` forbids EOS until one tag completed;
   `tags_with_separator` requires the first tag before any end;
   `stop_after_first` closes the language after the first tag (the named
-  tool path); tags may repeat when the format allows it.
+  tool path); tags may repeat when the format allows it. An unfinished
+  begin cannot end: the first byte that advances any begin literal
+  (including a partial begin of the next tag after a completed one, and
+  the first optional tag with `at_least_one: false`) clears the endable
+  flag, so mask, draft check, accept and rollback agree (the pinned
+  xgrammar 0.2.7 blocks EOS at every partial begin of
+  `tags_with_separator`). In triggered mode a partial *trigger* stays
+  free text and may end - the pinned xgrammar allows the free-text tail
+  to complete there - only a committed tag blocks EOS.
 - **Session state**: segment, trigger masks, begin positions and the
   inner JSON state live in the kernel session, so rollback (ADR-0014)
   covers every segment boundary and `blg_validate_tokens` answers draft
   checks across them; a rejected token is fed through scratch slots and
-  leaves the session byte-identical.
+  leaves the session byte-identical. `blg_session_struct_segment`
+  answers the active phase (free text / begin / content / closed) and tag
+  variant for diagnostics; the variant is 0xFF while free text or a
+  begin prefix shared by several variants is in flight, so the backend
+  trace never attributes shared framing to one tool.
 
 Remaining risk, recorded honestly: the exact JSON serialization of
 xgrammar's `StructuralTag` models could not be introspected in this
@@ -208,10 +232,13 @@ the accepted spec against the real builders.
 | Rollback and draft validation under a speculative depth | verified on CPU | same tests (ADR-0014 session machinery) |
 | Structural tags of the accepted subset (hermes shapes, required/named, any_text) | verified on CPU | `tests/test_vllm_backend.py`, `tests/test_session_rollback.py` (both backends) and the ABI test in `src/c_api.zig` |
 | Structural-tag constructs outside the subset | explicitly refused | compile refusals with the field offset; Zig unit table and adapter tests |
+| Partial begin / partial trigger endability (pinned xgrammar parity: separator begins block EOS, triggered free-text tails do not) | verified on CPU | Zig unit tests, ABI tests and `tests/test_session_rollback.py` (both backends) |
+| Nested content dead-end prefixes (the ADR-0005 completion filter, same as the standalone JSON constraint) | verified on CPU | `src/c_api.zig` ABI tests, `tests/test_session_rollback.py` (both backends) and the adapter tests |
+| Active-segment diagnostics (`blg_session_struct_segment`) | verified on CPU | ABI tests, `tests/test_session_rollback.py` (both backends), the trace tests of `tests/test_vllm_backend.py` |
 | Failure policy: request-local error, no unconstrained step | verified on CPU | same tests (closed-session simulation) |
 | `GRAMMAR` and `whitespace_pattern` | explicitly refused | request validation and compile refusal, with tests |
 | Unsupported tokenizer family | explicitly refused at start | error names the family and the supported ones |
-| Backend trace (`blg-agent-trace/2`) | implemented; qualification rules checked in-repo | events written when `BLG_AGENT_TRACE` is set; `tests/test_vllm_backend.py` validates the traces with the A1 collector (`qualify_stack.qualify`); the GPU run is not verified |
+| Backend trace (`blg-agent-trace/2`) | implemented; qualification rules checked in-repo | events written when `BLG_AGENT_TRACE` is set, keyed by the exposed request id with the internal one recorded; per-segment attribution, rollback events and a deferred `finish` (vLLM rolls back draft-accepted terminals in the same step); `tests/test_vllm_backend.py` validates the traces with the A1 collector (`qualify_stack.qualify`); the GPU run is not verified |
 | Server start and the OpenAI request matrix on GPU | not verified | needs the patched stack and a GPU run |
 | Speculative decoding on/off on GPU, mask audit in the server | not verified | same |
 | Agent path (`auto` with a strict tool) end to end | not verified | the kernel/adapter layers are verified on CPU; the server-side run is blocked on the GPU matrix |

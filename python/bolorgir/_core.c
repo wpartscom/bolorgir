@@ -777,6 +777,17 @@ static PyObject *Session_can_end(SessionObject *self, PyObject *Py_UNUSED(ign)) 
     Py_RETURN_FALSE;
 }
 
+static PyObject *Session_struct_segment(SessionObject *self, PyObject *Py_UNUSED(ign)) {
+    blg_status st;
+    uint8_t phase = 0, variant = 0xFF;
+
+    SESSION_BEGIN(self);
+    st = blg_session_struct_segment(_sess, &phase, &variant);
+    SESSION_END(self);
+    if (st != BLG_OK) { raise_zg(st, NULL); return NULL; }
+    return Py_BuildValue("(BB)", phase, variant);
+}
+
 static PyObject *Session_finish(SessionObject *self, PyObject *Py_UNUSED(ign)) {
     blg_error err;
     blg_status st;
@@ -848,6 +859,8 @@ static PyMethodDef Session_methods[] = {
     {"accept_token", (PyCFunction)Session_accept_token, METH_O,
      "accept_token(token_id)"},
     {"can_end", (PyCFunction)Session_can_end, METH_NOARGS, "can_end() -> bool"},
+    {"struct_segment", (PyCFunction)Session_struct_segment, METH_NOARGS,
+     "struct_segment() -> (phase, variant): active structural-tag segment (ADR-0016 diagnostics)"},
     {"rollback", (PyCFunction)Session_rollback, METH_O,
      "rollback(n_tokens): undo the last n successful accepts (ADR-0014)"},
     {"validate_tokens", (PyCFunction)Session_validate_tokens, METH_O,
