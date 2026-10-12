@@ -7,7 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.0] - not yet released (preview 0.2.0rc1 on GitHub)
+### Added
+
+- **Session rollback and draft-token validation** (ADR-0014):
+  `blg_session_create_ex` with `max_rollback_tokens` (0 disables the
+  history), `blg_session_rollback`, `blg_validate_tokens`; in Python
+  `Constraint.create_session(max_rollback_tokens=0)`, `Session.rollback(n)`
+  and `Session.validate_tokens(ids)`. History records are charged to the
+  session budget; with depth 0 the accept path adds one comparison (the
+  overhead measurement is recorded in ADR-0014). The C ABI stays version 1.
+- **Standalone regex constraint** (ADR-0015): `BLG_CONSTRAINT_REGEX` and
+  `Engine.compile_regex(pattern)` constrain the whole text to an ECMA-262
+  `^(?:pattern)$` match over Unicode scalar values; unsupported constructs
+  carry the byte offset, malformed patterns are distinguished from
+  unsupported ones, and byte-incomplete vocabularies are refused.
+  `pattern.Options.error_offset` reports the construct offset for every
+  `pattern` user.
+- **vLLM structured-output backend** (ADR-0016): `bolorgir.vllm`
+  implements the vLLM 0.31.0 backend interface for JSON Schema (spec-v1),
+  `json_object`, choice and regex requests, with zero-copy mask rows,
+  terminal (EOS/stop) semantics, rollback and draft validation, and a
+  request-local failure policy. Registration needs the pinned upstream
+  patch in `integrations/vllm/` (`bolorgir[vllm]` alone cannot register a
+  backend); `GRAMMAR` and `STRUCTURAL_TAG` requests are refused explicitly.
+  `Session.fill_mask_into(buffer)` writes a mask into a caller-owned
+  writable buffer without an intermediate allocation.
+- **Agent evaluation preparation**: `benchmarks/agent_eval/` (observation
+  collector for the serving request matrix, experiment plan with the
+  backend-trace format) and its negative tests; the collector treats a
+  trace as qualification only when it is complete, consistent and ordered,
+  and absent events are never read as "no constraint".
+
+### Changed
+
+- README: the withdrawn `0.2.0rc1` links are replaced by the source install
+  of the development line, and the preview status separates the rc1 verdict
+  (which names the earlier core) from the current candidate.
+
+## [0.2.0] - not yet released (preview 0.2.0rc1 on GitHub, withdrawn 2026-10-11)
 
 ### Changed
 

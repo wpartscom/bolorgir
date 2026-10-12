@@ -31,8 +31,9 @@
 # the core.flags of the newest docs/release/v*-composition.json, the
 # release recipe), EXPECT_CORE_SHA256 (optional: the release build must
 # have this sha256, e.g. the accepted T3 candidate, so the wheel carries
-# that core; a different build stops the run), BASELINE_REV (c288703,
-# library A of the T9 overhead check), T9_ROUNDS (20), HF_HUB_OFFLINE (1),
+# that core; a different build stops the run), BASELINE_REV (2523dd9, the
+# Zig 0.17.0 state before the session history; library A of the T9 overhead
+# check, protocol in ADR-0014), T9_ROUNDS (20), HF_HUB_OFFLINE (1),
 # ISO_HF_CACHE (the HF cache copied into the work dir, default
 # benchmarks/local/hf-cache of this tree; a git worktree has none of its
 # own, so a run from the release worktree names the main tree's; checked
@@ -41,9 +42,11 @@
 # run, blg_memory_limit in benchmarks/protected_paths.sh; 0 = none),
 # BUILD_WHEELHOUSE (a directory with the wheels of pip, setuptools>=77 and
 # wheel, installed with --no-index from there; default PyPI, which needs
-# the network), ISO_LINE (wave2: the current working tree with T9/T12,
-# whose tests are required and whose overhead is measured; release: the
-# 0.2.0 line of docs/release/v0.2.0-composition.md, without them).
+# the network), ISO_LINE (wave2: the current working tree; release: the
+# 0.2.0 line of docs/release/v0.2.0-composition.md, whose flags and
+# expected core the release workflow uses. Both lines carry the session,
+# regex and vLLM work: their tests are required and the accept-path
+# overhead is measured in both modes).
 #
 # The test dependencies are imported, not only found, before any build:
 # torch and transformers (the hook test of the HF adapter), tokenizers,
@@ -89,10 +92,12 @@ BASE_PY="$(abspath "${BASE_PY:-$ROOT/.venv/bin/python}")"
 BASE_ENV="$("$BASE_PY" -I -c 'import sys; print(sys.prefix if sys.prefix != sys.base_prefix else "")')" \
   || { echo "BASE_PY $BASE_PY does not run" >&2; exit 2; }
 [ -n "$BASE_ENV" ] && [ "$(realpath -- "$BASE_ENV")" = "$(realpath -m -- "$ROOT/.venv")" ] && BASE_ENV=""
-BASELINE_REV="${BASELINE_REV:-c288703}"
+BASELINE_REV="${BASELINE_REV:-2523dd9}"
 T9_ROUNDS="${T9_ROUNDS:-20}"
 ISO_LINE="${ISO_LINE:-wave2}"
 case "$ISO_LINE" in wave2|release) ;; *) echo "ISO_LINE must be wave2 or release" >&2; exit 2 ;; esac
+git -C "$ROOT" cat-file -e "$BASELINE_REV^{commit}" 2>/dev/null \
+  || { echo "BASELINE_REV $BASELINE_REV is not in the history of $ROOT; set BASELINE_REV" >&2; exit 2; }
 if [ -z "${RELEASE_FLAGS:-}" ] && [ "$ISO_LINE" = release ]; then
   # The release recipe of the composition (the flags the acceptance
   # candidate and the release workflow are built with).
@@ -210,8 +215,7 @@ PY="$W/venv/bin/python"
 # metaspace tests; the versions of everything the test interpreter sees
 # go to identity/test-env.json, its differences from the main .venv to
 # identity/test-env-vs-main-venv.txt.
-TEST_DEPS=(pytest numpy jsonschema yaml tomli packaging torch transformers tokenizers)
-[ "$ISO_LINE" = wave2 ] && TEST_DEPS+=(regress)
+TEST_DEPS=(pytest numpy jsonschema yaml tomli packaging torch transformers tokenizers regress)
 step "test deps" "$PY" - "$W/identity/test-env.json" "$BASE_PY" "${TEST_DEPS[@]}" <<'PYEOF'
 import importlib, importlib.metadata as md, json, sys, traceback
 out, base_py, mods = sys.argv[1], sys.argv[2], sys.argv[3:]
@@ -290,10 +294,8 @@ sys.exit(1 if bad else 0)
 PYEOF
 }
 step "build requirements" check_build_reqs
-if [ "$ISO_LINE" = wave2 ]; then
-  step "t9 arguments" "$PY" "$W/src/benchmarks/bench_rollback_overhead.py" "${T9_ARGS[@]}" \
-    --check-args
-fi
+step "t9 arguments" "$PY" "$W/src/benchmarks/bench_rollback_overhead.py" "${T9_ARGS[@]}" \
+  --check-args
 
 # --- Zig: format, unit tests, builds under explicit prefixes ---------------
 step fmt "$ZIG" fmt --check src build.zig
@@ -376,11 +378,9 @@ step "hooks tests" "$PY" -m pytest -q -p no:cacheprovider --junit-xml="$J" \
   "tests/test_probe.py::test_probe_found_and_inconclusive_with_hooks" \
   "python/tests/test_hf_adapters.py::test_fail_row_with_unknown_forced_by_the_test_hook"
 step "hooks no-skips" junit_clean "$J" 2
-REQUIRED=(tests.test_t3_acceptance_tools tests.test_t8a_tools tests.test_release_manifest)
-if [ "$ISO_LINE" = wave2 ]; then
-  REQUIRED+=(tests.test_session_rollback tests.test_regex_constraint tests.test_agent_qualify
-             tests.test_bench_rollback_args python.tests.test_tokenizer_metaspace)
-fi
+REQUIRED=(tests.test_t3_acceptance_tools tests.test_t8a_tools tests.test_release_manifest
+          tests.test_session_rollback tests.test_regex_constraint tests.test_agent_qualify
+          tests.test_bench_rollback_args)
 for b in ctypes package; do
   J="$W/logs/pytest-$b.xml"
   step "pytest $b" env BLG_TEST_BACKEND=$b timeout 5400 "$PY" -m pytest tests/ python/tests/ -q \
@@ -388,17 +388,15 @@ for b in ctypes package; do
   step "required tests $b" junit_clean "$J" 20 "${REQUIRED[@]}"
 done
 
-# --- T9: accept overhead with max_rollback_tokens = 0 (wave-2 line) ----------
+# --- T9: accept overhead with max_rollback_tokens = 0 -----------------------
 build_baseline() {
   mkdir -p "$W/base-src" &&
   git -C "$ROOT" archive "$BASELINE_REV" | tar -xf - -C "$W/base-src" &&
   (cd "$W/base-src" && "$ZIG" build "${RFLAGS[@]}" --prefix "$W/base")
 }
-if [ "$ISO_LINE" = wave2 ]; then
-  step "baseline $BASELINE_REV" build_baseline
-  sha256sum "$BASE_LIB" >> "$W/identity/libs.sha256"
-  step "t9 overhead" "$PY" "$W/src/benchmarks/bench_rollback_overhead.py" "${T9_ARGS[@]}"
-fi
+step "baseline $BASELINE_REV" build_baseline
+sha256sum "$BASE_LIB" >> "$W/identity/libs.sha256"
+step "t9 overhead" "$PY" "$W/src/benchmarks/bench_rollback_overhead.py" "${T9_ARGS[@]}"
 
 # --- every step passed; the EXIT trap compares the protected paths ---------
 ISO_COMPLETE=1

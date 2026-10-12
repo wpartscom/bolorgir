@@ -323,7 +323,8 @@ static PyObject *Context_compile(ContextObject *self, PyObject *args, PyObject *
     return (PyObject *)obj;
 }
 
-static PyObject *Context_create_session(ContextObject *self, PyObject *arg) {
+static PyObject *create_session_impl(ContextObject *self, PyObject *arg,
+                                     unsigned int max_rollback_tokens) {
     GrammarObject *g;
     blg_error err;
     blg_session *s = NULL;
@@ -347,7 +348,14 @@ static PyObject *Context_create_session(ContextObject *self, PyObject *arg) {
 
     init_zg_error(&err);
     save = PyEval_SaveThread();
-    st = blg_session_create(self->ctx, g->grammar, &s, &err);
+    if (max_rollback_tokens == 0) {
+        st = blg_session_create(self->ctx, g->grammar, &s, &err);
+    } else {
+        blg_session_config cfg;
+        cfg.struct_size = (uint32_t)sizeof(cfg);
+        cfg.max_rollback_tokens = (uint32_t)max_rollback_tokens;
+        st = blg_session_create_ex(self->ctx, g->grammar, &cfg, &s, &err);
+    }
     PyEval_RestoreThread(save);
     if (st != BLG_OK) { raise_zg(st, &err); return NULL; }
 
@@ -366,6 +374,13 @@ static PyObject *Context_create_session(ContextObject *self, PyObject *arg) {
     Py_INCREF((PyObject *)g);
     obj->grammar = g;
     return (PyObject *)obj;
+}
+
+static PyObject *Context_create_session(ContextObject *self, PyObject *args) {
+    PyObject *grammar;
+    unsigned int depth = 0;
+    if (!PyArg_ParseTuple(args, "O|I:create_session", &grammar, &depth)) return NULL;
+    return create_session_impl(self, grammar, depth);
 }
 
 static PyObject *stats_to_dict(const blg_stats *st) {
@@ -453,8 +468,8 @@ static PyObject *Context_set_cancel_flag(ContextObject *self, PyObject *arg) {
 static PyMethodDef Context_methods[] = {
     {"compile", (PyCFunction)(void *)Context_compile, METH_VARARGS | METH_KEYWORDS,
      "compile(kind, data, profile=None) -> Grammar"},
-    {"create_session", (PyCFunction)Context_create_session, METH_O,
-     "create_session(grammar) -> Session"},
+    {"create_session", (PyCFunction)Context_create_session, METH_VARARGS,
+     "create_session(grammar, max_rollback_tokens=0) -> Session"},
     {"stats", (PyCFunction)Context_stats, METH_NOARGS, "stats() -> dict"},
     {"set_cancel_flag", (PyCFunction)Context_set_cancel_flag, METH_O,
      "set_cancel_flag(address) -> None; address from ctypes.addressof or 0"},
@@ -543,12 +558,14 @@ static PyObject *Grammar_probe_status(GrammarObject *self, PyObject *Py_UNUSED(i
     return PyLong_FromUnsignedLong((unsigned long)status);
 }
 
-static PyObject *Grammar_create_session(GrammarObject *self, PyObject *Py_UNUSED(ign)) {
+static PyObject *Grammar_create_session(GrammarObject *self, PyObject *args) {
+    unsigned int depth = 0;
+    if (!PyArg_ParseTuple(args, "|I:create_session", &depth)) return NULL;
     if (!self->context) {
         PyErr_SetString(ExcTable[BLG_ERR_WRONG_STATE], "grammar has no context");
         return NULL;
     }
-    return Context_create_session(self->context, (PyObject *)self);
+    return create_session_impl(self->context, (PyObject *)self, depth);
 }
 
 static PyObject *Grammar_enter(GrammarObject *self, PyObject *Py_UNUSED(ign)) {
@@ -564,8 +581,8 @@ static PyObject *Grammar_exit(GrammarObject *self, PyObject *args) {
 }
 
 static PyMethodDef Grammar_methods[] = {
-    {"create_session", (PyCFunction)Grammar_create_session, METH_NOARGS,
-     "create_session() -> Session"},
+    {"create_session", (PyCFunction)Grammar_create_session, METH_VARARGS,
+     "create_session(max_rollback_tokens=0) -> Session"},
     {"close", (PyCFunction)Grammar_close, METH_NOARGS, "close()"},
     {"probe_status", (PyCFunction)Grammar_probe_status, METH_NOARGS,
      "probe_status() -> int (BLG_PROBE_*)"},
@@ -656,6 +673,39 @@ static PyObject *Session_fill_mask(SessionObject *self, PyObject *Py_UNUSED(ign)
     return out;
 }
 
+static PyObject *Session_fill_mask_into(SessionObject *self, PyObject *arg) {
+    Py_buffer view;
+    blg_error err;
+    blg_status st;
+
+    if (!self->session) {
+        PyErr_SetString(ExcTable[BLG_ERR_WRONG_STATE], "session is closed");
+        return NULL;
+    }
+    if (PyObject_GetBuffer(arg, &view, PyBUF_WRITABLE | PyBUF_C_CONTIGUOUS) < 0)
+        return NULL;
+    if ((size_t)view.len < (size_t)self->context->mask_words * 4) {
+        PyBuffer_Release(&view);
+        PyErr_SetString(ExcTable[BLG_ERR_BUFFER_TOO_SMALL],
+                        "buffer smaller than mask_words * 4 bytes");
+        return NULL;
+    }
+    if (((uintptr_t)view.buf) % 4 != 0) {
+        PyBuffer_Release(&view);
+        PyErr_SetString(ExcTable[BLG_ERR_INVALID_ARGUMENT],
+                        "buffer is not 4-byte aligned");
+        return NULL;
+    }
+    SESSION_BEGIN(self);
+    init_zg_error(&err);
+    st = blg_fill_mask(_sess, (uint32_t *)view.buf,
+                      self->context->mask_words, &err);
+    SESSION_END(self);
+    PyBuffer_Release(&view);
+    if (st != BLG_OK) { raise_zg(st, &err); return NULL; }
+    Py_RETURN_NONE;
+}
+
 static PyObject *Session_accept_token(SessionObject *self, PyObject *arg) {
     unsigned long tok;
     blg_error err;
@@ -673,6 +723,46 @@ static PyObject *Session_accept_token(SessionObject *self, PyObject *arg) {
     SESSION_END(self);
     if (st != BLG_OK) { raise_zg(st, &err); return NULL; }
     Py_RETURN_NONE;
+}
+
+static PyObject *Session_rollback(SessionObject *self, PyObject *arg) {
+    unsigned long n;
+    blg_status st;
+
+    n = PyLong_AsUnsignedLong(arg);
+    if (n == (unsigned long)-1 && PyErr_Occurred()) return NULL;
+    if (n > UINT32_MAX) {
+        PyErr_SetString(PyExc_OverflowError, "n_tokens does not fit uint32");
+        return NULL;
+    }
+    SESSION_BEGIN(self);
+    st = blg_session_rollback(_sess, (uint32_t)n);
+    SESSION_END(self);
+    if (st != BLG_OK) { raise_zg(st, NULL); return NULL; }
+    Py_RETURN_NONE;
+}
+
+static PyObject *Session_validate_tokens(SessionObject *self, PyObject *arg) {
+    size_t n = 0, prefix = 0;
+    uint32_t *ids;
+    blg_status st;
+    PyThreadState *save;
+
+    if (!self->session) {
+        PyErr_SetString(ExcTable[BLG_ERR_WRONG_STATE], "session is closed");
+        return NULL;
+    }
+    ids = seq_to_u32(arg, &n);
+    if (!ids) return NULL;
+    save = PyEval_SaveThread();
+    PyThread_acquire_lock(self->lock, 1);
+    st = self->session ? blg_validate_tokens(self->session, ids, n, &prefix)
+                       : BLG_ERR_WRONG_STATE;
+    PyThread_release_lock(self->lock);
+    PyEval_RestoreThread(save);
+    PyMem_Free(ids);
+    if (st != BLG_OK) { raise_zg(st, NULL); return NULL; }
+    return PyLong_FromSize_t(prefix);
 }
 
 static PyObject *Session_can_end(SessionObject *self, PyObject *Py_UNUSED(ign)) {
@@ -753,9 +843,15 @@ static PyObject *Session_exit(SessionObject *self, PyObject *args) {
 static PyMethodDef Session_methods[] = {
     {"fill_mask", (PyCFunction)Session_fill_mask, METH_NOARGS,
      "fill_mask() -> bytes (mask_words uint32 words, little-endian; bit 1 = allowed)"},
+    {"fill_mask_into", (PyCFunction)Session_fill_mask_into, METH_O,
+     "fill_mask_into(buffer): write the mask into a writable C-contiguous buffer"},
     {"accept_token", (PyCFunction)Session_accept_token, METH_O,
      "accept_token(token_id)"},
     {"can_end", (PyCFunction)Session_can_end, METH_NOARGS, "can_end() -> bool"},
+    {"rollback", (PyCFunction)Session_rollback, METH_O,
+     "rollback(n_tokens): undo the last n successful accepts (ADR-0014)"},
+    {"validate_tokens", (PyCFunction)Session_validate_tokens, METH_O,
+     "validate_tokens(ids) -> int: accepted prefix length, session unchanged"},
     {"finish", (PyCFunction)Session_finish, METH_NOARGS, "finish()"},
     {"abort", (PyCFunction)Session_abort, METH_NOARGS, "abort()"},
     {"stats", (PyCFunction)Session_stats, METH_NOARGS, "stats() -> dict"},
@@ -1037,6 +1133,8 @@ PyMODINIT_FUNC PyInit__core(void) {
     if (PyModule_AddIntConstant(mod, "BLG_ABI_VERSION", BLG_ABI_VERSION) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "KIND_JSON_SCHEMA", BLG_CONSTRAINT_JSON_SCHEMA) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "KIND_LITERAL_SET", BLG_CONSTRAINT_LITERAL_SET) < 0) goto fail;
+    if (PyModule_AddIntConstant(mod, "KIND_REGEX", BLG_CONSTRAINT_REGEX) < 0) goto fail;
+    if (PyModule_AddIntConstant(mod, "MAX_ROLLBACK_TOKENS", BLG_MAX_ROLLBACK_TOKENS) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "MODE_LAZY", BLG_MODE_LAZY) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "COMPILE_PROBE", BLG_COMPILE_PROBE) < 0) goto fail;
     if (PyModule_AddIntConstant(mod, "COMPILE_PROBE_STRICT", BLG_COMPILE_PROBE_STRICT) < 0) goto fail;

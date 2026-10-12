@@ -362,7 +362,52 @@ custom metaschema vocabulary (5).
 |---|---|
 | `BLG_CONSTRAINT_JSON_SCHEMA` | Supported (§1 table). |
 | `BLG_CONSTRAINT_LITERAL_SET` | Supported (FR-3): non-empty JSON array of UTF-8 strings; common prefixes, empty string, Unicode; duplicates are removed. Not mixed with regex. |
-| Arbitrary CFG/EBNF, user regex | Not supported (plan 1.1): `UNSUPPORTED_FEATURE`. |
+| `BLG_CONSTRAINT_REGEX` | Supported (§3.1): full match of the whole text, byte-complete vocabularies only. |
+| Arbitrary CFG/EBNF | Not supported (plan 1.1): `UNSUPPORTED_FEATURE`. |
+
+### 3.1. Standalone regex constraint (BLG_CONSTRAINT_REGEX)
+
+The whole generated text must match the pattern: ECMA-262
+`^(?:pattern)$` over Unicode scalar values, with the same syntax and
+character classes as the JSON Schema `pattern` keyword. The pattern is
+UTF-8; `profile` must be NULL.
+
+Supported syntax (the table matches the JSON Schema `pattern` subset of §1,
+ECMA-262 semantics):
+
+| Construct | Meaning |
+|---|---|
+| literal scalar values | exact match; identity escapes `\*` etc. |
+| `\d`, `\D` | ASCII `[0-9]` and its complement (not Unicode digits) |
+| `\w`, `\W` | ASCII word characters and complement (no `i`/`u` case folding) |
+| `\s`, `\S` | ECMA WhiteSpace + LineTerminator and complement (includes U+FEFF, excludes U+0085) |
+| `.` | any scalar except `\n`, `\r`, U+2028, U+2029 |
+| `[...]`, `[^...]`, ranges | character classes; `-` is literal at the edges; `[^]` is any scalar |
+| `^`, `$` | start/end of the text (anchors; the constraint is a full match anyway) |
+| `(...)`, `(?:...)`, `(?<name>...)` | groups; capture semantics are irrelevant to the language |
+| `*`, `+`, `?`, `{n}`, `{n,}`, `{n,m}`, lazy `?` suffixes | quantifiers; lazy suffixes do not change the language; `max_repeat` limit applies |
+| `\n \r \t \f \v \0 \xHH \uHHHH \u{H...}` | escapes; `\0` followed by a digit, legacy octal - unsupported |
+| `a|b` | alternation |
+| bare `]` `}` and Annex B forms | literals where ECMA says so (`a{,2}` is literal text) |
+
+Refused as `UNSUPPORTED_FEATURE` (with the byte offset of the construct's
+first byte in `schema_offset`): lookahead/lookbehind, backreferences
+(`\1`, `\k<name>`), word boundaries `\b`/`\B` (outside a class), Unicode
+property classes `\p{...}`/`\P{...}`, inline flags `(?i)`, legacy octal,
+and size limits (offset = pattern length). Malformed patterns are
+`INVALID_SCHEMA` with the offset where parsing stopped; a pattern that
+matches nothing is `UNSATISFIABLE_CONSTRAINT`.
+
+Requirements and limits:
+
+- The vocabulary must be byte-complete (all 256 single-byte tokens); other
+  vocabularies are refused at compile time (`UNSUPPORTED_TOKENIZER`). The
+  mask is exact on that class without a completion search
+  ([ADR-0015](adr/ADR-0015-regex-constraint.md)).
+- UTF-8 encoding rules as in JSON strings: overlong forms, surrogates and
+  values above U+10FFFF are illegal bytes.
+- A strip-lead-space decoder is modeled like for JSON grammars: one
+  leading space of the whole text is dropped.
 
 ## 4. Computation modes (blg_mode)
 

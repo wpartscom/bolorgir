@@ -34,6 +34,11 @@ Changelog = "https://github.com/wpartscom/bolorgir/blob/main/CHANGELOG.md"
 [project.optional-dependencies]
 transformers = ["torch>=2.2,<3", "transformers>=4.40,<6"]
 numpy = ["numpy>=1.26"]
+# Serving integration: the backend module implements the structured-output
+# interface of vLLM 0.31.x and needs the pinned upstream patch for
+# registration (integrations/vllm/, docs/integrations/vllm.md). Installing
+# this extra does not register the backend by itself.
+vllm = ["vllm>=0.31,<0.32"]
 dev = ["pytest>=7", "numpy>=1.26", "jsonschema>=4", "transformers>=4.40,<6", "torch>=2.2,<3", "pillow>=10"]
 
 [tool.setuptools]

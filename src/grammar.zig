@@ -2,11 +2,12 @@ const std = @import("std");
 const Arena = @import("alloc.zig").Arena;
 const pattern = @import("pattern.zig");
 const witset = @import("witset.zig");
+const regex_mod = @import("regex.zig");
 
 pub const NodeId = u32;
 pub const UNBOUNDED: u32 = std.math.maxInt(u32);
 
-pub const GrammarKind = enum(u8) { json_schema, literal_set };
+pub const GrammarKind = enum(u8) { json_schema, literal_set, regex };
 
 pub const Literal = struct { off: u32, len: u32 };
 
@@ -429,9 +430,14 @@ pub const Grammar = struct {
     /// unless compiled with schema.Options.record_pointers; "" for nodes
     /// without one).
     node_ptrs: []const []const u8 = &.{},
+    /// BLG_CONSTRAINT_REGEX (ADR-0015): the regex program; such a grammar
+    /// has no JSON nodes and sessions run src/regex.zig instead of the
+    /// parser.
+    regex: ?*regex_mod.Program = null,
     arena: Arena,
 
     pub fn deinit(self: *Grammar) void {
+        if (self.regex) |r| r.deinit();
         self.arena.deinit();
     }
 

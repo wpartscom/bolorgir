@@ -1,0 +1,59 @@
+diff --git a/vllm/config/structured_outputs.py b/vllm/config/structured_outputs.py
+index 059581e..e338baa 100644
+--- a/vllm/config/structured_outputs.py
++++ b/vllm/config/structured_outputs.py
+@@ -10,7 +10,14 @@ from vllm.config.utils import config
+ from vllm.utils.hashing import safe_hash
+ 
+ StructuredOutputsBackend = Literal[
+-    "auto", "xgrammar", "guidance", "outlines", "lm-format-enforcer"
++    "auto",
++    "xgrammar",
++    "guidance",
++    "outlines",
++    "lm-format-enforcer",
++    # Added by the bolorgir backend patch: the backend class is imported
++    # from the installed bolorgir package in StructuredOutputManager.
++    "bolorgir",
+ ]
+ 
+ 
+diff --git a/vllm/sampling_params.py b/vllm/sampling_params.py
+index 1565799..724267f 100644
+--- a/vllm/sampling_params.py
++++ b/vllm/sampling_params.py
+@@ -1278,6 +1278,13 @@ class SamplingParams(
+                     "backends or tokenizer_mode='hf' instead."
+                 )
+             validate_structured_output_request_lm_format_enforcer(self)
++        elif backend == "bolorgir":
++            # Added by the bolorgir backend patch: structural request
++            # validation lives with the backend itself; the engine-side
++            # compile produces the precise diagnostics per request.
++            from bolorgir.vllm import validate_bolorgir_request
++
++            validate_bolorgir_request(self)
+         elif (
+             backend == "auto"
+             and is_mistral_tokenizer(tokenizer)
+diff --git a/vllm/v1/structured_output/__init__.py b/vllm/v1/structured_output/__init__.py
+index 3b35d39..f69fcbb 100644
+--- a/vllm/v1/structured_output/__init__.py
++++ b/vllm/v1/structured_output/__init__.py
+@@ -161,6 +161,16 @@ class StructuredOutputManager:
+                     tokenizer=self.tokenizer,
+                     vocab_size=vocab_size,
+                 )
++            elif backend == "bolorgir":
++                # Added by the bolorgir backend patch: the backend lives in
++                # the installed bolorgir package (bolorgir[vllm]).
++                from bolorgir.vllm import BolorgirBackend
++
++                self.backend = BolorgirBackend(
++                    self.vllm_config,
++                    tokenizer=self.tokenizer,
++                    vocab_size=vocab_size,
++                )
+             else:
+                 raise ValueError(f"Unsupported structured output backend: {backend}")
+ 

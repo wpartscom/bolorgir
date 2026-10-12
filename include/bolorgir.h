@@ -77,7 +77,19 @@ typedef enum blg_mode {
 
 typedef enum blg_constraint_kind {
     BLG_CONSTRAINT_JSON_SCHEMA = 0,
-    BLG_CONSTRAINT_LITERAL_SET = 1
+    BLG_CONSTRAINT_LITERAL_SET = 1,
+    /* ADR-0015: data is a UTF-8 regular expression; the whole generated
+     * text must match it, ECMA-262 ^(?:p)$ over Unicode scalar values,
+     * with the syntax of the JSON Schema `pattern` keyword. Needs a
+     * byte-complete vocabulary (BLG_ERR_UNSUPPORTED_TOKENIZER otherwise);
+     * profile and flags must be NULL and 0 (BLG_ERR_INVALID_ARGUMENT /
+     * _UNSUPPORTED_FEATURE). Unsupported constructs:
+     * BLG_ERR_UNSUPPORTED_FEATURE with the byte offset of the construct's
+     * first byte in schema_offset (the pattern length for a size limit);
+     * malformed patterns: BLG_ERR_INVALID_SCHEMA with the offset where
+     * parsing stopped; a pattern that matches nothing:
+     * BLG_ERR_UNSATISFIABLE_CONSTRAINT. */
+    BLG_CONSTRAINT_REGEX = 2
 } blg_constraint_kind;
 
 /* Sentinel for blg_context_config.cache_limit_bytes: use the default budget.
@@ -297,6 +309,52 @@ blg_status blg_grammar_probe_status(const blg_grammar *grammar, uint32_t *out_st
 blg_status blg_session_create(blg_context *ctx, blg_grammar *grammar,
                             blg_session **out_session, blg_error *err);
 void blg_session_destroy(blg_session *session);
+
+/*
+ * Session options (ADR-0014). max_rollback_tokens is the rollback depth:
+ * the session keeps a record of the state before each of its last
+ * max_rollback_tokens successful blg_accept_token calls (EOS included),
+ * charged to session_limit_bytes. 0 keeps the blg_session_create behavior.
+ */
+#define BLG_MAX_ROLLBACK_TOKENS 65535u
+
+typedef struct blg_session_config {
+    uint32_t struct_size; /* == sizeof(blg_session_config) */
+    uint32_t max_rollback_tokens; /* 0..BLG_MAX_ROLLBACK_TOKENS */
+} blg_session_config;
+
+/*
+ * blg_session_create with options; config == NULL equals
+ * blg_session_create. A wrong struct_size or a depth above
+ * BLG_MAX_ROLLBACK_TOKENS is BLG_ERR_INVALID_ARGUMENT. With a depth set, an
+ * accept whose record does not fit the session budget fails with
+ * BLG_ERR_RESOURCE_LIMIT and leaves the state unchanged.
+ */
+blg_status blg_session_create_ex(blg_context *ctx, blg_grammar *grammar,
+                                 const blg_session_config *config,
+                                 blg_session **out_session, blg_error *err);
+
+/*
+ * Undoes the last n_tokens successful blg_accept_token calls (ADR-0014):
+ * the mask and blg_can_end are then exactly those before them. n_tokens
+ * above the records held (at most max_rollback_tokens; a rollback consumes
+ * records) is BLG_ERR_INVALID_ARGUMENT with no change; 0 is a no-op.
+ * BLG_ERR_WRONG_STATE unless the session is active. Statistics are not
+ * rolled back.
+ */
+blg_status blg_session_rollback(blg_session *session, uint32_t n_tokens);
+
+/*
+ * Stores in *out_accepted_prefix the length of the longest prefix of
+ * ids[0..n) that consecutive blg_accept_token calls would accept, without
+ * changing the session (ADR-0014). Uses session scratch storage, so calls
+ * on one session must be serialized like any other session call.
+ * BLG_ERR_RESOURCE_LIMIT / BLG_ERR_CANCELLED: *out_accepted_prefix holds
+ * the tokens decided before the failing one. BLG_ERR_WRONG_STATE unless
+ * the session is active; NULL ids with n > 0 is BLG_ERR_INVALID_ARGUMENT.
+ */
+blg_status blg_validate_tokens(const blg_session *session, const uint32_t *ids,
+                             size_t n, size_t *out_accepted_prefix);
 
 /*
  * mask is a caller-owned buffer of mask_words uint32 words

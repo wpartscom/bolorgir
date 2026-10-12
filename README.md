@@ -5,15 +5,18 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.12-3.15](https://img.shields.io/badge/python-3.12--3.15-blue.svg)](https://www.python.org/)
 
-> **Public preview 0.2.0rc1.** A GitHub pre-release, not on PyPI: install
-> it from the [release page](https://github.com/wpartscom/bolorgir/releases/tag/v0.2.0rc1)
-> as shown in [Install](#install). The published assets carry the earlier
-> `cp310-abi3` build (core `6e62e0d1...`); this branch prepares the
-> Zig 0.17.0 line, whose rebuilt `cp312-abi3` wheel comes with the next
-> acceptance. The preview has passed the T3/R6
-> acceptance of its core but not the full T8a run, and some `spec-v1`
-> schemas are slow or end in `RESOURCE_LIMIT`: read
-> [Preview status and known limits](#preview-status-and-known-limits) first.
+> **Development line; no package is published right now.** The earlier
+> `0.2.0rc1` pre-release was withdrawn on 2026-10-11, and nothing is on
+> PyPI. The `main` line below adds session rollback and draft validation
+> (ADR-0014), a standalone regex constraint (ADR-0015), a vLLM
+> structured-output backend with a pinned source patch
+> (`docs/integrations/vllm.md`) and the Zig 0.17.0 / CPython
+> 3.12-3.15 preparation. These features change the core, so the next
+> public preview (planned as `0.2.0rc2`) waits for a fresh acceptance of
+> the new core; the rc1 acceptance verdict names an earlier build and is
+> not carried over. Read
+> [Preview status and known limits](#preview-status-and-known-limits) and
+> install from source as shown in [Install](#install) until then.
 
 **Structured-generation engine written in Zig, with a C ABI and Python
 bindings.** Given a JSON Schema (one of two profiles: the frozen
@@ -50,6 +53,12 @@ be far slower. Conditions and caveats: [Performance](#performance).
   time. For incomplete vocabularies, completion reachability is checked
   exactly on finite languages (`src/complete.zig`); dead-end tokens are
   neither masked nor accepted.
+- **Serving-ready sessions.** Rollback of accepted tokens and draft-token
+  validation for speculative decoding (`Session.rollback`,
+  `Session.validate_tokens`; [ADR-0014](docs/adr/ADR-0014-session-rollback.md)),
+  and a standalone regex constraint (`Engine.compile_regex`,
+  [ADR-0015](docs/adr/ADR-0015-regex-constraint.md)); both live in the same
+  C ABI as the JSON profiles.
 - **Bounded.** Hard byte budgets for context, mask cache, session and schema;
   flag-based cancellation; per-call work limits; immutable compile-artifact
   cache.
@@ -57,6 +66,10 @@ be far slower. Conditions and caveats: [Performance](#performance).
   ABI (`include/bolorgir.h`, opaque handles, `blg_status` error codes).
 - **Python first-class.** CPython 3.12-3.15 (abi3), Hugging Face Transformers
   adapter, batched mask filling, GPU mask-unpacking path.
+- **Servers.** A vLLM 0.31.0 structured-output backend with a pinned
+  source patch and an explicit-refusal policy
+  ([docs/integrations/vllm.md](docs/integrations/vllm.md),
+  [ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md)).
 - **Measured.** Performance claims come from a pinned acceptance protocol
   (three collections, AB/BA pairing, bootstrap CIs); reports are published in
   `benchmarks/reports/`.
@@ -64,26 +77,19 @@ be far slower. Conditions and caveats: [Performance](#performance).
 ## Build the core (Zig)
 
 The engine is a Zig library behind a versioned C ABI; the Python bindings
-and the C example build on top of it. The published preview tag builds
-with Zig 0.15.2:
-
-```sh
-git clone --branch v0.2.0rc1 https://github.com/wpartscom/bolorgir
-cd bolorgir
-zig build -Drelease=true -Dstrip=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=baseline
-sha256sum zig-out/lib/libbolorgir.so.0.1.0   # 6e62e0d1526c6e53...
-```
-
-The current `main` line (prepared for the next acceptance) builds with
-Zig 0.17.0 and the same flags; two independent builds are byte-identical
-and the next acceptance names the shipped core:
+and the C example build on top of it. The `main` line builds with Zig
+0.17.0; two independent builds with the release flags are byte-identical,
+and the next acceptance will name the core it ships:
 
 ```sh
 git clone https://github.com/wpartscom/bolorgir
 cd bolorgir
 zig build -Drelease=true -Dstrip=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=baseline
-sha256sum zig-out/lib/libbolorgir.so.0.1.0   # 38f31cfbd627f803...
+sha256sum zig-out/lib/libbolorgir.so.0.1.0   # the next acceptance names this hash
 ```
+
+The earlier `v0.1.0` tag builds with Zig 0.15.2; the withdrawn `v0.2.0rc1`
+release pair is no longer published.
 
 ## Python bindings
 
@@ -94,37 +100,20 @@ source checkout needs a C compiler and Python 3.12 or newer.
 
 ### Install
 
-0.2.0rc1 is published as a GitHub pre-release with a wheel, an sdist and
-`SHA256SUMS`; it is not on PyPI. The published wheel is
-`cp310-abi3-manylinux_2_28_x86_64`: one file for CPython 3.10, 3.11, 3.12
-and 3.13 on Linux x86_64 with glibc 2.28 or newer.
-
-The prepared next build of this line (Zig 0.17.0, abi3 floor CPython 3.12)
-will be `cp312-abi3` for CPython 3.12-3.15 with the same manylinux_2_28
-coverage; it replaces these preview assets with the next acceptance. Until
-then the `cp310-abi3` build below is the one to install.
+No package is currently published: the `0.2.0rc1` GitHub pre-release was
+withdrawn and PyPI is not used yet. Install from a checkout; the result
+is a local candidate, not a published release. The build needs a C
+compiler and Python 3.12 or newer; the extension is abi3
+(`cp312-abi3`), so one `_core` binary loads on CPython 3.12 through
+3.15.
 
 ```sh
+git clone https://github.com/wpartscom/bolorgir
+cd bolorgir
+zig build -Drelease=true -Dstrip=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=baseline
 python3 -m venv .venv && . .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install https://github.com/wpartscom/bolorgir/releases/download/v0.2.0rc1/bolorgir-0.2.0rc1-cp310-abi3-manylinux_2_28_x86_64.whl
-```
-
-To check the download against the published sums first:
-
-```sh
-base=https://github.com/wpartscom/bolorgir/releases/download/v0.2.0rc1
-curl -LO "$base/SHA256SUMS"
-curl -LO "$base/bolorgir-0.2.0rc1-cp310-abi3-manylinux_2_28_x86_64.whl"
-sha256sum --check --ignore-missing SHA256SUMS
-python -m pip install ./bolorgir-0.2.0rc1-cp310-abi3-manylinux_2_28_x86_64.whl
-```
-
-The core library inside the wheel is the one the acceptance names, sha256
-`6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914`:
-
-```sh
-python -c "import bolorgir, hashlib, pathlib; p = pathlib.Path(bolorgir.__file__).parent / '_lib' / 'libbolorgir.so.0.1.0'; print(bolorgir.__version__, hashlib.sha256(p.read_bytes()).hexdigest())"
+cd python && BLG_SKIP_ZIG=1 python -m pip install .   # takes the core from zig-out/lib
 ```
 
 The Hugging Face adapter is the `transformers` extra; it installs PyTorch
@@ -133,20 +122,16 @@ index first:
 
 ```sh
 python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-python -m pip install "bolorgir[transformers] @ https://github.com/wpartscom/bolorgir/releases/download/v0.2.0rc1/bolorgir-0.2.0rc1-cp310-abi3-manylinux_2_28_x86_64.whl"
+python -m pip install "bolorgir[transformers]"
 ```
 
-The sdist on the release page bundles the same core library; it builds
-the Python extension with a C compiler and needs no Zig.
+The sdist built from a checkout bundles the same core library; installing
+it builds the Python extension with a C compiler and needs no Zig.
 
-From a checkout of the tag, with the core built at `zig-out/lib` (see
-[Build the core](#build-the-core-zig)):
-
-```sh
-python3 -m venv .venv && . .venv/bin/activate
-python -m pip install --upgrade pip
-cd python && BLG_SKIP_ZIG=1 python -m pip install .   # takes the core from zig-out/lib
-```
+For serving, the vLLM structured-output backend is documented in
+[docs/integrations/vllm.md](docs/integrations/vllm.md); it needs the
+pinned upstream patch (`integrations/vllm/`) and the `[vllm]` extra, and
+its GPU checks have not run yet.
 
 ### Quickstart
 
@@ -249,18 +234,24 @@ A dependency-free C example lives in `examples/c_client.c`
 
 ## Preview status and known limits
 
-0.2.0rc1 is a preview of 0.2.0 ([release notes](docs/release/v0.2.0rc1.md),
-[changes](CHANGELOG.md)). What it has and has not passed:
+The `0.2.0rc1` pre-release was withdrawn on 2026-10-11 (its notes remain
+as a historical document, [docs/release/v0.2.0rc1.md](docs/release/v0.2.0rc1.md));
+no package is currently published. The `main` line adds session rollback
+and draft validation ([ADR-0014](docs/adr/ADR-0014-session-rollback.md)),
+a standalone regex constraint ([ADR-0015](docs/adr/ADR-0015-regex-constraint.md))
+and the vLLM backend ([ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md));
+the next preview (planned as `0.2.0rc2`) waits for a fresh acceptance that
+names the new core. What this line has and has not passed:
 
 - **Profiles.** `canonical-v1` is the default profile, a frozen subset.
   `spec-v1` is experimental: it covers much more of JSON Schema and is
   selected with `profile="spec-v1"`
   ([Schema profiles and limitations](#schema-profiles-and-limitations)).
-- **Acceptance.** The core library of this preview (sha256 `6e62e0d1...`)
-  passed the T3 coverage acceptance and its R6 review: verdict admitted
-  ([acceptance.md](benchmarks/coverage/spec-v1/t3-6e62e0d1/review-3/acceptance.md)).
-  The full T8a run (MaskBench, `spec-v1`, Llama 3.1 tokenizer, 900 s per
-  file) is **not complete**; the stable 0.2.0 release needs it.
+- **Acceptance.** The T3/R6 verdict admitted the earlier core build
+  (sha256 `6e62e0d1...`); that verdict names that build and is not carried
+  over to the current one. The current candidate's functional checks are
+  listed with the features above; a full T3/R6 run and the T8a MaskBench
+  run are pending and are the condition for publishing `0.2.0rc2`.
 - **Slow masks, `RESOURCE_LIMIT`, long runs.** On some `spec-v1` schemas
   with a large vocabulary (128k tokens) a single mask takes about a
   second, and a file of a few documents can exceed 900 s. For one MaskBench
@@ -269,20 +260,27 @@ A dependency-free C example lives in `examples/c_client.c`
   `RESOURCE_LIMIT` after about 13 s on our test host. A call fails with `RESOURCE_LIMIT`
   whenever completion cannot be proven within its search or memory budget;
   a token is never admitted without a proof.
+- **Session rollback overhead.** With `max_rollback_tokens=0` the accept
+  path measured within +2% of the pre-history build (median +0.45%, 95%
+  interval [-0.18%, +1.76%], 100 paired rounds; ADR-0014).
 - **Memory limits are not time limits.** `memory_limit_mb` and the other
   budgets bound memory, not the duration of a call. To bound time, use your
   own deadline together with `work_limit_ops` (a call that spends its work
   budget fails with `RESOURCE_LIMIT`) or a `CancelToken`
   (`engine.cancel_token()`; the core checks the flag between bounded
   portions of work and the call fails with `CancelledError`). How quickly
-  either stops the slow cases above was not measured for this preview.
+  either stops the slow cases above was not measured for this line.
 - **Performance figures** in this README are historical (0.1.0 and the
   code before it, profile `canonical-v1`) and were not re-measured for
-  this preview.
-- **Platforms.** Linux x86_64 with glibc 2.28 or newer; CPython 3.12,
-  3.13, 3.14 and 3.15, each checked by installing the wheel in a clean
-  `python:3.x-slim` container. macOS, Windows and Linux aarch64 are not
-  built or tested.
+  this line.
+- **Platforms.** Linux x86_64 with glibc 2.28 or newer; the extension is
+  abi3 (`cp312-abi3`) covering CPython 3.12, 3.13, 3.14 and 3.15. No wheel
+  is published right now; the source install above is the supported path.
+  macOS, Windows and Linux aarch64 are not built or tested.
+- **vLLM.** The backend is functionally checked on CPU (request
+  compilation, masks, terminals, rollback, failure policy) including on
+  the pinned model tokenizer; end-to-end GPU serving checks have not run
+  yet. See [docs/integrations/vllm.md](docs/integrations/vllm.md).
 
 Problems are welcome: see [Reporting a problem](#reporting-a-problem).
 

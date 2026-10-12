@@ -430,15 +430,14 @@ def test_readme_quickstart_is_the_checked_example():
     assert f"```python\n{_read('examples', 'quickstart.py')}```" in _read("README.md")
 
 
-def test_readme_installs_the_wheel_of_this_version():
-    version = re.search(r'^version\s*=\s*"([^"]+)"', _read("python", "pyproject.toml"), re.M)[1]
-    # The install section shows the published preview assets, which are the
-    # cp310-abi3 build; the prepared cp312-abi3 line is described separately.
-    url = (f"https://github.com/wpartscom/bolorgir/releases/download/v{version}/"
-           f"bolorgir-{version}-cp310-abi3-manylinux_2_28_x86_64.whl")
+def test_readme_install_matches_the_publish_state():
+    # The 0.2.0rc1 pre-release was withdrawn and nothing is published: the
+    # README must not point at the withdrawn asset URLs and must document
+    # the source install of the prepared cp312-abi3 line instead.
     readme = _read("README.md")
-    assert f"pip install {url}" in readme
+    assert "releases/download/v0.2.0rc1" not in readme
+    assert "git clone --branch v0.2.0rc1" not in readme
     assert "cp312-abi3" in readme
-    assert f"git clone --branch v{version} " in readme
+    assert "BLG_SKIP_ZIG=1" in readme
     assert f"CORE_FLAGS: {COMP['core']['flags']}" in _read(".github", "workflows", "release.yml")
     assert f"zig build {COMP['core']['flags']}\n" in readme

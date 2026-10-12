@@ -432,6 +432,61 @@ pub fn retainState(side: *Side, st: *const State) void {
     for (st.threads[0..st.n]) |*t| retainThread(side, t);
 }
 
+/// Compact copy of the live part of a State (ADR-0014): per thread its
+/// length and tap count, and the frames 0..len of all threads in one
+/// array. A snapshot holds its own chunk references.
+pub const Snapshot = struct {
+    n: u16 = 0,
+    max_threads: u16 = 0,
+    heads: []ThreadHead = &.{},
+    frames: []Frame = &.{},
+
+    pub const ThreadHead = struct { len: u16, tap_count: u16 };
+};
+
+pub fn snapshotState(a: std.mem.Allocator, side: *Side, st: *const State) error{OutOfMemory}!Snapshot {
+    var total: usize = 0;
+    for (st.threads[0..st.n]) |*t| total += t.len;
+    const heads = try a.alloc(Snapshot.ThreadHead, st.n);
+    errdefer a.free(heads);
+    const frames = try a.alloc(Frame, total);
+    var off: usize = 0;
+    for (st.threads[0..st.n], heads) |*t, *h| {
+        h.* = .{ .len = t.len, .tap_count = t.tap_count };
+        @memcpy(frames[off..][0..t.len], t.frames[0..t.len]);
+        off += t.len;
+    }
+    retainState(side, st);
+    return .{ .n = st.n, .max_threads = st.max_threads, .heads = heads, .frames = frames };
+}
+
+/// Releases the snapshot's chunk references and frees it.
+pub fn dropSnapshot(a: std.mem.Allocator, side: *Side, snap: *Snapshot) void {
+    for (snap.frames) |*f| releaseFrameChunks(side, f);
+    a.free(snap.heads);
+    a.free(snap.frames);
+    snap.* = .{};
+}
+
+/// Moves the snapshot into `dst`, releasing what `dst` held; the
+/// snapshot's chunk references pass to `dst` and the snapshot is freed.
+pub fn restoreSnapshot(a: std.mem.Allocator, side: *Side, snap: *Snapshot, dst: *State) void {
+    releaseState(side, dst);
+    var off: usize = 0;
+    for (snap.heads, 0..) |h, i| {
+        const t = &dst.threads[i];
+        t.len = h.len;
+        t.tap_count = h.tap_count;
+        @memcpy(t.frames[0..h.len], snap.frames[off..][0..h.len]);
+        off += h.len;
+    }
+    dst.n = snap.n;
+    dst.max_threads = snap.max_threads;
+    a.free(snap.heads);
+    a.free(snap.frames);
+    snap.* = .{};
+}
+
 fn copyThread(dst: *Thread, src: *const Thread) void {
     dst.len = src.len;
     dst.tap_count = src.tap_count;

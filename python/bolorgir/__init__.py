@@ -289,6 +289,23 @@ class Engine:
         grammar = ctx.compile(kind=_core.KIND_LITERAL_SET, data=data, profile=None)
         return Constraint(self, grammar)
 
+    def compile_regex(
+        self,
+        pattern: str,
+        tokenizer: Optional[TokenizerLike] = None,
+    ) -> "Constraint":
+        """Compile a standalone regular expression (ADR-0015): the whole
+        generated text must match, as ECMA-262 ``^(?:pattern)$`` over
+        Unicode scalar values, with the syntax of the JSON Schema
+        ``pattern`` keyword. Needs a byte-complete vocabulary. Unsupported
+        constructs raise UnsupportedFeatureError, malformed patterns
+        InvalidSchemaError, both naming the byte offset."""
+        ctx = self._ensure_context(tokenizer)
+        if not isinstance(pattern, str):
+            raise InvalidArgumentError("pattern: str expected")
+        grammar = ctx.compile(kind=_core.KIND_REGEX, data=pattern.encode("utf-8"), profile=None)
+        return Constraint(self, grammar)
+
     def stats(self) -> dict:
         """Context statistics."""
         self._require_ctx()
@@ -363,8 +380,16 @@ class Constraint:
         self._engine = engine
         self._grammar = grammar
 
-    def create_session(self) -> "Session":
-        return Session(self._grammar.create_session())
+    def create_session(self, max_rollback_tokens: int = 0) -> "Session":
+        """New session. max_rollback_tokens > 0 keeps a record of the state
+        before each of the last that many accepts (ADR-0014), charged to
+        the session memory budget, so Session.rollback can undo them;
+        0 (default) keeps no history."""
+        if not isinstance(max_rollback_tokens, int) or not (
+                0 <= max_rollback_tokens <= _core.MAX_ROLLBACK_TOKENS):
+            raise InvalidArgumentError(
+                f"max_rollback_tokens must be an int in 0..{_core.MAX_ROLLBACK_TOKENS}")
+        return Session(self._grammar.create_session(max_rollback_tokens))
 
     @property
     def mask_words(self) -> int:
@@ -424,6 +449,13 @@ class Session:
         """Bitmask of mask_words*4 bytes (uint32 LE; 1 = allowed)."""
         return self._s.fill_mask()
 
+    def fill_mask_into(self, buffer) -> None:
+        """Write the mask directly into a writable C-contiguous buffer of
+        at least mask_words*4 bytes (uint32 LE; 1 = allowed), without an
+        intermediate allocation. The buffer may be larger than needed;
+        only the first mask_words words are written."""
+        self._s.fill_mask_into(buffer)
+
     def allowed_token_ids(self, mask: Optional[bytes] = None) -> list:
         """Allowed token ids from a mask (or a fresh fill_mask())."""
         if mask is None:
@@ -453,6 +485,18 @@ class Session:
 
     def can_end(self) -> bool:
         return self._s.can_end()
+
+    def rollback(self, n_tokens: int) -> None:
+        """Undo the last n_tokens successful accept_token calls (EOS
+        included); masks are then exactly those before them. Needs
+        create_session(max_rollback_tokens=...); more than the records held
+        raises InvalidArgumentError without a change (ADR-0014)."""
+        self._s.rollback(n_tokens)
+
+    def validate_tokens(self, token_ids: Sequence[int]) -> int:
+        """Length of the longest prefix of token_ids that consecutive
+        accept_token calls would accept; the session does not change."""
+        return self._s.validate_tokens(list(token_ids))
 
     def finish(self) -> None:
         self._s.finish()

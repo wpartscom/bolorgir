@@ -163,17 +163,27 @@ blg_status blg_grammar_probe_status(const blg_grammar *grammar, uint32_t *out_st
 
 | Field | Meaning |
 |---|---|
-| `kind` | `BLG_CONSTRAINT_JSON_SCHEMA` or `BLG_CONSTRAINT_LITERAL_SET`. |
-| `profile` | `"canonical-v1"` (also `NULL`), or `"spec-v1"`. Any other value is `UNSUPPORTED_FEATURE`. Literal sets use `NULL`. |
-| `data`, `data_len` | The schema as UTF-8 JSON, or a JSON array of strings for a literal set. |
+| `kind` | `BLG_CONSTRAINT_JSON_SCHEMA`, `BLG_CONSTRAINT_LITERAL_SET` or `BLG_CONSTRAINT_REGEX`. |
+| `profile` | `"canonical-v1"` (also `NULL`), or `"spec-v1"`. Any other value is `UNSUPPORTED_FEATURE`. Literal sets and regex constraints use `NULL` (a non-`NULL` profile with a regex is `INVALID_ARGUMENT`). |
+| `data`, `data_len` | The schema as UTF-8 JSON, or a JSON array of strings for a literal set, or the UTF-8 pattern for a regex constraint. |
 | `registry_data`, `registry_data_len` | Optional, `spec-v1` only: an immutable snapshot of external schemas, `{"version": "...", "documents": {"<uri>": <schema>, ...}}`. An external `$ref` whose base URI matches a `documents` key resolves inside that document; the engine never accesses the network. Without a registry every external `$ref` is `UNSUPPORTED_FEATURE`. |
-| `flags` | `0`, or `BLG_COMPILE_PROBE` / `BLG_COMPILE_PROBE_STRICT` (below). Unknown bits are `INVALID_ARGUMENT`. |
+| `flags` | `0`, or `BLG_COMPILE_PROBE` / `BLG_COMPILE_PROBE_STRICT` (below). Unknown bits are `INVALID_ARGUMENT`; the probe flags with a regex constraint are `UNSUPPORTED_FEATURE` (the probe is defined for JSON grammars). |
 
 Behavior:
 
 - Compilation errors fill `err->json_pointer` and `err->schema_offset`.
   Unsupported input is always rejected at compile time; the engine never
   falls back to unconstrained generation.
+- A `BLG_CONSTRAINT_REGEX` request compiles the UTF-8 pattern into a DFA
+  over Unicode scalar values and constrains the whole text to match it
+  (ECMA-262 `^(?:p)$`). It needs a byte-complete vocabulary
+  (`UNSUPPORTED_TOKENIZER` otherwise); unsupported constructs are
+  `UNSUPPORTED_FEATURE` with the construct's first byte in
+  `schema_offset`, malformed patterns are `INVALID_SCHEMA` with the offset
+  where parsing stopped, and a pattern that matches nothing is
+  `UNSATISFIABLE_CONSTRAINT`. The supported syntax is section 3.1 of
+  [supported_features.md](supported_features.md#31-standalone-regex-constraint-blg_constraint_regex);
+  the design is [ADR-0015](adr/ADR-0015-regex-constraint.md).
 - Compilation also checks that the tokenizer can produce every document of
   the constraint (the coverage gate); if not, the result is
   `UNSUPPORTED_TOKENIZER` with an explanation. See
@@ -211,6 +221,9 @@ reports `BLG_PROBE_NOT_RUN` unless its cached artifact was probed.
 ```c
 blg_status blg_session_create(blg_context *ctx, blg_grammar *grammar,
                               blg_session **out_session, blg_error *err);
+blg_status blg_session_create_ex(blg_context *ctx, blg_grammar *grammar,
+                                 const blg_session_config *config,
+                                 blg_session **out_session, blg_error *err);
 void       blg_session_destroy(blg_session *session);
 
 blg_status blg_fill_mask(blg_session *session, uint32_t *mask,
@@ -220,6 +233,10 @@ blg_status blg_fill_masks_batch(blg_session *const *sessions,
                                 int32_t *statuses, size_t count, blg_error *err);
 blg_status blg_accept_token(blg_session *session, uint32_t token_id,
                             blg_error *err);
+blg_status blg_session_rollback(blg_session *session, uint32_t n_tokens);
+blg_status blg_validate_tokens(const blg_session *session,
+                               const uint32_t *ids, size_t n,
+                               size_t *out_accepted_prefix);
 blg_status blg_can_end(const blg_session *session, bool *out_can_end);
 blg_status blg_finish(blg_session *session, blg_error *err);
 blg_status blg_abort(blg_session *session);
@@ -227,6 +244,38 @@ blg_status blg_abort(blg_session *session);
 
 A session is **active** until `blg_finish` (finished) or `blg_abort`
 (aborted). `blg_session_destroy` is valid in any state.
+
+**Rollback history** ([ADR-0014](adr/ADR-0014-session-rollback.md)).
+`blg_session_create_ex` takes a `blg_session_config`:
+
+| Field | Meaning |
+|---|---|
+| `struct_size` | `sizeof(blg_session_config)`. |
+| `max_rollback_tokens` | Rollback depth, `0..BLG_MAX_ROLLBACK_TOKENS` (65,535). `0` disables the history (the `blg_session_create` behavior). |
+
+The session records the state before each of its last
+`max_rollback_tokens` successful accepts (EOS included); records are
+charged to `session_limit_bytes`. An accept whose record does not fit
+the budget fails with `RESOURCE_LIMIT` and leaves the state unchanged.
+
+#### blg_session_rollback
+
+Undoes the last `n_tokens` successful `blg_accept_token` calls: the mask
+and `blg_can_end` are then exactly those before them. `n_tokens` above
+the records held is `INVALID_ARGUMENT` with no change; `0` is a no-op.
+`WRONG_STATE` unless the session is active. Statistics are not rolled
+back.
+
+#### blg_validate_tokens
+
+Stores in `*out_accepted_prefix` the length of the longest prefix of
+`ids[0..n)` that consecutive `blg_accept_token` calls would accept,
+without changing the session. `RESOURCE_LIMIT` or `CANCELLED` ends the
+call with that status and the tokens decided before the failing one in
+`*out_accepted_prefix`. `WRONG_STATE` unless the session is active;
+`NULL` ids with `n > 0` is `INVALID_ARGUMENT`. Calls on one session are
+serialized like any other session call (the validator uses the session's
+scratch storage).
 
 #### blg_fill_mask
 
@@ -402,6 +451,7 @@ for another tokenizer.
 |---|---|
 | `compile(schema, tokenizer=None, profile="canonical-v1", probe=None) -> Constraint` | `schema` is a `dict`, JSON `str` or `bytes`; `profile` is `"canonical-v1"` or `"spec-v1"`. `probe="probe"` or `"strict"` runs the compile-time probe of section 2.4; a found state raises `ResourceLimitError` with the token path and the subschema pointer in the message. |
 | `compile_literals(literals, tokenizer=None) -> Constraint` | A non-empty list of strings; the answer is exactly one of them. |
+| `compile_regex(pattern, tokenizer=None) -> Constraint` | A standalone regular expression: the whole generated text must match, ECMA-262 `^(?:pattern)$` over Unicode scalar values, with the JSON Schema `pattern` syntax (section 3.1 of supported_features.md). Needs a byte-complete vocabulary. `UnsupportedFeatureError` (with the byte offset) separates unsupported constructs from malformed ones (`InvalidSchemaError`). |
 | `stats() -> dict` | Context statistics: the timing and cache counters of section 2.7 plus `mem_used` / `mem_peak` dicts keyed by category name. |
 | `mode`, `vocab_size`, `mask_words`, `eos_ids` | Read-only properties. |
 | `cancel_token() -> CancelToken` | Creates and registers a cancellation token. |
@@ -416,14 +466,17 @@ Not exposed in Python: the external-reference registry, `mask_fast_path`
 ### 3.3. Constraint and Session
 
 ```python
-constraint.create_session() -> Session
+constraint.create_session(max_rollback_tokens=0) -> Session
 constraint.probe_status    # "not_run" | "inconclusive" | "proven" (section 2.4)
 constraint.close()
 
 session.fill_mask() -> bytes                  # mask_words * 4 bytes, uint32 LE
+session.fill_mask_into(buffer)                # zero-copy into a writable buffer
 session.allowed_token_ids(mask=None) -> list[int]
 session.mask_numpy(mask=None) -> numpy.ndarray  # bool[vocab_size], needs numpy
 session.accept_token(token_id)
+session.rollback(n_tokens)                    # needs a session created with a depth
+session.validate_tokens(token_ids) -> int     # accepted prefix, state unchanged
 session.can_end() -> bool
 session.finish()
 session.abort()
@@ -438,6 +491,10 @@ raises the exception that corresponds to the status code. Operations on one
 session are serialized by a per-session lock. `fill_masks_batch` accepts
 duplicate sessions and is safe against overlapping concurrent batches;
 if any row fails it raises the exception of the first failing row.
+`fill_mask_into` writes the mask directly into any object supporting the
+writable buffer protocol (for example a `numpy` view of a tensor row) of
+at least `mask_words * 4` bytes; the object must be 4-byte aligned and
+C-contiguous.
 
 ### 3.4. Cancellation
 

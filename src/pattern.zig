@@ -134,6 +134,10 @@ pub const Options = struct {
     /// Parse and subset-construction scratch, released before compile
     /// returns; null takes it from the result allocator.
     scratch: ?std.mem.Allocator = null,
+    /// Receives the byte offset of a refused pattern: the first byte of an
+    /// unsupported construct (`(` of a group form, `\` of an escape), or
+    /// where parsing stopped otherwise; untouched on success.
+    error_offset: ?*usize = null,
 };
 
 /// Inclusive codepoint range, as yielded by RangeIter for mask generation.
@@ -161,7 +165,10 @@ pub fn compile(child_allocator: std.mem.Allocator, pattern: []const u8, options:
     const a = work.allocator();
 
     var p = Parser{ .a = a, .src = pattern, .lim = lim };
-    const root = try p.parseRoot();
+    const root = p.parseRoot() catch |e| {
+        if (options.error_offset) |o| o.* = p.construct_start orelse p.pos;
+        return e;
+    };
 
     var nb = NfaBuilder{ .a = a, .lim = lim };
     const entry = try nb.newState();
@@ -649,6 +656,13 @@ const Parser = struct {
     pos: usize = 0,
     lim: *const Limits,
     group_depth: u32 = 0,
+    /// Start of the construct behind an error.Unsupported (error_offset).
+    construct_start: ?usize = null,
+
+    fn unsupportedAt(self: *Parser, start: usize) Error {
+        self.construct_start = start;
+        return error.Unsupported;
+    }
 
     fn node(self: *Parser, v: Node) Error!*Node {
         const n = try self.a.create(Node);
@@ -826,16 +840,17 @@ const Parser = struct {
     }
 
     fn parseGroup(self: *Parser) Error!*Node {
+        const start = self.pos;
         self.pos += 1; // '('
         if (self.peekByte() == '?') {
             self.pos += 1;
             switch (self.peekByte() orelse return error.Invalid) {
                 ':' => self.pos += 1,
-                '=', '!' => return error.Unsupported, // lookahead
+                '=', '!' => return self.unsupportedAt(start), // lookahead
                 '<' => {
                     self.pos += 1;
                     switch (self.peekByte() orelse return error.Invalid) {
-                        '=', '!' => return error.Unsupported, // lookbehind
+                        '=', '!' => return self.unsupportedAt(start), // lookbehind
                         else => {},
                     }
                     // Named capture (?<name>...): capture semantics are
@@ -850,10 +865,10 @@ const Parser = struct {
                     self.pos += 1;
                 },
                 // Inline flags (?i) and every other (?...) form.
-                else => return error.Unsupported,
+                else => return self.unsupportedAt(start),
             }
         }
-        if (self.group_depth >= self.lim.max_group_depth) return error.Unsupported;
+        if (self.group_depth >= self.lim.max_group_depth) return self.unsupportedAt(start);
         self.group_depth += 1;
         defer self.group_depth -= 1;
         const inner = try self.parseAlt();
@@ -906,6 +921,7 @@ const Parser = struct {
     }
 
     fn parseEscape(self: *Parser, in_class: bool) Error!Atomish {
+        const start = self.pos - 1; // the '\' the caller consumed
         const c = self.peekByte() orelse return error.Invalid; // trailing '\'
         switch (c) {
             'd' => {
@@ -955,7 +971,7 @@ const Parser = struct {
             '0' => {
                 self.pos += 1;
                 if (self.peekByte()) |n2| {
-                    if (n2 >= '0' and n2 <= '9') return error.Unsupported; // legacy octal
+                    if (n2 >= '0' and n2 <= '9') return self.unsupportedAt(start); // legacy octal
                 }
                 return .{ .cp = 0 };
             },
@@ -979,16 +995,16 @@ const Parser = struct {
                 // In a class: backspace. Outside: a word boundary, which needs
                 // adjacent-character context this model does not carry.
                 if (in_class) return .{ .cp = 0x08 };
-                return error.Unsupported;
+                return self.unsupportedAt(start);
             },
             'B' => {
                 if (in_class) return error.Invalid;
                 self.pos += 1;
-                return error.Unsupported; // non-word-boundary
+                return self.unsupportedAt(start); // non-word-boundary
             },
-            '1'...'9' => return error.Unsupported, // backreference
-            'k' => return error.Unsupported, // named backreference
-            'p', 'P' => return error.Unsupported, // Unicode property classes
+            '1'...'9' => return self.unsupportedAt(start), // backreference
+            'k' => return self.unsupportedAt(start), // named backreference
+            'p', 'P' => return self.unsupportedAt(start), // Unicode property classes
             else => {
                 // Strict subset: an unknown ASCII-letter escape is a syntax
                 // error; punctuation and non-ASCII are identity escapes.

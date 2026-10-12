@@ -12,6 +12,7 @@ quickstart. The documents below go deeper.
 | [semantics.md](semantics.md) | Normative definition of the `canonical-v1` profile (the default): the exact JSON byte language the engine generates. |
 | [semantics-spec-v1.md](semantics-spec-v1.md) | Normative definition of the `spec-v1` profile (broad JSON Schema coverage): value equality and serialization policy. |
 | [dialect-matrix.md](dialect-matrix.md) | How `spec-v1` treats every keyword in draft-04, draft-06, draft-07, 2019-09 and 2020-12, with the oracle test results. |
+| [integrations/vllm.md](integrations/vllm.md) | vLLM structured-output backend: pinned stack, patch, requests, semantics, limits, diagnostics. |
 
 ## Working on the library
 

@@ -14,6 +14,7 @@ const work_mod = @import("work.zig");
 const precompute = @import("precompute.zig");
 const probe = @import("probe.zig");
 const io_mod = @import("io.zig");
+const regex = @import("regex.zig");
 
 pub const ABI_VERSION: u32 = 1;
 pub const ERROR_MESSAGE_CAP = 256;
@@ -201,7 +202,7 @@ comptime {
 
 const Mode = enum { lazy, adaptive, precompute };
 const SessionStatus = enum { active, finished, aborted };
-const ConstraintKind = enum { json_schema, literal_set };
+const ConstraintKind = enum { json_schema, literal_set, regex };
 
 /// Counter of memory actually retained by a grammar.
 /// Every arena allocation of the grammar goes through this allocator, so
@@ -488,6 +489,61 @@ pub const Context = struct {
     mutex: io_mod.Mutex,
 };
 
+pub const SessionConfig = extern struct {
+    struct_size: u32,
+    max_rollback_tokens: u32,
+};
+
+pub const MAX_ROLLBACK_TOKENS: u32 = 65535;
+
+/// ADR-0014: one record per accept: the parser state it left (JSON
+/// grammars) or the regex state (BLG_CONSTRAINT_REGEX).
+const Record = struct {
+    snap: parser.Snapshot = .{},
+    rx: regex.State = .{},
+};
+
+/// ADR-0014: records of the states the last accepts left, oldest at
+/// `head`; `buf` grows on demand up to `cap` records.
+const History = struct {
+    cap: usize = 0,
+    buf: []Record = &.{},
+    head: usize = 0,
+    len: usize = 0,
+
+    fn at(h: *History, i: usize) *Record {
+        return &h.buf[(h.head + i) % h.buf.len];
+    }
+
+    /// Frees a slot for one more record: grows `buf` while below `cap`,
+    /// otherwise drops the oldest record.
+    fn makeRoom(h: *History, a: std.mem.Allocator, side: *parser.Side) error{OutOfMemory}!void {
+        if (h.len < h.buf.len) return;
+        if (h.buf.len == h.cap) {
+            parser.dropSnapshot(a, side, &h.at(0).snap);
+            h.head = (h.head + 1) % h.buf.len;
+            h.len -= 1;
+            return;
+        }
+        const nb = try a.alloc(Record, @min(h.cap, @max(4, h.buf.len * 2)));
+        for (0..h.len) |i| nb[i] = h.at(i).*;
+        a.free(h.buf);
+        h.buf = nb;
+        h.head = 0;
+    }
+
+    fn popNewest(h: *History) Record {
+        h.len -= 1;
+        return h.at(h.len).*;
+    }
+
+    fn deinit(h: *History, a: std.mem.Allocator, side: *parser.Side) void {
+        for (0..h.len) |i| parser.dropSnapshot(a, side, &h.at(i).snap);
+        a.free(h.buf);
+        h.* = .{};
+    }
+};
+
 pub const Session = struct {
     ctx: *Context,
     gh: *GrammarHandle,
@@ -501,6 +557,9 @@ pub const Session = struct {
     stats: stats.Stats,
     mask_buf: mask.MaskBuf,
     side: parser.Side,
+    history: History,
+    /// Session state of a BLG_CONSTRAINT_REGEX grammar (`states` unused).
+    rx: regex.State,
 };
 
 inline fn curState(s: anytype) @TypeOf(&s.states[0]) {
@@ -635,6 +694,7 @@ fn compileGrammar(ctx: *Context, kind: ConstraintKind, bytes: []const u8, regist
     var g: grammar.Grammar = switch (kind) {
         .json_schema => try schema.compileWith(ga, bytes, ctx.max_depth, diag, w, strip, profile, registry, .{ .record_pointers = record_pointers }),
         .literal_set => try literals.compileLiterals(ga, bytes, ctx.max_depth, diag, w, strip),
+        .regex => return compileRegexGrammar(ctx, bytes, diag, ga),
     };
     errdefer g.deinit();
     // Reject constraints the tokenizer cannot fully express instead of
@@ -654,6 +714,50 @@ fn compileGrammar(ctx: *Context, kind: ConstraintKind, bytes: []const u8, regist
     // refused before generation instead of risking dead-end tokens.
     if (!ctx.tok.byte_complete and !g.finite_literal) return error.UnprovenPartialVocab;
     return g;
+}
+
+/// BLG_CONSTRAINT_REGEX (ADR-0015): the program is exact only on a
+/// byte-complete vocabulary (every live DFA state completes byte by byte),
+/// so other vocabularies are refused instead of risking dead-end tokens.
+fn compileRegexGrammar(ctx: *Context, bytes: []const u8, diag: *schema.Diagnostic, ga: std.mem.Allocator) CompileError!grammar.Grammar {
+    if (!ctx.tok.byte_complete) {
+        schema.report(diag, .unsupported_feature, NO_OFFSET, "a regex constraint needs a byte-complete vocabulary", .{});
+        return error.UnsupportedTokenizer;
+    }
+    var arena = alloc.Arena.init(ga);
+    errdefer arena.deinit();
+    const prog = arena.allocator().create(regex.Program) catch return error.OutOfMemory;
+    var off: usize = 0;
+    prog.* = regex.compile(ga, bytes, ctx.tok.strip_lead_space, &off) catch |e| {
+        const at: u32 = @intCast(@min(off, NO_OFFSET - 1));
+        return switch (e) {
+            error.Invalid => blk: {
+                schema.report(diag, .invalid_schema, at, "invalid regex at byte {d}", .{off});
+                break :blk error.InvalidSchema;
+            },
+            error.Unsupported => blk: {
+                schema.report(diag, .unsupported_feature, at, "unsupported regex construct or size limit at byte {d}", .{off});
+                break :blk error.UnsupportedFeature;
+            },
+            error.Unsatisfiable => blk: {
+                schema.report(diag, .unsatisfiable_constraint, NO_OFFSET, "the regex matches no string", .{});
+                break :blk error.UnsatisfiableConstraint;
+            },
+            error.OutOfMemory => error.OutOfMemory,
+        };
+    };
+    const ident = grammar.identityOf(.regex, bytes);
+    return .{
+        .kind = .regex,
+        .nodes = &.{},
+        .literal_pool = &.{},
+        .root = 0,
+        .id = ident.lo,
+        .id_hi = ident.hi,
+        .finite_literal = false,
+        .regex = prog,
+        .arena = arena,
+    };
 }
 
 fn mapCompileError(e: CompileError, diag: *const schema.Diagnostic, err: ?*ZgError) Status {
@@ -712,6 +816,17 @@ fn fillMaskInner(s: *Session, mask_raw: [*]align(1) u32, mask_words: usize, err:
     // pure cache hit: charge(0) checks the flag only.
     w.charge(0) catch |e| return maskFail(err, e);
     var timer = startTimer();
+    if (g.regex) |rp| {
+        regex.fillMask(rp, &ctx.tok, s.rx, out, &w) catch |e| return maskFail(err, e);
+        const ns = elapsedNs(&timer);
+        s.stats.recordMaskCall(ns);
+        ctx.mutex.lock();
+        ctx.stats.recordMaskCall(ns);
+        ctx.stats.addWorkOps(w.ops);
+        ctx.mutex.unlock();
+        clearError(err);
+        return .ok;
+    }
     const st = curState(s);
     if (ctx.mode != .lazy) {
         // ADR-0007 D2+: a uniform string-content state with enough residual
@@ -1112,9 +1227,13 @@ pub export fn blg_compile(
     const flags: u32 = if (req.struct_size == @sizeOf(CompileRequest)) req.flags else 0;
     if (flags & ~(COMPILE_PROBE | COMPILE_PROBE_STRICT) != 0)
         return fail(err, .invalid_argument, "unknown compile request flags");
-    if (req.kind > 1)
+    if (req.kind > 2)
         return fail(err, .invalid_argument, "unknown constraint kind");
     const kind: ConstraintKind = @fromBackingInt(@intCast(req.kind));
+    if (kind == .regex and req.profile != null)
+        return fail(err, .invalid_argument, "profile must be NULL for a regex constraint");
+    if (kind == .regex and flags != 0)
+        return fail(err, .unsupported_feature, "the probe applies to JSON Schema constraints");
     var profile: schema.Profile = .canonical_v1;
     if (req.profile) |p| {
         const ps = std.mem.span(p);
@@ -1218,7 +1337,7 @@ pub export fn blg_compile(
     // warm-up has its OWN work account: it must not consume the
     // call's work_limit_ops; its bounds are precompute_max_states, the temp
     // memory budget and the cancel flag. Only cancel propagates.
-    if (ctx.mode == .precompute and ctx.cache.budget > 0) {
+    if (ctx.mode == .precompute and ctx.cache.budget > 0 and kind != .regex) {
         var warm_w = work_mod.Work.init(0, cancel);
         const n = precompute.run(
             ctx.accounting.allocator(.temp),
@@ -1407,6 +1526,35 @@ pub export fn blg_session_create(
     out_session: ?*?*Session,
     err: ?*ZgError,
 ) callconv(.c) Status {
+    return sessionCreate(ctx_opt, gh_opt, 0, out_session, err);
+}
+
+pub export fn blg_session_create_ex(
+    ctx_opt: ?*Context,
+    gh_opt: ?*GrammarHandle,
+    config: ?*const SessionConfig,
+    out_session: ?*?*Session,
+    err: ?*ZgError,
+) callconv(.c) Status {
+    if (badErrBuf(err)) return .invalid_argument;
+    var depth: u32 = 0;
+    if (config) |c| {
+        if (c.struct_size != @sizeOf(SessionConfig))
+            return fail(err, .invalid_argument, "blg_session_config.struct_size mismatch");
+        if (c.max_rollback_tokens > MAX_ROLLBACK_TOKENS)
+            return fail(err, .invalid_argument, "max_rollback_tokens above BLG_MAX_ROLLBACK_TOKENS");
+        depth = c.max_rollback_tokens;
+    }
+    return sessionCreate(ctx_opt, gh_opt, depth, out_session, err);
+}
+
+fn sessionCreate(
+    ctx_opt: ?*Context,
+    gh_opt: ?*GrammarHandle,
+    max_rollback_tokens: u32,
+    out_session: ?*?*Session,
+    err: ?*ZgError,
+) Status {
     if (badErrBuf(err)) return .invalid_argument;
     const ctx = ctx_opt orelse return fail(err, .invalid_argument, "null context");
     const gh = gh_opt orelse return fail(err, .invalid_argument, "null grammar");
@@ -1429,6 +1577,8 @@ pub export fn blg_session_create(
         .stats = .{},
         .mask_buf = undefined,
         .side = undefined,
+        .history = .{ .cap = @intCast(max_rollback_tokens) },
+        .rx = .{},
     };
     // The whole mask scratch goes to the context temp budget: at
     // MAX_THREADS_CAP 128 one inline parser.State is ~256 KiB and the
@@ -1441,11 +1591,16 @@ pub export fn blg_session_create(
     // builds reuse the slot; the first side allocation then reads garbage).
     s.side = parser.Side.init(s.account.allocator(.session));
     s.states[1].n = 0;
-    s.states[0] = parser.initState(&gh.g, ctx.max_threads, &s.side) catch {
-        s.side.deinit();
-        sa.destroy(s);
-        return fail(err, .resource_limit, "parser state init limit exceeded");
-    };
+    if (gh.g.regex) |rp| {
+        s.states[0].n = 0;
+        s.rx = regex.initial(rp);
+    } else {
+        s.states[0] = parser.initState(&gh.g, ctx.max_threads, &s.side) catch {
+            s.side.deinit();
+            sa.destroy(s);
+            return fail(err, .resource_limit, "parser state init limit exceeded");
+        };
+    }
     _ = gh.refcount.fetchAdd(1, .monotonic);
     ctx.mutex.lock();
     ctx.live_sessions += 1;
@@ -1461,6 +1616,7 @@ pub export fn blg_session_destroy(s_opt: ?*Session) callconv(.c) void {
     releaseGrammarRef(s.gh);
     parser.releaseState(&s.side, &s.states[0]);
     parser.releaseState(&s.side, &s.states[1]);
+    s.history.deinit(s.account.allocator(.session), &s.side);
     // mask_buf's completion-search scratch states may hold chunk references
     // into the side store (spec-v1 open objects/repeat taps): it must be
     // torn down while the store is still alive.
@@ -1555,11 +1711,14 @@ fn acceptTokenInner(s: *Session, token_id: u32, err: ?*ZgError) Status {
         return fail(err, .invalid_token, "token id out of range");
     if (tok.is_special[token_id])
         return fail(err, .invalid_token, "special token not allowed in document");
+    if (s.gh.g.regex) |rp| return acceptRegex(s, rp, token_id, err);
 
     var timer = startTimer();
     if (tok.is_eos[token_id]) {
         if (!parser.canEnd(&s.gh.g, curState(s)))
             return fail(err, .invalid_token, "EOS not allowed before document end");
+        if (s.history.cap != 0 and !recordHistory(s))
+            return fail(err, .resource_limit, "rollback history exceeds the session budget");
     } else {
         parser.releaseState(&s.side, scratchState(s));
         parser.feedBytes(&s.gh.g, &s.side, curState(s), tok.bytes[token_id], scratchState(s), &s.mask_buf.spare) catch |e| switch (e) {
@@ -1588,6 +1747,8 @@ fn acceptTokenInner(s: *Session, token_id: u32, err: ?*ZgError) Status {
             };
             if (!alive) return fail(err, .invalid_token, "token would lead to a dead end");
         }
+        if (s.history.cap != 0 and !recordHistory(s))
+            return fail(err, .resource_limit, "rollback history exceeds the session budget");
         s.cur ^= 1;
     }
     const ns = elapsedNs(&timer);
@@ -1599,12 +1760,157 @@ fn acceptTokenInner(s: *Session, token_id: u32, err: ?*ZgError) Status {
     return .ok;
 }
 
+fn acceptRegex(s: *Session, rp: *const regex.Program, token_id: u32, err: ?*ZgError) Status {
+    const ctx = s.ctx;
+    var timer = startTimer();
+    var next = s.rx;
+    if (ctx.tok.is_eos[token_id]) {
+        if (!regex.canEnd(rp, s.rx))
+            return fail(err, .invalid_token, "EOS not allowed before the text matches");
+    } else {
+        next = regex.feed(rp, s.rx, ctx.tok.bytes[token_id]) orelse
+            return fail(err, .invalid_token, "token rejected by the regex");
+    }
+    if (s.history.cap != 0 and !recordHistory(s))
+        return fail(err, .resource_limit, "rollback history exceeds the session budget");
+    s.rx = next;
+    const ns = elapsedNs(&timer);
+    s.stats.recordAccept(ns);
+    ctx.mutex.lock();
+    ctx.stats.recordAccept(ns);
+    ctx.mutex.unlock();
+    clearError(err);
+    return .ok;
+}
+
+fn sessionCanEnd(s: *const Session) bool {
+    if (s.gh.g.regex) |rp| return regex.canEnd(rp, s.rx);
+    return parser.canEnd(&s.gh.g, curState(s));
+}
+
+/// Records the current state before an accept commits (ADR-0014). False
+/// when the record does not fit the session budget; state and history
+/// are then unchanged.
+fn recordHistory(s: *Session) bool {
+    if (s.history.cap == 0) return true;
+    const a = s.account.allocator(.session);
+    var rec: Record = .{ .rx = s.rx };
+    if (s.gh.g.regex == null)
+        rec.snap = parser.snapshotState(a, &s.side, curState(s)) catch return false;
+    s.history.makeRoom(a, &s.side) catch {
+        parser.dropSnapshot(a, &s.side, &rec.snap);
+        return false;
+    };
+    s.history.at(s.history.len).* = rec;
+    s.history.len += 1;
+    return true;
+}
+
+/// Rolls the session back by the last `n_tokens` successful accepts
+/// (ADR-0014). Needs a session created with max_rollback_tokens >= the
+/// records held; n_tokens above the records held is INVALID_ARGUMENT with
+/// no change, 0 is a no-op. WRONG_STATE unless the session is active.
+pub export fn blg_session_rollback(s_opt: ?*Session, n_tokens: u32) callconv(.c) Status {
+    const s = s_opt orelse return .invalid_argument;
+    if (s.status != .active) return .wrong_state;
+    if (n_tokens > s.history.len) return .invalid_argument;
+    if (n_tokens == 0) return .ok;
+    const a = s.account.allocator(.session);
+    for (1..n_tokens) |_| {
+        var newer = s.history.popNewest();
+        parser.dropSnapshot(a, &s.side, &newer.snap);
+    }
+    var target = s.history.popNewest();
+    if (s.gh.g.regex != null) {
+        s.rx = target.rx;
+    } else {
+        parser.restoreSnapshot(a, &s.side, &target.snap, curState(s));
+    }
+    return .ok;
+}
+
+/// Length of the prefix of ids[0..n] that consecutive blg_accept_token
+/// calls would accept, without changing the session (ADR-0014). On
+/// RESOURCE_LIMIT or CANCELLED *out_accepted_prefix holds the tokens
+/// decided before the failing one.
+pub export fn blg_validate_tokens(
+    s_opt: ?*const Session,
+    ids: ?[*]const u32,
+    n: usize,
+    out_accepted_prefix: ?*usize,
+) callconv(.c) Status {
+    const sc = s_opt orelse return .invalid_argument;
+    const out = out_accepted_prefix orelse return .invalid_argument;
+    out.* = 0;
+    if (n != 0 and ids == null) return .invalid_argument;
+    // The logical state stays as it is; the scratch state, the side store
+    // and the completion memo are working storage of the session.
+    const s: *Session = @constCast(sc);
+    if (s.status != .active) return .wrong_state;
+    if (n == 0) return .ok;
+    const ctx = s.ctx;
+    const tok = &ctx.tok;
+    const g = &s.gh.g;
+    if (g.regex) |rp| {
+        var rx = s.rx;
+        for (ids.?[0..n], 0..) |id, i| {
+            if (id >= tok.vocab_size or tok.is_special[id]) return .ok;
+            if (tok.is_eos[id]) {
+                if (!regex.canEnd(rp, rx)) return .ok;
+            } else {
+                rx = regex.feed(rp, rx, tok.bytes[id]) orelse return .ok;
+            }
+            out.* = i + 1;
+        }
+        return .ok;
+    }
+    const ta = ctx.accounting.allocator(.temp);
+    const extra = ta.create(parser.State) catch return .resource_limit;
+    extra.n = 0;
+    const bufs = [2]*parser.State{ scratchState(s), extra };
+    defer {
+        parser.releaseState(&s.side, bufs[0]);
+        parser.releaseState(&s.side, extra);
+        ta.destroy(extra);
+    }
+    const check = (!tok.byte_complete and g.finite_literal) or g.needs_reachability;
+    var src: *const parser.State = curState(s);
+    var which: u1 = 0;
+    for (ids.?[0..n], 0..) |id, i| {
+        if (id >= tok.vocab_size or tok.is_special[id]) return .ok;
+        if (tok.is_eos[id]) {
+            if (!parser.canEnd(g, src)) return .ok;
+            out.* = i + 1;
+            continue;
+        }
+        const dst = bufs[which];
+        parser.releaseState(&s.side, dst);
+        parser.feedBytes(g, &s.side, src, tok.bytes[id], dst, &s.mask_buf.spare) catch |e| switch (e) {
+            error.Parse => return .ok,
+            error.ResourceLimit, error.OutOfMemory => return .resource_limit,
+        };
+        if (check) {
+            var w = work_mod.Work{};
+            s.mask_buf.completion.fill_budget = complete.fillBudget();
+            const alive = complete.stateAlive(g, tok, dst, &s.mask_buf.completion, &w, &s.side) catch |e| switch (e) {
+                error.ResourceLimit, error.OutOfMemory => return .resource_limit,
+                error.Cancelled => return .cancelled,
+            };
+            if (!alive) return .ok;
+        }
+        src = dst;
+        which ^= 1;
+        out.* = i + 1;
+    }
+    return .ok;
+}
+
 pub export fn blg_can_end(s_opt: ?*const Session, out_can_end: ?*bool) callconv(.c) Status {
     const s = s_opt orelse return .invalid_argument;
     const o = out_can_end orelse return .invalid_argument;
     switch (s.status) {
         .active => {
-            o.* = parser.canEnd(&s.gh.g, curState(s));
+            o.* = sessionCanEnd(s);
             return .ok;
         },
         .finished => {
@@ -1625,7 +1931,7 @@ pub export fn blg_finish(s_opt: ?*Session, err: ?*ZgError) callconv(.c) Status {
         },
         .aborted => return fail(err, .wrong_state, "session aborted"),
         .active => {
-            if (!parser.canEnd(&s.gh.g, curState(s)))
+            if (!sessionCanEnd(s))
                 return fail(err, .wrong_state, "document incomplete, can_end is false");
             s.status = .finished;
             clearError(err);
@@ -3508,4 +3814,215 @@ test "abi: max_workers does not change the mask (1 vs 8)" {
     // R = 1: "ab" (cp2) refused, "é" (cp1) allowed.
     try std.testing.expect(!maskBit(&w1, 256));
     try std.testing.expect(maskBit(&w1, 257));
+}
+
+// --- ADR-0014 rollback and draft validation ---
+
+fn compileByteSchema(ctx: ?*Context, schema_json: []const u8, profile: [*:0]const u8) !*GrammarHandle {
+    var err = makeTestError();
+    var req: CompileRequest = .{
+        .struct_size = @sizeOf(CompileRequest),
+        .kind = 0,
+        .profile = profile,
+        .data = schema_json.ptr,
+        .data_len = schema_json.len,
+    };
+    var gh: ?*GrammarHandle = null;
+    try std.testing.expectEqual(Status.ok, blg_compile(ctx, &req, &gh, &err));
+    return gh.?;
+}
+
+fn acceptBytes(s: ?*Session, bytes: []const u8) !void {
+    var err = makeTestError();
+    for (bytes) |b| try std.testing.expectEqual(Status.ok, blg_accept_token(s, b, &err));
+}
+
+test "abi: session rollback restores the mask and keeps max_rollback_tokens records" {
+    var entries: [261]TokenEntry = undefined;
+    var blob: [1024]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildByteCompleteDesc(&entries, &blob, &bufs);
+    var cfg = makeConfig(0);
+    var err = makeTestError();
+    var ctx: ?*Context = null;
+    try std.testing.expectEqual(Status.ok, blg_context_create(&cfg, &desc, &ctx, &err));
+    // An open object keeps its seen keys in side chunks: records must hold
+    // chunk references, not copies.
+    const gh = try compileByteSchema(ctx, "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"}},\"additionalProperties\":{\"type\":\"string\"}}", "spec-v1");
+
+    var bad: SessionConfig = .{ .struct_size = 4, .max_rollback_tokens = 1 };
+    var s: ?*Session = null;
+    try std.testing.expectEqual(Status.invalid_argument, blg_session_create_ex(ctx, gh, &bad, &s, &err));
+    bad = .{ .struct_size = @sizeOf(SessionConfig), .max_rollback_tokens = MAX_ROLLBACK_TOKENS + 1 };
+    try std.testing.expectEqual(Status.invalid_argument, blg_session_create_ex(ctx, gh, &bad, &s, &err));
+
+    const sc: SessionConfig = .{ .struct_size = @sizeOf(SessionConfig), .max_rollback_tokens = 3 };
+    try std.testing.expectEqual(Status.ok, blg_session_create_ex(ctx, gh, &sc, &s, &err));
+    var m0: [9]u32 = @splat(0);
+    var m2: [9]u32 = @splat(0);
+    var m: [9]u32 = @splat(0);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m0, 9, &err));
+
+    try acceptBytes(s, "{\"");
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m2, 9, &err));
+    try acceptBytes(s, "k");
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 3));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m0, &m);
+    try std.testing.expectEqual(Status.invalid_argument, blg_session_rollback(s, 1));
+
+    // Five accepts with depth 3: the two oldest records are dropped.
+    try acceptBytes(s, "{\"k\":");
+    try std.testing.expectEqual(Status.invalid_argument, blg_session_rollback(s, 4));
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 3));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m2, &m);
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 0));
+
+    // Draft validation leaves the session where it is.
+    const draft = [_]u32{ 'k', '"', ':', '"', 'v', '"', '}', 259 };
+    var prefix: usize = 99;
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &draft, draft.len, &prefix));
+    try std.testing.expectEqual(draft.len, prefix);
+    const broken = [_]u32{ 'k', '"', 'x' };
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &broken, broken.len, &prefix));
+    try std.testing.expectEqual(@as(usize, 2), prefix);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m2, &m);
+
+    try acceptBytes(s, "k\":\"v\"}");
+    try std.testing.expectEqual(Status.ok, blg_accept_token(s, 259, &err));
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 1));
+    var ce = false;
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(ce);
+    try std.testing.expectEqual(Status.ok, blg_finish(s, &err));
+    try std.testing.expectEqual(Status.wrong_state, blg_session_rollback(s, 1));
+    try std.testing.expectEqual(Status.wrong_state, blg_validate_tokens(s, &draft, draft.len, &prefix));
+    blg_session_destroy(s);
+
+    // Without a depth every rollback past zero is refused.
+    try std.testing.expectEqual(Status.ok, blg_session_create(ctx, gh, &s, &err));
+    try acceptBytes(s, "{");
+    try std.testing.expectEqual(Status.invalid_argument, blg_session_rollback(s, 1));
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 0));
+    blg_session_destroy(s);
+
+    var st = std.mem.zeroes(StatsC);
+    st.struct_size = @sizeOf(StatsC);
+    try std.testing.expectEqual(Status.ok, blg_get_stats(ctx, &st));
+    try std.testing.expectEqual(@as(u64, 0), st.mem_used[2]);
+    blg_grammar_release(gh);
+    try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
+}
+
+test "abi: a rollback record that does not fit the session budget fails the accept unchanged" {
+    var entries: [261]TokenEntry = undefined;
+    var blob: [1024]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildByteCompleteDesc(&entries, &blob, &bufs);
+    var cfg = makeConfig(0);
+    var err = makeTestError();
+    var ctx: ?*Context = null;
+    try std.testing.expectEqual(Status.ok, blg_context_create(&cfg, &desc, &ctx, &err));
+    const gh = try compileByteSchema(ctx, "{\"type\":\"array\",\"items\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}}}", "spec-v1");
+    const sc: SessionConfig = .{ .struct_size = @sizeOf(SessionConfig), .max_rollback_tokens = MAX_ROLLBACK_TOKENS };
+    var s: ?*Session = null;
+    try std.testing.expectEqual(Status.ok, blg_session_create_ex(ctx, gh, &sc, &s, &err));
+    var m0: [9]u32 = @splat(0);
+    var m: [9]u32 = @splat(0);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m0, 9, &err));
+    // Shrink the session budget to what is in use now.
+    s.?.account.limit = s.?.account.usedBytes();
+    try std.testing.expectEqual(Status.resource_limit, blg_accept_token(s, '[', &err));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m0, &m);
+    try std.testing.expectEqual(Status.invalid_argument, blg_session_rollback(s, 1));
+    blg_session_destroy(s);
+    blg_grammar_release(gh);
+    try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
+}
+
+// --- ADR-0015 standalone regex constraint ---
+
+fn compileRegexReq(ctx: ?*Context, src: []const u8, profile: ?[*:0]const u8, flags: u32, gh: *?*GrammarHandle, err: *ZgError) Status {
+    var req: CompileRequest = .{
+        .struct_size = @sizeOf(CompileRequest),
+        .kind = 2,
+        .profile = profile,
+        .data = src.ptr,
+        .data_len = src.len,
+        .flags = flags,
+    };
+    return blg_compile(ctx, &req, gh, err);
+}
+
+test "abi: regex constraint masks, refusals, rollback and validation" {
+    var entries: [261]TokenEntry = undefined;
+    var blob: [1024]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildByteCompleteDesc(&entries, &blob, &bufs);
+    var cfg = makeConfig(0);
+    var err = makeTestError();
+    var ctx: ?*Context = null;
+    try std.testing.expectEqual(Status.ok, blg_context_create(&cfg, &desc, &ctx, &err));
+
+    var gh: ?*GrammarHandle = null;
+    try std.testing.expectEqual(Status.invalid_argument, compileRegexReq(ctx, "a+", "spec-v1", 0, &gh, &err));
+    try std.testing.expectEqual(Status.unsupported_feature, compileRegexReq(ctx, "a+", null, COMPILE_PROBE, &gh, &err));
+    try std.testing.expectEqual(Status.unsupported_feature, compileRegexReq(ctx, "a(?<=a)b", null, 0, &gh, &err));
+    try std.testing.expectEqual(@as(u32, 1), err.schema_offset);
+    try std.testing.expectEqual(Status.invalid_schema, compileRegexReq(ctx, "a(", null, 0, &gh, &err));
+    try std.testing.expectEqual(Status.unsatisfiable_constraint, compileRegexReq(ctx, "[]", null, 0, &gh, &err));
+
+    // Ids: byte b -> b, 256 "ab", 257 "\xc3\xa9", 258 "a\xc3\xa9", 259 eos.
+    try std.testing.expectEqual(Status.ok, compileRegexReq(ctx, "a(?:b|\\u{e9})*", null, 0, &gh, &err));
+    const sc: SessionConfig = .{ .struct_size = @sizeOf(SessionConfig), .max_rollback_tokens = 4 };
+    var s: ?*Session = null;
+    try std.testing.expectEqual(Status.ok, blg_session_create_ex(ctx, gh, &sc, &s, &err));
+    var m0: [9]u32 = @splat(0);
+    var m: [9]u32 = @splat(0);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m0, 9, &err));
+    try std.testing.expect(maskBit(&m0, 'a'));
+    try std.testing.expect(maskBit(&m0, 256));
+    try std.testing.expect(maskBit(&m0, 258));
+    try std.testing.expect(!maskBit(&m0, 'b'));
+    try std.testing.expect(!maskBit(&m0, 259));
+    try std.testing.expectEqual(Status.ok, blg_accept_token(s, 258, &err));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expect(maskBit(&m, 'b'));
+    try std.testing.expect(maskBit(&m, 0xc3));
+    try std.testing.expect(!maskBit(&m, 0xc4));
+    try std.testing.expect(maskBit(&m, 259));
+    try std.testing.expectEqual(Status.invalid_token, blg_accept_token(s, 'a', &err));
+    try std.testing.expectEqual(Status.ok, blg_accept_token(s, 0xc3, &err));
+    var ce = true;
+    try std.testing.expectEqual(Status.ok, blg_can_end(s, &ce));
+    try std.testing.expect(!ce);
+    try std.testing.expectEqual(Status.ok, blg_session_rollback(s, 2));
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m0, &m);
+
+    const draft = [_]u32{ 'a', 'b', 257, 259 };
+    var prefix: usize = 0;
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &draft, draft.len, &prefix));
+    try std.testing.expectEqual(draft.len, prefix);
+    const bad = [_]u32{ 'a', 'c' };
+    try std.testing.expectEqual(Status.ok, blg_validate_tokens(s, &bad, bad.len, &prefix));
+    try std.testing.expectEqual(@as(usize, 1), prefix);
+    try std.testing.expectEqual(Status.ok, blg_fill_mask(s, &m, 9, &err));
+    try std.testing.expectEqualSlices(u32, &m0, &m);
+
+    try std.testing.expectEqual(Status.ok, blg_accept_token(s, 'a', &err));
+    try std.testing.expectEqual(Status.ok, blg_finish(s, &err));
+    blg_session_destroy(s);
+    blg_grammar_release(gh);
+    try std.testing.expectEqual(Status.ok, blg_context_destroy(ctx));
+
+    // A vocabulary without every single byte is refused at compile time.
+    const tc = try setupEnumCtx(0);
+    var gh2: ?*GrammarHandle = null;
+    try std.testing.expectEqual(Status.unsupported_tokenizer, compileRegexReq(tc.ctx, "a", null, 0, &gh2, &err));
+    blg_grammar_release(tc.gh);
+    try std.testing.expectEqual(Status.ok, blg_context_destroy(tc.ctx));
 }

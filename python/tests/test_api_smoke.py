@@ -59,10 +59,27 @@ def test_exception_hierarchy():
 
 
 def test_import_without_torch_numpy():
+    # A fresh interpreter: importing bolorgir (and running a session) must
+    # not pull torch or transformers into sys.modules. The check runs in a
+    # subprocess so that other tests in the session (which may import the
+    # HF adapter or the vLLM bridge) cannot falsify it.
+    import subprocess
     import sys
 
-    assert "torch" not in sys.modules
-    assert "transformers" not in sys.modules
+    code = (
+        "import sys, bolorgir\n"
+        "leaked = [m for m in ('torch', 'transformers') if m in sys.modules]\n"
+        "assert not leaked, leaked\n"
+        "tokens = [bytes([b]) for b in range(256)] + [b'<eos>']\n"
+        "bundle = bolorgir.TokenizerBundle.from_token_bytes(tokens, eos_ids=[256])\n"
+        "with bolorgir.Engine(tokenizer=bundle) as engine:\n"
+        "    with engine.compile({'type': 'integer'}) as c:\n"
+        "        with c.create_session() as s:\n"
+        "            assert s.allowed_token_ids()\n"
+        "leaked = [m for m in ('torch', 'transformers') if m in sys.modules]\n"
+        "assert not leaked, leaked\n"
+    )
+    subprocess.run([sys.executable, "-c", code], check=True)
 
 
 def test_engine_mode_validation():
