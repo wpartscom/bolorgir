@@ -1,8 +1,10 @@
 72799e56b6be7430d63b376bb03c2529c01f73d07a6392cfcc146ae68202db3e  ./acceptance.json
 a5c47fcea85a61871cb8c037b71f1acf384b3305525c63a18976dc384d73655c  ./acceptance.md
+17b99c636ea1c91b49500eecba973209daac5b1b0478dc181fd4530745f9278d  ./command.txt
+f1460e241c0367af5de171956f91babfaa28e831742c8d34e9d2226f565be233  ./console.txt
 0a9a03572698a2f5db1363934e88945ac7731d9ff7451e0aa277fc2a7aef1823  ./deviations.json
-431f675ed2a56a22dffd6ee583005dac55550baac2782d2456825b850da7875b  ./evidence/binding/7345490f/docs__RUN_HISTORY.md
 09dbb16de7c7c9054432612c5b69deb9a902df9b3570505f641bc0a6258cb8dc  ./evidence/binding/7345490f/docs__dialect-matrix.md
+431f675ed2a56a22dffd6ee583005dac55550baac2782d2456825b850da7875b  ./evidence/binding/7345490f/docs__RUN_HISTORY.md
 aaf502990d74abeeefe39403123128a388b46750748831018754c0ea70ffca0f  ./evidence/binding/7345490f/library.txt
 cedd1046c6b8b28320fa1c56034c2e0acfee3fd89f40060d0c476153f999de90  ./evidence/d4.json
 50ca82974c984f94bc844726467a87e0ade1f52e9fef4ec0cd9e4eef11c9fc21  ./evidence/oracle/7345490f-oracle-line-7345490f-7345490f-draft2019-09-spec.json.gz
@@ -15,13 +17,14 @@ b98ed07c0d6f6f455e772122430bfd47a07da33aab4e433c92a4e24754e74321  ./evidence/ora
 973acac89c74708143637445b9499094d953626931e9d6d41b4b6c185e5e81ea  ./evidence/oracle/dbc5eeb-oracle-line-dbc5eeb-8ff970d4-r2-draft4-spec.json.gz
 1c49bd3c44f05e11b859eba36fa654435f3e5f98bcfe3cab6ba722c31cacc848  ./evidence/oracle/dbc5eeb-oracle-line-dbc5eeb-8ff970d4-r2-draft6-spec.json.gz
 a152a750749bb0ed651ae211aafdbce3b8a33e2c071dde02c947f373285e5431  ./evidence/oracle/dbc5eeb-oracle-line-dbc5eeb-8ff970d4-r2-draft7-spec.json.gz
+b534b0d8aa7590dbc01460cbf0b6b60df64a60383ef1260949d2ad01667c2506  ./evidence/oracle_lines.json
 fd95ad87c9b81d9cc1bc545eeafdc4cde291a22abb32a76ba7274b03d9214825  ./evidence/oracle/t3-9a5baf3e-oracle-t3-9a5baf3e-draft2019-09-spec.json.gz
 5d6b938d007f66d2ccfbeccc4aa4a32ab51cb1df42e7adc087cd2eeca086235f  ./evidence/oracle/t3-9a5baf3e-oracle-t3-9a5baf3e-draft2020-12-spec.json.gz
 b3a1f0c1a1a89fe0f1402d5f46f7b9632d80ed1663e0777ab5ea3d4f8e2f7d70  ./evidence/oracle/t3-9a5baf3e-oracle-t3-9a5baf3e-draft4-spec.json.gz
 583f7b81f0658072616e2b96cd0104f0ffce9f38a6ad5c4239efcc3ab97a5929  ./evidence/oracle/t3-9a5baf3e-oracle-t3-9a5baf3e-draft6-spec.json.gz
 358f6b1f8893ad9714f447633ad426e8767c099e127fc5f16934f9cbf8b20073  ./evidence/oracle/t3-9a5baf3e-oracle-t3-9a5baf3e-draft7-spec.json.gz
-b534b0d8aa7590dbc01460cbf0b6b60df64a60383ef1260949d2ad01667c2506  ./evidence/oracle_lines.json
 48e386481a446e6a06e733a74e2e03edd6463d30212ce1302c76cc5332d4adbb  ./evidence/protocol_notes.json
+fef378cba925e9bcfeb073619d59399683af575f427b2921c738ef2757785b1e  ./README.md
 7b567c4d8ee5081cdeff2f310a1cfbf0640da487884f7e88ca3c45a6e05ce1ec  ./tools.json
 17e25bba4f1c6144f13d5ebaed2d47c6d8689ae5e9a933ec3ebbc851d848c1ba  ./triage.json
 74c9f7d05d4a87078a7153465f72f4ade7340f28674e1074708ba9719497c82f  ./triage.log

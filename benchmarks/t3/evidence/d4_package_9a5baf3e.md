@@ -114,9 +114,13 @@ record stores only the prefix *length*, byte equality is not claimed.
   | 7345490f | 6.89 / 6.84 / 6.97 s | 6.90 / 6.65 / 6.83 s |
   | dbc5eeb | 6.79 / 6.79 / 7.16 s | 6.98 / 6.90 / 7.35 s |
 
-  Every library completes the same pass-1 document well under the budget on a
-  quiet core (≥ 1.9 s headroom even for the slowest round of the candidate);
-  the terminal steps are 55 and 39 on every library.
+  The table times are the moments of the deciding budget check; the full
+  completion of the same pass-1 document is slower. Every library still stays
+  inside the 10 s budget: o64825 — candidate 8.849 s (1.15 s headroom),
+  6e62e0d1 8.374 s, native 8.196 s, dbc5eeb 8.066 s, 7345490f 7.813 s,
+  50cbd80e 7.717 s; o68314 — candidate 8.229 s (1.77 s headroom), dbc5eeb
+  7.952 s, 6e62e0d1 7.945 s, native 7.836 s, 50cbd80e 7.533 s, 7345490f
+  7.477 s. The terminal steps are 55 and 39 on every library.
 - what this supports and what it does not: equal steps of passes 2–20 and a
   1.003 median ratio between the candidates are **compatible with** the
   budget-edge explanation (the loaded run decides the check), and the two

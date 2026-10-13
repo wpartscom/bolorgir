@@ -1,0 +1,37 @@
+{
+ "about": "Explained protocol differences between a T3 candidate and the reference lines, read by benchmarks/t3/tools/acceptance_compare.py --protocol-notes. A difference of a run parameter (generatable mode, limits, corpus, tokenizers) between the candidate and a line passes the protocol check only when an entry here names the parameter, the line, the corpus and both values. Unlisted differences fail the check and are shown in the report.",
+ "entries": [
+  {
+   "parameter": "schema_budget_seconds",
+   "lines": ["dbc5eeb", "7345490f"],
+   "corpora": ["repo", "maskbench"],
+   "candidate": 0.0,
+   "line": 30.0,
+   "explanation": "The reference lines ran with a 30 s budget per schema and tokenizer and were then completed with --complete-from, which ran every pass the budget had skipped (docs/RUN_HISTORY.md, section 'Semantic coverage runs and triage, T2b/T2c'; the completed_from block of each report header). The candidate attempts all 20 passes without a schema budget (benchmarks/t3/run_t3_accept.sh). Both protocols attempt K = 20 passes per result."
+  },
+  {
+   "parameter": "completed_from",
+   "lines": ["dbc5eeb", "7345490f"],
+   "corpora": ["repo", "maskbench"],
+   "candidate": false,
+   "line": true,
+   "explanation": "Same completion as schema_budget_seconds: the lines are completed reports, the candidate is a single run without skipped passes."
+  },
+  {
+   "parameter": "crashes",
+   "lines": ["dbc5eeb"],
+   "corpora": ["repo"],
+   "candidate": 0,
+   "line": 2,
+   "explanation": "Two process crashes of the dbc5eeb baseline run (o10421.json and o10515.json, byte-level, exit status -6), recorded in the generatable.crashes list of its report header; the results keep the crash outcome on that line."
+  },
+  {
+   "parameter": "crashes",
+   "lines": ["dbc5eeb"],
+   "corpora": ["maskbench"],
+   "candidate": 0,
+   "line": 1,
+   "explanation": "One process crash of the dbc5eeb baseline run (Github_hard---o10421.json, byte-level, exit status -6 during pass 5), recorded in the generatable.crashes list of its MaskBench report header; the result keeps the crash outcome on that line."
+  }
+ ]
+}
