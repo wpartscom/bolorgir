@@ -1,0 +1,13 @@
+{
+ "about": "R11-A2 diagnostic build: the candidate 9a5baf3e's source with the host CPU target; not a candidate",
+ "source": "git archive 003f1b3e603afdc0dad01dd7c2bd5ac5de4b0c64",
+ "flags": "-Drelease=true -Dstrip=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=native",
+ "zig": "0.17.0",
+ "library_sha256": "26697a9bd7e25b5b3594d1940db7d50d333c3a4bc3622f626d2c1b79a7d4a719",
+ "vector_instructions": 4347,
+ "candidate": {
+  "library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+  "flags_cpu": "baseline",
+  "vector_instructions": 0
+ }
+}

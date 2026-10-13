@@ -1,0 +1,279 @@
+[
+ {
+  "snapshot": "maskbench",
+  "dataset": "Github_easy",
+  "file": "Github_easy---o1008.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-27",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Github_easy",
+  "file": "Github_easy---o13688.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-28",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Github_easy",
+  "file": "Github_easy---o48800.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-29",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Github_easy",
+  "file": "Github_easy---o64825.json",
+  "tokenizer": "gpt2",
+  "d4": null,
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 48
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Github_easy",
+  "file": "Github_easy---o68314.json",
+  "tokenizer": "gpt2",
+  "d4": null,
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 32
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Github_medium",
+  "file": "Github_medium---o32493.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-30",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Github_trivial",
+  "file": "Github_trivial---o84263.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-31",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Glaiveai2K",
+  "file": "Glaiveai2K---calculate_distance_51b4a417.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-32",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Glaiveai2K",
+  "file": "Glaiveai2K---generate_resume_d9ba16a3.json",
+  "tokenizer": "gpt2",
+  "d4": "D4-34",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 48
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Kubernetes",
+  "file": "Kubernetes---kb_1154_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-2",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Kubernetes",
+  "file": "Kubernetes---kb_231_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-35",
+  "against": [
+   "7345490f",
+   "dbc5eeb"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Kubernetes",
+  "file": "Kubernetes---kb_379_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-36",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Kubernetes",
+  "file": "Kubernetes---kb_576_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-37",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "maskbench",
+  "dataset": "Kubernetes",
+  "file": "Kubernetes---kb_613_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-38",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Kubernetes",
+  "file": "kb_1057_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-17",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Kubernetes",
+  "file": "kb_1088_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-14",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Kubernetes",
+  "file": "kb_1123_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-18",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Kubernetes",
+  "file": "kb_157_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-19",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Kubernetes",
+  "file": "kb_199_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-20",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Kubernetes",
+  "file": "kb_396_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-21",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Kubernetes",
+  "file": "kb_480_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-22",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Kubernetes",
+  "file": "kb_576_Normalized.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-23",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Github_medium",
+  "file": "o41283.json",
+  "tokenizer": "gpt2",
+  "d4": "D4-13",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 48
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Github_easy",
+  "file": "o44130.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-25",
+  "against": [
+   "7345490f",
+   "dbc5eeb"
+  ],
+  "c_star": 16
+ },
+ {
+  "snapshot": "repo",
+  "dataset": "Glaiveai2K",
+  "file": "search_product_67f0c7b7.json",
+  "tokenizer": "llama-3.1",
+  "d4": "D4-26",
+  "against": [
+   "7345490f"
+  ],
+  "c_star": 16
+ }
+]

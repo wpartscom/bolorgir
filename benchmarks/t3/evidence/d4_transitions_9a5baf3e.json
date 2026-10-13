@@ -1,0 +1,2271 @@
+{
+ "about": "Coverage matrix of the transition rows of the candidate 9a5baf3e (TZ section 3.1); the D4 entry column is the updated list",
+ "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+ "inputs": {
+  "acceptance": {
+   "path": "benchmarks/coverage/spec-v1/t3-9a5baf3e/review/acceptance.json",
+   "sha256": "a8600c44fd05c4e552263c2229fbcde03d1e3fd94c4a022df4f805545932efad"
+  },
+  "triage": {
+   "path": "benchmarks/coverage/spec-v1/t3-9a5baf3e/review/triage.json",
+   "sha256": "17e25bba4f1c6144f13d5ebaed2d47c6d8689ae5e9a933ec3ebbc851d848c1ba"
+  },
+  "d4": {
+   "path": "benchmarks/local/t3/de8/d4f/d4_proposals.9a5baf3e.json",
+   "sha256": "cedd1046c6b8b28320fa1c56034c2e0acfee3fd89f40060d0c476153f999de90"
+  },
+  "counters": {
+   "rows": 81,
+   "results": 67,
+   "by_outcome": {
+    "incomplete": {
+     "rows": 27,
+     "results": 25,
+     "documents": 0
+    },
+    "invalid_document": {
+     "rows": 42,
+     "results": 34,
+     "documents": 68
+    },
+    "engine_unavailable": {
+     "rows": 12,
+     "results": 8,
+     "documents": 0
+    }
+   },
+   "by_line": {
+    "7345490f": 40,
+    "dbc5eeb": 41
+   },
+   "undescribed": 0
+  }
+ },
+ "rows": [
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o44130.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-25",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o21330.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o21780.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 17, completed_valid 3",
+   "candidate_passes": "completed_valid 12, incomplete:time_limit 5, invalid_document 2, incomplete:step_limit 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o31351.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 12, incomplete:time_limit 4, completed_valid 3, engine_unavailable 1",
+   "entry": "D4-10",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o41197.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 17, invalid_document 2, completed_valid 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o41290.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 18, completed_valid 1, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o41303.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 14, invalid_document 4, completed_valid 2",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o47116.json",
+   "tokenizer": "gpt2",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 18, incomplete:time_limit 2",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o61027.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 18, completed_valid 2",
+   "candidate_passes": "completed_valid 11, incomplete:time_limit 5, incomplete:step_limit 3, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o41800.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 13, incomplete:time_limit 7",
+   "candidate_passes": "completed_valid 13, incomplete:step_limit 6, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o5327.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 12, incomplete:time_limit 8",
+   "candidate_passes": "completed_valid 16, incomplete:step_limit 3, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o61004.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o69733.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 16, invalid_document 3, completed_valid 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o71266.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 18, invalid_document 2",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o74556.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 14, invalid_document 5, completed_valid 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o14485.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 14, invalid_document 6",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "o66073.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 18, invalid_document 2",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "bigquery-table.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "completed_valid 15, incomplete:time_limit 5",
+   "candidate_passes": "completed_valid 16, incomplete:time_limit 3, engine_unavailable 1",
+   "entry": "D4-11",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "bozr.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "cryproj.dev.schema.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "incomplete:step_limit 12, incomplete:time_limit 7, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 18, completed_valid 1, engine_unavailable 1",
+   "entry": "D4-12",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "repo",
+   "file": "tye-schema.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "completed_valid 10, engine_unavailable 5, incomplete:time_limit 4, incomplete:step_limit 1",
+   "entry": "D4-3",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_hard---o21330.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 18, invalid_document 2",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_hard---o21780.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 17, completed_valid 3",
+   "candidate_passes": "completed_valid 10, incomplete:time_limit 6, invalid_document 3, incomplete:step_limit 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_hard---o32934.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "completed_valid 19, incomplete:time_limit 1",
+   "candidate_passes": "completed_valid 17, engine_unavailable 2, incomplete:step_limit 1",
+   "entry": "D4-4",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_hard---o3905.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 18, invalid_document 2",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_hard---o41323.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 18, completed_valid 1, incomplete:step_limit 1",
+   "candidate_passes": "incomplete:step_limit 17, invalid_document 2, completed_valid 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_hard---o54559.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_hard---o61027.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 17, completed_valid 3",
+   "candidate_passes": "incomplete:time_limit 8, incomplete:step_limit 6, completed_valid 4, invalid_document 2",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_hard---o68416.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 10, incomplete:time_limit 10",
+   "candidate_passes": "completed_valid 10, incomplete:step_limit 9, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_medium---o25781.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 18, incomplete:time_limit 2",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_medium---o55596.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 19, incomplete:time_limit 1",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_medium---o61004.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_medium---o62963.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 17, incomplete:step_limit 2, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 14, completed_valid 3, invalid_document 3",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_medium---o71266.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_trivial---o14485.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 13, invalid_document 7",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Github_trivial---o66073.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---bigquery-table.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "completed_valid 12, incomplete:time_limit 8",
+   "candidate_passes": "completed_valid 13, incomplete:time_limit 5, engine_unavailable 2",
+   "entry": "D4-11m",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---cryproj.53.schema.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "incomplete:step_limit 15, incomplete:time_limit 4, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 18, completed_valid 1, engine_unavailable 1",
+   "entry": "D4-5",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---tye-schema.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "incomplete:time_limit 17, completed_valid 3",
+   "candidate_passes": "completed_valid 8, engine_unavailable 6, incomplete:time_limit 5, incomplete:step_limit 1",
+   "entry": "D4-3m",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---vercel.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "completed_valid 20",
+   "candidate_passes": "completed_valid 19, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "dbc5eeb",
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_231_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-35",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "o44130.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-25",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "o21780.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 16, completed_valid 4",
+   "candidate_passes": "completed_valid 12, incomplete:time_limit 5, invalid_document 2, incomplete:step_limit 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "o31351.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 12, incomplete:time_limit 4, completed_valid 3, engine_unavailable 1",
+   "entry": "D4-10",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "o41197.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 14, incomplete:step_limit 5, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 17, invalid_document 2, completed_valid 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "o41278.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 14, incomplete:step_limit 5, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 18, completed_valid 1, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "o41290.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 14, incomplete:step_limit 5, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 18, completed_valid 1, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "o48422.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 16, completed_valid 3, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "o61027.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 18, completed_valid 2",
+   "candidate_passes": "completed_valid 11, incomplete:time_limit 5, incomplete:step_limit 3, invalid_document 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "o41283.json",
+   "tokenizer": "gpt2",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-13",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "search_product_67f0c7b7.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-26",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "bigquery-table.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "completed_valid 15, incomplete:time_limit 5",
+   "candidate_passes": "completed_valid 16, incomplete:time_limit 3, engine_unavailable 1",
+   "entry": "D4-11",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "cryproj.dev.schema.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "incomplete:time_limit 13, incomplete:step_limit 6, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 18, completed_valid 1, engine_unavailable 1",
+   "entry": "D4-12",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "kb_1057_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-17",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "kb_1088_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-14",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "kb_1123_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-18",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "kb_157_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-19",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "kb_199_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-20",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "kb_396_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-21",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "kb_480_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-22",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "repo",
+   "file": "kb_576_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-23",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_easy---o1008.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-27",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_easy---o13688.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-28",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_easy---o48800.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-29",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_easy---o64825.json",
+   "tokenizer": "gpt2",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-39",
+   "on_6e62e0d1": "generatable",
+   "transition_on_6e62e0d1": false
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_easy---o68314.json",
+   "tokenizer": "gpt2",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-40",
+   "on_6e62e0d1": "generatable",
+   "transition_on_6e62e0d1": false
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_hard---o21780.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 16, completed_valid 4",
+   "candidate_passes": "completed_valid 10, incomplete:time_limit 6, invalid_document 3, incomplete:step_limit 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_hard---o41323.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 13, incomplete:step_limit 6, completed_valid 1",
+   "candidate_passes": "incomplete:step_limit 17, invalid_document 2, completed_valid 1",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_hard---o61027.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 18, completed_valid 2",
+   "candidate_passes": "incomplete:time_limit 8, incomplete:step_limit 6, completed_valid 4, invalid_document 2",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_medium---o32493.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-30",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_medium---o62963.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 13, incomplete:step_limit 5, completed_valid 2",
+   "candidate_passes": "incomplete:step_limit 14, completed_valid 3, invalid_document 3",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_trivial---o84263.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-31",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Github_ultra---o18644.json",
+   "tokenizer": "gpt2",
+   "outcome": "invalid_document",
+   "stage": "validate",
+   "code": "REJECTED",
+   "line_passes": "incomplete:time_limit 15, completed_valid 5",
+   "candidate_passes": "incomplete:time_limit 10, completed_valid 7, invalid_document 3",
+   "entry": "D4-6",
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Glaiveai2K---calculate_distance_51b4a417.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-32",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Glaiveai2K---generate_resume_d9ba16a3.json",
+   "tokenizer": "gpt2",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-34",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---bigquery-table.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "stage": "fill_mask",
+   "code": "BLG_ERR_RESOURCE_LIMIT",
+   "line_passes": "completed_valid 12, incomplete:time_limit 8",
+   "candidate_passes": "completed_valid 13, incomplete:time_limit 5, engine_unavailable 2",
+   "entry": "D4-11m",
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_1154_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-2",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_231_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-35",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_379_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-36",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_576_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-37",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "line": "7345490f",
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_613_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "stage": "fill_mask",
+   "code": "TIME_LIMIT",
+   "line_passes": "incomplete:time_limit 19, completed_valid 1",
+   "candidate_passes": "incomplete:time_limit 20",
+   "entry": "D4-38",
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  }
+ ],
+ "results": [
+  {
+   "corpus": "maskbench",
+   "file": "Github_hard---o32934.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "entry": "D4-4",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---bigquery-table.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "entry": "D4-11m",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---cryproj.53.schema.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "entry": "D4-5",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---tye-schema.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "entry": "D4-3m",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "bigquery-table.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "entry": "D4-11",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "cryproj.dev.schema.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "entry": "D4-12",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "o31351.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "entry": "D4-10",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "tye-schema.json",
+   "tokenizer": "byte",
+   "outcome": "engine_unavailable",
+   "entry": "D4-3",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "engine_unavailable",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_easy---o64825.json",
+   "tokenizer": "gpt2",
+   "outcome": "incomplete",
+   "entry": "D4-39",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "generatable",
+   "transition_on_6e62e0d1": false
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_easy---o68314.json",
+   "tokenizer": "gpt2",
+   "outcome": "incomplete",
+   "entry": "D4-40",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "generatable",
+   "transition_on_6e62e0d1": false
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Glaiveai2K---generate_resume_d9ba16a3.json",
+   "tokenizer": "gpt2",
+   "outcome": "incomplete",
+   "entry": "D4-34",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_easy---o1008.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-27",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_easy---o13688.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-28",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_easy---o48800.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-29",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_medium---o32493.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-30",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_trivial---o84263.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-31",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Glaiveai2K---calculate_distance_51b4a417.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-32",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_1154_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-2",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_231_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-35",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_379_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-36",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_576_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-37",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Kubernetes---kb_613_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-38",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "o41283.json",
+   "tokenizer": "gpt2",
+   "outcome": "incomplete",
+   "entry": "D4-13",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "kb_1057_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-17",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "kb_1088_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-14",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "kb_1123_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-18",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "kb_157_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-19",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "kb_199_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-20",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "kb_396_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-21",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "kb_480_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-22",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "kb_576_Normalized.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-23",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "o44130.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-25",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "repo",
+   "file": "search_product_67f0c7b7.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "incomplete",
+   "entry": "D4-26",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "incomplete",
+   "transition_on_6e62e0d1": true
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_hard---o21330.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 2,
+    "documents_total": 2,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_hard---o21780.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 3,
+    "documents_total": 3,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_hard---o3905.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 2,
+    "documents_total": 2,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_hard---o41323.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 2,
+    "documents_total": 2,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_hard---o54559.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_hard---o61027.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 2,
+    "documents_total": 2,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_hard---o68416.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_medium---o25781.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_medium---o55596.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_medium---o61004.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_medium---o62963.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 3,
+    "documents_total": 3,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_medium---o71266.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_trivial---o14485.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 7,
+    "documents_total": 7,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_trivial---o66073.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "JsonSchemaStore---vercel.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "maskbench",
+   "file": "Github_ultra---o18644.json",
+   "tokenizer": "gpt2",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 3,
+    "documents_total": 3,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "bozr.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o14485.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 6,
+    "documents_total": 6,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o21330.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o21780.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 2,
+    "documents_total": 2,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o41197.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 2,
+    "documents_total": 2,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o41278.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o41290.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o41303.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 4,
+    "documents_total": 4,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o41800.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o5327.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o61004.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o61027.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f",
+    "dbc5eeb"
+   ],
+   "rows": 2,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o66073.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 2,
+    "documents_total": 2,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o69733.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 3,
+    "documents_total": 3,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o71266.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 2,
+    "documents_total": 2,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o74556.json",
+   "tokenizer": "byte",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 5,
+    "documents_total": 5,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o47116.json",
+   "tokenizer": "gpt2",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "dbc5eeb"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  },
+  {
+   "corpus": "repo",
+   "file": "o48422.json",
+   "tokenizer": "llama-3.1",
+   "outcome": "invalid_document",
+   "entry": "D4-6",
+   "lines": [
+    "7345490f"
+   ],
+   "rows": 1,
+   "on_6e62e0d1": "invalid_document",
+   "transition_on_6e62e0d1": true,
+   "triage": {
+    "class": "D",
+    "documents_checked": 1,
+    "documents_total": 1,
+    "documents_missing": 0
+   }
+  }
+ ]
+}

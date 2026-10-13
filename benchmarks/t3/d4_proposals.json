@@ -1,25 +1,31 @@
 {
- "about": "Owner decision list D4 of the audit-fix spec (T3 item 2): every result that leaves `generatable` against dbc5eeb or 7345490f needs an owner decision. Proposals from benchmarks/t3/evidence.md; owner_decision stays null until the owner decides, and the executor never fills it. benchmarks/t3/tools/acceptance_compare.py separates a described transition (an entry matches) from an approved one (decision_format below) and lists every pending row with its exact key in the `d4_pending_rows` of its JSON report.",
- "candidate_library_sha256": "6e62e0d1526c6e5369457d2f7205675b7cb163e3374b96d8cb5115c28873e914",
+ "about": "Owner decision list D4 of the audit-fix spec (T3 item 2): every result that leaves `generatable` against dbc5eeb or 7345490f needs an owner decision. Proposals from benchmarks/t3/evidence.md; owner_decision stays null until the owner decides, and the executor never fills it. benchmarks/t3/tools/acceptance_compare.py separates a described transition (an entry matches) from an approved one (decision_format below) and lists every pending row with its exact key in the `d4_pending_rows` of its JSON report. This revision is bound to the candidate 9a5baf3e (the T3 acceptance run of 2026-10-13): every entry was re-checked against that candidate's reports, its triage and the fresh replays of 2026-10-13 (R11-A2, R11-C2/B2), not carried over from the 6e62e0d1 revision; the earlier text of substantially changed entries is kept under `previous`",
+ "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
  "decision_format": {
   "owner_decision": "null (pending) or {\"decision\": \"accept\" | \"reject\", \"candidate_library_sha256\": <64 hex of the accepted candidate>, \"rows\": [{\"corpus\", \"file\", \"tokenizer\", \"outcome\"}], \"by\": <name>, \"date\": <YYYY-MM-DD>, \"note\": <text>}",
   "approval": "a transition row is approved only when its entry has decision accept, the decision names the candidate's library sha256 (the same hash in both corpora), and `rows` lists the row with the exact corpus, file, tokenizer and candidate outcome; a wildcard is never a row. An entry with requires_triage_class needs, in addition, that row's class in the T2c triage of the same candidate (benchmarks/triage_semantic.py --out-json) with every invalid document present and checked.",
   "candidate": "candidate_library_sha256 above names the candidate the proposals were written for; a comparison with another candidate reports every decision as not applicable"
  },
  "derived_from": {
-  "list_sha256": "233d5fd492816c9cab0c64de9124004347d9f8e4fa0894cf0052a7620f014414",
-  "candidate_library_sha256": "50cbd80e874eac5d2b850637b6c34867315d5b3c00e8a751f6ec39623de91440",
-  "note": "every entry re-checked on 6e62e0d1; the earlier text of a changed entry is kept under `previous`",
-  "revises_sha256": "9557b4bd109bda48dca19c688715d5a786b219fbbd93fb87ff6990675c18a064",
-  "revision": "the first list for 6e62e0d1 (used by review-2) reworded after the reviewer's notes: the pass-1 document fixes the greedy path, the full masks were not compared; D4-15 a group of its own; kb_1154 keeps the historical completion as not established; no statement about the released product; the budget check that did not fire in place of 'within 10 s'; the fields R11-C compared. Rows and candidate_rows unchanged"
+  "revision": "the D4 revision of the candidate 9a5baf3e (T3 2026-10-13): every entry re-checked on 9a5baf3e; substantially changed entries keep the preceding text under `previous`; new entries D4-39 and D4-40 for the two GPT-2 results that transitioned without one",
+  "revises_sha256": "8016b0f9f685470b8096fd54ad0b37e04b72dac85e4a81ced48ffaa1e6a9bdee",
+  "revises": "the revision of the list for 6e62e0d1 (used by its third review and review-3 verdict), committed as benchmarks/t3/d4_proposals.json at 83ca2e2",
+  "history": {
+   "list_sha256": "233d5fd492816c9cab0c64de9124004347d9f8e4fa0894cf0052a7620f014414",
+   "candidate_library_sha256": "50cbd80e874eac5d2b850637b6c34867315d5b3c00e8a751f6ec39623de91440",
+   "note": "every entry re-checked on 6e62e0d1; the earlier text of a changed entry is kept under `previous`",
+   "revises_sha256": "9557b4bd109bda48dca19c688715d5a786b219fbbd93fb87ff6990675c18a064",
+   "revision": "the first list for 6e62e0d1 (used by review-2) reworded after the reviewer's notes: the pass-1 document fixes the greedy path, the full masks were not compared; D4-15 a group of its own; kb_1154 keeps the historical completion as not established; no statement about the released product; the budget check that did not fire in place of 'within 10 s'; the fields R11-C compared. Rows and candidate_rows unchanged"
+  },
+  "measurements": "R11-A2 and R11-C2/B2 of 2026-10-13 on the candidate 9a5baf3e: benchmarks/t3/evidence/r11a2_pass1_summary.md, r11bc2_summary.md; the runs: benchmarks/local/t3/de8/d4f/"
  },
  "groups": {
-  "pass1_budget_edge": "25 incomplete results (D4-13, D4-14, D4-16 to D4-38) whose only line pass that completed is pass 1, the greedy policy pass, which checks its 10 s budget at steps 16, 32, 48, ...; the candidate recorded the time limit at the first check it failed. R11-A replays pass 1 on five libraries with the run's harness, tokenizers and schemas on one quiet P-core (3 rounds, rotated order; the rule fixed before the run in R11_PLAN.md): the pass-1 document, and with it the greedy path, is the same on every library in 27 of 27 results; the full masks were not compared. In this group the candidate is 10.0 % slower than its own source built for the host CPU (median, range 1.055-1.126, every result above the noise 2.9 %), the code since 50cbd80e is not (native/50cbd80e median 0.993). The release recipe builds with -Dcpu=baseline (the release workflow did so already at dbc5eeb: .github/workflows/release.yml); the lines' libraries were host builds. R11-A measures the target's effect on the current revision only: a released wheel or an earlier revision built the same way was not measured. On a quiet core the periodic budget check fires on no library in 26 of 27 R11-A results (kb_1154: on every library); that is the budget rule, not a pass under 10 s: 129 of the 390 replays without a fired check took longer than 10 s in all (16 results, up to 13.8 s). In the R6 run (8 jobs) 50cbd80e, a host build with the same harness, completed pass 1 in 11 repository results of this group where the candidate did not.",
-  "pass1_series_slowdown": "D4-15, repository calculate_area (byte): pass 1 at the same budget edge, but the CPU target has no effect beyond the noise; the candidate is as fast as 50cbd80e and both are slower than 7345490f on this schema. Decided separately.",
-  "expensive_pass1": "kb_1154: pass 1 costs about 1 s per fill on every library and exceeds 10 s at step 16 on every library with the run's harness (R2b, R11-A); the cause of 7345490f's completion of this pass 1 in its own run is not established.",
-  "engine_unavailable": "byte-level RESOURCE_LIMIT passes: R11-C replays every one on the candidate with the recorded seed and 10 s; outcome, stage, code, step, prefix length and seed equal the R6 record of every pass (the record holds no prefix bytes). Prefix bytes were compared between replays only: R11-B (the lines on MaskBench bigquery-table) against R11-C. The undecided reasons are listed per entry.",
-  "invalid_document": "D4-6, the T2c class D rule.",
-  "no_transition": "D4-1, D4-2r, D4-7, D4-8, D4-9: kept for the record."
+  "pass1_budget_edge": "24 incomplete results (D4-13, D4-14, D4-17 to D4-23, D4-25 to D4-32, D4-34 to D4-38, D4-39, D4-40) whose only line pass that completed is pass 1, the greedy policy pass, which checks its 10 s budget at steps 16, 32, 48, ...; the candidate records the time limit at the first check it failed. R11-A2 re-ran pass 1 of all 25 incomplete results on six libraries - candidate 9a5baf3e (release recipe -Dcpu=baseline), the same source built for the host CPU, the previous candidate 6e62e0d1, 50cbd80e, 7345490f, dbc5eeb - with the run's harness, tokenizers and schemas on one quiet P-core (3 rounds, rotated order; the rule fixed before the run in benchmarks/local/t3/de8/d4f/README_PLAN.md): the pass-1 document, and with it the greedy path, is the same on every library in 25 of 25 results (equal documents; token paths and masks were not recorded and are not compared). The candidate needs 7.1 % more time than its own source built for the host CPU (median over results at the deciding check, range 1.046-1.100; pre-registered heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval; 25/25 results above 1), the code against 50cbd80e is 1.027. Leading hypothesis by the rule: the release CPU target (-Dcpu=baseline) as the leading hypothesis for the target ratio. Limits: Pre-registered reading rule, kept as a diagnostic heuristic: target = M(cand)/M(native) and code = M(native)/M(50cbd80e) medians against the threshold max(2 %, noise). The threshold is not a confidence interval; a median inside it does not prove equivalence, one outside it does not prove a cause, and the rule cannot attribute the residual to run conditions - it only says the measured ratio difference is not separable from the round-to-round noise by this design. Same document = equal documents; token paths and masks were not recorded. The release recipe builds with -Dcpu=baseline (the release workflow did so already at dbc5eeb: .github/workflows/release.yml); the lines' libraries were host builds. In the recorded runs the time-limited passes 2-20 of 6e62e0d1 and 9a5baf3e reach the same steps (median ratio ~1; compatible with, not proof of, equal speed), and the pass-1 flips between the two runs go both ways: four rows completed on 9a5baf3e that recorded a limit on 6e62e0d1 (D4-15, D4-16, D4-24, D4-33, now retired), and the two GPT-2 rows recorded a limit that completed on 6e62e0d1 and in the line (D4-39, D4-40). Hypothesis (stated as such): the differing recorded pass-1 outcomes follow the run's conditions at the 10 s check; the cause of the flips is not established beyond this. Amendment A1 (README_PLAN.md): the editor session keeps the machine's 1-minute load average at 1.7-3.0; R11-A's gate of 1.5 could not pass, the round ran with R11_LOAD_MAX=2.5, and every replay process recorded its loadavg_start in its JSONL head",
+  "pass1_series_slowdown": "retired on 9a5baf3e: the result (D4-15) completes pass 1 and no longer transitions; the recorded facts of the 6e62e0d1 round are kept in the entry's previous text and under R11 (benchmarks/t3/evidence.md)",
+  "expensive_pass1": "kb_1154: pass 1 costs about 1 s per fill on every library and exceeds 10 s at step 16 on every library with the run's harness (R11-A2, CPU 2, median of 3 rounds: candidate 13.43 s, the same source built for the host CPU 12.55 s, 6e62e0d1 (the previous candidate) 14.88 s, 50cbd80e 13.95 s, 7345490f 17.52 s, dbc5eeb 17.36 s; the smallest exceeds the budget; pass 1 exceeds the 10 s budget on 18 of 18 library-rounds (cand round 1, cand round 2, cand round 3, native round 1, native round 2, native round 3, prev round 1, prev round 2, prev round 3, 50cbd80e round 1, 50cbd80e round 2, 50cbd80e round 3, 7345490f round 1, 7345490f round 2, 7345490f round 3, dbc5eeb round 1, dbc5eeb round 2, dbc5eeb round 3)); the pass-1 document is the same on all six libraries. The cause of 7345490f's completion of this pass 1 in its own run is not established (R2b, R11-A; no library reproduces it with the run's harness)",
+  "engine_unavailable": "byte-level RESOURCE_LIMIT passes: R11-C2 re-ran every recorded pass on the candidate 9a5baf3e with the recorded seed and 10 s: outcome, stage, code, step, prefix length and seed equal the T3 record of every pass (as recorded); the same passes on 50cbd80e (host CPU, before stages C and D) and the R11-B2 300 s runs of the lines on MaskBench bigquery-table are in benchmarks/t3/evidence/r11bc2_summary.md. If the prefix bytes were compared between replays only: the lines' state on MaskBench bigquery-table (R11-B2) against the candidate's (R11-C2). The undecided reasons are listed per entry",
+  "invalid_document": "D4-6, the T2c class D rule of the candidate 9a5baf3e.",
+  "no_transition": "D4-1, D4-2r, D4-7, D4-8, D4-9: kept for the record. D4-15, D4-16, D4-24, D4-33: no transition on 9a5baf3e (the candidate completed pass 1); the rows transitioned on 6e62e0d1 and are kept for the record"
  },
  "entries": [
   {
@@ -29,14 +35,13 @@
    "tokenizers": [
     "llama-3.1"
    ],
-   "summary": "no transition on 6e62e0d1: generatable on Llama (completed_valid 17, time_limit 3)",
+   "summary": "no transition on 9a5baf3e (as on 6e62e0d1): generatable on Llama (completed_valid 17, time_limit 3)",
    "cause": "open-object certificate deferred every node with dependencies to the bounded search",
    "proposal": "no decision needed; kept for the record",
    "evidence": "benchmarks/t3/evidence.md, section R2a; benchmarks/t3/evidence/r2_o32437_kb1154_50cbd80e.jsonl",
    "owner_decision": null,
    "previous": {
-    "summary": "RESOURCE_LIMIT in 5 of 20 passes on d4e70303, fixed by the dependentRequired certificate (R2a)",
-    "proposal": "no decision needed when the acceptance run shows it generatable; a remaining transition reopens R2a"
+    "summary": "no transition on 6e62e0d1: generatable on Llama (completed_valid 17, time_limit 3)"
    }
   },
   {
@@ -48,9 +53,9 @@
    ],
    "group": "expensive_pass1",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@31, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed; GPT-2 is generatable on the candidate (completed_valid 2), no transition",
-   "cause": "an expensive pass 1 on every library: pass 1 ends at step 31 (the line's cv@31); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 14.84 s, the same source built for the host CPU 13.63 s, 50cbd80e 13.46 s, 7345490f 17.50 s, dbc5eeb 17.26 s; all of them exceed 10 s at step 16 (as R2b: 7345490f 17.5 s), the candidate in less time than both lines; the pass-1 document is the same on all five libraries. 7345490f completed pass 1 (cv@31) in its run of 2026-10-03 with that day's harness (dbc5eeb+dirty, no source hash recorded); no library reproduces that with the run's harness, and the cause of that historical completion is not established",
+   "cause": "an expensive pass 1 on every library: pass 1 ends at step 31 (the line's cv@31); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 13.43 s, the same source built for the host CPU 12.55 s, 6e62e0d1 (the previous candidate) 14.88 s, 50cbd80e 13.95 s, 7345490f 17.52 s, dbc5eeb 17.36 s; every library exceeds 10 s at step 16, the candidate in less time than both lines. The pass-1 document, and with it the greedy path, is the same on all six libraries (full masks were not compared). 7345490f completed pass 1 (cv@31) in its run of 2026-10-03 with that day's harness (dbc5eeb+dirty, no source hash recorded); no library reproduces that with the run's harness (R2b: 7345490f 17.5 s in R11-A; R11-A2: pass 1 exceeds the 10 s budget on 18 of 18 library-rounds (cand round 1, cand round 2, cand round 3, native round 1, native round 2, native round 3, prev round 1, prev round 2, prev round 3, 50cbd80e round 1, 50cbd80e round 2, 50cbd80e round 3, 7345490f round 1, 7345490f round 2, 7345490f round 3, dbc5eeb round 1, dbc5eeb round 2, dbc5eeb round 3)), and the cause of the historical completion is not established",
    "proposal": "accept as a documented availability residual of an expensive path, as before (D4-2); the cause of the line's historical completion of pass 1 is not established",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_1154_Normalized.json); benchmarks/t3/evidence.md, section R2b; benchmarks/t3/evidence/kb1154_slow_prefix.hex",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Kubernetes---kb_1154_Normalized.json); benchmarks/t3/evidence.md, section R11 and R2b; benchmarks/t3/evidence/kb1154_slow_prefix.hex",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -61,9 +66,8 @@
    ],
    "owner_decision": null,
    "previous": {
-    "summary": "pass time limit; about 1 s per fill on a large open object on every build",
-    "cause": "pre-existing per-fill cost (dbc5eeb 1.28 s, 7345490f 1.24 s, 50cbd80e 0.98 s per sampled state), not attributable to the T3 series",
-    "proposal": "accept as a documented availability residual of an expensive path"
+    "cause": "an expensive pass 1 on every library: pass 1 ends at step 31 (the line's cv@31); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 14.84 s, the same source built for the host CPU 13.63 s, 50cbd80e 13.46 s, 7345490f 17.50 s, dbc5eeb 17.26 s; all of them exceed 10 s at step 16 (as R2b: 7345490f 17.5 s), the candidate in less time than both lines; the pass-1 document is the same on all five libraries. 7345490f completed pass 1 (cv@31) in its run of 2026-10-03 with that day's harness (dbc5eeb+dirty, no source hash recorded); no library reproduces that with the run's harness, and the cause of that historical completion is not established",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_1154_Normalized.json); benchmarks/t3/evidence.md, section R2b; benchmarks/t3/evidence/kb1154_slow_prefix.hex"
    }
   },
   {
@@ -74,14 +78,13 @@
     "llama-3.1",
     "gpt2"
    ],
-   "summary": "no transition on 6e62e0d1: the repository kb_1154 is outside the fixed 1-in-20 sample for Llama and GPT-2 (skipped:not_sampled), byte generatable",
+   "summary": "no transition on 9a5baf3e (as on 6e62e0d1): the repository kb_1154 is outside the fixed 1-in-20 sample for Llama and GPT-2 (skipped:not_sampled), byte generatable",
    "cause": "as D4-2",
    "proposal": "no decision needed; as D4-2 when it is in the sample",
    "evidence": "benchmarks/t3/evidence.md, section R2b",
    "owner_decision": null,
    "previous": {
-    "summary": "same schema in the repository snapshot, when it is in the HF sample",
-    "proposal": "as D4-2"
+    "summary": "no transition on 6e62e0d1: the repository kb_1154 is outside the fixed 1-in-20 sample for Llama and GPT-2 (skipped:not_sampled), byte generatable"
    }
   },
   {
@@ -93,9 +96,9 @@
    ],
    "group": "engine_unavailable",
    "summary": "RESOURCE_LIMIT in passes 3@898, 6@567, 7@2644, 11@4658, 15@3015 (completed_valid 10, engine_unavailable 5, incomplete:time_limit 4, incomplete:step_limit 1); line dbc5eeb: incomplete:time_limit 19, completed_valid 1",
-   "cause": "oneOf of eight open-object branches: a vote needs a key witness that fails every rival, the certificate has value witnesses only; undecided reasons fail_search 1, comb_group 3; fail_search 1, comb_group 5; fail_search 1, comb_group 8 (R11-C: every pass as recorded); 50cbd80e ends the same passes at the same steps; 7345490f reaches RESOURCE_LIMIT in 2 passes of its own run",
+   "cause": "oneOf of eight open-object branches: a vote needs a key witness that fails every rival, the certificate has value witnesses only; undecided reasons fail_search 1, comb_group 3; fail_search 1, comb_group 5; fail_search 1, comb_group 8 (R11-C2 (re-run on 9a5baf3e): every pass as recorded); 50cbd80e ends the same passes at the same steps; 7345490f reaches RESOURCE_LIMIT in 2 passes of its own run",
    "proposal": "accept as a documented limitation; group-certificate work is future scope",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc_summary.md; benchmarks/t3/evidence.md, section R4",
+   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc2_summary.md; benchmarks/t3/evidence.md, section R4; R11-C2: every pass re-run on 9a5baf3e as recorded",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -120,9 +123,9 @@
    ],
    "group": "engine_unavailable",
    "summary": "RESOURCE_LIMIT in passes 4@4926, 8@107, 9@581, 13@2082, 16@4433, 19@4866 (completed_valid 8, engine_unavailable 6, incomplete:time_limit 5, incomplete:step_limit 1); line dbc5eeb: incomplete:time_limit 17, completed_valid 3",
-   "cause": "oneOf of eight open-object branches: a vote needs a key witness that fails every rival, the certificate has value witnesses only; undecided reasons fail_search 1, comb_group 7; fail_search 1, comb_group 8 (R11-C: every pass as recorded); 7345490f reaches RESOURCE_LIMIT in 2 passes of its own run",
+   "cause": "oneOf of eight open-object branches: a vote needs a key witness that fails every rival, the certificate has value witnesses only; undecided reasons fail_search 1, comb_group 7; fail_search 1, comb_group 8 (R11-C2 (re-run on 9a5baf3e): every pass as recorded); 7345490f reaches RESOURCE_LIMIT in 2 passes of its own run",
    "proposal": "accept as a documented limitation; group-certificate work is future scope",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc_summary.md; benchmarks/t3/evidence.md, section R4",
+   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc2_summary.md; benchmarks/t3/evidence.md, section R4; R11-C2: every pass re-run on 9a5baf3e as recorded",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -147,9 +150,9 @@
    ],
    "group": "engine_unavailable",
    "summary": "RESOURCE_LIMIT in passes 8@38, 13@52 (completed_valid 17, engine_unavailable 2, incomplete:step_limit 1); 7345490f: RESOURCE_LIMIT in 9 passes (8 and 13 two steps earlier); line dbc5eeb: completed_valid 19, incomplete:time_limit 1",
-   "cause": "key start in an array element under five if/then groups with closed then branches; comb_group plus dependency-gated object states stay undecided (fail_search 1, comb_group 18, openobj_deps 2, openobj_gate 2, R11-C: both passes as recorded)",
+   "cause": "key start in an array element under five if/then groups with closed then branches; comb_group plus dependency-gated object states stay undecided (fail_search 1, comb_group 18, openobj_deps 2, openobj_gate 2, R11-C2 (re-run on 9a5baf3e): both passes as recorded)",
    "proposal": "accept as a documented limitation; group-certificate work is future scope",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc_summary.md; benchmarks/t3/evidence.md, section R4",
+   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc2_summary.md; benchmarks/t3/evidence.md, section R4; R11-C2: every pass re-run on 9a5baf3e as recorded",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -174,9 +177,9 @@
    ],
    "group": "engine_unavailable",
    "summary": "RESOURCE_LIMIT in pass 18@662 (incomplete:step_limit 18, completed_valid 1, engine_unavailable 1); 7345490f ends the same pass in the same state (eu@662); line dbc5eeb: incomplete:step_limit 15, incomplete:time_limit 4, completed_valid 1",
-   "cause": "documented limit of semantics-spec-v1 section 1 inside a uniqueItems element: the pass typed ...44345424e+97 and a further exponent digit would exceed |exp| 400 (R11-C: as recorded, fail_search 1)",
+   "cause": "documented limit of semantics-spec-v1 section 1 inside a uniqueItems element: the pass typed ...44345424e+97 and a further exponent digit would exceed |exp| 400 (R11-C2 (re-run on 9a5baf3e): as recorded, fail_search 1)",
    "proposal": "accept as a documented limitation",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc_summary.md; benchmarks/t3/evidence.md, section R4",
+   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc2_summary.md; benchmarks/t3/evidence.md, section R4; R11-C2: every pass re-run on 9a5baf3e as recorded",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -198,13 +201,14 @@
    "file": "*",
    "match_outcome": "invalid_document",
    "requires_triage_class": "D",
-   "summary": "results that end in an invalid_document explained by the draft-04 integer spelling: on 6e62e0d1 42 rows (11 against 7345490f, 31 against dbc5eeb), 34 results, every one T2c class D with all 68 invalid documents checked (review/triage.json of the set)",
+   "summary": "results that end in an invalid_document explained by the draft-04 integer spelling: on 9a5baf3e 42 rows (11 against 7345490f, 31 against dbc5eeb), 34 results, every one T2c class D with all 68 invalid documents checked (review/triage.json of the t3-9a5baf3e set, gate 17e25bba4f1c6144)",
    "cause": "a random pass reaches an integral value spelled with a fraction or exponent; the reference with draft-04 integer semantics rejects it (docs/supported_features.md section 9)",
    "proposal": "accept as the documented class D deviation, only for rows whose T2c triage on the candidate is class D with every invalid document checked; any other class reopens the row",
-   "evidence": "benchmarks/coverage/spec-v1/t3-6e62e0d1/review/triage.md and triage.json (T2c of the candidate); docs/supported_features.md section 9",
+   "evidence": "benchmarks/coverage/spec-v1/t3-9a5baf3e/review/triage.md and triage.json (T2c of the candidate); docs/supported_features.md section 9",
    "owner_decision": null,
    "previous": {
-    "summary": "results that end in an invalid_document explained by the draft-04 integer spelling (23 such transitions against dbc5eeb on 7345490f)"
+    "summary": "results that end in an invalid_document explained by the draft-04 integer spelling: on 6e62e0d1 42 rows (11 against 7345490f, 31 against dbc5eeb), 34 results, every one T2c class D with all 68 invalid documents checked (review/triage.json of the set)",
+    "evidence": "benchmarks/coverage/spec-v1/t3-6e62e0d1/review/triage.md and triage.json (T2c of the candidate); docs/supported_features.md section 9"
    },
    "candidate_rows": [
     {
@@ -420,14 +424,13 @@
    "tokenizers": [
     "byte"
    ],
-   "summary": "no transition on 6e62e0d1: completed_valid 20 of 20, no DEAD_END",
+   "summary": "no transition on 9a5baf3e (as on 6e62e0d1): completed_valid 20 of 20, no DEAD_END",
    "cause": "engine defect, class A: the open-object certificate took the finite patternProperties language ^line[1-3]$ for an infinite one, so a key already seen was admitted again and dispatch refused it at the closing quote",
    "proposal": "no owner decision: the engine defect is fixed in 6e62e0d1 (R7, release line); kept for the record",
    "evidence": "benchmarks/t3/evidence.md, section R7; benchmarks/t3/evidence/r7_dead_ends_50cbd80e.jsonl; benchmarks/t3/evidence/r7_walks.json",
    "owner_decision": null,
    "previous": {
-    "summary": "engine_defect / BLG_ERR_DEAD_END in 17 of 20 passes (7345490f: 1 completed_valid, 19 step limits; dbc5eeb: 1 completed_valid, 18 step limits, 1 engine_defect)",
-    "proposal": "no owner decision: an engine defect, not a residual; D4 does not close no_defects. Fixed on the release line (open-object certificate patch, R7); the acceptance of the next candidate must show the schema without DEAD_END, and a remaining transition reopens R7"
+    "summary": "no transition on 6e62e0d1: completed_valid 20 of 20, no DEAD_END"
    }
   },
   {
@@ -437,14 +440,13 @@
    "tokenizers": [
     "byte"
    ],
-   "summary": "no transition on 6e62e0d1: completed_valid 20 of 20, no DEAD_END",
+   "summary": "no transition on 9a5baf3e (as on 6e62e0d1): completed_valid 20 of 20, no DEAD_END",
    "cause": "engine defect, class A, as D4-7 with ^comment[1-9]$",
    "proposal": "no owner decision: the engine defect is fixed in 6e62e0d1 (R7, release line); kept for the record",
    "evidence": "benchmarks/t3/evidence.md, section R7; benchmarks/t3/evidence/r7_dead_ends_50cbd80e.jsonl; benchmarks/t3/evidence/r7_walks.json",
    "owner_decision": null,
    "previous": {
-    "summary": "engine_defect / BLG_ERR_DEAD_END in 8 of 20 passes (7345490f: 1 completed_valid, 19 step limits; dbc5eeb: 1 completed_valid, 17 step limits, 2 engine_defect)",
-    "proposal": "no owner decision: an engine defect, not a residual; D4 does not close no_defects. Fixed on the release line (open-object certificate patch, R7); the acceptance of the next candidate must show the schema without DEAD_END, and a remaining transition reopens R7"
+    "summary": "no transition on 6e62e0d1: completed_valid 20 of 20, no DEAD_END"
    }
   },
   {
@@ -454,14 +456,13 @@
    "tokenizers": [
     "byte"
    ],
-   "summary": "no transition on 6e62e0d1: completed_valid 20 of 20, no DEAD_END",
+   "summary": "no transition on 9a5baf3e (as on 6e62e0d1): completed_valid 20 of 20, no DEAD_END",
    "cause": "engine defect, class B2: favoriteTopic requires tags, which is declared before it; the certificate did not check the dependency the spelled key fires by its own dispatch, so the key was admitted after tags had been skipped in schema order and dispatch refused it",
    "proposal": "no owner decision: the engine defect is fixed in 6e62e0d1 (R7, release line); kept for the record",
    "evidence": "benchmarks/t3/evidence.md, section R7; benchmarks/t3/evidence/r7_dead_ends_50cbd80e.jsonl; benchmarks/t3/evidence/r7_walks.json",
    "owner_decision": null,
    "previous": {
-    "summary": "engine_defect / BLG_ERR_DEAD_END in 3 of 20 passes (7345490f and dbc5eeb: 1 completed_valid, 19 step limits)",
-    "proposal": "no owner decision: an engine defect, not a residual; D4 does not close no_defects. Fixed on the release line (open-object certificate patch, R7); the acceptance of the next candidate must show the schema without DEAD_END, and a remaining transition reopens R7"
+    "summary": "no transition on 6e62e0d1: completed_valid 20 of 20, no DEAD_END"
    }
   },
   {
@@ -473,9 +474,9 @@
    ],
    "group": "engine_unavailable",
    "summary": "RESOURCE_LIMIT in pass 8@6225 (incomplete:step_limit 11, incomplete:time_limit 6, completed_valid 2, engine_unavailable 1), exactly as 50cbd80e; the lines end that pass earlier in their runs (pass 8: dbc5eeb tl@567, 7345490f tl@592); line dbc5eeb: incomplete:time_limit 19, completed_valid 1; 7345490f: incomplete:time_limit 19, completed_valid 1",
-   "cause": "oneOf of two branches that differ only by a required key (bids or config_id) on the open ad_units item object: the vote needs a key witness that fails the rival branch, the certificate has value witnesses only (comb_group), and the bounded search runs out; pre-existing, reached within the pass budget because the series after 7345490f is faster on this path (R8: the lines reach the same state given 120 s); R11-C: as recorded, fail_search 1, comb_group 3",
+   "cause": "oneOf of two branches that differ only by a required key (bids or config_id) on the open ad_units item object: the vote needs a key witness that fails the rival branch, the certificate has value witnesses only (comb_group), and the bounded search runs out; pre-existing, reached within the pass budget because the series after 7345490f is faster on this path (R8: the lines reach the same state given 120 s); R11-C2 (re-run on 9a5baf3e): as recorded, fail_search 1, comb_group 3",
    "proposal": "accept as a documented limitation (as D4-3); group-certificate work is future scope",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc_summary.md; benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl",
+   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc2_summary.md; benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl; R11-C2: every pass re-run on 9a5baf3e as recorded",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -500,9 +501,9 @@
    ],
    "group": "engine_unavailable",
    "summary": "RESOURCE_LIMIT in pass 19@1582 (completed_valid 16, incomplete:time_limit 3, engine_unavailable 1), exactly as 50cbd80e; the lines end that pass earlier in their runs (pass 19: dbc5eeb tl@70, 7345490f tl@70); line dbc5eeb: completed_valid 15, incomplete:time_limit 5; 7345490f: completed_valid 15, incomplete:time_limit 5",
-   "cause": "if/then on the recursive field definition (type STRUCT or RECORD requires fields): at the value of \"type\" the comb_group state stays undecided and the bounded search runs out; pre-existing, reached within the pass budget because the series after 7345490f is faster on this path (R8: the lines reach the same state given 120 s); R11-C: as recorded, fail_search 1, comb_group 3",
+   "cause": "if/then on the recursive field definition (type STRUCT or RECORD requires fields): at the value of \"type\" the comb_group state stays undecided and the bounded search runs out; pre-existing, reached within the pass budget because the series after 7345490f is faster on this path (R8: the lines reach the same state given 120 s); R11-C2 (re-run on 9a5baf3e): as recorded, fail_search 1, comb_group 3",
    "proposal": "accept as a documented limitation (as D4-4); group-certificate work is future scope",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc_summary.md; benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl",
+   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc2_summary.md; benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl; R11-C2: every pass re-run on 9a5baf3e as recorded",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -527,9 +528,9 @@
    ],
    "group": "engine_unavailable",
    "summary": "RESOURCE_LIMIT in passes 5@1109, 12@2125 (completed_valid 13, incomplete:time_limit 5, engine_unavailable 2); the lines end these passes in the time limit (pass 5: dbc5eeb tl@93, 7345490f tl@147; pass 12: dbc5eeb tl@153, 7345490f tl@88); line dbc5eeb: completed_valid 12, incomplete:time_limit 8; 7345490f: completed_valid 12, incomplete:time_limit 8",
-   "cause": "as D4-11: the MaskBench copy of the repository schema (identical JSON) under other seeds; R11-B: both lines with 300 s and 50cbd80e with 10 s reach the candidate's state (RESOURCE_LIMIT at the same step, the prefix byte-equal to the candidate's R11-C replay): 50cbd80e pass 5 engine_unavailable@1109 in 6 s (budget 10 s); 50cbd80e pass 12 engine_unavailable@2125 in 8 s (budget 10 s); 7345490f pass 5 engine_unavailable@1109 in 54 s (budget 300 s); 7345490f pass 12 engine_unavailable@2125 in 153 s (budget 300 s); dbc5eeb pass 5 engine_unavailable@1109 in 52 s (budget 300 s); dbc5eeb pass 12 engine_unavailable@2125 in 148 s (budget 300 s); R11-C: as recorded, fail_search 1, comb_group 3",
+   "cause": "as D4-11: the MaskBench copy of the repository schema (identical JSON) under other seeds; R11-C2: every pass on 9a5baf3e as recorded; R11-B2: 50cbd80e pass 5 engine_unavailable@1109 in 5.75 s (budget 10 s); 50cbd80e pass 12 engine_unavailable@2125 in 8.49 s (budget 10 s); 7345490f pass 5 engine_unavailable@1109 in 54.84 s (budget 300 s); 7345490f pass 12 engine_unavailable@2125 in 155.43 s (budget 300 s); dbc5eeb pass 5 engine_unavailable@1109 in 54.67 s (budget 300 s); dbc5eeb pass 12 engine_unavailable@2125 in 154.97 s (budget 300 s); every re-run reaches the candidate's state (RESOURCE_LIMIT at the same step); the prefixes are byte-equal where the replay records them",
    "proposal": "accept as a documented limitation (as D4-11); group-certificate work is future scope",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc_summary.md",
+   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc2_summary.md; R11-C2: every pass re-run on 9a5baf3e as recorded",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -538,7 +539,10 @@
      "outcome": "engine_unavailable"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "as D4-11: the MaskBench copy of the repository schema (identical JSON) under other seeds; R11-B: both lines with 300 s and 50cbd80e with 10 s reach the candidate's state (RESOURCE_LIMIT at the same step, the prefix byte-equal to the candidate's R11-C replay): 50cbd80e pass 5 engine_unavailable@1109 in 6 s (budget 10 s); 50cbd80e pass 12 engine_unavailable@2125 in 8 s (budget 10 s); 7345490f pass 5 engine_unavailable@1109 in 54 s (budget 300 s); 7345490f pass 12 engine_unavailable@2125 in 153 s (budget 300 s); dbc5eeb pass 5 engine_unavailable@1109 in 52 s (budget 300 s); dbc5eeb pass 12 engine_unavailable@2125 in 148 s (budget 300 s); R11-C2 (re-run on 9a5baf3e): as recorded, fail_search 1, comb_group 3"
+   }
   },
   {
    "id": "D4-12",
@@ -549,9 +553,9 @@
    ],
    "group": "engine_unavailable",
    "summary": "RESOURCE_LIMIT in pass 10@5725 (incomplete:step_limit 18, completed_valid 1, engine_unavailable 1), exactly as 50cbd80e; the lines end that pass earlier in their runs (pass 10: dbc5eeb tl@4821, 7345490f tl@3717); line dbc5eeb: incomplete:step_limit 12, incomplete:time_limit 7, completed_valid 1; 7345490f: incomplete:time_limit 13, incomplete:step_limit 6, completed_valid 1",
-   "cause": "documented limit of semantics-spec-v1 section 1 inside a uniqueItems element (console_variables): the pass typed 256E165, and a further exponent digit would exceed |exp| 400; pre-existing, reached within the pass budget because the series after 7345490f is faster on this path (R8: the lines reach the same state given 120 s); R11-C: as recorded, fail_search 1",
+   "cause": "documented limit of semantics-spec-v1 section 1 inside a uniqueItems element (console_variables): the pass typed 256E165, and a further exponent digit would exceed |exp| 400; pre-existing, reached within the pass budget because the series after 7345490f is faster on this path (R8: the lines reach the same state given 120 s); R11-C2 (re-run on 9a5baf3e): as recorded, fail_search 1",
    "proposal": "accept as a documented limitation (as D4-5, the MaskBench cryproj.53 schema)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc_summary.md; benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl",
+   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11bc2_summary.md; benchmarks/t3/evidence.md, section R8; benchmarks/t3/evidence/r8_d4_replays.jsonl; R11-C2: every pass re-run on 9a5baf3e as recorded",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -576,9 +580,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@59, first run), the candidate recorded pass 1 as a time limit at step 48, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 59 (the line's cv@59); at its budget check at step 48 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.34 s, the same source built for the host CPU 7.62 s, 50cbd80e 7.66 s, 7345490f 7.61 s, dbc5eeb 7.63 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 48. The candidate is 9.4 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.996): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.50 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 59 (the line's cv@59); at its budget check at step 48 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.39 s, the same source built for the host CPU 7.80 s, 6e62e0d1 (the previous candidate) 8.32 s, 50cbd80e 7.78 s, 7345490f 7.70 s, dbc5eeb 7.74 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 48, the first check it failed. The candidate needs 7.5 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.009 at this check, and the source's code against 50cbd80e is 1.002: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the GPT-2 (50257 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 10.70 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (o41283.json); 50cbd80e, the same harness and protocol: pass 1 tl@32 in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (o41283.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -589,9 +593,8 @@
    ],
    "owner_decision": null,
    "previous": {
-    "summary": "time limit in 20 of 20 passes; pass 1, the one pass 7345490f completed (step 59), takes 9.3-9.9 s on every build",
-    "cause": "pass 1 sits at the edge of the 10 s pass budget on all builds with the same per-step cost (dbc5eeb 9.30 s, 7345490f 9.70 s, 50cbd80e 9.61 s, the fix 9.92 s; 0.16 s per step); whether it completes depends on machine load, not on the build",
-    "proposal": "accept as a documented environment-timing residual (as D4-2)"
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 59 (the line's cv@59); at its budget check at step 48 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.34 s, the same source built for the host CPU 7.62 s, 50cbd80e 7.66 s, 7345490f 7.61 s, dbc5eeb 7.63 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 48. The candidate is 9.4 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.996): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.50 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (o41283.json); 50cbd80e, the same harness and protocol: pass 1 tl@32 in its R6 run"
    }
   },
   {
@@ -603,9 +606,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@21, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.09 s, the same source built for the host CPU 7.55 s, 50cbd80e 7.53 s, 7345490f 7.44 s, dbc5eeb 7.52 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 7.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.003): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.97 s on the candidate (median of 3 rounds)",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.40 s, the same source built for the host CPU 7.84 s, 6e62e0d1 (the previous candidate) 8.27 s, 50cbd80e 7.50 s, 7345490f 7.41 s, dbc5eeb 7.38 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 7.1 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.016 at this check, and the source's code against 50cbd80e is 1.046: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 9.33 s on the candidate (median of 3 rounds)",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1088_Normalized.json); 50cbd80e, the same harness and protocol: pass 1 tl@16 in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (kb_1088_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -616,9 +619,8 @@
    ],
    "owner_decision": null,
    "previous": {
-    "summary": "time limit in 20 of 20 passes; pass 1, the one pass 7345490f completed (step 21), takes 8.1-9.2 s on every build",
-    "cause": "a large normalized Kubernetes object at about 0.4 s per fill on every build (dbc5eeb 8.24 s, 7345490f 8.13 s, 50cbd80e 8.45 s, the fix 8.45 s for 21 steps), the same family as kb_1154 (D4-2); whether pass 1 completes depends on machine load",
-    "proposal": "accept as a documented environment-timing residual (as D4-2)"
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.09 s, the same source built for the host CPU 7.55 s, 50cbd80e 7.53 s, 7345490f 7.44 s, dbc5eeb 7.52 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 7.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.003): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.97 s on the candidate (median of 3 rounds)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1088_Normalized.json); 50cbd80e, the same harness and protocol: pass 1 tl@16 in its R6 run"
    }
   },
   {
@@ -629,10 +631,10 @@
     "byte"
    ],
    "group": "pass1_series_slowdown",
-   "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@60, first run), the candidate recorded pass 1 as a time limit at step 48, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 60 (the line's cv@60); at its budget check at step 48 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 7.62 s, the same source built for the host CPU 7.44 s, 50cbd80e 7.72 s, 7345490f 6.49 s, dbc5eeb 6.12 s; in the R6 run the candidate exceeded 10 s at step 48. The CPU target has no effect beyond the noise here (candidate/native 1.024, threshold 0.029); the candidate is as fast as 50cbd80e (0.986) and 17.3 % slower than 7345490f (candidate/7345490f 1.173); 50cbd80e is slower by as much (50cbd80e/7345490f 1.189), so the slowdown lies in the code between 7345490f and 50cbd80e, both host builds; which change is not established. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 7.62 s on the candidate (median of 3 rounds). 50cbd80e completed this pass 1 (cv@60) in its R6 run, the candidate did not; on a quiet core the two are equally fast, so R11-A does not explain the difference between their R6 outcomes",
-   "proposal": "decide separately from the CPU-target group: accept as a timing transition at the pass-1 budget edge with the recorded slowdown of the series on this schema (byte pass 1 about 17 % slower than on 7345490f, not caused by the CPU target). The alternative is to find and remove the slowdown: a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (calculate_area_4c8e9fd1.json); R6 sidecars of 50cbd80e and 6e62e0d1",
+   "summary": "no transition on 9a5baf3e: the candidate completed pass 1 (cv@60) in its T3 run of 2026-10-13, generatable. The row transitioned on 6e62e0d1 (the candidate recorded a time limit at step 48; the line completed pass 1 at step 60)",
+   "cause": "the pass sat at the edge of its 10 s budget on 6e62e0d1 (R11-A, CPU 2, median of 3 rounds, at the check the candidate failed); on 9a5baf3e the same deterministic pass 1 completed in the run, and in the recorded runs the time-limited passes 2-20 of the two candidates reach the same steps (median ratio 1.108 over 19 passes; compatible with, not proof of, equal speed). The changed recorded outcome is consistent with the run's conditions at the check (hypothesis; a small timing difference is not excluded by these records). No replay covers this row in R11-A2 (no transition); the 6e62e0d1 measurements stay under R11 (benchmarks/t3/evidence.md) and in the entry's previous text",
+   "proposal": "no owner decision: no transition on the current candidate; kept for the record and as a witness of the budget-edge behaviour of the group. A transition on a later candidate reopens the row",
+   "evidence": "benchmarks/t3/evidence/r11a_pass1_summary.md (calculate_area_4c8e9fd1.json) - the 6e62e0d1 round; the recorded pass sidecars of t3-6e62e0d1 and t3-9a5baf3e",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -641,7 +643,13 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@60, first run), the candidate recorded pass 1 as a time limit at step 48, the first budget check it failed",
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 60 (the line's cv@60); at its budget check at step 48 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 7.62 s, the same source built for the host CPU 7.44 s, 50cbd80e 7.72 s, 7345490f 6.49 s, dbc5eeb 6.12 s; in the R6 run the candidate exceeded 10 s at step 48. The CPU target has no effect beyond the noise here (candidate/native 1.024, threshold 0.029); the candidate is as fast as 50cbd80e (0.986) and 17.3 % slower than 7345490f (candidate/7345490f 1.173); 50cbd80e is slower by as much (50cbd80e/7345490f 1.189), so the slowdown lies in the code between 7345490f and 50cbd80e, both host builds; which change is not established. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 7.62 s on the candidate (median of 3 rounds). 50cbd80e completed this pass 1 (cv@60) in its R6 run, the candidate did not; on a quiet core the two are equally fast, so R11-A does not explain the difference between their R6 outcomes",
+    "proposal": "decide separately from the CPU-target group: accept as a timing transition at the pass-1 budget edge with the recorded slowdown of the series on this schema (byte pass 1 about 17 % slower than on 7345490f, not caused by the CPU target). The alternative is to find and remove the slowdown: a new candidate and a new R6 (owner's choice)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (calculate_area_4c8e9fd1.json); R6 sidecars of 50cbd80e and 6e62e0d1"
+   }
   },
   {
    "id": "D4-16",
@@ -651,10 +659,10 @@
     "gpt2"
    ],
    "group": "pass1_budget_edge",
-   "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@46, first run), the candidate recorded pass 1 as a time limit at step 32, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 46 (the line's cv@46); at its budget check at step 32 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 7.93 s, the same source built for the host CPU 7.52 s, 50cbd80e 7.34 s, 7345490f 7.43 s, dbc5eeb 7.30 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 32. The candidate is 5.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.025): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 11.22 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
-   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1008_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@46) in its R6 run",
+   "summary": "no transition on 9a5baf3e: the candidate completed pass 1 (cv@46) in its T3 run of 2026-10-13, generatable. The row transitioned on 6e62e0d1 (the candidate recorded a time limit at step 32; the line completed pass 1 at step 46)",
+   "cause": "the pass sat at the edge of its 10 s budget on 6e62e0d1 (R11-A, CPU 2, median of 3 rounds, at the check the candidate failed); on 9a5baf3e the same deterministic pass 1 completed in the run, and in the recorded runs the time-limited passes 2-20 of the two candidates reach the same steps (median ratio 1.060 over 19 passes; compatible with, not proof of, equal speed). The changed recorded outcome is consistent with the run's conditions at the check (hypothesis; a small timing difference is not excluded by these records). No replay covers this row in R11-A2 (no transition); the 6e62e0d1 measurements stay under R11 (benchmarks/t3/evidence.md) and in the entry's previous text",
+   "proposal": "no owner decision: no transition on the current candidate; kept for the record and as a witness of the budget-edge behaviour of the group. A transition on a later candidate reopens the row",
+   "evidence": "benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1008_Normalized.json) - the 6e62e0d1 round; the recorded pass sidecars of t3-6e62e0d1 and t3-9a5baf3e",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -663,7 +671,13 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@46, first run), the candidate recorded pass 1 as a time limit at step 32, the first budget check it failed",
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 46 (the line's cv@46); at its budget check at step 32 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 7.93 s, the same source built for the host CPU 7.52 s, 50cbd80e 7.34 s, 7345490f 7.43 s, dbc5eeb 7.30 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 32. The candidate is 5.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.025): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 11.22 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1008_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@46) in its R6 run"
+   }
   },
   {
    "id": "D4-17",
@@ -674,9 +688,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@22, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.33 s, 50cbd80e 7.68 s, 7345490f 7.34 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.955): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.88 s on the candidate (median of 3 rounds)",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.37 s, the same source built for the host CPU 7.77 s, 6e62e0d1 (the previous candidate) 8.15 s, 50cbd80e 7.63 s, 7345490f 7.39 s, dbc5eeb 7.42 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 7.7 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.027 at this check, and the source's code against 50cbd80e is 1.019: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 10.34 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1057_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@22) in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (kb_1057_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -685,7 +699,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.33 s, 50cbd80e 7.68 s, 7345490f 7.34 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.955): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.88 s on the candidate (median of 3 rounds)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1057_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@22) in its R6 run"
+   }
   },
   {
    "id": "D4-18",
@@ -696,9 +714,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@18, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 18 (the line's cv@18); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.08 s, the same source built for the host CPU 7.19 s, 50cbd80e 7.54 s, 7345490f 7.38 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 12.3 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.954): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.08 s on the candidate (median of 3 rounds)",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 18 (the line's cv@18); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.06 s, the same source built for the host CPU 7.52 s, 6e62e0d1 (the previous candidate) 8.25 s, 50cbd80e 7.29 s, 7345490f 7.41 s, dbc5eeb 7.44 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 7.1 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.977 at this check, and the source's code against 50cbd80e is 1.031: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 8.06 s on the candidate (median of 3 rounds)",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1123_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@18) in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (kb_1123_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -707,7 +725,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 18 (the line's cv@18); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.08 s, the same source built for the host CPU 7.19 s, 50cbd80e 7.54 s, 7345490f 7.38 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 12.3 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.954): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.08 s on the candidate (median of 3 rounds)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1123_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@18) in its R6 run"
+   }
   },
   {
    "id": "D4-19",
@@ -718,9 +740,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@21, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.17 s, the same source built for the host CPU 7.46 s, 50cbd80e 7.34 s, 7345490f 7.38 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 9.6 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.016): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.14 s on the candidate (median of 3 rounds)",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.22 s, the same source built for the host CPU 7.60 s, 6e62e0d1 (the previous candidate) 8.30 s, 50cbd80e 7.56 s, 7345490f 7.46 s, dbc5eeb 7.44 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 8.1 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.990 at this check, and the source's code against 50cbd80e is 1.006: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 9.12 s on the candidate (median of 3 rounds)",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_157_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@21) in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (kb_157_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -729,7 +751,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.17 s, the same source built for the host CPU 7.46 s, 50cbd80e 7.34 s, 7345490f 7.38 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 9.6 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.016): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.14 s on the candidate (median of 3 rounds)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_157_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@21) in its R6 run"
+   }
   },
   {
    "id": "D4-20",
@@ -740,9 +766,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@23, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.10 s, the same source built for the host CPU 7.49 s, 50cbd80e 7.63 s, 7345490f 7.42 s, dbc5eeb 7.36 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 8.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.981): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.81 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.13 s, the same source built for the host CPU 7.70 s, 6e62e0d1 (the previous candidate) 8.27 s, 50cbd80e 7.43 s, 7345490f 7.57 s, dbc5eeb 7.30 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 5.7 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.983 at this check, and the source's code against 50cbd80e is 1.036: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 10.77 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_199_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (kb_199_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -751,7 +777,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.10 s, the same source built for the host CPU 7.49 s, 50cbd80e 7.63 s, 7345490f 7.42 s, dbc5eeb 7.36 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 8.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.981): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.81 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_199_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run"
+   }
   },
   {
    "id": "D4-21",
@@ -762,9 +792,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@23, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.13 s, the same source built for the host CPU 7.46 s, 50cbd80e 7.45 s, 7345490f 7.43 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 9.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.001): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.90 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.12 s, the same source built for the host CPU 7.67 s, 6e62e0d1 (the previous candidate) 8.24 s, 50cbd80e 7.40 s, 7345490f 7.42 s, dbc5eeb 7.66 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 5.9 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.986 at this check, and the source's code against 50cbd80e is 1.035: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 10.72 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_396_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (kb_396_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -773,7 +803,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.13 s, the same source built for the host CPU 7.46 s, 50cbd80e 7.45 s, 7345490f 7.43 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 9.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.001): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.90 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_396_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run"
+   }
   },
   {
    "id": "D4-22",
@@ -784,9 +818,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@23, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.32 s, the same source built for the host CPU 7.46 s, 50cbd80e 7.62 s, 7345490f 7.30 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.96 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.25 s, the same source built for the host CPU 7.79 s, 6e62e0d1 (the previous candidate) 8.10 s, 50cbd80e 7.57 s, 7345490f 7.50 s, dbc5eeb 7.62 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 5.9 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.018 at this check, and the source's code against 50cbd80e is 1.029: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 11.04 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_480_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (kb_480_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -795,7 +829,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.32 s, the same source built for the host CPU 7.46 s, 50cbd80e 7.62 s, 7345490f 7.30 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.96 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_480_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run"
+   }
   },
   {
    "id": "D4-23",
@@ -806,9 +844,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@23, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.47 s, 50cbd80e 7.53 s, 7345490f 7.46 s, dbc5eeb 7.44 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 8.9 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.993): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.90 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.24 s, the same source built for the host CPU 7.87 s, 6e62e0d1 (the previous candidate) 8.36 s, 50cbd80e 7.43 s, 7345490f 7.43 s, dbc5eeb 7.41 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 4.6 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.986 at this check, and the source's code against 50cbd80e is 1.060: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 11.13 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_576_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (kb_576_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -817,7 +855,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.47 s, 50cbd80e 7.53 s, 7345490f 7.46 s, dbc5eeb 7.44 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 8.9 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.993): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.90 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_576_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run"
+   }
   },
   {
    "id": "D4-24",
@@ -827,10 +869,10 @@
     "llama-3.1"
    ],
    "group": "pass1_budget_edge",
-   "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@20, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 20 (the line's cv@20); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.09 s, the same source built for the host CPU 7.33 s, 50cbd80e 7.54 s, 7345490f 7.38 s, dbc5eeb 7.52 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.3 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.972): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.10 s on the candidate (median of 3 rounds)",
-   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (o43083.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@20) in its R6 run",
+   "summary": "no transition on 9a5baf3e: the candidate completed pass 1 (cv@20) in its T3 run of 2026-10-13, generatable. The row transitioned on 6e62e0d1 (the candidate recorded a time limit at step 16; the line completed pass 1 at step 20)",
+   "cause": "the pass sat at the edge of its 10 s budget on 6e62e0d1 (R11-A, CPU 2, median of 3 rounds, at the check the candidate failed); on 9a5baf3e the same deterministic pass 1 completed in the run, and in the recorded runs the time-limited passes 2-20 of the two candidates reach the same steps (median ratio 1.000 over 19 passes; compatible with, not proof of, equal speed). The changed recorded outcome is consistent with the run's conditions at the check (hypothesis; a small timing difference is not excluded by these records). No replay covers this row in R11-A2 (no transition); the 6e62e0d1 measurements stay under R11 (benchmarks/t3/evidence.md) and in the entry's previous text",
+   "proposal": "no owner decision: no transition on the current candidate; kept for the record and as a witness of the budget-edge behaviour of the group. A transition on a later candidate reopens the row",
+   "evidence": "benchmarks/t3/evidence/r11a_pass1_summary.md (o43083.json) - the 6e62e0d1 round; the recorded pass sidecars of t3-6e62e0d1 and t3-9a5baf3e",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -839,7 +881,13 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@20, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 20 (the line's cv@20); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.09 s, the same source built for the host CPU 7.33 s, 50cbd80e 7.54 s, 7345490f 7.38 s, dbc5eeb 7.52 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.3 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.972): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.10 s on the candidate (median of 3 rounds)",
+    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (o43083.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@20) in its R6 run"
+   }
   },
   {
    "id": "D4-25",
@@ -850,9 +898,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@22, dbc5eeb cv@22, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.16 s, the same source built for the host CPU 7.33 s, 50cbd80e 7.52 s, 7345490f 7.41 s, dbc5eeb 7.27 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.3 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.975): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.08 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.36 s, the same source built for the host CPU 7.60 s, 6e62e0d1 (the previous candidate) 8.12 s, 50cbd80e 7.45 s, 7345490f 7.31 s, dbc5eeb 7.43 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 10.0 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.029 at this check, and the source's code against 50cbd80e is 1.020: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 10.14 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (o44130.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@22) in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (o44130.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -861,7 +909,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.16 s, the same source built for the host CPU 7.33 s, 50cbd80e 7.52 s, 7345490f 7.41 s, dbc5eeb 7.27 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.3 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.975): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.08 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (o44130.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@22) in its R6 run"
+   }
   },
   {
    "id": "D4-26",
@@ -872,9 +924,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@25, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.18 s, the same source built for the host CPU 7.43 s, 50cbd80e 7.42 s, 7345490f 7.39 s, dbc5eeb 7.47 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.001): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 12.72 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.28 s, the same source built for the host CPU 7.85 s, 6e62e0d1 (the previous candidate) 8.25 s, 50cbd80e 7.72 s, 7345490f 7.57 s, dbc5eeb 7.36 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 5.5 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.003 at this check, and the source's code against 50cbd80e is 1.016: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 12.78 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (search_product_67f0c7b7.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@25) in its R6 run",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (search_product_67f0c7b7.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "repo",
@@ -883,7 +935,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.18 s, the same source built for the host CPU 7.43 s, 50cbd80e 7.42 s, 7345490f 7.39 s, dbc5eeb 7.47 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.001): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 12.72 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (search_product_67f0c7b7.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@25) in its R6 run"
+   }
   },
   {
    "id": "D4-27",
@@ -894,9 +950,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@21, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.37 s, 50cbd80e 7.53 s, 7345490f 7.45 s, dbc5eeb 7.47 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.6 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.02 s on the candidate (median of 3 rounds)",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.74 s, 6e62e0d1 (the previous candidate) 8.19 s, 50cbd80e 7.54 s, 7345490f 7.52 s, dbc5eeb 7.47 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 5.1 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.994 at this check, and the source's code against 50cbd80e is 1.027: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 9.03 s on the candidate (median of 3 rounds)",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_easy---o1008.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Github_easy---o1008.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -905,7 +961,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.37 s, 50cbd80e 7.53 s, 7345490f 7.45 s, dbc5eeb 7.47 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.6 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.02 s on the candidate (median of 3 rounds)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_easy---o1008.json)"
+   }
   },
   {
    "id": "D4-28",
@@ -916,9 +976,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@22, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.07 s, the same source built for the host CPU 7.56 s, 50cbd80e 7.41 s, 7345490f 7.39 s, dbc5eeb 7.59 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 6.7 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.020): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.93 s on the candidate (median of 3 rounds)",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.07 s, the same source built for the host CPU 7.70 s, 6e62e0d1 (the previous candidate) 8.18 s, 50cbd80e 7.38 s, 7345490f 7.36 s, dbc5eeb 7.41 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 4.8 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.986 at this check, and the source's code against 50cbd80e is 1.043: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 9.90 s on the candidate (median of 3 rounds)",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_easy---o13688.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Github_easy---o13688.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -927,7 +987,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.07 s, the same source built for the host CPU 7.56 s, 50cbd80e 7.41 s, 7345490f 7.39 s, dbc5eeb 7.59 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 6.7 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.020): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.93 s on the candidate (median of 3 rounds)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_easy---o13688.json)"
+   }
   },
   {
    "id": "D4-29",
@@ -938,9 +1002,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@20, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 20 (the line's cv@20); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.21 s, the same source built for the host CPU 7.47 s, 50cbd80e 7.63 s, 7345490f 7.40 s, dbc5eeb 7.50 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.22 s on the candidate (median of 3 rounds)",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 20 (the line's cv@20); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.15 s, the same source built for the host CPU 7.62 s, 6e62e0d1 (the previous candidate) 8.22 s, 50cbd80e 7.57 s, 7345490f 7.59 s, dbc5eeb 7.71 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 7.0 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.992 at this check, and the source's code against 50cbd80e is 1.007: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 8.16 s on the candidate (median of 3 rounds)",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_easy---o48800.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Github_easy---o48800.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -949,7 +1013,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 20 (the line's cv@20); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.21 s, the same source built for the host CPU 7.47 s, 50cbd80e 7.63 s, 7345490f 7.40 s, dbc5eeb 7.50 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.22 s on the candidate (median of 3 rounds)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_easy---o48800.json)"
+   }
   },
   {
    "id": "D4-30",
@@ -960,9 +1028,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@23, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.10 s, the same source built for the host CPU 7.30 s, 50cbd80e 7.47 s, 7345490f 7.40 s, dbc5eeb 7.36 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.977): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.97 s on the candidate (median of 3 rounds)",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.21 s, the same source built for the host CPU 7.57 s, 6e62e0d1 (the previous candidate) 8.01 s, 50cbd80e 7.43 s, 7345490f 7.45 s, dbc5eeb 7.23 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 8.4 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.024 at this check, and the source's code against 50cbd80e is 1.020: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 10.03 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_medium---o32493.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Github_medium---o32493.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -971,7 +1039,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.10 s, the same source built for the host CPU 7.30 s, 50cbd80e 7.47 s, 7345490f 7.40 s, dbc5eeb 7.36 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.977): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.97 s on the candidate (median of 3 rounds)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_medium---o32493.json)"
+   }
   },
   {
    "id": "D4-31",
@@ -982,9 +1054,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@25, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.30 s, the same source built for the host CPU 7.43 s, 50cbd80e 7.43 s, 7345490f 7.38 s, dbc5eeb 7.31 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.7 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.000): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.31 s on the candidate (median of 3 rounds)",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.12 s, the same source built for the host CPU 7.47 s, 6e62e0d1 (the previous candidate) 8.26 s, 50cbd80e 7.40 s, 7345490f 7.36 s, dbc5eeb 7.38 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 8.6 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.983 at this check, and the source's code against 50cbd80e is 1.009: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 8.12 s on the candidate (median of 3 rounds)",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_trivial---o84263.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Github_trivial---o84263.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -993,7 +1065,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.30 s, the same source built for the host CPU 7.43 s, 50cbd80e 7.43 s, 7345490f 7.38 s, dbc5eeb 7.31 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.7 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.000): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.31 s on the candidate (median of 3 rounds)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_trivial---o84263.json)"
+   }
   },
   {
    "id": "D4-32",
@@ -1004,9 +1080,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@25, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.36 s, the same source built for the host CPU 7.51 s, 50cbd80e 7.49 s, 7345490f 7.42 s, dbc5eeb 7.38 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.2 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.003): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 12.97 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.06 s, the same source built for the host CPU 7.71 s, 6e62e0d1 (the previous candidate) 8.30 s, 50cbd80e 7.58 s, 7345490f 7.30 s, dbc5eeb 7.52 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 4.6 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.972 at this check, and the source's code against 50cbd80e is 1.017: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 12.58 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Glaiveai2K---calculate_distance_51b4a417.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Glaiveai2K---calculate_distance_51b4a417.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -1015,7 +1091,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.36 s, the same source built for the host CPU 7.51 s, 50cbd80e 7.49 s, 7345490f 7.42 s, dbc5eeb 7.38 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.2 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.003): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 12.97 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Glaiveai2K---calculate_distance_51b4a417.json)"
+   }
   },
   {
    "id": "D4-33",
@@ -1025,10 +1105,10 @@
     "gpt2"
    ],
    "group": "pass1_budget_edge",
-   "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@32, first run), the candidate recorded pass 1 as a time limit at step 32, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 32 (the line's cv@32); at its budget check at step 32 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 7.93 s, the same source built for the host CPU 7.49 s, 50cbd80e 7.36 s, 7345490f 7.45 s, dbc5eeb 7.34 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 32. The candidate is 5.9 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.018): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 7.93 s on the candidate (median of 3 rounds)",
-   "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Glaiveai2K---generate_invoice_1c946d60.json)",
+   "summary": "no transition on 9a5baf3e: the candidate completed pass 1 (cv@32) in its T3 run of 2026-10-13, generatable. The row transitioned on 6e62e0d1 (the candidate recorded a time limit at step 32; the line completed pass 1 at step 32)",
+   "cause": "the pass sat at the edge of its 10 s budget on 6e62e0d1 (R11-A, CPU 2, median of 3 rounds, at the check the candidate failed); on 9a5baf3e the same deterministic pass 1 completed in the run, and in the recorded runs the time-limited passes 2-20 of the two candidates reach the same steps (median ratio 1.068 over 19 passes; compatible with, not proof of, equal speed). The changed recorded outcome is consistent with the run's conditions at the check (hypothesis; a small timing difference is not excluded by these records). No replay covers this row in R11-A2 (no transition); the 6e62e0d1 measurements stay under R11 (benchmarks/t3/evidence.md) and in the entry's previous text",
+   "proposal": "no owner decision: no transition on the current candidate; kept for the record and as a witness of the budget-edge behaviour of the group. A transition on a later candidate reopens the row",
+   "evidence": "benchmarks/t3/evidence/r11a_pass1_summary.md (Glaiveai2K---generate_invoice_1c946d60.json) - the 6e62e0d1 round; the recorded pass sidecars of t3-6e62e0d1 and t3-9a5baf3e",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -1037,7 +1117,13 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@32, first run), the candidate recorded pass 1 as a time limit at step 32, the first budget check it failed",
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 32 (the line's cv@32); at its budget check at step 32 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 7.93 s, the same source built for the host CPU 7.49 s, 50cbd80e 7.36 s, 7345490f 7.45 s, dbc5eeb 7.34 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 32. The candidate is 5.9 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.018): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 7.93 s on the candidate (median of 3 rounds)",
+    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Glaiveai2K---generate_invoice_1c946d60.json)"
+   }
   },
   {
    "id": "D4-34",
@@ -1048,9 +1134,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@61, first run), the candidate recorded pass 1 as a time limit at step 48, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 61 (the line's cv@61); at its budget check at step 48 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.57 s, the same source built for the host CPU 8.08 s, 50cbd80e 7.89 s, 7345490f 7.86 s, dbc5eeb 8.01 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 48. The candidate is 6.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.025): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.77 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 61 (the line's cv@61); at its budget check at step 48 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.79 s, the same source built for the host CPU 8.11 s, 6e62e0d1 (the previous candidate) 8.65 s, 50cbd80e 7.89 s, 7345490f 7.96 s, dbc5eeb 8.14 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 48, the first check it failed. The candidate needs 8.4 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.017 at this check, and the source's code against 50cbd80e is 1.027: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the GPT-2 (50257 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 10.97 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Glaiveai2K---generate_resume_d9ba16a3.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Glaiveai2K---generate_resume_d9ba16a3.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -1059,7 +1145,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 61 (the line's cv@61); at its budget check at step 48 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.57 s, the same source built for the host CPU 8.08 s, 50cbd80e 7.89 s, 7345490f 7.86 s, dbc5eeb 8.01 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 48. The candidate is 6.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.025): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.77 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Glaiveai2K---generate_resume_d9ba16a3.json)"
+   }
   },
   {
    "id": "D4-35",
@@ -1070,9 +1160,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@23, dbc5eeb cv@23, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.23 s, the same source built for the host CPU 7.31 s, 50cbd80e 7.46 s, 7345490f 7.45 s, dbc5eeb 7.38 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 12.6 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 11.04 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.35 s, the same source built for the host CPU 7.68 s, 6e62e0d1 (the previous candidate) 8.26 s, 50cbd80e 7.36 s, 7345490f 7.33 s, dbc5eeb 7.45 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 8.6 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.011 at this check, and the source's code against 50cbd80e is 1.043: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 11.03 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_231_Normalized.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Kubernetes---kb_231_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -1081,7 +1171,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.23 s, the same source built for the host CPU 7.31 s, 50cbd80e 7.46 s, 7345490f 7.45 s, dbc5eeb 7.38 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 12.6 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 11.04 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_231_Normalized.json)"
+   }
   },
   {
    "id": "D4-36",
@@ -1092,9 +1186,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@26, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 26 (the line's cv@26); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 9.11 s, the same source built for the host CPU 8.39 s, 50cbd80e 8.40 s, 7345490f 8.21 s, dbc5eeb 8.29 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 8.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.999): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 13.71 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 26 (the line's cv@26); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 9.28 s, the same source built for the host CPU 8.49 s, 6e62e0d1 (the previous candidate) 9.16 s, 50cbd80e 8.52 s, 7345490f 8.25 s, dbc5eeb 8.41 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 9.2 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.013 at this check, and the source's code against 50cbd80e is 0.997: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 13.92 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_379_Normalized.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Kubernetes---kb_379_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -1103,7 +1197,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 26 (the line's cv@26); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 9.11 s, the same source built for the host CPU 8.39 s, 50cbd80e 8.40 s, 7345490f 8.21 s, dbc5eeb 8.29 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 8.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.999): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 13.71 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_379_Normalized.json)"
+   }
   },
   {
    "id": "D4-37",
@@ -1114,9 +1212,9 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@23, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.20 s, the same source built for the host CPU 7.31 s, 50cbd80e 7.67 s, 7345490f 7.31 s, dbc5eeb 7.40 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 12.2 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.954): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 11.01 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.41 s, the same source built for the host CPU 7.81 s, 6e62e0d1 (the previous candidate) 8.17 s, 50cbd80e 7.41 s, 7345490f 7.49 s, dbc5eeb 7.57 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 7.6 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.029 at this check, and the source's code against 50cbd80e is 1.054: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 11.17 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_576_Normalized.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Kubernetes---kb_576_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
@@ -1125,7 +1223,11 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.20 s, the same source built for the host CPU 7.31 s, 50cbd80e 7.67 s, 7345490f 7.31 s, dbc5eeb 7.40 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 12.2 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.954): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 11.01 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_576_Normalized.json)"
+   }
   },
   {
    "id": "D4-38",
@@ -1136,14 +1238,64 @@
    ],
    "group": "pass1_budget_edge",
    "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@23, first run), the candidate recorded pass 1 as a time limit at step 16, the first budget check it failed",
-   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 7.89 s, the same source built for the host CPU 7.41 s, 50cbd80e 7.48 s, 7345490f 7.29 s, dbc5eeb 7.42 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 6.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.991): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.63 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 8.36 s, the same source built for the host CPU 7.64 s, 6e62e0d1 (the previous candidate) 8.16 s, 50cbd80e 7.46 s, 7345490f 7.55 s, dbc5eeb 7.33 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 16, the first check it failed. The candidate needs 9.5 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.024 at this check, and the source's code against 50cbd80e is 1.023: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 11.12 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
    "proposal": "accept as a timing transition of the portable release target, measured on the current revision: the same pass-1 document, about 10 % slower mask fill on large vocabularies than the same source built for the host CPU. The alternative, a release target with vector instructions, is a new candidate and a new R6 (owner's choice)",
-   "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_613_Normalized.json)",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Kubernetes---kb_613_Normalized.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; 50cbd80e and the lines: the recorded runs' sidecars",
    "candidate_rows": [
     {
      "corpus": "maskbench",
      "file": "Kubernetes---kb_613_Normalized.json",
      "tokenizer": "llama-3.1",
+     "outcome": "incomplete"
+    }
+   ],
+   "owner_decision": null,
+   "previous": {
+    "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 7.89 s, the same source built for the host CPU 7.41 s, 50cbd80e 7.48 s, 7345490f 7.29 s, dbc5eeb 7.42 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 6.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.991): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.63 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
+    "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_613_Normalized.json)"
+   }
+  },
+  {
+   "id": "D4-39",
+   "corpus": "maskbench",
+   "file": "Github_easy---o64825.json",
+   "tokenizers": [
+    "gpt2"
+   ],
+   "match_outcome": "incomplete",
+   "group": "pass1_budget_edge",
+   "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@55, first run), the candidate recorded pass 1 as a time limit at step 48, the first budget check it failed; on 6e62e0d1 the same pass 1 completed (cv@55) in its run",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 55 (the line's cv@55); at its budget check at step 48 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 7.37 s, the same source built for the host CPU 7.01 s, 6e62e0d1 (the previous candidate) 7.38 s, 50cbd80e 6.76 s, 7345490f 6.89 s, dbc5eeb 6.79 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 48, the first check it failed. The candidate needs 5.0 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 0.999 at this check, and the source's code against 50cbd80e is 1.038: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the GPT-2 (50257 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 8.29 s on the candidate (median of 3 rounds). Per-round check times on the quiet core (R11-A2): cand [7.86, 7.37, 7.29] s (spread 7.7 %); native [7.01, 6.79, 7.22] s (spread 6.4 %); prev [7.38, 7.49, 7.26] s (spread 3.1 %); 50cbd80e [6.76, 6.89, 6.75] s (spread 2.2 %); 7345490f [6.89, 6.84, 6.97] s (spread 1.8 %); dbc5eeb [6.79, 6.79, 7.16] s (spread 5.5 %). In the recorded runs the time-limited passes 2-20 of the two candidates reach the same steps (same seeds; median step ratio 1.000 over 19 passes; compatible with, but not proof of, equal speed). The deterministic pass-1 document is the same on every library, so a difference in the document is excluded; a small timing difference between the two candidates is not excluded by these data. Hypothesis (stated as such): the differing recorded pass-1 outcomes follow the run's conditions at the 10 s check; the cause is not established beyond this. The historical record keeps the prefix length only, not its bytes; byte equality is not claimed",
+   "proposal": "accept as a timing transition of the portable release target at the pass-1 budget edge, as the group (the outcome flips between recorded runs in both directions; the quiet-core margins above carry the same pass on every library with over 2 s of headroom). The alternative is a protocol decision (a pass-1 rule the loaded run's timing can meet reproducibly, e.g. a budget or retry rule checked against these replays), not a candidate fix; the owner chooses",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Github_easy---o64825.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; the recorded pass sidecars of t3-6e62e0d1 and t3-9a5baf3e (coverage_maskbench.passes.json.gz), the pass-1 records, the passes 2-20 step comparison and the per-round times above",
+   "candidate_rows": [
+    {
+     "corpus": "maskbench",
+     "file": "Github_easy---o64825.json",
+     "tokenizer": "gpt2",
+     "outcome": "incomplete"
+    }
+   ],
+   "owner_decision": null
+  },
+  {
+   "id": "D4-40",
+   "corpus": "maskbench",
+   "file": "Github_easy---o68314.json",
+   "tokenizers": [
+    "gpt2"
+   ],
+   "match_outcome": "incomplete",
+   "group": "pass1_budget_edge",
+   "summary": "incomplete (incomplete:time_limit 20); the line's one completed pass is pass 1 (7345490f cv@39, first run), the candidate recorded pass 1 as a time limit at step 32, the first budget check it failed; on 6e62e0d1 the same pass 1 completed (cv@39) in its run",
+   "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 39 (the line's cv@39); at its budget check at step 32 it needs, on a quiet core (R11-A2, CPU 2, median of 3 rounds): candidate 7.56 s, the same source built for the host CPU 7.17 s, 6e62e0d1 (the previous candidate) 7.31 s, 50cbd80e 6.90 s, 7345490f 6.83 s, dbc5eeb 6.98 s; in the T3 run of 9a5baf3e (8 jobs) the candidate recorded the time limit at step 32, the first check it failed. The candidate needs 5.5 % more time than its own source built for the host CPU at this check (heuristic threshold 4.5 %, the round-to-round noise; not a confidence interval), the two candidates differ by the ratio 1.035 at this check, and the source's code against 50cbd80e is 1.038: the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) is the leading hypothesis for that cost (pre-registered rule) on the GPT-2 (50257 tokens) mask fill. The pass-1 document, and with it the greedy path, is the same on all six libraries (equal documents; token paths and masks were not recorded and are not compared); on this quiet machine pass 1 completes under the 10 s budget on every one of the 18 library-rounds; the whole pass takes 8.19 s on the candidate (median of 3 rounds). Per-round check times on the quiet core (R11-A2): cand [7.61, 7.34, 7.56] s (spread 3.7 %); native [7.17, 6.95, 7.23] s (spread 4.0 %); prev [7.25, 7.31, 7.31] s (spread 0.9 %); 50cbd80e [6.79, 6.97, 6.9] s (spread 2.6 %); 7345490f [6.9, 6.65, 6.83] s (spread 3.8 %); dbc5eeb [6.98, 6.9, 7.35] s (spread 6.6 %). In the recorded runs the time-limited passes 2-20 of the two candidates reach the same steps (same seeds; median step ratio 1.000 over 19 passes; compatible with, but not proof of, equal speed). The deterministic pass-1 document is the same on every library, so a difference in the document is excluded; a small timing difference between the two candidates is not excluded by these data. Hypothesis (stated as such): the differing recorded pass-1 outcomes follow the run's conditions at the 10 s check; the cause is not established beyond this. The historical record keeps the prefix length only, not its bytes; byte equality is not claimed",
+   "proposal": "accept as a timing transition of the portable release target at the pass-1 budget edge, as the group (the outcome flips between recorded runs in both directions; the quiet-core margins above carry the same pass on every library with over 2 s of headroom). The alternative is a protocol decision (a pass-1 rule the loaded run's timing can meet reproducibly, e.g. a budget or retry rule checked against these replays), not a candidate fix; the owner chooses",
+   "evidence": "benchmarks/t3/evidence/r11a2_pass1_summary.md (Github_easy---o68314.json); benchmarks/t3/evidence/r11a2_pass1_summary.json; the recorded pass sidecars of t3-6e62e0d1 and t3-9a5baf3e (coverage_maskbench.passes.json.gz), the pass-1 records, the passes 2-20 step comparison and the per-round times above",
+   "candidate_rows": [
+    {
+     "corpus": "maskbench",
+     "file": "Github_easy---o68314.json",
+     "tokenizer": "gpt2",
      "outcome": "incomplete"
     }
    ],

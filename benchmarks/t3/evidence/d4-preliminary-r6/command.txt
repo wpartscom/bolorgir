@@ -1,0 +1,21 @@
+Preliminary R6 of the candidate 9a5baf3e with the updated D4 list (TZ section 4),
+2026-10-13. Run from the repository root; the console output is console.txt
+beside this file; exit code 1 (not_admitted, only transitions_approved).
+
+R6_LIB=$PWD/benchmarks/local/t3/acc-9a5baf3e/lib/libbolorgir.so.0.1.0 \
+PY=$PWD/.venv/bin/python \
+D4=$PWD/benchmarks/t3/d4_proposals.json \
+bash benchmarks/t3/r6_review.sh \
+  benchmarks/coverage/spec-v1/t3-9a5baf3e t3-9a5baf3e \
+  benchmarks/local/t3/r6-9a5baf3e-d4 \
+  tests/oracle/results/oracle-t3-9a5baf3e-draft4-spec.json \
+  tests/oracle/results/oracle-t3-9a5baf3e-draft6-spec.json \
+  tests/oracle/results/oracle-t3-9a5baf3e-draft7-spec.json \
+  tests/oracle/results/oracle-t3-9a5baf3e-draft2019-09-spec.json \
+  tests/oracle/results/oracle-t3-9a5baf3e-draft2020-12-spec.json
+
+Result (last line): R6_REVIEW_DONE verdict=not_admitted exit=1
+out=/home/gm/.../benchmarks/local/t3/r6-9a5baf3e-d4
+Checks: transitions_described ok (81 rows, 0 without an entry), d4_candidate ok
+(list names 9a5baf3e…), triage ok (gate 17e25bba4f1c6144), transitions_approved
+fail (pending 81 — the owner decisions).

@@ -1,0 +1,455 @@
+{
+ "C": [
+  {
+   "file": "Github_hard/Github_hard---o32934.json",
+   "snapshot": "maskbench",
+   "pass": 8,
+   "outcome": "engine_unavailable",
+   "step": 38,
+   "seconds": 2.9,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 18, \"openobj_deps\": 2, \"openobj_gate\": 2}",
+   "tail": "{\"apiVersion\":\"1.0.0\",\"components\":[{\""
+  },
+  {
+   "file": "Github_hard/Github_hard---o32934.json",
+   "snapshot": "maskbench",
+   "pass": 13,
+   "outcome": "engine_unavailable",
+   "step": 52,
+   "seconds": 2.92,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 18, \"openobj_deps\": 2, \"openobj_gate\": 2}",
+   "tail": "{\"apiVersion\":\"1.0.0\",\"commands\":[],\"components\":[{\""
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "snapshot": "maskbench",
+   "pass": 5,
+   "outcome": "engine_unavailable",
+   "step": 1109,
+   "seconds": 5.5,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}",
+   "tail": "]]\":\"\",\"RECORD}\":426,\"REQUIRED}}}\":\"TIMESTAMP\",\"]]}]]]\":\"}]\",\"]}]}\":\"}\",\"type\":\""
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "snapshot": "maskbench",
+   "pass": 12,
+   "outcome": "engine_unavailable",
+   "step": 2125,
+   "seconds": 8.09,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}",
+   "tail": "MP}}\":\"]}[\",\"}}]%]\":\"\",\"DATETIME]D]\":\"\",\"BIGNUMERIC}]\":\"}]]\",\"]}]}]\":\"\",\"type\":\""
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---cryproj.53.schema.json",
+   "snapshot": "maskbench",
+   "pass": 18,
+   "outcome": "engine_unavailable",
+   "step": 662,
+   "seconds": 1.01,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1}",
+   "tail": "tEffects\",\"ai_Recorder_Stop\":\"\u0147}]\",\"}]}\":\"es_dump_entities\",\"]]]]\":744345424e+97"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "snapshot": "maskbench",
+   "pass": 4,
+   "outcome": "engine_unavailable",
+   "step": 4926,
+   "seconds": 2.22,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 7}",
+   "tail": "xecutable\":\"build\",\"}]\":\"pathToFunc\",\"]]\":\"extensions\",\"]]]\":\"\",\"azureFunction\":"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "snapshot": "maskbench",
+   "pass": 8,
+   "outcome": "engine_unavailable",
+   "step": 107,
+   "seconds": 0.74,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}",
+   "tail": "xternal\",\"\u352e\u0454\":\"]]\",\"services\":[{\"executable\":\"}\",\"\":\"\",\"podman\":\"\",\"dockerFile\":"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "snapshot": "maskbench",
+   "pass": 9,
+   "outcome": "engine_unavailable",
+   "step": 581,
+   "seconds": 1.28,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}",
+   "tail": "\":\"external\",\"]_}]}]\":\"]\",\"cloneDirectory\":\"\",\"]\":\"]\",\"dockerFile\":\"}]\",\"image\":"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "snapshot": "maskbench",
+   "pass": 13,
+   "outcome": "engine_unavailable",
+   "step": 2082,
+   "seconds": 6.04,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}",
+   "tail": "\",\"}}]}\":\"}\",\"protocol\":\"]\",\"]]}}\":\"\",\"`}}}]\uefef\":\"]}x\",\"}}]]}]\u02e2\":\"]\",\"executable\":"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "snapshot": "maskbench",
+   "pass": 16,
+   "outcome": "engine_unavailable",
+   "step": 4433,
+   "seconds": 1.77,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}",
+   "tail": "\"\":\"\",\"executable\":\"]\",\"}}\":\"preservePath\",\"network\":\"}\",\"port\":\"\",\"dockerFile\":"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "snapshot": "maskbench",
+   "pass": 19,
+   "outcome": "engine_unavailable",
+   "step": 4866,
+   "seconds": 3.9,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}",
+   "tail": "\"network\",\"5]}]\":\"\",\"value\":\"\",\"ip\":\"network\",\"]\":{\"\udb0c\udc4a}}]\":0},\"\":\"\",\"dockerFile\":"
+  },
+  {
+   "file": "JsonSchemaStore/bigquery-table.json",
+   "snapshot": "repo",
+   "pass": 19,
+   "outcome": "engine_unavailable",
+   "step": 1582,
+   "seconds": 5.48,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}",
+   "tail": "}}\",\"]}]]]\":\"}}o\",\"BIGNUMERIC\":\"mode\",\"}]]}}]\":\"\",\"}}}}}]]\":\"GEOGRAPHY\",\"type\":\""
+  },
+  {
+   "file": "JsonSchemaStore/cryproj.dev.schema.json",
+   "snapshot": "repo",
+   "pass": 10,
+   "outcome": "engine_unavailable",
+   "step": 5725,
+   "seconds": 3.18,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1}",
+   "tail": "\"sys_StroboscopeStop\":\"}}]]]\",\"]}\u065d]]\":\"\",\"net_DumpMessageApproximations\":256E165"
+  },
+  {
+   "file": "Github_hard/o31351.json",
+   "snapshot": "repo",
+   "pass": 8,
+   "outcome": "engine_unavailable",
+   "step": 6225,
+   "seconds": 2.4,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}",
+   "tail": "ix\":\"geo\",\"playback_method\":\"sort_bids\",\"R\":\"}]]}]\",\"]}}\":\"\",\"}}\":\"]\",\"s\":\"\u0724]\",\""
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "snapshot": "repo",
+   "pass": 3,
+   "outcome": "engine_unavailable",
+   "step": 898,
+   "seconds": 7.32,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}",
+   "tail": "816887759060571426910391013361832863,\"}}}}}}\":\"]\",\"]\ud7b6\":\"\",\"}]}\":\"\",\"repository\":"
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "snapshot": "repo",
+   "pass": 6,
+   "outcome": "engine_unavailable",
+   "step": 567,
+   "seconds": 3.69,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}",
+   "tail": "\",\"rules\":\"solution\",\"}\":\"\u0890}\",\"\u061a\":\"\",\"]\ucc45\":\"]\",\"}}\":\"dashboardPort\",\"repository\":"
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "snapshot": "repo",
+   "pass": 7,
+   "outcome": "engine_unavailable",
+   "step": 2644,
+   "seconds": 2.78,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 5}",
+   "tail": "y\":\"\",\"]}}]\":\"source\",\"buildProperties\":\"]\",\"]}}]}\":\"\",\"]T\":\"]\",\"azureFunction\":"
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "snapshot": "repo",
+   "pass": 11,
+   "outcome": "engine_unavailable",
+   "step": 4658,
+   "seconds": 2.84,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}",
+   "tail": ",\",\":\"\",\"}]]\":0E0709221568,\"repository\":\"\",\"args\":\"\",\"f}]]]\":\"O}}\",\"dockerFile\":"
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "snapshot": "repo",
+   "pass": 15,
+   "outcome": "engine_unavailable",
+   "step": 3015,
+   "seconds": 4.7,
+   "as_recorded": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}",
+   "tail": "nv\":\"dockerFile\",\"volumes\":\"\",\"include\":\"dashboardPort\",\"}}}]\":\"8\",\"repository\":"
+  }
+ ],
+ "B": [
+  {
+   "label": "50cbd80e",
+   "budget": 10.0,
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "pass": 5,
+   "outcome": "engine_unavailable",
+   "step": 1109,
+   "seconds": 5.75,
+   "candidate_state": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  },
+  {
+   "label": "50cbd80e",
+   "budget": 10.0,
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "pass": 12,
+   "outcome": "engine_unavailable",
+   "step": 2125,
+   "seconds": 8.49,
+   "candidate_state": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  },
+  {
+   "label": "7345490f",
+   "budget": 300.0,
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "pass": 5,
+   "outcome": "engine_unavailable",
+   "step": 1109,
+   "seconds": 54.84,
+   "candidate_state": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  },
+  {
+   "label": "7345490f",
+   "budget": 300.0,
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "pass": 12,
+   "outcome": "engine_unavailable",
+   "step": 2125,
+   "seconds": 155.43,
+   "candidate_state": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  },
+  {
+   "label": "dbc5eeb",
+   "budget": 300.0,
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "pass": 5,
+   "outcome": "engine_unavailable",
+   "step": 1109,
+   "seconds": 54.67,
+   "candidate_state": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  },
+  {
+   "label": "dbc5eeb",
+   "budget": 300.0,
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "pass": 12,
+   "outcome": "engine_unavailable",
+   "step": 2125,
+   "seconds": 154.97,
+   "candidate_state": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  }
+ ],
+ "C50": [
+  {
+   "file": "Github_hard/Github_hard---o32934.json",
+   "pass": 8,
+   "outcome": "engine_unavailable",
+   "step": 38,
+   "seconds": 2.67,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 18, \"openobj_deps\": 2, \"openobj_gate\": 2}"
+  },
+  {
+   "file": "Github_hard/Github_hard---o32934.json",
+   "pass": 13,
+   "outcome": "engine_unavailable",
+   "step": 52,
+   "seconds": 2.68,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 18, \"openobj_deps\": 2, \"openobj_gate\": 2}"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "pass": 5,
+   "outcome": "engine_unavailable",
+   "step": 1109,
+   "seconds": 5.89,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---bigquery-table.json",
+   "pass": 12,
+   "outcome": "engine_unavailable",
+   "step": 2125,
+   "seconds": 8.76,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---cryproj.53.schema.json",
+   "pass": 18,
+   "outcome": "engine_unavailable",
+   "step": 662,
+   "seconds": 1.05,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1}"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "pass": 4,
+   "outcome": "engine_unavailable",
+   "step": 4926,
+   "seconds": 2.23,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 7}"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "pass": 8,
+   "outcome": "engine_unavailable",
+   "step": 107,
+   "seconds": 0.65,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "pass": 9,
+   "outcome": "engine_unavailable",
+   "step": 581,
+   "seconds": 1.19,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "pass": 13,
+   "outcome": "engine_unavailable",
+   "step": 2082,
+   "seconds": 5.94,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "pass": 16,
+   "outcome": "engine_unavailable",
+   "step": 4433,
+   "seconds": 1.85,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}"
+  },
+  {
+   "file": "JsonSchemaStore/JsonSchemaStore---tye-schema.json",
+   "pass": 19,
+   "outcome": "engine_unavailable",
+   "step": 4866,
+   "seconds": 3.74,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}"
+  },
+  {
+   "file": "JsonSchemaStore/bigquery-table.json",
+   "pass": 19,
+   "outcome": "engine_unavailable",
+   "step": 1582,
+   "seconds": 5.92,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  },
+  {
+   "file": "JsonSchemaStore/cryproj.dev.schema.json",
+   "pass": 10,
+   "outcome": "engine_unavailable",
+   "step": 5725,
+   "seconds": 3.58,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1}"
+  },
+  {
+   "file": "Github_hard/o31351.json",
+   "pass": 8,
+   "outcome": "engine_unavailable",
+   "step": 6225,
+   "seconds": 2.58,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "pass": 3,
+   "outcome": "engine_unavailable",
+   "step": 898,
+   "seconds": 7.15,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}"
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "pass": 6,
+   "outcome": "engine_unavailable",
+   "step": 567,
+   "seconds": 3.54,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}"
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "pass": 7,
+   "outcome": "engine_unavailable",
+   "step": 2644,
+   "seconds": 2.88,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 5}"
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "pass": 11,
+   "outcome": "engine_unavailable",
+   "step": 4658,
+   "seconds": 3.06,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 8}"
+  },
+  {
+   "file": "JsonSchemaStore/tye-schema.json",
+   "pass": 15,
+   "outcome": "engine_unavailable",
+   "step": 3015,
+   "seconds": 4.89,
+   "same_as_candidate": true,
+   "msg": "mask computation limit exceeded {\"fail_search\": 1, \"comb_group\": 3}"
+  }
+ ],
+ "problems": []
+}
