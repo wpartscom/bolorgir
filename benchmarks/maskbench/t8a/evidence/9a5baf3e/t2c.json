@@ -1,11 +1,42 @@
 {
- "about": "T2c classes of Bolorgir errors in T8a on the core 9a5baf3e (t8a_report.py --t2c, run_t8a.sh T8A_T2C), prepared 2026-10-13 for the wheel bolorgir-0.2.0rc1-cp312-abi3-linux_x86_64.whl (sha256 b5635a7e...) built from the frozen sources of the release line with the in-tree core. No class is carried over from the 6e62e0d1 files: the classes for this core are prepared only from the outcomes measured in the first full run of the work dir benchmarks/local/t8a-work-9a5baf3e, and every class stays subject to the owner's decision (the D4 decisions of the T3 review do not decide T8a errors). Until then the entries are empty and every Bolorgir error stays open. A class covers only its file with the exact outcome it names as status, under the T8a protocol stated below (900 s per file, one worker, memory limit 40 GB, spec-v1, bolorgir, compact): the status timeout is a pending marker whose chunk ended with exit -14 (the runner's SIGALRM) while it ran the file; t8a_report.py applies the class only then, so a crash with another exit, a validation error or a marker without that chunk end stays open. The table status crash_or_timeout stays. A timeout of any other file is not covered and stays open. The causes inside the core are open. The protocol block states those limits in complete machine-readable form; t8a_report.py applies a class only when every required condition is present with the run's value, otherwise every case stays open.",
+ "about": "T2c classes of Bolorgir errors in T8a on the core 9a5baf3e (t8a_report.py --t2c, run_t8a.sh T8A_T2C), prepared 2026-10-13 for the wheel bolorgir-0.2.0rc1-cp312-abi3-linux_x86_64.whl (sha256 b5635a7e...) built from the frozen sources of the release line with the in-tree core. No class is carried over from the 6e62e0d1 files: the classes for this core are prepared only from the outcomes measured in the first full run of the work dir benchmarks/local/t8a-work-9a5baf3e (the D4 decisions of the T3 review do not decide T8a errors). On 2026-10-13 class D was accepted for the four format-only instances of Github_easy---o76630.json (instance #1) and Github_medium---o6171.json (instances #2, #4, #7) on the basis of the diagnosis of that run; every other Bolorgir error, the timeouts of the run included, stays open because no entry covers it. A class covers only its file with the exact outcome it names as status, under the T8a protocol stated below (900 s per file, one worker, memory limit 40 GB, spec-v1, bolorgir, compact): the status timeout is a pending marker whose chunk ended with exit -14 (the runner's SIGALRM) while it ran the file; t8a_report.py applies the class only then, so a crash with another exit, a validation error or a marker without that chunk end stays open. The table status crash_or_timeout stays. A timeout of any other file is not covered and stays open. The causes inside the core are open. The protocol block states those limits in complete machine-readable form; t8a_report.py applies a class only when every required condition is present with the run's value, otherwise every case stays open.",
  "core_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
- "decided": "pending: classes are added from the diagnosis of the first full run and decided by the owner",
+ "decided": "2026-10-13: class D for the four format-only instances (Github_easy---o76630.json #1; Github_medium---o6171.json #2, #4, #7); every other error, every timeout and every future error stays open",
  "protocol": {"threads": 1, "time_limit": 900, "mem_limit": 40,
   "profile": "spec-v1", "serializer": "bolorgir", "compact": true,
   "smoke_files": 0,
   "tokenizer_revision": "a2856192dd7c25b842431f39c179a6c2c2f627d1",
   "wheel_sha256": "b5635a7ed70cec7b4f92f952272ef1cd9fb0929f9c4a8e7d874d536d083d2e2d"},
- "entries": {}
+ "entries": {
+  "Github_easy---o76630.json": {
+   "class": "D",
+   "status": "invalidation_error",
+   "instances": [1],
+   "note": "divergence from the reference expectation, accepted as a documented limitation of spec-v1: the wrong acceptance is instance #1 (0-based; homePage, format iri, value \"not-an-iri\"); the ONLY violation is the format annotation, which spec-v1 never asserts (docs/dialect-matrix.md section 2 rule 5; docs/supported_features.md), so the acceptance is the documented behavior, not a regression. Reproduced with real format checkers: zero non-format errors, exactly one format error; T3 on the same core records the same acceptance with validator: true. The run record keeps only the last failing test; the instance list is the complete set enumerated from the streams and the reference (diag/wrong_instances.py).",
+   "evidence": [
+    "benchmarks/local/t8a-work-9a5baf3e/diag/Github_easy---o76630/summary.md",
+    "benchmarks/local/t8a-work-9a5baf3e/diag/Github_easy---o76630/validate.json",
+    "benchmarks/local/t8a-work-9a5baf3e/diag/Github_easy---o76630/t3_record.json",
+    "benchmarks/local/t8a-work-9a5baf3e/diag/cases_validate_report.json",
+    "benchmarks/local/t8a-work-9a5baf3e/diag/wrong_instances_report.json",
+    "benchmarks/local/t8a-work-9a5baf3e/out/blg-spec-v1/Github_easy---o76630.json",
+    "benchmarks/local/t8a-work-9a5baf3e/out/blg-spec-v1/t8a_streams/Github_easy---o76630.json"
+   ]
+  },
+  "Github_medium---o6171.json": {
+   "class": "D",
+   "status": "invalidation_error",
+   "instances": [2, 4, 7],
+   "note": "divergence from the reference expectation, accepted as a documented limitation of spec-v1: the wrong acceptances are instances #2 (creationDate \"2022-01-01 12:00:00\"), #4 (creationDate \"2022-01-01T12:00:00\" without offset) and #7 (creationDate and lastUpdated \"not a date\") (0-based), each violating ONLY the date-time format annotation, which spec-v1 never asserts (docs/dialect-matrix.md section 2 rule 5; docs/supported_features.md); every instance violating an implemented keyword (pattern/enum) was rejected. Reproduced with real format checkers: zero non-format errors, only date-time format errors; T3 on the same core records the same acceptances with validator: true. The run record keeps only the last failing test (#7); the instance list is the complete set enumerated from the streams and the reference (diag/wrong_instances.py).",
+   "evidence": [
+    "benchmarks/local/t8a-work-9a5baf3e/diag/Github_medium---o6171/summary.md",
+    "benchmarks/local/t8a-work-9a5baf3e/diag/Github_medium---o6171/validate.json",
+    "benchmarks/local/t8a-work-9a5baf3e/diag/Github_medium---o6171/t3_record.json",
+    "benchmarks/local/t8a-work-9a5baf3e/diag/cases_validate_report.json",
+    "benchmarks/local/t8a-work-9a5baf3e/diag/wrong_instances_report.json",
+    "benchmarks/local/t8a-work-9a5baf3e/out/blg-spec-v1/Github_medium---o6171.json",
+    "benchmarks/local/t8a-work-9a5baf3e/out/blg-spec-v1/t8a_streams/Github_medium---o6171.json"
+   ]
+  }
+ }
 }

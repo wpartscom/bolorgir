@@ -119,4 +119,5 @@ smoke. New classes are prepared with the diagnosis and decided by the
 owner; the committed files are `evidence/6e62e0d1/t2c.json` and
 `evidence/6e62e0d1/t2c-run2.json` for the earlier core (the 6e62e0d1
 wheels) and `evidence/9a5baf3e/t2c.json` for the current line's wheel
-(classes pending the owner's decision).
+(class D for the four format-only instances of two files, 2026-10-13;
+the timeouts and every other error stay open).
