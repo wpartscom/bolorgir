@@ -1,5 +1,5 @@
 {
- "about": "Owner decision list D4 of the audit-fix spec (T3 item 2): every result that leaves `generatable` against dbc5eeb or 7345490f needs an owner decision. Proposals from benchmarks/t3/evidence.md; owner_decision stays null until the owner decides, and the executor never fills it. benchmarks/t3/tools/acceptance_compare.py separates a described transition (an entry matches) from an approved one (decision_format below) and lists every pending row with its exact key in the `d4_pending_rows` of its JSON report. This revision is bound to the candidate 9a5baf3e (the T3 acceptance run of 2026-10-13): every entry was re-checked against that candidate's reports, its triage and the fresh replays of 2026-10-13 (R11-A2, R11-C2/B2), not carried over from the 6e62e0d1 revision; the earlier text of substantially changed entries is kept under `previous`",
+ "about": "Owner decision list D4 of the audit-fix spec (T3 item 2): every result that leaves `generatable` against dbc5eeb or 7345490f needs an owner decision. Proposals from benchmarks/t3/evidence.md; owner_decision records only an explicit owner decision; the executor cannot grant approval on the owner's behalf. benchmarks/t3/tools/acceptance_compare.py separates a described transition (an entry matches) from an approved one (decision_format below) and lists every pending row with its exact key in the `d4_pending_rows` of its JSON report. This revision is bound to the candidate 9a5baf3e (the T3 acceptance run of 2026-10-13): every entry was re-checked against that candidate's reports, its triage and the fresh replays of 2026-10-13 (R11-A2, R11-C2/B2), not carried over from the 6e62e0d1 revision; the earlier text of substantially changed entries is kept under `previous` On 2026-10-13 the project owner explicitly accepted the listed deviations for this candidate and required public documentation. Decisions cover the 67 unique results of the 81 comparison rows in d4_transitions_9a5baf3e.json; the nine historical entries without a transition on this candidate remain undecided.",
  "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
  "decision_format": {
   "owner_decision": "null (pending) or {\"decision\": \"accept\" | \"reject\", \"candidate_library_sha256\": <64 hex of the accepted candidate>, \"rows\": [{\"corpus\", \"file\", \"tokenizer\", \"outcome\"}], \"by\": <name>, \"date\": <YYYY-MM-DD>, \"note\": <text>}",
@@ -64,7 +64,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_1154_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "an expensive pass 1 on every library: pass 1 ends at step 31 (the line's cv@31); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 14.84 s, the same source built for the host CPU 13.63 s, 50cbd80e 13.46 s, 7345490f 17.50 s, dbc5eeb 17.26 s; all of them exceed 10 s at step 16 (as R2b: 7345490f 17.5 s), the candidate in less time than both lines; the pass-1 document is the same on all five libraries. 7345490f completed pass 1 (cv@31) in its run of 2026-10-03 with that day's harness (dbc5eeb+dirty, no source hash recorded); no library reproduces that with the run's harness, and the cause of that historical completion is not established",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_1154_Normalized.json); benchmarks/t3/evidence.md, section R2b; benchmarks/t3/evidence/kb1154_slow_prefix.hex"
@@ -107,7 +121,21 @@
      "outcome": "engine_unavailable"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "tye-schema.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented resource-limit refusals remain accepted limitations; engine_unavailable outcomes remain unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "summary": "RESOURCE_LIMIT in 7 of 20 passes (2 on 7345490f) while completed_valid grows from 2 to 10",
     "cause": "oneOf of eight open-object branches; a vote needs a key witness that fails every rival, the certificate has value witnesses only",
@@ -134,7 +162,21 @@
      "outcome": "engine_unavailable"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "JsonSchemaStore---tye-schema.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented resource-limit refusals remain accepted limitations; engine_unavailable outcomes remain unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "summary": "as D4-3, MaskBench snapshot",
     "cause": "as D4-3",
@@ -161,7 +203,21 @@
      "outcome": "engine_unavailable"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o32934.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented resource-limit refusals remain accepted limitations; engine_unavailable outcomes remain unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "summary": "RESOURCE_LIMIT in 2 of 20 passes (9 on 7345490f, 0 on dbc5eeb)",
     "cause": "key start in an array element under five if/then groups with closed then branches; comb_group plus dependency-gated object states stay undecided",
@@ -188,7 +244,21 @@
      "outcome": "engine_unavailable"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "JsonSchemaStore---cryproj.53.schema.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented resource-limit refusals remain accepted limitations; engine_unavailable outcomes remain unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "summary": "RESOURCE_LIMIT in 1 pass after an exponent of 40 or more inside a uniqueItems element",
     "cause": "documented limit of semantics-spec-v1 section 1: a number in a uniqueItems element may not exceed |exp| 400",
@@ -205,7 +275,219 @@
    "cause": "a random pass reaches an integral value spelled with a fraction or exponent; the reference with draft-04 integer semantics rejects it (docs/supported_features.md section 9)",
    "proposal": "accept as the documented class D deviation, only for rows whose T2c triage on the candidate is class D with every invalid document checked; any other class reopens the row",
    "evidence": "benchmarks/coverage/spec-v1/t3-9a5baf3e/review/triage.md and triage.json (T2c of the candidate); docs/supported_features.md section 9",
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o21330.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o21780.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o3905.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o41323.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o54559.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o61027.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_hard---o68416.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o25781.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o55596.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o61004.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o62963.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o71266.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_trivial---o14485.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_trivial---o66073.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "Github_ultra---o18644.json",
+      "tokenizer": "gpt2",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "maskbench",
+      "file": "JsonSchemaStore---vercel.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "bozr.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o14485.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o21330.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o21780.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41197.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41278.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41290.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41303.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o41800.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o47116.json",
+      "tokenizer": "gpt2",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o48422.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o5327.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o61004.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o61027.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o66073.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o69733.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o71266.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     },
+     {
+      "corpus": "repo",
+      "file": "o74556.json",
+      "tokenizer": "byte",
+      "outcome": "invalid_document"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented draft-04 integer-spelling discrepancy remains an accepted deviation; the original invalid_document outcomes and class-D triage evidence remain unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "summary": "results that end in an invalid_document explained by the draft-04 integer spelling: on 6e62e0d1 42 rows (11 against 7345490f, 31 against dbc5eeb), 34 results, every one T2c class D with all 68 invalid documents checked (review/triage.json of the set)",
     "evidence": "benchmarks/coverage/spec-v1/t3-6e62e0d1/review/triage.md and triage.json (T2c of the candidate); docs/supported_features.md section 9"
@@ -485,7 +767,21 @@
      "outcome": "engine_unavailable"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "o31351.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented resource-limit refusals remain accepted limitations; engine_unavailable outcomes remain unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "summary": "RESOURCE_LIMIT in 1 of 20 passes (pass 8, step 6225, 2.5 s); on dbc5eeb and 7345490f the same pass ends in the 10 s time limit near step 1600 and reaches the same state at step 6225 after 40 s with a 120 s budget",
     "cause": "oneOf of two branches that differ only by a required key (bids or config_id) on the open ad_units item object: the vote needs a key witness that fails the rival branch, the certificate has value witnesses only (comb_group), and the bounded search runs out; pre-existing, reached within the pass budget because 50cbd80e is faster",
@@ -512,7 +808,21 @@
      "outcome": "engine_unavailable"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "bigquery-table.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented resource-limit refusals remain accepted limitations; engine_unavailable outcomes remain unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "summary": "RESOURCE_LIMIT in 1 of 20 passes (pass 19, step 1582, 5.6 s); on dbc5eeb and 7345490f the same pass ends in the 10 s time limit near step 168 and reaches the same state at step 1582 after 81-85 s with a 120 s budget",
     "cause": "if/then on the recursive field definition (type STRUCT or RECORD requires fields): at the value of \"type\" the comb_group state stays undecided and the bounded search runs out; pre-existing, reached within the pass budget because 50cbd80e is faster",
@@ -539,7 +849,21 @@
      "outcome": "engine_unavailable"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "JsonSchemaStore---bigquery-table.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented resource-limit refusals remain accepted limitations; engine_unavailable outcomes remain unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "as D4-11: the MaskBench copy of the repository schema (identical JSON) under other seeds; R11-B: both lines with 300 s and 50cbd80e with 10 s reach the candidate's state (RESOURCE_LIMIT at the same step, the prefix byte-equal to the candidate's R11-C replay): 50cbd80e pass 5 engine_unavailable@1109 in 6 s (budget 10 s); 50cbd80e pass 12 engine_unavailable@2125 in 8 s (budget 10 s); 7345490f pass 5 engine_unavailable@1109 in 54 s (budget 300 s); 7345490f pass 12 engine_unavailable@2125 in 153 s (budget 300 s); dbc5eeb pass 5 engine_unavailable@1109 in 52 s (budget 300 s); dbc5eeb pass 12 engine_unavailable@2125 in 148 s (budget 300 s); R11-C2 (re-run on 9a5baf3e): as recorded, fail_search 1, comb_group 3"
    }
@@ -564,7 +888,21 @@
      "outcome": "engine_unavailable"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "cryproj.dev.schema.json",
+      "tokenizer": "byte",
+      "outcome": "engine_unavailable"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented resource-limit refusals remain accepted limitations; engine_unavailable outcomes remain unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "summary": "RESOURCE_LIMIT in 1 of 20 passes (pass 10, step 5725, 3.4 s); 7345490f reaches the same state at the same step in 4.7 s (replayed with the candidate harness), dbc5eeb takes another path to the step limit",
     "cause": "documented limit of semantics-spec-v1 section 1 inside a uniqueItems element (console_variables): the pass typed 256E165, and a further exponent digit would exceed |exp| 400",
@@ -591,7 +929,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "o41283.json",
+      "tokenizer": "gpt2",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 59 (the line's cv@59); at its budget check at step 48 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.34 s, the same source built for the host CPU 7.62 s, 50cbd80e 7.66 s, 7345490f 7.61 s, dbc5eeb 7.63 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 48. The candidate is 9.4 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.996): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.50 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (o41283.json); 50cbd80e, the same harness and protocol: pass 1 tl@32 in its R6 run"
@@ -617,7 +969,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_1088_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.09 s, the same source built for the host CPU 7.55 s, 50cbd80e 7.53 s, 7345490f 7.44 s, dbc5eeb 7.52 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 7.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.003): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.97 s on the candidate (median of 3 rounds)",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1088_Normalized.json); 50cbd80e, the same harness and protocol: pass 1 tl@16 in its R6 run"
@@ -699,7 +1065,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_1057_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.33 s, 50cbd80e 7.68 s, 7345490f 7.34 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.955): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.88 s on the candidate (median of 3 rounds)",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1057_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@22) in its R6 run"
@@ -725,7 +1105,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_1123_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 18 (the line's cv@18); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.08 s, the same source built for the host CPU 7.19 s, 50cbd80e 7.54 s, 7345490f 7.38 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 12.3 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.954): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.08 s on the candidate (median of 3 rounds)",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_1123_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@18) in its R6 run"
@@ -751,7 +1145,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_157_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.17 s, the same source built for the host CPU 7.46 s, 50cbd80e 7.34 s, 7345490f 7.38 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 9.6 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.016): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.14 s on the candidate (median of 3 rounds)",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_157_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@21) in its R6 run"
@@ -777,7 +1185,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_199_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.10 s, the same source built for the host CPU 7.49 s, 50cbd80e 7.63 s, 7345490f 7.42 s, dbc5eeb 7.36 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 8.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.981): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.81 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_199_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run"
@@ -803,7 +1225,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_396_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.13 s, the same source built for the host CPU 7.46 s, 50cbd80e 7.45 s, 7345490f 7.43 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 9.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.001): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.90 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_396_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run"
@@ -829,7 +1265,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_480_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.32 s, the same source built for the host CPU 7.46 s, 50cbd80e 7.62 s, 7345490f 7.30 s, dbc5eeb 7.37 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.96 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_480_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run"
@@ -855,7 +1305,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "kb_576_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.47 s, 50cbd80e 7.53 s, 7345490f 7.46 s, dbc5eeb 7.44 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 8.9 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.993): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.90 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (kb_576_Normalized.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@23) in its R6 run"
@@ -909,7 +1373,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "o44130.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.16 s, the same source built for the host CPU 7.33 s, 50cbd80e 7.52 s, 7345490f 7.41 s, dbc5eeb 7.27 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.3 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.975): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.08 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (o44130.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@22) in its R6 run"
@@ -935,7 +1413,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "repo",
+      "file": "search_product_67f0c7b7.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.18 s, the same source built for the host CPU 7.43 s, 50cbd80e 7.42 s, 7345490f 7.39 s, dbc5eeb 7.47 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.1 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.001): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 12.72 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (search_product_67f0c7b7.json); 50cbd80e (host build, the same harness and protocol) completed this pass 1 (cv@25) in its R6 run"
@@ -961,7 +1453,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_easy---o1008.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 21 (the line's cv@21); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.14 s, the same source built for the host CPU 7.37 s, 50cbd80e 7.53 s, 7345490f 7.45 s, dbc5eeb 7.47 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.6 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.02 s on the candidate (median of 3 rounds)",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_easy---o1008.json)"
@@ -987,7 +1493,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_easy---o13688.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 22 (the line's cv@22); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.07 s, the same source built for the host CPU 7.56 s, 50cbd80e 7.41 s, 7345490f 7.39 s, dbc5eeb 7.59 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 6.7 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.020): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.93 s on the candidate (median of 3 rounds)",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_easy---o13688.json)"
@@ -1013,7 +1533,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_easy---o48800.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 20 (the line's cv@20); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.21 s, the same source built for the host CPU 7.47 s, 50cbd80e 7.63 s, 7345490f 7.40 s, dbc5eeb 7.50 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 10.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.22 s on the candidate (median of 3 rounds)",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_easy---o48800.json)"
@@ -1039,7 +1573,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_medium---o32493.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.10 s, the same source built for the host CPU 7.30 s, 50cbd80e 7.47 s, 7345490f 7.40 s, dbc5eeb 7.36 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.977): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 9.97 s on the candidate (median of 3 rounds)",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_medium---o32493.json)"
@@ -1065,7 +1613,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_trivial---o84263.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.30 s, the same source built for the host CPU 7.43 s, 50cbd80e 7.43 s, 7345490f 7.38 s, dbc5eeb 7.31 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.7 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.000): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 8.31 s on the candidate (median of 3 rounds)",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Github_trivial---o84263.json)"
@@ -1091,7 +1653,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Glaiveai2K---calculate_distance_51b4a417.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 25 (the line's cv@25); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.36 s, the same source built for the host CPU 7.51 s, 50cbd80e 7.49 s, 7345490f 7.42 s, dbc5eeb 7.38 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 11.2 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.003): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 12.97 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Glaiveai2K---calculate_distance_51b4a417.json)"
@@ -1145,7 +1721,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Glaiveai2K---generate_resume_d9ba16a3.json",
+      "tokenizer": "gpt2",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 61 (the line's cv@61); at its budget check at step 48 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.57 s, the same source built for the host CPU 8.08 s, 50cbd80e 7.89 s, 7345490f 7.86 s, dbc5eeb 8.01 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 48. The candidate is 6.0 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 1.025): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the GPT-2 (50257 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.77 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Glaiveai2K---generate_resume_d9ba16a3.json)"
@@ -1171,7 +1761,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_231_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.23 s, the same source built for the host CPU 7.31 s, 50cbd80e 7.46 s, 7345490f 7.45 s, dbc5eeb 7.38 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 12.6 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.979): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 11.04 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_231_Normalized.json)"
@@ -1197,7 +1801,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_379_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 26 (the line's cv@26); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 9.11 s, the same source built for the host CPU 8.39 s, 50cbd80e 8.40 s, 7345490f 8.21 s, dbc5eeb 8.29 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 8.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.999): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 13.71 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_379_Normalized.json)"
@@ -1223,7 +1841,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_576_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 8.20 s, the same source built for the host CPU 7.31 s, 50cbd80e 7.67 s, 7345490f 7.31 s, dbc5eeb 7.40 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 12.2 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.954): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 11.01 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_576_Normalized.json)"
@@ -1249,7 +1881,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null,
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Kubernetes---kb_613_Normalized.json",
+      "tokenizer": "llama-3.1",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   },
    "previous": {
     "cause": "pass 1 at the edge of its 10 s budget: pass 1 ends at step 23 (the line's cv@23); at its budget check at step 16 it needs, on a quiet core (R11-A, CPU 2, median of 3 rounds): candidate 7.89 s, the same source built for the host CPU 7.41 s, 50cbd80e 7.48 s, 7345490f 7.29 s, dbc5eeb 7.42 s; in the R6 run (8 jobs) the candidate exceeded 10 s at step 16. The candidate is 6.5 % slower than its own source built for the host CPU (threshold 2.9 %, the round-to-round noise), its code is not slower than 50cbd80e (native/50cbd80e 0.991): the release recipe -Dcpu=baseline (no AVX2/POPCNT/BMI) costs this much on the Llama 3.1 (128256 tokens) mask fill. The pass-1 document and the greedy path are the same on all five libraries (full masks were not compared); on a quiet core the periodic budget check fires on no library; the whole pass takes 10.63 s on the candidate (median of 3 rounds), longer than 10 s and ending between two checks",
     "evidence": "benchmarks/t3/evidence.md, section R11; benchmarks/t3/evidence/r11a_pass1_summary.md (Kubernetes---kb_613_Normalized.json)"
@@ -1276,7 +1922,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_easy---o64825.json",
+      "tokenizer": "gpt2",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   }
   },
   {
    "id": "D4-40",
@@ -1299,7 +1959,21 @@
      "outcome": "incomplete"
     }
    ],
-   "owner_decision": null
+   "owner_decision": {
+    "decision": "accept",
+    "candidate_library_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+    "rows": [
+     {
+      "corpus": "maskbench",
+      "file": "Github_easy---o68314.json",
+      "tokenizer": "gpt2",
+      "outcome": "incomplete"
+     }
+    ],
+    "by": "project owner (explicit instruction in the project conversation)",
+    "date": "2026-10-13",
+    "note": "Recorded at the project owner's explicit instruction: accept the listed deviations for this candidate and document them publicly. The documented time-budget and expensive-pass limitations remain accepted; incomplete outcomes remain incomplete and do not establish full semantic coverage. The measured protocol is unchanged. This records the owner decision only; it does not assert an admitted R6 verdict, an accepted T8a report or authorization to publish."
+   }
   }
  ]
 }

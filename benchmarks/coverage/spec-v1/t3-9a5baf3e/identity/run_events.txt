@@ -1,0 +1,8 @@
+RUN_INIT /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/local/t3/acc-9a5baf3e head=003f1b3e603afdc0dad01dd7c2bd5ac5de4b0c64 2026-10-12T15:32:32Z
+RUN_PREPARED 2026-10-12T15:32:41Z
+RUN_READY 2026-10-12T15:32:45Z
+RUN_START 2026-10-12T15:51:16Z lib=9a5baf3e373ac9a7 jobs=8
+RUN_DONE exit=143 2026-10-12T23:56:56Z
+RUN_ABORT preparation: identity check failed (exit 127)
+RUN_START 2026-10-13T00:35:28Z lib=9a5baf3e373ac9a7 jobs=8
+RUN_DONE exit=0 2026-10-13T06:38:39Z

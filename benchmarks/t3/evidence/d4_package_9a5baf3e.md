@@ -6,9 +6,16 @@ Public decision package (audit-fix spec T3 item 2, TZ sections 3–4 of
 `9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41`) and the
 preliminary R6 review rebuilt from the saved data.
 
-**Nothing here is an approval.** `owner_decision` is `null` in every entry;
-only the owner fills decisions, in the format below. The previous approvals
-for `6e62e0d1` do not carry over to this candidate.
+**Status: decided on 2026-10-13.** The owner recorded `accept` in the 34
+applicable entries of `benchmarks/t3/d4_proposals.json` (67 results, 81
+comparison rows; every decision bound to the full candidate sha256 and
+requiring public documentation of the limitations); the nine historical
+entries without a transition on this candidate have no new decisions. The
+decisions were filled by the owner in the format below, not by the
+executor. Accepting the exceptions does not turn the negative outcomes
+into successes and does not by itself assert a stable release; the
+previous approvals for `6e62e0d1` still do not carry over to this
+candidate.
 
 ## State of the record (2026-10-13)
 
@@ -23,6 +30,15 @@ for `6e62e0d1` do not carry over to this candidate.
   (81 transition rows, 0 results without a D4 entry), `d4_candidate` is ok
   (the list names this candidate), `triage` is ok (gate `17e25bba4f1c6144`,
   identical to the published review's triage).
+- Final R6 from the same saved reports after the decisions (out dir
+  `benchmarks/local/t3/r6-9a5baf3e-d4-review2`, moved into the published
+  set as `benchmarks/coverage/spec-v1/t3-9a5baf3e/review-2/`; command,
+  console and evidence inside):
+
+  `R6_REVIEW_DONE verdict=admitted exit=0` — 50 checks, all ok; no
+  failing, pending or intermediate causes; `transitions_approved` **ok**
+  (81 rows approved by the decisions of 2026-10-13), every other check as
+  in the preliminary run. The preliminary record above stays as history.
 
 - Coverage matrix: `benchmarks/t3/evidence/d4_transitions_9a5baf3e.md` /
   `.json` — all 81 rows and the 67 unique results with the comparison line,
@@ -64,7 +80,8 @@ for `6e62e0d1` do not carry over to this candidate.
 - **Triage of the candidate**: `benchmarks/coverage/spec-v1/t3-9a5baf3e/review/triage.{md,json}`
   — all 34 `invalid_document` results of the transitions are class D (the
   draft-04 integer spelling, `docs/supported_features.md` section 9) with all
-  68 invalid documents present and checked.
+  68 invalid documents present and checked; the final review-2 carries the
+  identical triage (same gate `17e25bba4f1c6144`).
 
 Conditions and limits (recorded in `benchmarks/local/t3/de8/d4f/README_PLAN.md`,
 copied into `benchmarks/t3/evidence/d4-9a5baf3e/tools/`): amendment A1 raised

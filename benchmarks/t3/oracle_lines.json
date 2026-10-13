@@ -8,7 +8,6 @@
   {
    "name": "7345490f",
    "library_sha256": "7345490f7ddf5710ec438f0e4baf4bf98b330a61cb6663be045580da95fa56c8",
-   "identity": "The reports predate the library_sha256 header field; their header.library is benchmarks/local/libs/final/libbolorgir.so.0.1.0. That file has sha256 7345490f..., mtime 2026-10-03T14:13:09Z (the first report is 14:19:54Z), and docs/RUN_HISTORY.md (gates on the final build) and docs/dialect-matrix.md section 9 name these reports as the runs on lib 7345490f (2026-10-03).",
    "binding": {
     "kind": "archive",
     "library_path": "benchmarks/local/libs/final/libbolorgir.so.0.1.0",
@@ -31,28 +30,58 @@
      }
     ]
    },
+   "identity": "Fresh oracle run (oracle-line-7345490f-7345490f, 2026-10-13) of the kept reference library benchmarks/local/libs/final/libbolorgir.so.0.1.0 (sha256 7345490f...) with the tools of the release worktree 003f1b3 (tests/oracle/run_oracle.py, the same suite snapshot, validator and profile as the candidate t3-9a5baf3e); the archived oracle-final-* reports predate the library_sha256 header field and their archive binding stopped holding in the review after the repository-relative cleanup of their header paths; each report header names library_sha256 7345490f... and every dialect outcome count equals the archived run.",
    "reports": {
     "draft4": {
-     "path": "tests/oracle/results/oracle-final-draft4-spec.json",
-     "sha256": "dd3cc590a7069e7433f50d0708f0de5fcc24605f02f6907c1fcd05ae62b2b1d4"
+     "path": "tests/oracle/results/oracle-line-7345490f-7345490f-draft4-spec.json",
+     "sha256": "2fc68c762638fcaa0da144f191149243e29883a8b51cf8a30469ad1b1a6a4f94"
     },
     "draft6": {
-     "path": "tests/oracle/results/oracle-final-draft6-spec.json",
-     "sha256": "fa674aa4375c484c3b3e551d9e32c7883d6c54ee3939592004b7d93ae23a9d2e"
+     "path": "tests/oracle/results/oracle-line-7345490f-7345490f-draft6-spec.json",
+     "sha256": "60bf315a68ccbb913ce693740513af6a8f2cc5758ad2874c937d2b9177b21362"
     },
     "draft7": {
-     "path": "tests/oracle/results/oracle-final-draft7-spec.json",
-     "sha256": "7e289bd637c182b2c7f239e458d8a6521fb654e33958e97ad07df590babcaa8a"
+     "path": "tests/oracle/results/oracle-line-7345490f-7345490f-draft7-spec.json",
+     "sha256": "c041347bfa7d5406ffeb5a80ac275359aca5325b1b9466a74b17fbefce2a77b3"
     },
     "draft2019-09": {
-     "path": "tests/oracle/results/oracle-final-draft2019-09-spec.json",
-     "sha256": "3fda8221e44cf3c63b3472163537421ab185d2b8ce82514fd735913ddb410b56"
+     "path": "tests/oracle/results/oracle-line-7345490f-7345490f-draft2019-09-spec.json",
+     "sha256": "45782396ecc7fec999683ffaf32bca542e41fb7f15d9fe29a3837b39e8d80ea0"
     },
     "draft2020-12": {
-     "path": "tests/oracle/results/oracle-final-draft2020-12-spec.json",
-     "sha256": "8b529489f7d54e023327661a3ce48cc30e691747acee60d35596d82778953576"
+     "path": "tests/oracle/results/oracle-line-7345490f-7345490f-draft2020-12-spec.json",
+     "sha256": "3cb108bcd50b0f852301228889956c7a222fab64a47bd427abd477f1057d4889"
     }
-   }
+   },
+   "history": [
+    {
+     "replaced_utc": "2026-10-13T06:59:08Z",
+     "reason": "The archived reports predate the library_sha256 header field; after the repository-relative cleanup of their header paths the archive binding no longer holds in the review, so the line was run again with the tools of 003f1b3 for the fresh T3/R6 acceptance; every dialect outcome count is unchanged.",
+     "identity": "The reports predate the library_sha256 header field; their header.library is benchmarks/local/libs/final/libbolorgir.so.0.1.0. That file has sha256 7345490f..., mtime 2026-10-03T14:13:09Z (the first report is 14:19:54Z), and docs/RUN_HISTORY.md (gates on the final build) and docs/dialect-matrix.md section 9 name these reports as the runs on lib 7345490f (2026-10-03).",
+     "reports": {
+      "draft4": {
+       "path": "tests/oracle/results/oracle-final-draft4-spec.json",
+       "sha256": "dd3cc590a7069e7433f50d0708f0de5fcc24605f02f6907c1fcd05ae62b2b1d4"
+      },
+      "draft6": {
+       "path": "tests/oracle/results/oracle-final-draft6-spec.json",
+       "sha256": "fa674aa4375c484c3b3e551d9e32c7883d6c54ee3939592004b7d93ae23a9d2e"
+      },
+      "draft7": {
+       "path": "tests/oracle/results/oracle-final-draft7-spec.json",
+       "sha256": "7e289bd637c182b2c7f239e458d8a6521fb654e33958e97ad07df590babcaa8a"
+      },
+      "draft2019-09": {
+       "path": "tests/oracle/results/oracle-final-draft2019-09-spec.json",
+       "sha256": "3fda8221e44cf3c63b3472163537421ab185d2b8ce82514fd735913ddb410b56"
+      },
+      "draft2020-12": {
+       "path": "tests/oracle/results/oracle-final-draft2020-12-spec.json",
+       "sha256": "8b529489f7d54e023327661a3ce48cc30e691747acee60d35596d82778953576"
+      }
+     }
+    }
+   ]
   },
   {
    "name": "dbc5eeb",

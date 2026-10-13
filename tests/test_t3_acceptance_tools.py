@@ -801,11 +801,24 @@ def test_r6_publish_hands_the_run_library_to_the_review():
 
 
 def test_tracked_decision_files_are_consistent():
-    """The tracked D4 list keeps every decision with the owner, the oracle
-    line list names five dialects or a reason, the protocol notes bind
-    values."""
+    """Every decision in the tracked D4 list is the owner's, in the format
+    of its `decision_format` field and bound to this candidate (the
+    executor never fills one); the oracle line list names five dialects
+    or a reason, the protocol notes bind values."""
     d4 = json.load(open(os.path.join(ROOT, "benchmarks/t3/d4_proposals.json"), encoding="utf-8"))
-    assert all(e["owner_decision"] is None for e in d4["entries"])
+    cand = d4["candidate_library_sha256"]
+    for e in d4["entries"]:
+        dec = e["owner_decision"]
+        if dec is None:
+            continue
+        assert set(dec) == {"decision", "candidate_library_sha256", "rows",
+                            "by", "date", "note"}, e["id"]
+        assert dec["decision"] in ("accept", "reject"), e["id"]
+        assert dec["candidate_library_sha256"] == cand, e["id"]
+        assert dec["by"] and dec["date"] and dec["note"] is not None, e["id"]
+        assert dec["rows"], e["id"]
+        for r in dec["rows"]:
+            assert set(r) == {"corpus", "file", "tokenizer", "outcome"}, e["id"]
     rule = [e for e in d4["entries"] if e.get("file") == "*"]
     assert rule and all(e.get("requires_triage_class") == "D" for e in rule)
     lines = json.load(open(os.path.join(ROOT, "benchmarks/t3/oracle_lines.json"), encoding="utf-8"))

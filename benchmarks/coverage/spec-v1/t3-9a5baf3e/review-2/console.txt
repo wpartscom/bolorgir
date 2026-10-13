@@ -1,0 +1,13 @@
+TRIAGE exit=0
+{
+ "acceptance": {
+  "verdict": "admitted",
+  "exit_status": 0,
+  "intermediate": [],
+  "failing": [],
+  "pending": []
+ },
+ "transitions": 81
+}
+ACCEPTANCE_COMPARE exit=0
+R6_REVIEW_DONE verdict=admitted exit=0 out=/home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/local/t3/r6-9a5baf3e-d4-review2

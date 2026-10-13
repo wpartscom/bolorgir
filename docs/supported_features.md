@@ -669,3 +669,15 @@ error types were found among them). In the generatable reports of
 accepted invalid MaskBench instances; the cases are listed in
 `tests/fuzz/known_deviations_spec_v1.json` (triage:
 `benchmarks/coverage/spec-v1/triage.md`).
+
+For the T3 acceptance line the owner accepted this deviation on
+2026-10-13 for the candidate `9a5baf3e…`: 34 `invalid_document` results
+among the 81 comparison rows of the T3 comparison against the reference
+lines `dbc5eeb`/`7345490f`, every one triage-checked as class D with all
+68 invalid documents present. The compatibility limit, stated explicitly:
+under a draft-04 `$schema` the engine's `integer` is value-based, not
+lexical, so instances spelled `1.0`/`1e2` are a documented deviation from
+a draft-04 reference validator — not draft-04-identical validation.
+Cases: `benchmarks/t3/evidence/d4_transitions_9a5baf3e.md`; decision:
+`benchmarks/t3/d4_proposals.json` (D4-6); admitted review:
+`benchmarks/coverage/spec-v1/t3-9a5baf3e/review-2/`.

@@ -1,0 +1,16 @@
+{
+ "git_head": "6989c3330072bbe79ed64e8e2d673d087c63b4f6",
+ "changed_from_head": [],
+ "files": {
+  "benchmarks/t3/r6_review.sh": "31e686126fe40174d79df48f5904ae63f23bd6c878c671cad378fe5e9a447610",
+  "benchmarks/t3/r6_publish.sh": "dd2a7562d21cc3002922e8bba7f7226f3483902bdb54008fcabb1561e8d20b9a",
+  "benchmarks/t3/tools/acceptance_compare.py": "4820c677d399f5174b529e5ed573530fa2771e82769b95138e8e37a0d2c577e8",
+  "benchmarks/triage_semantic.py": "70d900387727a4b4e4c3d8a0aefd1a8ceddd3c410034c39b982ae284e96570e4",
+  "tests/generation_passes.py": "c3f11e7a33cfd974436f17a934f35b6e02e7f2a324b6325788440d6cde1834c0",
+  "tests/semantic_outcomes.py": "a74b54072e4b7f4c85e28ed94f7d26589b83a7679c3dd0360523f3bc27705000",
+  "tests/exact_numbers.py": "1f6cae67f15907d3c35ac0b49b1b9f059b1d77b3e69b7fb0ab101cd10698b79f",
+  "tests/blg_ctypes.py": "f71c13569c84127bb2187a289397c796605cbb0dbbbfcdf9a8a08beb136f3ce1",
+  "python/bolorgir/serializer.py": "1140bfc5ccc23dee3d35a696ef4ffeb1844f4897faa4b965f885ae0cf1130dd9",
+  "benchmarks/protected_paths.sh": "cfd5c24f1745b2bbed8106c740b4379758e5963bd4a9ee9757d0b0ac69b57fda"
+ }
+}

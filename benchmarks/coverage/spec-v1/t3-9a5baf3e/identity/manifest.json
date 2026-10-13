@@ -1,0 +1,109 @@
+{
+ "corpora": {
+  "maskbench": {
+   "digest": "5e6afbf3bfeceb975b23e9331b2459a2970b2a0c64b0d7fffeb9663e781608e7",
+   "files": 11306,
+   "revision": "ba103c73756198dd9b149ddc7db7867da7a077f6"
+  },
+  "repo": {
+   "digest": "4c6c1d3947936f6060d4a0c0d937b1f54c41b2af2f44c09f664ab1819e97112e",
+   "files": 9558
+  }
+ },
+ "created": "2026-10-12T15:32:41Z",
+ "format": 1,
+ "git_head": "003f1b3e603afdc0dad01dd7c2bd5ac5de4b0c64",
+ "hf": {
+  "digest": "d46997356b1465dec065c080b30296371236007cf82813640c3fcde7ecb10535",
+  "files": 24,
+  "snapshots": {
+   "hub/models--openai-community--gpt2/snapshots/607a30d783dfa663caf39e06633721c8d4cfcd7e/config.json": "0daed7749b4f02b8f76240d5444551d7b08712dab4d0adb8239c56ba823bb7b4",
+   "hub/models--openai-community--gpt2/snapshots/607a30d783dfa663caf39e06633721c8d4cfcd7e/merges.txt": "1ce1664773c50f3e0cc8842619a93edc4624525b728b188a9e0be33b7726adc5",
+   "hub/models--openai-community--gpt2/snapshots/607a30d783dfa663caf39e06633721c8d4cfcd7e/tokenizer.json": "8414cab924d8b9b33013f0d221c5862f365ee9be39c5c2bfae8a5a9e970478a6",
+   "hub/models--openai-community--gpt2/snapshots/607a30d783dfa663caf39e06633721c8d4cfcd7e/tokenizer_config.json": "5e04eb606e3a1583530a42e36c2a6b6615c86f34fe77e44d9ddeb43ff940931f",
+   "hub/models--openai-community--gpt2/snapshots/607a30d783dfa663caf39e06633721c8d4cfcd7e/vocab.json": "196139668be63f3b5d6574427317ae82f612a97c5d1cdaf36ed2256dbf636783",
+   "hub/models--unsloth--Meta-Llama-3.1-8B-Instruct/snapshots/a2856192dd7c25b842431f39c179a6c2c2f627d1/config.json": "073b48b1c601acd5e592000aaf13131055f26bb22e8fc71befced9b9213b6799",
+   "hub/models--unsloth--Meta-Llama-3.1-8B-Instruct/snapshots/a2856192dd7c25b842431f39c179a6c2c2f627d1/special_tokens_map.json": "94e708c3f5e64acf85bbe5ad01467a1248faadb73e83b41793087ecced586e8f",
+   "hub/models--unsloth--Meta-Llama-3.1-8B-Instruct/snapshots/a2856192dd7c25b842431f39c179a6c2c2f627d1/tokenizer.json": "6b9e4e7fb171f92fd137b777cc2714bf87d11576700a1dcd7a399e7bbe39537b",
+   "hub/models--unsloth--Meta-Llama-3.1-8B-Instruct/snapshots/a2856192dd7c25b842431f39c179a6c2c2f627d1/tokenizer_config.json": "4d18eae3017839b17cb3598f589b62ec212652d183582ee0fc33a4f1e8b3da67"
+  }
+ },
+ "lib": {
+  "dir": {
+   "digest": "c82cb1686cdd20f00c86f43f11c24664cf236ac1db1af602c5a149f65b228575",
+   "files": 3
+  },
+  "sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41"
+ },
+ "machine": {
+  "libc": "glibc 2.35",
+  "node": "gm-INTEL",
+  "platform": "Linux-6.8.0-138-generic-x86_64-with-glibc2.35"
+ },
+ "params": {
+  "chunk_size": 100,
+  "hf_sample_every": 20,
+  "jobs": 8,
+  "mem_limit_mb": 16384,
+  "passes": 20,
+  "profile": "spec-v1",
+  "snapshot": "both"
+ },
+ "tree": {
+  "digest": "361ac426c420489557ae5d6cf7e0a2a9ae1fb190d7a89819bed899d16651be19",
+  "files": 548
+ },
+ "venv": {
+  "digest": "3740f061033320f2f531395bc0d588a83ccfb370cfb2c9416c6a56ba1f8eaa46",
+  "files": 5912,
+  "freeze": [
+   "annotated-doc==0.0.5",
+   "anyio==4.15.1",
+   "attrs==26.1.0",
+   "certifi==2026.7.22",
+   "click==8.5.0",
+   "exceptiongroup==1.3.1",
+   "filelock==4.0.9",
+   "fsspec==2026.9.0",
+   "h11==0.16.0",
+   "hf-xet==1.6.0",
+   "httpcore==1.0.9",
+   "httpx==0.28.1",
+   "huggingface-hub==1.33.0",
+   "idna==3.20",
+   "jsonschema-specifications==2025.9.1",
+   "jsonschema==4.26.0",
+   "markdown-it-py==4.2.0",
+   "mdurl==0.1.2",
+   "numpy==2.2.6",
+   "packaging==26.3",
+   "pip==26.2.1",
+   "pygments==2.21.0",
+   "pyyaml==6.0.3",
+   "referencing==0.37.0",
+   "regex==2026.9.29",
+   "regress==2025.10.1",
+   "rich==15.0.0",
+   "rpds-py==0.30.0",
+   "safetensors==0.8.0",
+   "setuptools==84.0.0",
+   "shellingham==1.5.4",
+   "tokenizers==0.23.2",
+   "tomli==2.4.1",
+   "tqdm==4.70.1",
+   "transformers==5.18.0",
+   "typer==0.27.2",
+   "typing-extensions==4.16.0"
+  ],
+  "python": {
+   "base_prefix": "/home/gm/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu",
+   "executable": "/home/gm/.local/share/uv/python/cpython-3.12.15-linux-x86_64-gnu/bin/python3.12",
+   "executable_sha256": "708fefcd7df61b1327cb7b9740fafd42cb2f6cd1d387378892d4a28b7479fb78",
+   "version": "3.12.15 (main, Oct  9 2026, 15:22:32) [Clang 22.1.3 ]"
+  },
+  "stdlib": {
+   "digest": "91ad81092baac3e4a9b6525aa3249ed5d1cdcc73b01d7f4606f8cbbe027a36c4",
+   "files": 747
+  }
+ }
+}

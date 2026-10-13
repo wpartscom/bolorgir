@@ -476,6 +476,44 @@ Known limitations of spec-v1 (experimental):
   under `maxContains` the engine accepts any key order, because those
   keywords decide on the value (semantics-spec-v1 section 4.3).
 
+**Accepted and documented deviations (2026-10-13, T3 acceptance line).**
+The project owner accepted the listed deviations of the T3 comparison of
+the core `9a5baf3e…` against the reference lines `dbc5eeb`/`7345490f`,
+with public documentation. The counts below are those of the considered
+deviations of that comparison (81 comparison rows, 67 results), not of
+the entire test corpus, and the recorded outcomes stay negative:
+
+- **34 `invalid_document` results — the draft-04 integer spelling.** The
+  engine applies the value-based `integer` semantics uniformly across
+  dialects (`1.0`, `1e2`, `100.00` are integers), while a draft-04
+  reference validator applies the draft-04 lexical rule. Minimal
+  example: for
+  `{"$schema": "http://json-schema.org/draft-04/schema#", "type": "integer"}`
+  the engine accepts the instance `1.0` and a draft-04 validator rejects
+  it. Compatibility limit: under a draft-04 `$schema` such instances are
+  a documented deviation, not draft-04-identical validation
+  (`docs/supported_features.md` section 9).
+- **25 `incomplete` results — the check did not finish in its time
+  budget.** These runs ended at the budget before a decision, so the
+  completeness of their semantic check is not confirmed; quiet-core
+  replays completed the same passes on every compared library
+  (`benchmarks/t3/evidence/r11a2_pass1_summary.md`) and the outcome
+  stays `incomplete`.
+- **8 `engine_unavailable` results — resource refusals on listed complex
+  schemas** (`oneOf` groups of open objects, e.g. `bigquery-table`,
+  `cryproj`, `tye-schema`, `o31351`, `Github_hard---o32934`). The call
+  fails with `RESOURCE_LIMIT`/`ResourceLimitError` ("mask computation
+  limit exceeded") instead of admitting a token without a proof
+  (`benchmarks/t3/evidence/r11bc2_summary.md`); recommended handling in
+  an application: `on_constraint_error="fail_row"` or the compile-time
+  probe (ADR-0012).
+
+Per-case lists and evidence:
+`benchmarks/t3/evidence/d4_transitions_9a5baf3e.md`; decision record:
+`benchmarks/t3/d4_proposals.json`; package:
+`benchmarks/t3/evidence/d4_package_9a5baf3e.md`; admitted review:
+`benchmarks/coverage/spec-v1/t3-9a5baf3e/review-2/` (50/50 checks ok).
+
 ### Common limitations
 
 - **Arbitrary CFG (EBNF/GBNF/Lark) is not supported** in any profile.
