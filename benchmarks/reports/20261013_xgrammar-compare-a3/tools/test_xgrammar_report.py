@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Address tests of the v2 report rules (TZ 6.3): category partition,
-excluded runs, denominators, p90 method, re-validation of stored text.
-Synthetic records only; run: python3 test_xgrammar_report.py
+excluded runs, denominators, p90 method, re-validation of stored text,
+and the revision-3 integrity checks (negative tests: missing [DONE],
+incomplete runs, duplicate keys, missing usage, re-validation
+disagreement, empty inputs). Synthetic records only; run:
+python3 test_xgrammar_report.py
 """
+import json
 import os
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -70,10 +75,16 @@ class TestRuns(unittest.TestCase):
         self.assertIsNone(by["B"]["tok_per_s"])
 
     def test_length_does_not_exclude_run(self):
-        recs = [rec(batch=8, finish="length", valid=False, text="x") for _ in range(4)]
+        recs = [rec(batch=8, finish="length", valid=False, text="x") for _ in range(8)]
         rows = R.run_rows(recs)
         self.assertTrue(rows[0]["included"])
         self.assertEqual(rows[0]["stop_valid_per_s"], 0.0)
+
+    def test_incomplete_run_is_excluded(self):
+        rows = R.run_rows([rec(batch=128) for _ in range(1)])
+        self.assertFalse(rows[0]["included"])
+        self.assertEqual(rows[0]["exclusion"], "incomplete run (1 of 128)")
+        self.assertIsNone(rows[0]["tok_per_s"])
 
 
 class TestStats(unittest.TestCase):
@@ -127,6 +138,91 @@ class TestRevalidation(unittest.TestCase):
         recs = [rec(valid=True, text='{"action":"reply","priority":9}')]
         rv = R.revalidate(recs)
         self.assertEqual(len(rv["valid_differ"]), 1)
+
+
+def write_raw(tmpdir, records, name="raw.jsonl"):
+    p = os.path.join(tmpdir, name)
+    with open(p, "w", encoding="utf-8") as f:
+        for r in records:
+            f.write(json.dumps(r) + "\n")
+    return p
+
+
+VALID_TEXT = {
+    "w1_json_small": '{"action":"reply","priority":3}',
+    "w2_json_nested": ('{"items":[{"name":"abc","count":1},{"name":"abc","count":1},'
+                       '{"name":"abc","count":1}],"total":3}'),
+    "w3_regex64": "0" * 64,
+}
+
+
+def full_matrix(session="s1", repeats=2):
+    out = []
+    for w in R.MATRIX_WORKLOADS:
+        for b in R.MATRIX_BATCHES:
+            for rep in range(repeats):
+                for i in range(b):
+                    r = rec(workload=w, batch=b, rep=rep, session=session,
+                            text=VALID_TEXT[w])
+                    r["idx"] = i
+                    out.append(r)
+    return out
+
+
+class TestIntegrity(unittest.TestCase):
+    def test_full_matrix_has_no_problems(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, full_matrix())
+            doc = R.build_report([p])
+        self.assertEqual(doc["problems"], [])
+        self.assertEqual(doc["records"], 1014)
+        self.assertEqual(doc["matrix"]["s1"]["runs"], 24)
+        self.assertEqual(doc["revalidation"]["valid_agree"], 1014)
+
+    def test_no_final_event_is_unfinished_and_a_problem(self):
+        self.assertEqual(R.category(rec(final_event=False)), "unfinished")
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, [rec(final_event=False)])
+            doc = R.build_report([p])
+        self.assertTrue(any("final stream event" in x for x in doc["problems"]))
+
+    def test_incomplete_run_is_a_problem(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, [rec(batch=128, text=VALID_TEXT["w1_json_small"])])
+            doc = R.build_report([p])
+        self.assertTrue(any("wrong request count" in x for x in doc["problems"]))
+
+    def test_duplicate_key_is_a_problem(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, [rec(session="A"), rec(session="A")])
+            doc = R.build_report([p])
+        self.assertTrue(any("duplicate request keys" in x for x in doc["problems"]))
+
+    def test_usage_missing_is_never_zero_tokens(self):
+        r = rec(tokens=None, usage=False)
+        rows = R.run_rows([r])
+        self.assertIsNone(rows[0]["tokens"])
+        self.assertIsNone(rows[0]["tok_per_s"])
+        self.assertEqual(rows[0]["tok_exclusion"], "usage missing")
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, [r])
+            doc = R.build_report([p])
+        self.assertTrue(any("usage missing" in x for x in doc["problems"]))
+
+    def test_revalidation_disagreement_is_a_problem(self):
+        r = rec(valid=True, text='{"action":"reply","priority":9}')
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, [r])
+            doc = R.build_report([p])
+        self.assertTrue(any("stored-vs-revalidated" in x for x in doc["problems"]))
+
+    def test_empty_input_fails(self):
+        doc = R.build_report([])
+        self.assertTrue(any("no records" in x for x in doc["problems"]))
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, [])
+            doc = R.build_report([p])
+        self.assertTrue(any("has no records" in x for x in doc["problems"]))
 
 
 if __name__ == "__main__":

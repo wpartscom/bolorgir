@@ -1,0 +1,5 @@
+== 2026-10-13T10:15:19Z session b2d
+argv: /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/python /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/vllm serve Qwen/Qwen2.5-0.5B-Instruct --revision 7ae557604adf67be50417f59c2c2f167def9a775 --structured-outputs-config {"backend": "bolorgir"} --no-enable-prefix-caching --host 127.0.0.1 --port 8021 
+python: Python 3.12.15
+lib: 9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41  /home/gm/Рабочий стол/сайты/LLM_trainer/zig/python/bolorgir/_lib/libbolorgir.so.0.1.0
+StructuredOutputsConfig(backend='bolorgir', disable_any_whitespace=False, disable_additional_properties=False

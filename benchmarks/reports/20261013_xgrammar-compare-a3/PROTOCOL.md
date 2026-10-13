@@ -142,3 +142,40 @@ stands), and A3 adds a like-for-like series:
   client-observed per-token time, not a profiled mask cost) are applied
   in the reports of both series.
 
+## Amendment A4 (2026-10-13): re-run with per-session EngineCore binding
+
+Review point (2026-10-13): the A3 pass recorded the EngineCore load
+confirmation (the separate `engine_core_check.sh` run) but the manifest
+of the pass itself keeps `engine_maps` empty — the provenance snapshot
+was taken before the adapter loads the core. A confirmation of the same
+configuration in another process is not a confirmation for the measured
+sessions, so the compact series is re-run (nothing about the request
+matrix changes; the pass runs after the A3 results were seen and
+therefore gets its own identity):
+
+- output directory `compact-r2/`; session labels **x1d, b1d, x2d, b2d**
+  (same alternation xgrammar, bolorgir, xgrammar, bolorgir; one server
+  start per session; port 8021); the re-run uses the standalone
+  `tools/run_compact.sh`, which takes the output directory as an
+  argument, resolves the repository root relative to itself, uses only
+  the tools published in `tools/` and compares the full core SHA-256;
+- per session **two EngineCore scans** (mid-session, after the first
+  records are on disk, and post-session): PID, comm, argv excerpt, the
+  `libbolorgir.so.0.1.0` mapping line from `/proc/<pid>/maps` and the
+  full SHA-256 of the library file; a bolorgir session must show the
+  mapping in both scans, an xgrammar session must not (negative
+  control). The manifest grows a per-session `engine` block;
+- wording correction: the A3 line above that calls the length cuts
+  "legal partials" is superseded — a `length` record is not counted as
+  a completed document and the label is reserved for a separately
+  verified prefix check (review 2026-10-13, TZ §6.2); the v2 reports
+  already state this;
+- expected result: the completion categories and the aggregated numbers
+  reproduce the A3 pass up to run-to-run spread; differences are
+  reported, not smoothed.
+
+The first pass (`compact/`, labels x1c/b1c/x2c/b2c) stays unchanged as
+history; the pass whose manifest carries the per-session binding
+(`compact-r2/`) is the canvas for the EngineCore claim, with A3 as the
+repeated measurement.
+

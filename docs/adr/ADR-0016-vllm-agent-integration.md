@@ -46,19 +46,28 @@
   (`benchmarks/reports/20261013_xgrammar-compare-a3/`, sessions
   x1c/b1c/x2c/b2c) ran xgrammar with `disable_any_whitespace=True`,
   verified in the server log and recorded in `compact/manifest.json`,
-  on the same stack, model revision and core `9a5baf3e…`. Both series
+  on the same stack, model revision and core `9a5baf3e…` (the series
+  was repeated with per-session EngineCore capture as the A4 pass,
+  sessions x1d/b1d/x2d/b2d; the repeat reproduces the figures — the
+  categories are identical except the bolorgir `w1` cuts, 105 vs 107,
+  i.e. 3951 vs 3949 completed documents, and the timing cells move
+  within the run-to-run spread). Both series
   are recounted under one completion-category scheme with declared
   denominators and independent re-validation (`REPORT-v2.md`,
   `summary-v2.json`, `REPORT-v2-oldseries.md`). Among the 4056 HTTP-200
   records of the compact series every completed (`stop`) document is
   valid in both backends; the bolorgir `length` cuts are kept as cuts
-  and not counted as completed documents (105 in the compact series;
-  the 107 cuts of the old series carry no answer text, so their
-  endability cannot be re-checked, and the old statement calling them
-  “legal partials” is corrected in its v2 accounting). The load of the
-  candidate core inside the `VLLM::EngineCore` process for this server
-  configuration is confirmed by a dedicated `/proc/<pid>/maps` scan
-  (`compact/engine-core-check/`). TPOT in both reports is the
+  and not counted as completed documents (105 in the first pass, 107
+  in the repeat; the old 2026-10-12 series recorded its own 107 cuts
+  without answer text, so their endability cannot be re-checked, and
+  the old statement calling them “legal partials” is corrected in its
+  v2 accounting). The load of the
+  candidate core inside the `VLLM::EngineCore` process is confirmed
+  per measured bolorgir session by the repeat pass (the `engine`
+  block of `compact-r2/manifest.json` and `compact-r2/engine-*.txt`:
+  PID, mapping line, full SHA-256; the xgrammar sessions serve as the
+  negative control), with the standalone `/proc` scan
+  (`compact/engine-core-check/`) kept as a supplementary re-check. TPOT in both reports is the
   client-observed per-token time `(e2e − TTFT)/(tokens − 1)`, not a
   profiled mask cost; the batch≥32 gap is reported as measured, and
   its attribution to mask computation is left to a separate profiling

@@ -1,0 +1,12 @@
+== 2026-10-13T10:14:31Z x2d EngineCore scan (mid-session)
+lib: 9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41  /home/gm/Рабочий стол/сайты/LLM_trainer/zig/python/bolorgir/_lib/libbolorgir.so.0.1.0
+pid 521008 comm=VLLM::EngineCor
+argv: VLLM::EngineCore                                                                                                                                                                                        
+mapped=0
+bolorgir_mapped=0
+== 2026-10-13T10:14:43Z x2d EngineCore scan (post-session)
+lib: 9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41  /home/gm/Рабочий стол/сайты/LLM_trainer/zig/python/bolorgir/_lib/libbolorgir.so.0.1.0
+pid 521008 comm=VLLM::EngineCor
+argv: VLLM::EngineCore                                                                                                                                                                                        
+mapped=0
+bolorgir_mapped=0

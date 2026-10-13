@@ -78,9 +78,12 @@ first-pass effect below, not by steady-state cost.
 Reading:
 
 - at batch 1–8 the backends are **equal in steps/s** for `w1`/`w3`
-  (TPOT 4.3–5.2 ms both) — the constraint work is not the bottleneck;
-- at batch ≥ 32 xgrammar gains: TPOT is 1.6–3.3× lower and batch
-  throughput is 1.5–2.8× higher. TPOT is the client-observed per-token
+  (TPOT 4.3–5.2 ms both) — the constraint work is not the bottleneck
+  (the `w2` first-pass caveat below applies);
+- at batch ≥ 32 xgrammar gains: in this first series TPOT is 1.6–3.3×
+  lower and batch throughput 1.5–2.8× higher; the like-for-like
+  compact passes give the same direction with 1.4–3.4× / 1.3–2.7×
+  (two passes; see `compact/`, `compact-r2/`). TPOT is the client-observed per-token
   time `(e2e − TTFT)/(tokens − 1)`; it includes engine and delivery
   overheads and is **not a profiled mask cost**, so the gap is
   reported as measured and its attribution to mask computation is left
@@ -91,10 +94,11 @@ Reading:
 
 ## Outlier: bolorgir `w2` first pass at small batches
 
-Reproduced identically in both sessions (narrow spread ⇒ systematic,
-not noise): `w2` `rep=0` with batch 1 runs at 266–268 ms/token
-(e2e ≈ 10.2 s), batch 8 at 92.7–101.2 ms/token; `rep=1` is normal
-(4.5 / 5.2 ms/token). xgrammar shows no such first-pass cost
+Reproduced in all four bolorgir sessions of the two passes (narrow
+spread within each pass ⇒ systematic, not noise): `w2` `rep=0` at
+batch 1 costs ≈10 s (9.60–10.33 s wall; ≈262–268 ms/token), batch 8
+≈3.5 s wall; `rep=1` is normal (0.18–0.19 s at batch 1; 4.5 / 5.2
+ms/token). xgrammar shows no such first-pass cost
 (4.3–5.2 ms/token in all four cells). At batch ≥ 32 both repeats are
 normal (11.4 and 43.3 ms/token), so the effect is amortised/absorbed
 under load. All these runs are valid; the report medians include them
@@ -109,8 +113,8 @@ investigation is noted as follow-up work.
 One model (0.5B), one GPU, greedy decoding, no speculative decoding
 (for that comparison see the round-5/7 functional matrix, TZ 18), no
 prefix cache. Absolute numbers do not transfer to other hardware; the
-structural result (parity at batch 1–8, xgrammar ahead under high
-concurrency) is the transferable part.
+structural result (steady-state parity at batch 1–8 for `w1`/`w3`,
+xgrammar ahead under high concurrency) is the transferable part.
 
 ## Bottom line for TZ section 10
 
@@ -124,9 +128,13 @@ are kept as cuts, not completed documents. The 2026-10-12 series
 compared different JSON languages (the xgrammar sessions ran with the
 vLLM default `disable_any_whitespace=False`; the pretty-printed `w2`
 median is 78 tokens against the compact 39). The like-for-like compact
-series (amendment A3, 2026-10-13) and the corrected accounting of
-both series are in `compact/` (`REPORT-v2.md`, `summary-v2.json`) and
-in `REPORT-v2-oldseries.md`. Bolorgir is at parity for
-latency-oriented small batches and slower under high concurrency, and
-it provides the certificate-driven `0.5e1` completion path that
-xgrammar does not take.
+series (amendments A3/A4, 2026-10-13; two passes, the repeat pass
+with per-session EngineCore binding) and the corrected accounting of
+both series are in `compact/`, `compact-r2/` (`REPORT-v2.md`,
+`summary-v2.json`) and in `REPORT-v2-oldseries.md`. The repeat pass
+reproduces the figures (categories identical except 105 → 107 `w1`
+cuts; timing cells within run-to-run spread). Bolorgir is at parity
+for latency-oriented small batches in steady state (its first `w2`
+pass costs ≈10 s; see the outlier section) and slower under high
+concurrency, and it provides the certificate-driven `0.5e1`
+completion path that xgrammar does not take.
