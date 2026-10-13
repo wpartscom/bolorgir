@@ -1,0 +1,31 @@
+{
+ "about": "A3 compact re-collection of the T10 section-10 comparison (run_compact.sh)",
+ "sessions": [
+  "x1c",
+  "b1c",
+  "x2c",
+  "b2c"
+ ],
+ "core": {
+  "path": "python/bolorgir/_lib/libbolorgir.so.0.1.0",
+  "sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41"
+ },
+ "adapter": {
+  "path": "python/bolorgir/vllm.py",
+  "sha256": "7bbee811a625cdb27d0dc341ef56dc121b1c0d6cd8dbfdd6f13a7efbae2740d4"
+ },
+ "vllm_version": "0.31.0",
+ "xgrammar_version": "0.2.7",
+ "model": "Qwen/Qwen2.5-0.5B-Instruct@7ae557604adf67be50417f59c2c2f167def9a775",
+ "patch": {
+  "path": "integrations/vllm/vllm-0.31.0-bolorgir.patch",
+  "sha256": "d0b8ea80d3ad02946ceab71ee93da811ec6dc9250e63481aedc932b1a1aa065a"
+ },
+ "server_argv": {
+  "x1c": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/python /home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/vllm serve Qwen/Qwen2.5-0.5B-Instruct --revision 7ae557604adf67be50417f59c2c2f167def9a775 --structured-outputs-config {\"backend\": \"xgrammar\", \"disable_any_whitespace\": true} --no-enable-prefix-caching --host 127.0.0.1 --port 8021",
+  "b1c": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/python /home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/vllm serve Qwen/Qwen2.5-0.5B-Instruct --revision 7ae557604adf67be50417f59c2c2f167def9a775 --structured-outputs-config {\"backend\": \"bolorgir\"} --no-enable-prefix-caching --host 127.0.0.1 --port 8021",
+  "x2c": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/python /home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/vllm serve Qwen/Qwen2.5-0.5B-Instruct --revision 7ae557604adf67be50417f59c2c2f167def9a775 --structured-outputs-config {\"backend\": \"xgrammar\", \"disable_any_whitespace\": true} --no-enable-prefix-caching --host 127.0.0.1 --port 8021",
+  "b2c": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/python /home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/vllm serve Qwen/Qwen2.5-0.5B-Instruct --revision 7ae557604adf67be50417f59c2c2f167def9a775 --structured-outputs-config {\"backend\": \"bolorgir\"} --no-enable-prefix-caching --host 127.0.0.1 --port 8021"
+ },
+ "engine_maps": {}
+}

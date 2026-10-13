@@ -37,6 +37,32 @@
   control; the saved traces were re-evaluated without new traffic
   (`reorder-nospec-run5b.json`, `reorder-spec-run5b.json`, mask audit
   2/2 + 25/25 in both modes).
+- Status note (2026-10-13, XGrammar comparison): the section-10
+  comparison was delivered and re-worked under the reviewer
+  requirements. The 2026-10-12 series compared different languages —
+  its xgrammar sessions ran with the vLLM default
+  `disable_any_whitespace=False` while Bolorgir constrains compact
+  JSON. The A3 compact series
+  (`benchmarks/reports/20261013_xgrammar-compare-a3/`, sessions
+  x1c/b1c/x2c/b2c) ran xgrammar with `disable_any_whitespace=True`,
+  verified in the server log and recorded in `compact/manifest.json`,
+  on the same stack, model revision and core `9a5baf3e…`. Both series
+  are recounted under one completion-category scheme with declared
+  denominators and independent re-validation (`REPORT-v2.md`,
+  `summary-v2.json`, `REPORT-v2-oldseries.md`). Among the 4056 HTTP-200
+  records of the compact series every completed (`stop`) document is
+  valid in both backends; the bolorgir `length` cuts are kept as cuts
+  and not counted as completed documents (105 in the compact series;
+  the 107 cuts of the old series carry no answer text, so their
+  endability cannot be re-checked, and the old statement calling them
+  “legal partials” is corrected in its v2 accounting). The load of the
+  candidate core inside the `VLLM::EngineCore` process for this server
+  configuration is confirmed by a dedicated `/proc/<pid>/maps` scan
+  (`compact/engine-core-check/`). TPOT in both reports is the
+  client-observed per-token time `(e2e − TTFT)/(tokens − 1)`, not a
+  profiled mask cost; the batch≥32 gap is reported as measured, and
+  its attribution to mask computation is left to a separate profiling
+  step (not done).
 - Context: the serving integration asks for a vLLM structured-output
   backend and for stage A1 of the agent evaluation: fix the stack, trace
   the tool schema path, define segment boundaries and the split between
@@ -238,7 +264,11 @@ is refused explicitly.
   whitespace unless `disable_any_whitespace=True` (xgrammar and guidance
   only). The comparison run must use `disable_any_whitespace=True` so
   both backends constrain the same language; the backend refuses
-  `whitespace_pattern`.
+  `whitespace_pattern`. The A3 series of 2026-10-13 is the first
+  comparison run that meets this requirement; the 2026-10-12 run used
+  the vLLM default (`False`), and its v2 accounting
+  (`REPORT-v2-oldseries.md`) states that difference instead of hiding
+  it.
 - Stop tokens: `compile_grammar` receives the request's stop token ids.
   The adapter masks them until the language can complete, then offers
   exactly that set as the terminal tokens (the set replaces the
@@ -313,4 +343,7 @@ the recomputed reorder evidence) closed by the round-7b re-runs. Full
 pytest runs are regression checks and
 do not replace a fresh T3/R6 acceptance of the current core (for a
 stable release, an adopted T8a as well). The comparison report with
-XGrammar (TTFT, throughput, batch scales) remains outstanding.
+XGrammar (TTFT, throughput, batch scales) remained outstanding as of
+this revision; it was delivered on 2026-10-13 and is bound to the
+candidate `9a5baf3e…` in the A3 compact series (status note above;
+`benchmarks/reports/20261013_xgrammar-compare-a3/`).

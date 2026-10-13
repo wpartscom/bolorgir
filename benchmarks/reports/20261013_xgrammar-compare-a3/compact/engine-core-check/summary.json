@@ -1,0 +1,12 @@
+{
+ "about": "EngineCore load confirmation for the A3 compact series (engine_core_check.sh)",
+ "purpose": "TZ 6.1: the manifest carries the full core hash and confirmation that the candidate core is loaded inside the vLLM EngineCore process; the per-session prov files were recorded before the adapter loaded the core, so this check repeats the same server configuration with batch-1 requests and scans /proc",
+ "date_utc": "2026-10-13T09:53:20Z",
+ "core": {
+  "path": "python/bolorgir/_lib/libbolorgir.so.0.1.0",
+  "sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41"
+ },
+ "client_rc": 0,
+ "engine_scan": "== 2026-10-13T09:53:20Z EngineCore scan after the first structured requests\nserver argv: /home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/python /home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/vllm serve Qwen/Qwen2.5-0.5B-Instruct --revision 7ae557604adf67be50417f59c2c2f167def9a775 --structured-outputs-config {\"backend\": \"bolorgir\"} --no-enable-prefix-caching --host 127.0.0.1 --port 8021 \nlib: 9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41  /home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/python/bolorgir/_lib/libbolorgir.so.0.1.0\nprocesses matching 'EngineCore':\n  pid 500351 comm=VLLM::EngineCor\n    argv: VLLM::EngineCore                                                                                                                                                                                                    \n    maps: 7dc954482000-7dc9544e4000 r--p 00000000 fc:01 1323254                    /home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/python/bolorgir/_lib/libbolorgir.so.0.1.0\n    libbolorgir mapping lines: 4\nFOUND=1\n",
+ "found": true
+}

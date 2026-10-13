@@ -23,6 +23,7 @@ versioned; the reports quote the aggregates.
 | ADR-0007 acceptance, post-audit tree (final3) | `20260926T190500_adr0007_final3/` | GO (gate PASS, warm-ext 0.905/0.977 us <= 1.3 us, TBM p90 305.3 us <= 1 ms) |
 | ADR-0007 acceptance, final tree (fix1, VMA-panic fix) | `20260927T115548_adr0007_fix1/` | GO (gate PASS, warm-ext 0.826/0.871 us, TBM p90 267.5 us) |
 | ADR-0007 acceptance, final tree (fix2, memoPut leak fix) | `20260927T203000_adr0007_fix2/` | GO (gate PASS, warm-ext 0.898/0.946 us <= 1.3 us, TBM p90 274.3 us <= 1 ms) |
+| XGrammar comparison v2 (T10 section 10; A3 compact series, 2026-10-13) | `20261013_xgrammar-compare-a3/` | same-language comparison complete: 4056/4056 records re-validated, no constraint breaches among completed documents; xgrammar faster at batch >= 32, bolorgir compact `w2` answers shorter (39 vs 50 tokens); 105 `w1` bolorgir cuts kept as cuts |
 
 The tenth run additionally includes `tables.md` and `gate.txt`
 (the acceptance gate output of the scored three-collection set).

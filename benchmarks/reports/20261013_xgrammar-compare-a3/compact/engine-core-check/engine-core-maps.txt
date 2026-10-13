@@ -1,0 +1,9 @@
+== 2026-10-13T09:53:20Z EngineCore scan after the first structured requests
+server argv: /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/python /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/local/venv-vllm/bin/vllm serve Qwen/Qwen2.5-0.5B-Instruct --revision 7ae557604adf67be50417f59c2c2f167def9a775 --structured-outputs-config {"backend": "bolorgir"} --no-enable-prefix-caching --host 127.0.0.1 --port 8021 
+lib: 9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41  /home/gm/Рабочий стол/сайты/LLM_trainer/zig/python/bolorgir/_lib/libbolorgir.so.0.1.0
+processes matching 'EngineCore':
+  pid 500351 comm=VLLM::EngineCor
+    argv: VLLM::EngineCore                                                                                                                                                                                                    
+    maps: 7dc954482000-7dc9544e4000 r--p 00000000 fc:01 1323254                    /home/gm/Рабочий стол/сайты/LLM_trainer/zig/python/bolorgir/_lib/libbolorgir.so.0.1.0
+    libbolorgir mapping lines: 4
+FOUND=1
