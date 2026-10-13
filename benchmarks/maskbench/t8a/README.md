@@ -32,7 +32,7 @@ HF_HOME="<main tree>/benchmarks/local/hf-cache" \
   `evidence/9a5baf3e/t2c.json`: it names that core, the wheel `sha256`
   and the full protocol of the run; its classes are added only from the
   diagnosis of the first full run and decided by the owner, none is
-  carried over — until then the entries are empty and every Bolorgir
+  carried over - until then the entries are empty and every Bolorgir
   error stays open. The `evidence/6e62e0d1/` files (`t2c.json` for the
   first wheel, `t2c-run2.json` for the wheel rebuilt after the
   2026-10-11 comment cleanup) cover the earlier core only: a class file

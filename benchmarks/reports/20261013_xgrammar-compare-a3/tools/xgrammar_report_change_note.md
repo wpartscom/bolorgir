@@ -43,7 +43,7 @@ the full A4 matrix plus two defects of the standalone launcher:
 | a whole session removed from the inputs (`raw-b2d.jsonl`; or all bolorgir files) | `problems: []`, exit 0 | the expected session set and the backends are declared (`--manifest` or `--expect`); a declared session missing from the inputs, an undeclared session or a backend mismatch is a problem; a report without a declaration fails |
 | `final_event` removed from one record | stayed `stop_valid`, no problem | format violation; in a v2 file the record counts as `unfinished` |
 | `text` set to null | re-validation silently skipped | format violation (`text` must be a string on v2 records) |
-| `finish` removed (with the flag) | no problem, the stored TPOT stayed in the median | mandatory-field violation; `unfinished`, removed from TPOT — TPOT is now taken over `stop_valid` records only, and the stored value is re-checked against `(e2e_ms - ttft_ms)/(tokens - 1)` |
+| `finish` removed (with the flag) | no problem, the stored TPOT stayed in the median | mandatory-field violation; `unfinished`, removed from TPOT - TPOT is now taken over `stop_valid` records only, and the stored value is re-checked against `(e2e_ms - ttft_ms)/(tokens - 1)` |
 | `usage_present=false` with a stored token count | counted as tokens | format violation; the run leaves the token metrics with the reason `usage missing` |
 | `--labels x1e b1e x2e b2e` in `run_compact.sh` | only `x1e` parsed, the output directory overwritten by `b2e` | all four labels parsed (consumed up to the next option; exactly four, unique) |
 | `--port N` in `run_compact.sh` | the server moved to N, the client stayed on 8021 | the client receives `--base-url http://127.0.0.1:N`; `--check-only` prints the resolved labels/URL/repeats without touching the GPU |
@@ -63,7 +63,7 @@ Re-check of the stored data (2026-10-13) with revision 4:
 - `compact/`, `compact-r2/` and the old-series re-accounting
   regenerate with `0 problem(s)` and every measured value unchanged
   (compared field by field against the revision-3 outputs committed
-  in `22b2047`) — the TPOT `stop_valid` rule and the usage rule move
+  in `22b2047`) - the TPOT `stop_valid` rule and the usage rule move
   no stored number because the stored records already satisfy them;
 - the re-check commands declare the composition: `compact-r2` uses
   its `manifest.json` (`--manifest`), the other two the explicit

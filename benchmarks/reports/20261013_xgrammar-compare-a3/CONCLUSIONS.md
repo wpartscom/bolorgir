@@ -9,9 +9,9 @@ the numbers; it does not replace the tables.
 Two structured-output backends of the *same* patched vLLM 0.31.0 on
 `Qwen/Qwen2.5-0.5B-Instruct` (RTX 3060, greedy, prefix caching off):
 
-- **bolorgir** — the candidate core `9a5baf3e…` with the vLLM adapter
+- **bolorgir** - the candidate core `9a5baf3e…` with the vLLM adapter
   `7bbee811…`, sessions `b1`, `b2`;
-- **xgrammar** — the packaged xgrammar 0.2.7 of the serving venv,
+- **xgrammar** - the packaged xgrammar 0.2.7 of the serving venv,
   sessions `x1`, `x2`.
 
 Four sessions × full matrix (3 workloads × batch 1/8/32/128 × 2 repeats)
@@ -38,7 +38,7 @@ server logs `server-<session>.log`, bolorgir agent traces
   `minimum: 1` because `0.5e1 = 5` is a completing spelling) is
   recorded in `PROTOCOL.md` as an observation, not as a stored check.
   xgrammar blocks `0` at the first digit, so its answers always stop
-  (19 tokens median vs 12 for bolorgir — the compact language).
+  (19 tokens median vs 12 for bolorgir - the compact language).
 - **Language difference, not a defect**: xgrammar allows whitespace by
   default (pretty-printed answers, `w2` median 78 tokens), bolorgir
   compiles the compact JSON language (median 39 tokens; the adapter
@@ -50,12 +50,12 @@ server logs `server-<session>.log`, bolorgir agent traces
 ## Performance side (medians of the four sessions)
 
 TTFT (p50, batch 1): `w1` 17.6 ms bolorgir vs 12.8 ms xgrammar,
-`w2` 17.0 vs 17.0, `w3` 15.4 vs 17.3 — no systematic winner at
+`w2` 17.0 vs 17.0, `w3` 15.4 vs 17.3 - no systematic winner at
 batch 1 (13–18 ms both). At batch 128 xgrammar is ahead by 8–15%
 (e.g. `w1` 313.6 vs 267.6 ms).
 
 Per-step cost (TPOT, p50) and throughput (completion tokens / batch
-wall) — xgrammar-to-bolorgir ratio:
+wall) - xgrammar-to-bolorgir ratio:
 
 | workload | batch | tok/s ratio | TPOT ratio |
 |---|---|---|---|
@@ -78,7 +78,7 @@ first-pass effect below, not by steady-state cost.
 Reading:
 
 - at batch 1–8 the backends are **equal in steps/s** for `w1`/`w3`
-  (TPOT 4.3–5.2 ms both) — the constraint work is not the bottleneck
+  (TPOT 4.3–5.2 ms both) - the constraint work is not the bottleneck
   (the `w2` first-pass caveat below applies);
 - at batch ≥ 32 xgrammar gains: in this first series TPOT is 1.6–3.3×
   lower and batch throughput 1.5–2.8× higher; the like-for-like
@@ -118,9 +118,9 @@ xgrammar ahead under high concurrency) is the transferable part.
 
 ## Bottom line for TZ section 10
 
-The comparison report exists with the requested dimensions — TTFT,
+The comparison report exists with the requested dimensions - TTFT,
 throughput, per-step cost, batch 1/8/32/128 and three request schemas
-(JSON schema small, JSON schema nested, regex) — measured in the same
+(JSON schema small, JSON schema nested, regex) - measured in the same
 vLLM, same model, same box, with per-session provenance. Of the 4056
 HTTP-200 records, every completed (`stop`) document is valid in both
 backends; 107 bolorgir `w1` answers were cut by the 64-token cap and

@@ -447,7 +447,7 @@ def test_mid_generation_mask_excludes_nonstop_terminal(monkeypatch):
 
 def test_terminal_at_a_completing_state_is_accepted_by_drafts(monkeypatch):
     # A stop token at a state where the language can end: the mask offers
-    # it, accept_tokens takes it, and draft validation must approve it —
+    # it, accept_tokens takes it, and draft validation must approve it -
     # without changing the session.
     backend = make_backend(monkeypatch)
     grammar = backend.compile_grammar(

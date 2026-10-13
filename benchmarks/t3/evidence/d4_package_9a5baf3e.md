@@ -25,7 +25,7 @@ candidate.
   `benchmarks/local/t3/r6-9a5baf3e-d4`, console and bundle copied to
   `benchmarks/t3/evidence/d4-preliminary-r6/`):
 
-  `R6_REVIEW_DONE verdict=not_admitted exit=1` — the **only** failing check is
+  `R6_REVIEW_DONE verdict=not_admitted exit=1` - the **only** failing check is
   `transitions_approved` (pending 81). `transitions_described` is **ok**
   (81 transition rows, 0 results without a D4 entry), `d4_candidate` is ok
   (the list names this candidate), `triage` is ok (gate `17e25bba4f1c6144`,
@@ -35,13 +35,13 @@ candidate.
   set as `benchmarks/coverage/spec-v1/t3-9a5baf3e/review-2/`; command,
   console and evidence inside):
 
-  `R6_REVIEW_DONE verdict=admitted exit=0` — 50 checks, all ok; no
+  `R6_REVIEW_DONE verdict=admitted exit=0` - 50 checks, all ok; no
   failing, pending or intermediate causes; `transitions_approved` **ok**
   (81 rows approved by the decisions of 2026-10-13), every other check as
   in the preliminary run. The preliminary record above stays as history.
 
 - Coverage matrix: `benchmarks/t3/evidence/d4_transitions_9a5baf3e.md` /
-  `.json` — all 81 rows and the 67 unique results with the comparison line,
+  `.json` - all 81 rows and the 67 unique results with the comparison line,
   the outcome on the previous candidate, the D4 entry and the evidence
   pointer; counters re-checked against the review
   (42 invalid_document / 34 results / 68 documents; 27 incomplete / 25;
@@ -69,7 +69,7 @@ candidate.
   the threshold is a heuristic, not a confidence interval, and the rule
   cannot establish the cause of individual flips.
 - **R11-C2/B2** (2026-10-13): every recorded `engine_unavailable` pass of the
-  candidate re-run with the recorded seed and 10 s — all 19 passes reproduce
+  candidate re-run with the recorded seed and 10 s - all 19 passes reproduce
   outcome, stage, code, step and prefix length **as recorded** (engine
   message "mask computation limit exceeded", undecided histograms per pass);
   the same passes on `50cbd80e` reach the same states; the MaskBench
@@ -78,7 +78,7 @@ candidate.
   and on 50cbd80e within 10 s (5.8 s / 8.5 s). Summary:
   `benchmarks/t3/evidence/r11bc2_summary.{md,json}`.
 - **Triage of the candidate**: `benchmarks/coverage/spec-v1/t3-9a5baf3e/review/triage.{md,json}`
-  — all 34 `invalid_document` results of the transitions are class D (the
+  - all 34 `invalid_document` results of the transitions are class D (the
   draft-04 integer spelling, `docs/supported_features.md` section 9) with all
   68 invalid documents present and checked; the final review-2 carries the
   identical triage (same gate `17e25bba4f1c6144`).
@@ -100,12 +100,12 @@ record stores only the prefix *length*, byte equality is not claimed.
 | # | Group | Rows / results | Recommendation | Alternative | If accepted |
 |---|---|---|---|---|---|
 | 1 | D4-6 (class D invalid documents) | 42 / 34 | Accept as the documented class D deviation (`requires_triage_class: D`; the candidate's triage holds) | Fix the draft-04 integer-spelling deviation (new candidate + new acceptance) | These 34 results stay `invalid_document`; rare generated drafts spell integers with fraction/exponent and the draft-04 reference rejects them |
-| 2 | pass1 budget edge (D4-13…D4-38) | 24 rows / 22 results | Accept as a timing transition of the portable release target (R11-A2 numbers in each entry) | Release a vectored target — a new candidate and a new R6 (owner's choice) | Under an 8-job run some first passes record a 10 s limit where the line completed; completeness of the semantic coverage for those results, not correctness |
-| 3 | the two GPT-2 results (D4-39, D4-40) | 2 / 2 | Accept as the same budget-edge class **or** pick the protocol option (see below) — decided separately | Protocol change: a pass-1 budget/retry rule the loaded run can meet (checked against these replays); not a candidate fix | As row 2; the outcome is decided by run conditions at the check, hypothesis stated as such |
+| 2 | pass1 budget edge (D4-13…D4-38) | 24 rows / 22 results | Accept as a timing transition of the portable release target (R11-A2 numbers in each entry) | Release a vectored target - a new candidate and a new R6 (owner's choice) | Under an 8-job run some first passes record a 10 s limit where the line completed; completeness of the semantic coverage for those results, not correctness |
+| 3 | the two GPT-2 results (D4-39, D4-40) | 2 / 2 | Accept as the same budget-edge class **or** pick the protocol option (see below) - decided separately | Protocol change: a pass-1 budget/retry rule the loaded run can meet (checked against these replays); not a candidate fix | As row 2; the outcome is decided by run conditions at the check, hypothesis stated as such |
 | 4 | engine_unavailable (D4-3…D4-12) | 12 / 8 | Accept as documented limitations (RESOURCE_LIMIT on byte-level oneOf/uniqueItems paths) | Group-certificate work (future scope) | Rare resource refusals on specific schemas; recorded and reproducible, not silent |
 | 5 | D4-2 (kb_1154 expensive pass 1) | 1 / 1 | Accept as a documented availability residual | Same as row 2 (a faster target would need >17 s → still over budget on the lines' build) | One MaskBench result stays incomplete; cause measured, historical line completion unexplained |
-| 6 | D4-15, D4-16, D4-24, D4-33 | 0 (retired) | No decision on this candidate (no transition) | — | None; kept for the record |
-| 7 | D4-1, D4-2r, D4-7…D4-9 | 0 (record) | No decision; kept for the record | — | None |
+| 6 | D4-15, D4-16, D4-24, D4-33 | 0 (retired) | No decision on this candidate (no transition) | - | None; kept for the record |
+| 7 | D4-1, D4-2r, D4-7…D4-9 | 0 (record) | No decision; kept for the record | - | None |
 
 ## The two GPT-2 results in detail (TZ section 3.2)
 
@@ -117,7 +117,7 @@ record stores only the prefix *length*, byte equality is not claimed.
   10 s limit at step 48 / 32 (the first budget check it failed). All other
   passes end in the time limit on every build; in the recorded runs the
   time-limited passes 2–20 of the two candidates reach the same steps (same
-  seeds; median step ratio 1.000 over 19 passes — compatible with, but not proof
+  seeds; median step ratio 1.000 over 19 passes - compatible with, but not proof
   of, equal speed; the historical record keeps the prefix length only, not
   its bytes).
 - quiet-core replays (R11-A2, CPU 2, per-round times at the deciding check):
@@ -133,9 +133,9 @@ record stores only the prefix *length*, byte equality is not claimed.
 
   The table times are the moments of the deciding budget check; the full
   completion of the same pass-1 document is slower. Every library still stays
-  inside the 10 s budget: o64825 — candidate 8.849 s (1.15 s headroom),
+  inside the 10 s budget: o64825 - candidate 8.849 s (1.15 s headroom),
   6e62e0d1 8.374 s, native 8.196 s, dbc5eeb 8.066 s, 7345490f 7.813 s,
-  50cbd80e 7.717 s; o68314 — candidate 8.229 s (1.77 s headroom), dbc5eeb
+  50cbd80e 7.717 s; o68314 - candidate 8.229 s (1.77 s headroom), dbc5eeb
   7.952 s, 6e62e0d1 7.945 s, native 7.836 s, 50cbd80e 7.533 s, 7345490f
   7.477 s. The terminal steps are 55 and 39 on every library.
 - what this supports and what it does not: equal steps of passes 2–20 and a
@@ -148,7 +148,7 @@ record stores only the prefix *length*, byte equality is not claimed.
   The entries state exactly that (hypothesis, limits).
 - options for the owner: (a) accept as a documented budget-edge residual of
   the portable target (consistent with row 2; no further work for the release
-  as planned); (b) ask for a protocol decision — a pass-1 rule the loaded run
+  as planned); (b) ask for a protocol decision - a pass-1 rule the loaded run
   can meet reproducibly (e.g. a budget chosen from these quiet-core margins
   or a retry rule), checked in advance against these replays and applied to a
   next run; explicitly **not** a rescoring of the recorded results, which
@@ -187,13 +187,13 @@ review closed.
 
 ## Evidence index (this round)
 
-- `benchmarks/t3/d4_proposals.json` — updated list (43 entries, decisions null).
-- `benchmarks/t3/evidence/d4_transitions_9a5baf3e.{md,json}` — coverage matrix.
-- `benchmarks/t3/evidence/r11a2_pass1_summary.{md,json}` — pass-1 replays.
-- `benchmarks/t3/evidence/r11bc2_summary.{md,json}` — engine_unavailable replays.
-- `benchmarks/t3/evidence/d4-preliminary-r6/` — acceptance.json/md, triage,
+- `benchmarks/t3/d4_proposals.json` - updated list (43 entries, decisions null).
+- `benchmarks/t3/evidence/d4_transitions_9a5baf3e.{md,json}` - coverage matrix.
+- `benchmarks/t3/evidence/r11a2_pass1_summary.{md,json}` - pass-1 replays.
+- `benchmarks/t3/evidence/r11bc2_summary.{md,json}` - engine_unavailable replays.
+- `benchmarks/t3/evidence/d4-preliminary-r6/` - acceptance.json/md, triage,
   tools, console, SHA256SUMS of the preliminary review.
-- `benchmarks/t3/evidence/d4-9a5baf3e/` — tools of the round, raw replay
+- `benchmarks/t3/evidence/d4-9a5baf3e/` - tools of the round, raw replay
   archives (`raw-r11a2.tar.gz`, `raw-r11bc2.tar.gz`), index README and
   SHA256SUMS.
 - Historical (unchanged): `benchmarks/t3/evidence.md` section R11 (the

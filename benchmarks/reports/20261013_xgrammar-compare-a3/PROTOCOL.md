@@ -45,7 +45,7 @@ same first-`B` items per batch size. `temperature=0.0`,
 
 - Batch sizes `1/8/32/128`; batch = that many concurrent requests.
 - Sessions in the order `b1, x1, b2, x2` (bolorgir, xgrammar, bolorgir,
-  xgrammar) — a second block lets drift be visible; each session runs
+  xgrammar) - a second block lets drift be visible; each session runs
   the full matrix twice (`--repeats 2`), a discarded warmup of four
   `w1` requests runs first.
 - One session = one server start; the server is stopped
@@ -146,7 +146,7 @@ stands), and A3 adds a like-for-like series:
 
 Review point (2026-10-13): the A3 pass recorded the EngineCore load
 confirmation (the separate `engine_core_check.sh` run) but the manifest
-of the pass itself keeps `engine_maps` empty — the provenance snapshot
+of the pass itself keeps `engine_maps` empty - the provenance snapshot
 was taken before the adapter loads the core. A confirmation of the same
 configuration in another process is not a confirmation for the measured
 sessions, so the compact series is re-run (nothing about the request
@@ -166,7 +166,7 @@ therefore gets its own identity):
   mapping in both scans, an xgrammar session must not (negative
   control). The manifest grows a per-session `engine` block;
 - wording correction: the A3 line above that calls the length cuts
-  "legal partials" is superseded — a `length` record is not counted as
+  "legal partials" is superseded - a `length` record is not counted as
   a completed document and the label is reserved for a separately
   verified prefix check (review 2026-10-13, TZ §6.2); the v2 reports
   already state this;

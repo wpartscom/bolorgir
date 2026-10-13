@@ -490,7 +490,7 @@ with public documentation. The counts below are those of the considered
 deviations of that comparison (81 comparison rows, 67 results), not of
 the entire test corpus, and the recorded outcomes stay negative:
 
-- **34 `invalid_document` results — the draft-04 integer spelling.** The
+- **34 `invalid_document` results - the draft-04 integer spelling.** The
   engine applies the value-based `integer` semantics uniformly across
   dialects (`1.0`, `1e2`, `100.00` are integers), while a draft-04
   reference validator applies the draft-04 lexical rule. Minimal
@@ -500,13 +500,13 @@ the entire test corpus, and the recorded outcomes stay negative:
   it. Compatibility limit: under a draft-04 `$schema` such instances are
   a documented deviation, not draft-04-identical validation
   (`docs/supported_features.md` section 9).
-- **25 `incomplete` results — the check did not finish in its time
+- **25 `incomplete` results - the check did not finish in its time
   budget.** These runs ended at the budget before a decision, so the
   completeness of their semantic check is not confirmed; quiet-core
   replays completed the same passes on every compared library
   (`benchmarks/t3/evidence/r11a2_pass1_summary.md`) and the outcome
   stays `incomplete`.
-- **8 `engine_unavailable` results — resource refusals on listed complex
+- **8 `engine_unavailable` results - resource refusals on listed complex
   schemas** (`oneOf` groups of open objects, e.g. `bigquery-table`,
   `cryproj`, `tye-schema`, `o31351`, `Github_hard---o32934`). The call
   fails with `RESOURCE_LIMIT`/`ResourceLimitError` ("mask computation

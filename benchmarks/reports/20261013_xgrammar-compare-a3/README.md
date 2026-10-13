@@ -1,4 +1,4 @@
-# XGrammar comparison v2 — compact series (T10 section 10)
+# XGrammar comparison v2 - compact series (T10 section 10)
 
 Runs: 2026-10-13, same box (RTX 3060), same vLLM instance settings for
 both backends. Two passes of the identical matrix exist: `compact/`
@@ -30,7 +30,7 @@ Why this series exists (tasks TZ §6.1–§6.3 of the reviewer task):
   empty because its provenance snapshot ran before the adapter loads
   the core into the engine process; the repeat pass (amendment A4)
   re-runs the same matrix and captures the EngineCore binding per
-  session — PID, mapping line and full SHA-256, with the xgrammar
+  session - PID, mapping line and full SHA-256, with the xgrammar
   sessions as the negative control (see the EngineCore section).
 
 ## Conditions (from the pass manifests)
@@ -43,7 +43,7 @@ Why this series exists (tasks TZ §6.1–§6.3 of the reviewer task):
 | vLLM | 0.31.0 |
 | XGrammar | 0.2.7 (`importlib.metadata`; the `xgrammar.__version__` attribute does not exist in 0.2.7) |
 | Model | `Qwen/Qwen2.5-0.5B-Instruct@7ae557604adf67be50417f59c2c2f167def9a775` |
-| Sessions | pass A3: `x1c`, `b1c`, `x2c`, `b2c`; pass A4 (repeat): `x1d`, `b1d`, `x2d`, `b2d` — one `vllm serve` per session on port 8021, stopped with SIGINT; the backend alternates so the four sessions stay inside one time window |
+| Sessions | pass A3: `x1c`, `b1c`, `x2c`, `b2c`; pass A4 (repeat): `x1d`, `b1d`, `x2d`, `b2d` - one `vllm serve` per session on port 8021, stopped with SIGINT; the backend alternates so the four sessions stay inside one time window |
 
 ## Contents
 
@@ -107,15 +107,15 @@ three.
   first pass and 1.47× / 1.48× in the repeat.
 - At batch 1 `w1`/`w3` are at parity (first pass, bolorgir vs
   xgrammar: 191.7 / 191.5 and 227.5 / 221.9 tok/s); `w2` is at parity
-  only in the steady state — every bolorgir session's first `w2` pass
+  only in the steady state - every bolorgir session's first `w2` pass
   costs ≈10 s (outlier bullet below).
 - Output length: on the compact `w2` language bolorgir answers are
   shorter (39 tokens vs 50 for xgrammar); on `w1` the 64-token cap cut
   105 bolorgir answers in the first pass and 107 in the repeat (of 676
   per pass; 15.5–15.8%), kept as cuts, not completed documents;
   xgrammar finishes all.
-- First-pass `w2` batch-1 outlier is systematic in bolorgir — 10.33
-  and 9.60 s in the first pass, 10.21 and 10.19 s in the repeat —
+- First-pass `w2` batch-1 outlier is systematic in bolorgir - 10.33
+  and 9.60 s in the first pass, 10.21 and 10.19 s in the repeat -
   against 0.18–0.19 s on the second repeat; xgrammar shows no such
   cost. Recorded as observed; no cause is claimed here.
 - Categories are identical between the passes except the `w1`/bolorgir
@@ -123,15 +123,15 @@ three.
   cells move by up to ≈10% between passes (run-to-run spread).
 - Independent re-validation over the stored texts: 4056/4056 agreement
   in both passes, 0 differences; the length cuts (105 / 107) checked
-  with the bounded suffix test, 0 of them provably completable — cuts
+  with the bounded suffix test, 0 of them provably completable - cuts
   are kept, not counted, and not called legal partials.
 
 ## EngineCore load confirmation (per measured session)
 
 The requirement (TZ 6.1) is bound to the measured sessions by the
 repeat pass (A4): each session's `engine-<label>.txt` carries two
-scans — mid-session, as soon as the first records were on disk, and
-post-session — each recording the `VLLM::EngineCore` PID, comm and
+scans - mid-session, as soon as the first records were on disk, and
+post-session - each recording the `VLLM::EngineCore` PID, comm and
 argv, the `libbolorgir.so.0.1.0` mapping line from `/proc/<pid>/maps`
 and the full SHA-256 of the library file;
 `compact-r2/manifest.json` stores the parsed `engine` block. Result:
@@ -147,10 +147,10 @@ the same server configuration.
 The bolorgir sessions also emitted agent traces (one JSONL per
 session); they are 24.7 MB each and are kept as local artifacts:
 
-- `benchmarks/local/t10-gpu-1/xgrammar-compare/compact/trace-b1c.jsonl` — sha256 `cc7831a40921e617b1fc833b052326c4d5743175d3c495a470780f7ac654f16e`
-- `benchmarks/local/t10-gpu-1/xgrammar-compare/compact/trace-b2c.jsonl` — sha256 `27fc8aa8ed836486798bbe1373a949f4bee649f76f0400bbbb22c9b659150188`
-- `benchmarks/local/t10-gpu-1/xgrammar-compare/compact-r2/trace-b1d.jsonl` — sha256 `f42113096e0caa3a7ef16bbf18616967f2073226025971d9d246606f67707404`
-- `benchmarks/local/t10-gpu-1/xgrammar-compare/compact-r2/trace-b2d.jsonl` — sha256 `5d8901bd7cc6ca075e5b249270fcf04275a333b6a0d90f38bc03810acfd357ad`
+- `benchmarks/local/t10-gpu-1/xgrammar-compare/compact/trace-b1c.jsonl` - sha256 `cc7831a40921e617b1fc833b052326c4d5743175d3c495a470780f7ac654f16e`
+- `benchmarks/local/t10-gpu-1/xgrammar-compare/compact/trace-b2c.jsonl` - sha256 `27fc8aa8ed836486798bbe1373a949f4bee649f76f0400bbbb22c9b659150188`
+- `benchmarks/local/t10-gpu-1/xgrammar-compare/compact-r2/trace-b1d.jsonl` - sha256 `f42113096e0caa3a7ef16bbf18616967f2073226025971d9d246606f67707404`
+- `benchmarks/local/t10-gpu-1/xgrammar-compare/compact-r2/trace-b2d.jsonl` - sha256 `5d8901bd7cc6ca075e5b249270fcf04275a333b6a0d90f38bc03810acfd357ad`
 
 They are diagnostic copies of the engine-side mask emissions; the
 records needed for every number in `REPORT-v2.md` are in

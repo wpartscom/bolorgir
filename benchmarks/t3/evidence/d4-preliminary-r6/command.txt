@@ -18,4 +18,4 @@ Result (last line): R6_REVIEW_DONE verdict=not_admitted exit=1
 out=/home/gm/.../benchmarks/local/t3/r6-9a5baf3e-d4
 Checks: transitions_described ok (81 rows, 0 without an entry), d4_candidate ok
 (list names 9a5baf3e…), triage ok (gate 17e25bba4f1c6144), transitions_approved
-fail (pending 81 — the owner decisions).
+fail (pending 81 - the owner decisions).

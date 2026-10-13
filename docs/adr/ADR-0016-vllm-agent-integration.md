@@ -39,7 +39,7 @@
   2/2 + 25/25 in both modes).
 - Status note (2026-10-13, XGrammar comparison): the section-10
   comparison was delivered and re-worked under the reviewer
-  requirements. The 2026-10-12 series compared different languages —
+  requirements. The 2026-10-12 series compared different languages -
   its xgrammar sessions ran with the vLLM default
   `disable_any_whitespace=False` while Bolorgir constrains compact
   JSON. The A3 compact series
@@ -48,7 +48,7 @@
   verified in the server log and recorded in `compact/manifest.json`,
   on the same stack, model revision and core `9a5baf3e…` (the series
   was repeated with per-session EngineCore capture as the A4 pass,
-  sessions x1d/b1d/x2d/b2d; the repeat reproduces the figures — the
+  sessions x1d/b1d/x2d/b2d; the repeat reproduces the figures - the
   categories are identical except the bolorgir `w1` cuts, 105 vs 107,
   i.e. 3951 vs 3949 completed documents, and the timing cells move
   within the run-to-run spread). Both series
@@ -166,7 +166,7 @@ Bolorgir has JSON Schema, literal sets and regex; the agent path needs
 the `STRUCTURAL_TAG` shape: free text until a trigger, then a tagged
 JSON segment, then free text again. The kind is now implemented in the
 kernel (`BLG_CONSTRAINT_STRUCTURAL_TAG = 3`, additive; src/structtag.zig,
-ADR-0016) with the following **accepted subset** — the shapes the pinned
+ADR-0016) with the following **accepted subset** - the shapes the pinned
 `hermes` builder produces plus their legacy equivalents:
 
 - `{"type": "structural_tag", "format": {...}}` with
@@ -189,10 +189,10 @@ ADR-0016) with the following **accepted subset** — the shapes the pinned
   carry the null `max_tokens`/`max_chars` caps (numeric caps are
   refused).
 
-Anything else — unknown fields, other format or content types (for
+Anything else - unknown fields, other format or content types (for
 example `sequence`, per-tag `trigger`, a non-JSON content style), a
 non-empty separator, overlapping triggers, overlapping begin literals,
-non-empty byte requirements outside the caps — is refused with
+non-empty byte requirements outside the caps - is refused with
 `BLG_ERR_UNSUPPORTED_FEATURE` and the offset of the offending field,
 never reinterpreted. The caps: 16 tag variants, 4 triggers (≤ 64 bytes,
 non-overlapping), begin ≤ 512 bytes, end ≤ 63 bytes, a byte-complete
