@@ -11,10 +11,11 @@
 > (ADR-0014), a standalone regex constraint (ADR-0015), a vLLM
 > structured-output backend with a pinned source patch
 > (`docs/integrations/vllm.md`) and the Zig 0.17.0 / CPython
-> 3.12-3.15 preparation. These features change the core, so the next
-> public preview (planned as `0.2.0rc2`) waits for a fresh acceptance of
-> the new core; the rc1 acceptance verdict names an earlier build and is
-> not carried over. Read
+> 3.12-3.15 preparation. These features change the core: the fresh R6
+> acceptance of the current core `9a5baf3e…` is admitted (`review-2`,
+> 2026-10-13), while the T8a MaskBench run and the release preparation
+> are still open; the rc1 acceptance verdict names an earlier build and
+> is not carried over. Read
 > [Preview status and known limits](#preview-status-and-known-limits) and
 > install from source as shown in [Install](#install) until then.
 
@@ -245,18 +246,24 @@ and draft validation ([ADR-0014](docs/adr/ADR-0014-session-rollback.md)),
 a standalone regex constraint ([ADR-0015](docs/adr/ADR-0015-regex-constraint.md))
 and tool-call framing plus the vLLM backend with its backend trace
 ([ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md));
-the next preview (planned as `0.2.0rc2`) waits for a fresh acceptance that
-names the new core. What this line has and has not passed:
+the next preview (planned as `0.2.0rc2`) waits for the owner's release
+preparation: the fresh acceptance of the current core is admitted (see
+below) and the T8a MaskBench run is still open. What this line has and
+has not passed:
 
 - **Profiles.** `canonical-v1` is the default profile, a frozen subset.
   `spec-v1` is experimental: it covers much more of JSON Schema and is
   selected with `profile="spec-v1"`
   ([Schema profiles and limitations](#schema-profiles-and-limitations)).
-- **Acceptance.** The T3/R6 verdict admitted the earlier core build
-  (sha256 `6e62e0d1...`); that verdict names that build and is not carried
-  over to the current one. The current candidate's functional checks are
-  listed with the features above; a full T3/R6 run and the T8a MaskBench
-  run are pending and are the condition for publishing `0.2.0rc2`.
+- **Acceptance.** The T3/R6 verdict of record for the earlier core
+  build (sha256 `6e62e0d1...`) names that build only and is historical.
+  The fresh R6 review of the current release-line core `9a5baf3e...`
+  from the saved T3 data with the owner's D4 decisions of 2026-10-13 is
+  **admitted**
+  (`benchmarks/coverage/spec-v1/t3-9a5baf3e/review-2/`: 50/50 checks ok,
+  81/81 transition rows approved). The T8a MaskBench run of the same core
+  is still open and is part of the release preparation; the final gate
+  stays with the owner.
 - **Slow masks, `RESOURCE_LIMIT`, long runs.** On some `spec-v1` schemas
   with a large vocabulary (128k tokens) a single mask takes about a
   second, and a file of a few documents can exceed 900 s. For one MaskBench
