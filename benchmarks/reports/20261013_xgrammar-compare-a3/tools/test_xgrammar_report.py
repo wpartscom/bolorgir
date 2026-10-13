@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 """Address tests of the report rules (TZ 6.3): category partition,
 excluded runs, denominators, p90 method, re-validation of stored text,
-and the revision-4 integrity checks (negative tests on a full correct
+the revision-5 integrity checks (negative tests on a full correct
 matrix with a single corruption: missing whole session, missing
 mandatory fields, null text, stripped finish, usage flag against the
-stored token count, broken tpot/text_len; plus the explicitly
-supported v1 format). Synthetic records only; run:
+stored token count, broken tpot/text_len; the explicitly supported v1
+format) and the review-round-4 declaration checks: the session/backend
+declaration is validated on a direct build_report call too, and the
+manifest `session_backends` contract (mandatory mapping, exact
+coverage, non-empty admissible values) is exercised through the CLI on
+temporary copies. Synthetic records only; run:
 python3 test_xgrammar_report.py
 """
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -19,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import xgrammar_report as R  # noqa: E402
 
 
-def rec(workload="w1_json_small", batch=1, rep=0, session="s1", backend="b",
+def rec(workload="w1_json_small", batch=1, rep=0, session="s1", backend="xgrammar",
         status=200, finish="stop", valid=True, ttft=10.0, e2e=100.0, tokens=10,
         text="", transport_error=False, usage=True, final_event=True,
         finish_present=None, wall=1.0):
@@ -167,7 +172,7 @@ VALID_TEXT = {
 }
 
 
-def full_matrix(session="s1", repeats=2, backend="b"):
+def full_matrix(session="s1", repeats=2, backend="xgrammar"):
     out = []
     for w in R.MATRIX_WORKLOADS:
         for b in R.MATRIX_BATCHES:
@@ -184,7 +189,7 @@ class TestIntegrity(unittest.TestCase):
     def test_full_matrix_has_no_problems(self):
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, full_matrix())
-            doc = R.build_report([p], expected=exp(s1="b"))
+            doc = R.build_report([p], expected=exp(s1="xgrammar"))
         self.assertEqual(doc["problems"], [])
         self.assertEqual(doc["records"], 1014)
         self.assertEqual(doc["matrix"]["s1"]["runs"], 24)
@@ -194,8 +199,8 @@ class TestIntegrity(unittest.TestCase):
     def test_missing_whole_session_fails(self):
         with tempfile.TemporaryDirectory() as d:
             p1 = write_raw(d, full_matrix(session="s1"), name="raw-s1.jsonl")
-            write_raw(d, full_matrix(session="s2", backend="b2"), name="raw-s2.jsonl")
-            doc = R.build_report([p1], expected=exp(s1="b", s2="b2"))
+            write_raw(d, full_matrix(session="s2", backend="bolorgir"), name="raw-s2.jsonl")
+            doc = R.build_report([p1], expected=exp(s1="xgrammar", s2="bolorgir"))
         self.assertEqual(doc["problems"],
                          ["expected session missing from the inputs: s2"])
         self.assertEqual(doc["expected_sessions"]["missing"], ["s2"])
@@ -215,15 +220,15 @@ class TestIntegrity(unittest.TestCase):
     def test_undeclared_session_fails(self):
         with tempfile.TemporaryDirectory() as d:
             p1 = write_raw(d, full_matrix(session="s1"), name="raw-s1.jsonl")
-            p2 = write_raw(d, full_matrix(session="s2", backend="b2"),
+            p2 = write_raw(d, full_matrix(session="s2", backend="bolorgir"),
                            name="raw-s2.jsonl")
-            doc = R.build_report([p1, p2], expected=exp(s1="b"))
+            doc = R.build_report([p1, p2], expected=exp(s1="xgrammar"))
         self.assertEqual(doc["problems"], ["unexpected session in the inputs: s2"])
 
     def test_backend_mismatch_fails(self):
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, full_matrix())
-            doc = R.build_report([p], expected=exp(s1="xgrammar"))
+            doc = R.build_report([p], expected=exp(s1="bolorgir"))
         self.assertTrue(any("does not match the declared" in x
                             for x in doc["problems"]))
 
@@ -238,19 +243,19 @@ class TestIntegrity(unittest.TestCase):
         self.assertEqual(R.category(rec(final_event=False)), "unfinished")
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [rec(final_event=False)])
-            doc = R.build_report([p], expected=exp(s1="b"))
+            doc = R.build_report([p], expected=exp(s1="xgrammar"))
         self.assertTrue(any("final stream event" in x for x in doc["problems"]))
 
     def test_incomplete_run_is_a_problem(self):
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [rec(batch=128, text=VALID_TEXT["w1_json_small"])])
-            doc = R.build_report([p], expected=exp(s1="b"))
+            doc = R.build_report([p], expected=exp(s1="xgrammar"))
         self.assertTrue(any("wrong request count" in x for x in doc["problems"]))
 
     def test_duplicate_key_is_a_problem(self):
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [rec(session="A"), rec(session="A")])
-            doc = R.build_report([p], expected=exp(A="b"))
+            doc = R.build_report([p], expected=exp(A="xgrammar"))
         self.assertTrue(any("duplicate request keys" in x for x in doc["problems"]))
 
     def test_usage_missing_is_never_zero_tokens(self):
@@ -261,14 +266,14 @@ class TestIntegrity(unittest.TestCase):
         self.assertEqual(rows[0]["tok_exclusion"], "usage missing")
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [r])
-            doc = R.build_report([p], expected=exp(s1="b"))
+            doc = R.build_report([p], expected=exp(s1="xgrammar"))
         self.assertTrue(any("usage missing" in x for x in doc["problems"]))
 
     def test_revalidation_disagreement_is_a_problem(self):
         r = rec(valid=True, text='{"action":"reply","priority":9}')
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [r])
-            doc = R.build_report([p], expected=exp(s1="b"))
+            doc = R.build_report([p], expected=exp(s1="xgrammar"))
         self.assertTrue(any("stored-vs-revalidated" in x for x in doc["problems"]))
 
     def test_empty_input_fails(self):
@@ -289,7 +294,7 @@ class TestSingleCorruption(unittest.TestCase):
         mutate(recs[100])
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, recs)
-            return R.build_report([p], expected=exp(s1="b"))
+            return R.build_report([p], expected=exp(s1="xgrammar"))
 
     def test_missing_final_event(self):
         doc = self._build(lambda r: r.pop("final_event"))
@@ -375,7 +380,7 @@ class TestFormats(unittest.TestCase):
                         recs.append(r)
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, recs, name="raw-old.jsonl")
-            doc = R.build_report([p], expected=exp(s1="b"))
+            doc = R.build_report([p], expected=exp(s1="xgrammar"))
         self.assertEqual(doc["problems"], [])
         self.assertEqual(doc["formats"], {"raw-old.jsonl": "v1"})
         self.assertEqual(doc["revalidation"]["without_text"], 1014)
@@ -383,8 +388,167 @@ class TestFormats(unittest.TestCase):
     def test_v1_file_forced_v2_fails(self):
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [v1rec()], name="raw-old.jsonl")
-            doc = R.build_report([p], expected=exp(s1="b"), fmt="v2")
+            doc = R.build_report([p], expected=exp(s1="xgrammar"), fmt="v2")
         self.assertTrue(any("missing text" in x for x in doc["problems"]))
+
+
+REPORT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "xgrammar_report.py")
+
+_OMIT = object()
+
+
+def write_manifest(tmpdir, sessions, backends=_OMIT, name="manifest.json"):
+    """A manifest for the CLI; the session_backends key is present only
+    when `backends` is given (pass None for a JSON null, _OMIT to leave
+    the key out entirely)."""
+    man = {"sessions": list(sessions)}
+    if backends is not _OMIT:
+        man["session_backends"] = backends
+    p = os.path.join(tmpdir, name)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(man, f)
+    return p
+
+
+def run_cli(tmpdir, raw_paths, *extra):
+    cmd = [sys.executable, REPORT, *raw_paths,
+           "--out-json", os.path.join(tmpdir, "out.json"),
+           "--out-md", os.path.join(tmpdir, "out.md"), *extra]
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+class TestDeclaration(unittest.TestCase):
+    """Review round 4: the declaration itself is validated - also on a
+    direct build_report call - and an absent backend is a problem, never
+    a permission to skip the comparison."""
+
+    def test_missing_declaration_is_a_problem(self):
+        self.assertTrue(any("not declared" in x
+                            for x in R.check_declaration(None)[1]))
+
+    def test_empty_or_malformed_sessions_are_problems(self):
+        for sess in ({}, None, [], "s1"):
+            with self.subTest(sess):
+                _, probs = R.check_declaration({"source": "t", "sessions": sess})
+                self.assertTrue(any("carries no sessions" in x for x in probs))
+
+    def test_null_backend_is_a_problem_not_a_skip(self):
+        declared, probs = R.check_declaration(exp(s1=None))
+        self.assertEqual(declared, {"s1": None})
+        self.assertTrue(any("declared backend is missing" in x for x in probs))
+
+    def test_inadmissible_backend_is_a_problem(self):
+        _, probs = R.check_declaration(exp(s1="guidance"))
+        self.assertTrue(any("not an admissible backend" in x for x in probs))
+
+    def test_null_backend_on_full_matrix_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, full_matrix())
+            doc = R.build_report([p], expected=exp(s1=None))
+        self.assertTrue(any("declared backend is missing" in x
+                            for x in doc["problems"]))
+        self.assertEqual(doc["expected_sessions"]["backend_invalid"], ["s1"])
+
+    def test_inadmissible_backend_on_full_matrix_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, full_matrix())
+            doc = R.build_report([p], expected=exp(s1="guidance"))
+        self.assertTrue(any("not an admissible backend" in x
+                            for x in doc["problems"]))
+
+
+class TestManifestCLI(unittest.TestCase):
+    """Review round 4: CLI-level tests of the manifest session_backends
+    contract (mandatory mapping, exact coverage, non-empty admissible
+    values) on temporary copies, the review reproductions included."""
+
+    def test_valid_manifest_passes(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, full_matrix(session="x1d", backend="xgrammar"),
+                          name="raw-x1d.jsonl")
+            m = write_manifest(d, ["x1d"], {"x1d": "xgrammar"})
+            r = run_cli(d, [p], "--manifest", m)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("0 problem(s)", r.stdout)
+
+    def test_manifest_backends_variants_fail(self):
+        # all refused before the data is read: the inputs only prove
+        # that no run can reach the report stage
+        variants = [
+            ("block absent", ["x1d"], _OMIT, "must be a mapping"),
+            ("block null", ["x1d"], None, "must be a mapping"),
+            ("wrong type", ["x1d"], ["xgrammar"], "must be a mapping"),
+            ("empty block", ["x1d"], {}, "must cover"),
+            ("missing label", ["x1d", "b1d"], {"x1d": "xgrammar"}, "must cover"),
+            ("extra label", ["x1d"], {"x1d": "xgrammar", "zh": "xgrammar"},
+             "must cover"),
+            ("value null", ["x1d"], {"x1d": None}, "non-empty string"),
+            ("value empty", ["x1d"], {"x1d": ""}, "non-empty string"),
+            ("value inadmissible", ["x1d"], {"x1d": "guidance"}, "not admissible"),
+        ]
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, [rec(session="x1d")])
+            for name, sessions, backends, frag in variants:
+                with self.subTest(name):
+                    m = write_manifest(d, sessions, backends)
+                    r = run_cli(d, [p], "--manifest", m)
+                    self.assertEqual(r.returncode, 2, r.stderr)
+                    self.assertIn(frag, r.stderr)
+
+    def test_review_repro_missing_block_with_mislabeled_records_fails(self):
+        # review repro 3: the block is removed and the raw-b1d records
+        # are marked xgrammar; the run must fail, not pass silently
+        with tempfile.TemporaryDirectory() as d:
+            p1 = write_raw(d, full_matrix(session="x1d", backend="xgrammar"),
+                           name="raw-x1d.jsonl")
+            p2 = write_raw(d, full_matrix(session="b1d", backend="xgrammar"),
+                           name="raw-b1d.jsonl")
+            m = write_manifest(d, ["x1d", "b1d"])
+            r = run_cli(d, [p1, p2], "--manifest", m)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("session_backends", r.stderr)
+
+    def test_review_repro_null_value_fails(self):
+        # review repro 2: b1d: null must fail, not disable the check
+        with tempfile.TemporaryDirectory() as d:
+            p1 = write_raw(d, full_matrix(session="x1d", backend="xgrammar"),
+                           name="raw-x1d.jsonl")
+            p2 = write_raw(d, full_matrix(session="b1d", backend="bolorgir"),
+                           name="raw-b1d.jsonl")
+            m = write_manifest(d, ["x1d", "b1d"],
+                               {"x1d": "xgrammar", "b1d": None})
+            r = run_cli(d, [p1, p2], "--manifest", m)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("non-empty string", r.stderr)
+
+    def test_recorded_backend_mismatch_fails_via_cli(self):
+        # a valid block does not help if the records are mislabeled:
+        # the data-level check stays in force on top of the manifest one
+        with tempfile.TemporaryDirectory() as d:
+            p1 = write_raw(d, full_matrix(session="x1d", backend="xgrammar"),
+                           name="raw-x1d.jsonl")
+            p2 = write_raw(d, full_matrix(session="b1d", backend="xgrammar"),
+                           name="raw-b1d.jsonl")
+            m = write_manifest(d, ["x1d", "b1d"],
+                               {"x1d": "xgrammar", "b1d": "bolorgir"})
+            r = run_cli(d, [p1, p2], "--manifest", m)
+            with open(os.path.join(d, "out.json"), encoding="utf-8") as f:
+                doc = json.load(f)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertTrue(any("does not match the declared" in x
+                            for x in doc["problems"]))
+        self.assertNotIn("0 problem(s)", r.stdout)
+
+    def test_expect_rejects_bad_backends(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, [rec(session="x1d")])
+            for arg, frag in (("x1d:guidance", "not admissible"),
+                              ("x1d:", "carries no backend"),
+                              ("x1d", "must be LABEL:BACKEND")):
+                with self.subTest(arg):
+                    r = run_cli(d, [p], "--expect", arg)
+                    self.assertEqual(r.returncode, 2, r.stderr)
+                    self.assertIn(frag, r.stderr)
 
 
 if __name__ == "__main__":

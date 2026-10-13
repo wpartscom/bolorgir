@@ -1,10 +1,10 @@
 {
- "about": "T10 section-10 comparison summary v2 (complete completion categories, declared denominators; see the method block) - tool revision 4 with a declared session set, per-file input-format validation and matrix/stream/usage integrity checks",
+ "about": "T10 section-10 comparison summary v2 (complete completion categories, declared denominators; see the method block) - tool revision 5 with a declared session set, per-file input-format validation and matrix/stream/usage integrity checks",
  "method": {
   "categories": "each request exactly one of failed_http_transport, unfinished, stop_invalid, stop_valid, length, other_finish",
-  "integrity": "problems (non-empty fails the tool) cover the declared session set (missing or undeclared session, backend mismatch), per-file record formats (mandatory fields, types, value consistency), matrix completeness, duplicate keys, idx range, missing final stream event or usage on finished HTTP-200 records, stored-vs-revalidated disagreements and empty inputs",
+  "integrity": "problems (non-empty fails the tool) cover the declared session set (a missing or malformed declaration, a declared session missing from the inputs, an undeclared session, a declared backend that is missing, empty or not admissible, a recorded-vs-declared backend mismatch), per-file record formats (mandatory fields, types, value consistency), matrix completeness, duplicate keys, idx range, missing final stream event or usage on finished HTTP-200 records, stored-vs-revalidated disagreements and empty inputs",
   "input_format": "records must match the collector that produced them: v2 = every field emitted by xgrammar_bench2.py (all mandatory and typed; text always a string; finish_present checked against finish, tokens against usage_present, tpot_ms against (e2e_ms - ttft_ms)/(tokens - 1)); v1 = every field emitted by xgrammar_bench.py (no answer text); detected per file unless --format forces one",
-  "expected_sessions": "the session set and each session's backend are declared via --expect or --manifest before the report is built; every declared session must appear in the inputs, no undeclared session may appear and the recorded backend must match",
+  "expected_sessions": "the session set and each session's backend are declared via --expect or --manifest before the report is built; the declaration must name every compared session with a non-empty admissible backend (xgrammar/bolorgir) and nothing else, and the manifest's session_backends mapping must cover its sessions exactly; every declared session must appear in the inputs, no undeclared session may appear and the recorded backend must match",
   "ttft": "seconds from send to the first content delta; median over HTTP-200 records with a first token (n stated)",
   "tpot": "(e2e - ttft)/(completion_tokens - 1), client-observed per-token time including server overheads, NOT a profiled mask cost; median over stop_valid records only where it is defined (tokens > 1; the stored value is re-checked against the formula; n and exclusions stated)",
   "throughput": "completion tokens / batch wall time, median over complete batch runs with no failed request, no invalid stop, no unfinished request and a recorded usage for every request (run counts stated; a missing usage removes the run from this column, never zero tokens)",
@@ -13,7 +13,7 @@
   "cold_warm": "repeat 0 against the remaining repeats, both shown",
   "length_cuts": "kept in every sample where their fields are defined; not counted as completed documents; a bounded completion check is applied when the text is stored (declared suffix list, not a proof)"
  },
- "generated_utc": "2026-10-13T10:36:47Z",
+ "generated_utc": "2026-10-13T11:15:18Z",
  "expected_sessions": {
   "source": "--expect b1:bolorgir,b2:bolorgir,x1:xgrammar,x2:xgrammar",
   "sessions": {
@@ -24,7 +24,8 @@
   },
   "missing": [],
   "unexpected": [],
-  "backend_mismatch": []
+  "backend_mismatch": [],
+  "backend_invalid": []
  },
  "formats": {
   "raw-x1.jsonl": "v1",
@@ -98,8 +99,8 @@
  ],
  "tool": {
   "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/reports/20261013_xgrammar-compare-a3/tools/xgrammar_report.py",
-  "sha256": "a183a7182feb93c2664c5b863a17d695bd41cf2e8b905d0879be2d77c5e0919b",
-  "revision": 4
+  "sha256": "23b1359c5def8e064803741a72d9f46827941f6b1af6069c965dfc98b2ffb375",
+  "revision": 5
  },
  "revalidation": {
   "with_text": 0,

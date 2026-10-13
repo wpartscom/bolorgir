@@ -1,4 +1,4 @@
-# xgrammar_report.py change note (revisions 2 -> 4, 2026-10-13)
+# xgrammar_report.py change note (revisions 2 -> 5, 2026-10-13)
 
 Review (point 2) demonstrated that revision 2 could report false success.
 Failure modes reproduced on artificially damaged records and the fixes:
@@ -80,3 +80,43 @@ Re-check of the stored data (2026-10-13) with revision 4:
 
 The revision-3 outputs are preserved in commit `22b2047`; the current
 directory carries the revision-4 outputs.
+
+## Revision 4 -> 5 (review round 4)
+
+The fourth review confirmed the round-3 reproductions closed but found
+one remaining defect: the manifest `session_backends` block was
+effectively optional (absent -> `{}`, and a null value disabled the
+check for its session), so three CLI reproductions still passed:
+removing the block, setting `b1d: null`, and removing the block while
+mislabeling the raw-b1d records as xgrammar.
+
+| Reproduction (temporary A4 copies) | Revision 4 | Revision 5 |
+|---|---|---|
+| `session_backends` block removed, `sessions` intact | `problems: []`, exit 0 | refused before the data is read (exit 2): the block is mandatory |
+| `b1d: null` | `problems: []`, exit 0 | refused: every value must be a non-empty string of an admissible backend |
+| block removed + raw-b1d records marked xgrammar | `problems: []`, exit 0 | refused (missing block); with the block intact the mislabeled records fail the data check (`backend ['xgrammar'] does not match the declared bolorgir`) |
+
+The contract is now: `session_backends` is a mandatory mapping whose
+keys cover `sessions` exactly, every value a non-empty string out of
+`xgrammar`/`bolorgir`. An absent, null, non-mapping, empty,
+incomplete, extra, null-valued, empty-valued or inadmissible field all
+fail the CLI (exit 2) before the report is built, and `build_report`
+itself validates any declaration passed directly - a `None` backend is
+a problem on its own, never a permission to skip the comparison; the
+accepted declaration is revealed in `expected_sessions.backend_invalid`.
+
+Tests: 12 new ones (6 unit on `build_report`/`check_declaration`, 6
+CLI running the tool over temporary copies, the review reproductions
+included); 45 tests in total, 16 subtests.
+
+Re-check of the stored data (2026-10-13) with revision 5: `compact/`,
+`compact-r2/` (via its manifest) and the old-series re-accounting all
+regenerate with `0 problem(s)`; every measured value, category,
+denominator and input hash is unchanged against the revision-4 outputs
+committed in `469ca1f` - the only diffs are the tool revision and its
+sha256, the generation timestamp, the new `backend_invalid` key and
+the updated method/about wording. `SHA256SUMS` was rebuilt for the
+new file set.
+
+The revision-4 outputs are preserved in commit `469ca1f`; the current
+directory carries the revision-5 outputs.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""T10 section-10 comparison report (TZ 6.2/6.3) - tool revision 4.
+"""T10 section-10 comparison report (TZ 6.2/6.3) - tool revision 5.
 
 Reads one or more raw JSONL files of the comparison collectors and
 writes a reproducible summary with complete completion categories,
@@ -42,11 +42,18 @@ false-success modes was reproduced against an earlier revision before
 it was closed):
 
   - the compared session set and the backend of every session must be
-    declared before the report is built, via --expect or --manifest
-    (the manifest written by tools/run_compact.sh carries `sessions`
-    and `session_backends`); a declared session missing from the
-    inputs, an undeclared session or a backend mismatch is a problem,
-    so a report over a subset of the sessions cannot pass;
+    declared before the report is built, via --expect or --manifest;
+    the declaration itself is validated everywhere (the CLI and a
+    direct build_report call alike): every session needs a non-empty
+    admissible backend (xgrammar or bolorgir) and nothing else may be
+    declared, and the manifest must carry `session_backends` as a
+    mapping that covers `sessions` exactly - a missing block, null, an
+    empty mapping, a wrong type, an incomplete coverage, a null value
+    or an inadmissible name fails the run before the data is read; a
+    declared session missing from the inputs, an undeclared session or
+    a recorded-vs-declared backend mismatch is a problem, so a report
+    over a subset of the sessions or with mislabeled records cannot
+    pass;
   - matrix completeness: every session must carry the declared
     workloads x batches x repeats with run sizes equal to the batch;
   - request keys unique, idx inside [0, batch);
@@ -255,7 +262,11 @@ def category(rec):
 
 MATRIX_WORKLOADS = ("w1_json_small", "w2_json_nested", "w3_regex64")
 MATRIX_BATCHES = (1, 8, 32, 128)
-TOOL_REVISION = 4
+TOOL_REVISION = 5
+# Admissible backend names of the compared sessions (the structured
+# output backends this comparison covers). A declaration may name no
+# other backend, and every declared session must name one.
+KNOWN_BACKENDS = ("xgrammar", "bolorgir")
 
 
 CATEGORIES = ("failed_http_transport", "unfinished", "stop_invalid", "stop_valid",
@@ -426,6 +437,39 @@ def file_record_count(path):
     return n
 
 
+def check_declaration(expected):
+    """Validate a session/backend declaration as a whole (review round
+    4: the declaration is checked, not only its agreement with the
+    inputs, and a direct build_report call is checked like the CLI).
+
+    Returns (declared, problems). `declared` carries the usable
+    label -> backend pairs; `problems` names every defect: no
+    declaration at all, a malformed or empty mapping, an empty or
+    non-string label, a backend that is missing, empty, not a string
+    or not admissible. An absent backend is never a permission to
+    skip: it is a problem and must fail the report."""
+    if not expected:
+        return {}, ["expected session set not declared "
+                    '(pass --expect "L:backend,..." or --manifest PATH)']
+    sess = expected.get("sessions")
+    if not isinstance(sess, dict) or not sess:
+        return {}, ["expected session declaration carries no sessions"]
+    problems, declared = [], {}
+    for lab, be in sess.items():
+        if not isinstance(lab, str) or not lab:
+            problems.append("expected session declaration carries an empty or "
+                            "non-string session label")
+            continue
+        declared[lab] = be
+        if not isinstance(be, str) or not be:
+            problems.append(f"session {lab}: declared backend is missing or not "
+                            "a non-empty string")
+        elif be not in KNOWN_BACKENDS:
+            problems.append(f"session {lab}: declared backend {be!r} is not an "
+                            f"admissible backend (known: {', '.join(KNOWN_BACKENDS)})")
+    return declared, problems
+
+
 def build_report(paths, repeats=2, expected=None, fmt="auto"):
     recs, formats, problems = load_files(paths, fmt)
     if not recs:
@@ -433,27 +477,29 @@ def build_report(paths, repeats=2, expected=None, fmt="auto"):
     for p in paths:
         if file_record_count(p) == 0:
             problems.append(f"input file has no records: {os.path.basename(p)}")
-    # declared session set: a missing or an undeclared session fails
-    exp_source, exp_sessions = None, {}
-    if expected:
-        exp_source = expected.get("source")
-        exp_sessions = dict(expected.get("sessions") or {})
-    else:
-        problems.append("expected session set not declared "
-                        '(pass --expect "L:backend,..." or --manifest PATH)')
+    # declared session set: the declaration is validated as a whole
+    # and can never disable a check (a None backend is a problem, not
+    # a permission to skip the comparison)
+    exp_source = (expected or {}).get("source")
+    exp_sessions, decl_problems = check_declaration(expected)
+    problems.extend(decl_problems)
     present = sorted({r["session"] for r in recs})
     missing_sessions, unexpected, backend_bad = [], [], []
-    for lab, bexp in sorted(exp_sessions.items()):
+    for lab in sorted(exp_sessions):
+        bexp = exp_sessions[lab]
         if lab not in present:
             missing_sessions.append(lab)
             problems.append(f"expected session missing from the inputs: {lab}")
-        elif bexp is not None:
-            bad = sorted({r.get("backend") for r in recs
-                          if r["session"] == lab and r.get("backend") != bexp})
-            if bad:
-                backend_bad.append(lab)
-                problems.append(f"session {lab}: backend {bad} does not match "
-                                f"the declared {bexp}")
+            continue
+        bad = sorted({r.get("backend") for r in recs
+                      if r["session"] == lab and r.get("backend") != bexp})
+        if bad:
+            backend_bad.append(lab)
+            problems.append(f"session {lab}: backend {bad} does not match "
+                            f"the declared {bexp}")
+    backend_invalid = sorted(lab for lab, be in exp_sessions.items()
+                             if not isinstance(be, str) or not be
+                             or be not in KNOWN_BACKENDS)
     if exp_sessions:
         for lab in present:
             if lab not in exp_sessions:
@@ -538,11 +584,13 @@ def build_report(paths, repeats=2, expected=None, fmt="auto"):
         "method": {
             "categories": "each request exactly one of " + ", ".join(CATEGORIES),
             "integrity": "problems (non-empty fails the tool) cover the declared session set "
-                         "(missing or undeclared session, backend mismatch), per-file record "
-                         "formats (mandatory fields, types, value consistency), matrix "
-                         "completeness, duplicate keys, idx range, missing final stream event "
-                         "or usage on finished HTTP-200 records, stored-vs-revalidated "
-                         "disagreements and empty inputs",
+                         "(a missing or malformed declaration, a declared session missing "
+                         "from the inputs, an undeclared session, a declared backend that is "
+                         "missing, empty or not admissible, a recorded-vs-declared backend "
+                         "mismatch), per-file record formats (mandatory fields, types, value "
+                         "consistency), matrix completeness, duplicate keys, idx range, "
+                         "missing final stream event or usage on finished HTTP-200 records, "
+                         "stored-vs-revalidated disagreements and empty inputs",
             "input_format": "records must match the collector that produced them: v2 = every "
                             "field emitted by xgrammar_bench2.py (all mandatory and typed; "
                             "text always a string; finish_present checked against finish, "
@@ -551,9 +599,13 @@ def build_report(paths, repeats=2, expected=None, fmt="auto"):
                             "xgrammar_bench.py (no answer text); detected per file unless "
                             "--format forces one",
             "expected_sessions": "the session set and each session's backend are declared via "
-                                 "--expect or --manifest before the report is built; every "
-                                 "declared session must appear in the inputs, no undeclared "
-                                 "session may appear and the recorded backend must match",
+                                 "--expect or --manifest before the report is built; the "
+                                 "declaration must name every compared session with a "
+                                 "non-empty admissible backend (xgrammar/bolorgir) and "
+                                 "nothing else, and the manifest's session_backends mapping "
+                                 "must cover its sessions exactly; every declared session "
+                                 "must appear in the inputs, no undeclared session may "
+                                 "appear and the recorded backend must match",
             "ttft": "seconds from send to the first content delta; median over HTTP-200 records "
                     "with a first token (n stated)",
             "tpot": "(e2e - ttft)/(completion_tokens - 1), client-observed per-token time "
@@ -576,7 +628,8 @@ def build_report(paths, repeats=2, expected=None, fmt="auto"):
         "generated_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "expected_sessions": {"source": exp_source, "sessions": exp_sessions,
                               "missing": missing_sessions, "unexpected": unexpected,
-                              "backend_mismatch": backend_bad},
+                              "backend_mismatch": backend_bad,
+                              "backend_invalid": backend_invalid},
         "formats": formats,
         "sessions": present,
         "matrix_repeats": repeats,
@@ -680,7 +733,8 @@ def main():
     g.add_argument("--expect", metavar='"L1:backend,L2:backend,..."',
                    help="declare the compared sessions and their backends")
     g.add_argument("--manifest", metavar="PATH",
-                   help="manifest carrying `sessions` and `session_backends`")
+                   help="manifest whose `sessions` are covered exactly by its "
+                        "mandatory `session_backends` mapping")
     args = ap.parse_args()
     expected = None
     if args.expect:
@@ -691,9 +745,16 @@ def main():
                 continue
             if ":" not in item:
                 ap.error(f"--expect item {item!r} must be LABEL:BACKEND")
-            lab, be = item.split(":", 1)
+            lab, be = (x.strip() for x in item.split(":", 1))
+            if not lab:
+                ap.error("--expect: empty session label")
+            if not be:
+                ap.error(f"--expect: session {lab!r} carries no backend")
             if lab in sessions:
                 ap.error(f"--expect: duplicate session {lab!r}")
+            if be not in KNOWN_BACKENDS:
+                ap.error(f"--expect: backend {be!r} of session {lab!r} is not "
+                         f"admissible (known: {', '.join(KNOWN_BACKENDS)})")
             sessions[lab] = be
         if not sessions:
             ap.error("--expect declares no sessions")
@@ -704,14 +765,34 @@ def main():
         sess = man.get("sessions")
         if not (isinstance(sess, list) and sess and all(isinstance(x, str) for x in sess)):
             ap.error(f"--manifest {args.manifest}: no usable session list")
+        if any(not s for s in sess):
+            ap.error(f"--manifest {args.manifest}: empty session label")
         if len(set(sess)) != len(sess):
             ap.error(f"--manifest {args.manifest}: duplicate sessions")
-        sb = man.get("session_backends") or {}
-        if sb and set(sb) != set(sess):
-            ap.error(f"--manifest {args.manifest}: session_backends does not cover sessions")
+        # session_backends is mandatory and must cover `sessions` exactly
+        # with non-empty admissible backend names
+        sb = man.get("session_backends")
+        if not isinstance(sb, dict):
+            ap.error(f"--manifest {args.manifest}: session_backends must be a "
+                     f"mapping label -> backend (missing, null or wrong type)")
+        if set(sb) != set(sess):
+            missing = sorted(set(sess) - set(sb))
+            extra = sorted(set(sb) - set(sess))
+            ap.error(f"--manifest {args.manifest}: session_backends must cover "
+                     f"the sessions exactly (missing: {missing or 'none'}; "
+                     f"unexpected: {extra or 'none'})")
+        for lab in sess:
+            be = sb[lab]
+            if not isinstance(be, str) or not be:
+                ap.error(f"--manifest {args.manifest}: backend of session {lab!r} "
+                         f"must be a non-empty string")
+            if be not in KNOWN_BACKENDS:
+                ap.error(f"--manifest {args.manifest}: backend {be!r} of session "
+                         f"{lab!r} is not admissible "
+                         f"(known: {', '.join(KNOWN_BACKENDS)})")
         expected = {"source": f"manifest {os.path.abspath(args.manifest)} "
                               f"sha256 {sha256(args.manifest)}",
-                    "sessions": {s: sb.get(s) for s in sess}}
+                    "sessions": {s: sb[s] for s in sess}}
     paths = []
     for p in args.raw:
         paths.extend(sorted(glob.glob(p)))
