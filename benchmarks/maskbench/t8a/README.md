@@ -11,8 +11,9 @@ participants, the pins and the tables are described in `../README.md`
 
 ```sh
 HF_HOME="<main tree>/benchmarks/local/hf-cache" \
-  T8A_ACCEPTANCE=benchmarks/coverage/spec-v1/t3-6e62e0d1/review-3/acceptance.json \
-  T8A_T2C=benchmarks/maskbench/t8a/evidence/6e62e0d1/t2c-run2.json \
+  PY_BASE="<a python >= 3.12>" \
+  T8A_ACCEPTANCE=benchmarks/coverage/spec-v1/t3-9a5baf3e/review-2/acceptance.json \
+  T8A_T2C=benchmarks/maskbench/t8a/evidence/9a5baf3e/t2c.json \
   bash benchmarks/maskbench/t8a/run_t8a.sh <work dir> <bolorgir wheel> 1
 ```
 
@@ -27,10 +28,20 @@ HF_HOME="<main tree>/benchmarks/local/hf-cache" \
   preflight checks that verdict and the tokenizer snapshot against
   `benchmarks/t3/acceptance_pins.json`.
 - `T8A_T2C` is the class file of the Bolorgir errors (below). For the
-  wheel rebuilt after the 2026-10-11 comment cleanup use
-  `evidence/6e62e0d1/t2c-run2.json`: its `wheel_sha256` pins that wheel
-  (keep the wheel file; a different wheel needs a re-pinned class file).
-  The older `evidence/6e62e0d1/t2c.json` covers the pre-cleanup wheel.
+  wheel of the current line (core `9a5baf3e`) use
+  `evidence/9a5baf3e/t2c.json`: it names that core, the wheel `sha256`
+  and the full protocol of the run; its classes are added only from the
+  diagnosis of the first full run and decided by the owner, none is
+  carried over — until then the entries are empty and every Bolorgir
+  error stays open. The `evidence/6e62e0d1/` files (`t2c.json` for the
+  first wheel, `t2c-run2.json` for the wheel rebuilt after the
+  2026-10-11 comment cleanup) cover the earlier core only: a class file
+  for another core or protocol keeps every case open (keep the wheel
+  file; a different wheel needs its own class file).
+- `PY_BASE` creates both venvs and must be a Python 3.12 or newer (the
+  wheel is `abi3` cp312 with `requires-python >= 3.12`; an older base
+  fails the install). Nothing is installed into `PY_BASE` itself; the
+  venv Python version is recorded in the manifest.
 - Exit status: 0 accepted; 5 a written report that is not accepted; 1 a
   failed step, a failed smoke or changed inputs (the reasons are in
   `report/t8a.md` and `run.log`).
@@ -77,7 +88,7 @@ the eight files of this directory (`t8a_identity.TOOLS`).
     --run "xgr-pinned=<work dir>/out/xgr-pinned" \
     --run "llg-current=<work dir>/out/llg-current" \
     --run "xgr-current=<work dir>/out/xgr-current" \
-    --t2c benchmarks/maskbench/t8a/evidence/6e62e0d1/t2c-run2.json \
+    --t2c benchmarks/maskbench/t8a/evidence/9a5baf3e/t2c.json \
     --out-md "<work dir>/report/t8a.md" \
     --out-json "<work dir>/report/t8a.json"
   ```
@@ -105,6 +116,7 @@ whose chunk ended with exit -14 - or `crash:<exit code>`) and a complete
 A missing block, a missing or null entry, an unknown key, a wrong type or
 another value keeps the case open; a classified timeout still fails a
 smoke. New classes are prepared with the diagnosis and decided by the
-owner; the committed files are `evidence/6e62e0d1/t2c.json` (first
-wheel) and `evidence/6e62e0d1/t2c-run2.json` (wheel rebuilt after the
-comment cleanup).
+owner; the committed files are `evidence/6e62e0d1/t2c.json` and
+`evidence/6e62e0d1/t2c-run2.json` for the earlier core (the 6e62e0d1
+wheels) and `evidence/9a5baf3e/t2c.json` for the current line's wheel
+(classes pending the owner's decision).

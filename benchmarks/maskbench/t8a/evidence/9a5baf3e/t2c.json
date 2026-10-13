@@ -1,0 +1,11 @@
+{
+ "about": "T2c classes of Bolorgir errors in T8a on the core 9a5baf3e (t8a_report.py --t2c, run_t8a.sh T8A_T2C), prepared 2026-10-13 for the wheel bolorgir-0.2.0rc1-cp312-abi3-linux_x86_64.whl (sha256 b5635a7e...) built from the frozen sources of the release line with the in-tree core. No class is carried over from the 6e62e0d1 files: the classes for this core are prepared only from the outcomes measured in the first full run of the work dir benchmarks/local/t8a-work-9a5baf3e, and every class stays subject to the owner's decision (the D4 decisions of the T3 review do not decide T8a errors). Until then the entries are empty and every Bolorgir error stays open. A class covers only its file with the exact outcome it names as status, under the T8a protocol stated below (900 s per file, one worker, memory limit 40 GB, spec-v1, bolorgir, compact): the status timeout is a pending marker whose chunk ended with exit -14 (the runner's SIGALRM) while it ran the file; t8a_report.py applies the class only then, so a crash with another exit, a validation error or a marker without that chunk end stays open. The table status crash_or_timeout stays. A timeout of any other file is not covered and stays open. The causes inside the core are open. The protocol block states those limits in complete machine-readable form; t8a_report.py applies a class only when every required condition is present with the run's value, otherwise every case stays open.",
+ "core_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+ "decided": "pending: classes are added from the diagnosis of the first full run and decided by the owner",
+ "protocol": {"threads": 1, "time_limit": 900, "mem_limit": 40,
+  "profile": "spec-v1", "serializer": "bolorgir", "compact": true,
+  "smoke_files": 0,
+  "tokenizer_revision": "a2856192dd7c25b842431f39c179a6c2c2f627d1",
+  "wheel_sha256": "b5635a7ed70cec7b4f92f952272ef1cd9fb0929f9c4a8e7d874d536d083d2e2d"},
+ "entries": {}
+}
