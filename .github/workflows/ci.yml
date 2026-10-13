@@ -110,6 +110,11 @@ jobs:
         python-version: ["3.12", "3.13", "3.14", "3.15"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          # tests/test_release_manifest.py runs the isolated_tests.sh flag
+          # block, whose guard needs BASELINE_REV (2523dd9) present in the
+          # history; the default depth 1 checkout does not contain it.
+          fetch-depth: 0
 
       - uses: mlugg/setup-zig@v2
         with:
@@ -353,6 +358,11 @@ jobs:
         python-version: ["3.12", "3.15"]
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The full suites below include tests/test_release_manifest.py,
+          # which needs BASELINE_REV (2523dd9) in the history (as the
+          # python job; the default depth 1 checkout does not contain it).
+          fetch-depth: 0
 
       - uses: mlugg/setup-zig@v2
         with:
