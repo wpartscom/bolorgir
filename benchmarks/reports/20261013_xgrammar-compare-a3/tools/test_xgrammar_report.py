@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Address tests of the v2 report rules (TZ 6.3): category partition,
+"""Address tests of the report rules (TZ 6.3): category partition,
 excluded runs, denominators, p90 method, re-validation of stored text,
-and the revision-3 integrity checks (negative tests: missing [DONE],
-incomplete runs, duplicate keys, missing usage, re-validation
-disagreement, empty inputs). Synthetic records only; run:
+and the revision-4 integrity checks (negative tests on a full correct
+matrix with a single corruption: missing whole session, missing
+mandatory fields, null text, stripped finish, usage flag against the
+stored token count, broken tpot/text_len; plus the explicitly
+supported v1 format). Synthetic records only; run:
 python3 test_xgrammar_report.py
 """
 import json
@@ -19,18 +21,31 @@ import xgrammar_report as R  # noqa: E402
 
 def rec(workload="w1_json_small", batch=1, rep=0, session="s1", backend="b",
         status=200, finish="stop", valid=True, ttft=10.0, e2e=100.0, tokens=10,
-        text=None, transport_error=False, usage=True, final_event=True,
+        text="", transport_error=False, usage=True, final_event=True,
         finish_present=None, wall=1.0):
-    r = {"session": session, "backend": backend, "workload": workload, "batch": batch,
-         "repeat": rep, "idx": 0, "wall_s": wall, "status": status, "finish": finish,
-         "ttft_ms": ttft, "e2e_ms": e2e, "tokens": tokens,
-         "tpot_ms": ((e2e - ttft) / (tokens - 1)) if (valid and tokens and tokens > 1 and ttft) else None,
-         "valid": valid, "invalid_reason": "", "text_len": len(text or ""),
-         "final_event": final_event, "usage_present": usage, "finish_present": finish_present,
-         "transport_error": transport_error, "error_excerpt": ""}
-    if text is not None:
-        r["text"] = text
+    tpot = ((e2e - ttft) / (tokens - 1)) if (valid and tokens and tokens > 1
+                                             and ttft is not None) else None
+    return {"session": session, "backend": backend, "workload": workload, "batch": batch,
+            "repeat": rep, "idx": 0, "wall_s": wall, "status": status, "finish": finish,
+            "ttft_ms": ttft, "e2e_ms": e2e, "tokens": tokens, "tpot_ms": tpot,
+            "valid": valid, "invalid_reason": "", "text_len": len(text), "text": text,
+            "final_event": final_event, "usage_present": usage,
+            "finish_present": (finish is not None) if finish_present is None else finish_present,
+            "transport_error": transport_error, "error_excerpt": ""}
+
+
+def v1rec(**kw):
+    """A record in the v1 (2026-10-12 collector) format: the v2-only
+    fields are not part of it."""
+    r = rec(**kw)
+    for k in ("text", "final_event", "usage_present", "finish_present", "transport_error"):
+        r.pop(k)
     return r
+
+
+def exp(**sessions):
+    """Expected-session declaration for build_report (label=backend)."""
+    return {"source": "test", "sessions": dict(sessions)}
 
 
 class TestCategories(unittest.TestCase):
@@ -54,9 +69,7 @@ class TestCategories(unittest.TestCase):
         self.assertEqual(cats["other_finish"], 1)
 
     def test_v1_record_without_finish_present_field(self):
-        r = rec(finish=None)
-        del r["finish_present"]
-        self.assertEqual(R.category(r), "unfinished")
+        self.assertEqual(R.category(v1rec(finish=None)), "unfinished")
 
 
 class TestRuns(unittest.TestCase):
@@ -123,10 +136,8 @@ class TestRevalidation(unittest.TestCase):
         a1 = '{"action":"reply","priority":0.5'
         recs = [rec(finish="length", valid=False, text=good),
                 rec(finish="length", valid=False, text=bad),
-                rec(finish="length", valid=False, text=a1)]
-        no_text = rec(text="x")
-        del no_text["text"]
-        recs.append(no_text)
+                rec(finish="length", valid=False, text=a1),
+                v1rec()]
         rv = R.revalidate(recs)
         self.assertEqual(rv["length_checked"], 3)
         self.assertEqual(rv["length_completable"], 1)
@@ -156,14 +167,14 @@ VALID_TEXT = {
 }
 
 
-def full_matrix(session="s1", repeats=2):
+def full_matrix(session="s1", repeats=2, backend="b"):
     out = []
     for w in R.MATRIX_WORKLOADS:
         for b in R.MATRIX_BATCHES:
             for rep in range(repeats):
                 for i in range(b):
                     r = rec(workload=w, batch=b, rep=rep, session=session,
-                            text=VALID_TEXT[w])
+                            backend=backend, text=VALID_TEXT[w])
                     r["idx"] = i
                     out.append(r)
     return out
@@ -173,29 +184,73 @@ class TestIntegrity(unittest.TestCase):
     def test_full_matrix_has_no_problems(self):
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, full_matrix())
-            doc = R.build_report([p])
+            doc = R.build_report([p], expected=exp(s1="b"))
         self.assertEqual(doc["problems"], [])
         self.assertEqual(doc["records"], 1014)
         self.assertEqual(doc["matrix"]["s1"]["runs"], 24)
         self.assertEqual(doc["revalidation"]["valid_agree"], 1014)
+        self.assertEqual(doc["formats"], {"raw.jsonl": "v2"})
+
+    def test_missing_whole_session_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            p1 = write_raw(d, full_matrix(session="s1"), name="raw-s1.jsonl")
+            write_raw(d, full_matrix(session="s2", backend="b2"), name="raw-s2.jsonl")
+            doc = R.build_report([p1], expected=exp(s1="b", s2="b2"))
+        self.assertEqual(doc["problems"],
+                         ["expected session missing from the inputs: s2"])
+        self.assertEqual(doc["expected_sessions"]["missing"], ["s2"])
+
+    def test_only_one_backend_fails(self):
+        # review repro: leave only the XGrammar sessions in the inputs
+        with tempfile.TemporaryDirectory() as d:
+            p1 = write_raw(d, full_matrix(session="x1", backend="xgrammar"),
+                           name="raw-x1.jsonl")
+            p2 = write_raw(d, full_matrix(session="x2", backend="xgrammar"),
+                           name="raw-x2.jsonl")
+            doc = R.build_report([p1, p2], expected=exp(
+                x1="xgrammar", b1="bolorgir", x2="xgrammar", b2="bolorgir"))
+        self.assertEqual(doc["expected_sessions"]["missing"], ["b1", "b2"])
+        self.assertEqual(len(doc["problems"]), 2)
+
+    def test_undeclared_session_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            p1 = write_raw(d, full_matrix(session="s1"), name="raw-s1.jsonl")
+            p2 = write_raw(d, full_matrix(session="s2", backend="b2"),
+                           name="raw-s2.jsonl")
+            doc = R.build_report([p1, p2], expected=exp(s1="b"))
+        self.assertEqual(doc["problems"], ["unexpected session in the inputs: s2"])
+
+    def test_backend_mismatch_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, full_matrix())
+            doc = R.build_report([p], expected=exp(s1="xgrammar"))
+        self.assertTrue(any("does not match the declared" in x
+                            for x in doc["problems"]))
+
+    def test_missing_declaration_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, full_matrix())
+            doc = R.build_report([p])
+        self.assertTrue(any("expected session set not declared" in x
+                            for x in doc["problems"]))
 
     def test_no_final_event_is_unfinished_and_a_problem(self):
         self.assertEqual(R.category(rec(final_event=False)), "unfinished")
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [rec(final_event=False)])
-            doc = R.build_report([p])
+            doc = R.build_report([p], expected=exp(s1="b"))
         self.assertTrue(any("final stream event" in x for x in doc["problems"]))
 
     def test_incomplete_run_is_a_problem(self):
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [rec(batch=128, text=VALID_TEXT["w1_json_small"])])
-            doc = R.build_report([p])
+            doc = R.build_report([p], expected=exp(s1="b"))
         self.assertTrue(any("wrong request count" in x for x in doc["problems"]))
 
     def test_duplicate_key_is_a_problem(self):
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [rec(session="A"), rec(session="A")])
-            doc = R.build_report([p])
+            doc = R.build_report([p], expected=exp(A="b"))
         self.assertTrue(any("duplicate request keys" in x for x in doc["problems"]))
 
     def test_usage_missing_is_never_zero_tokens(self):
@@ -206,14 +261,14 @@ class TestIntegrity(unittest.TestCase):
         self.assertEqual(rows[0]["tok_exclusion"], "usage missing")
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [r])
-            doc = R.build_report([p])
+            doc = R.build_report([p], expected=exp(s1="b"))
         self.assertTrue(any("usage missing" in x for x in doc["problems"]))
 
     def test_revalidation_disagreement_is_a_problem(self):
         r = rec(valid=True, text='{"action":"reply","priority":9}')
         with tempfile.TemporaryDirectory() as d:
             p = write_raw(d, [r])
-            doc = R.build_report([p])
+            doc = R.build_report([p], expected=exp(s1="b"))
         self.assertTrue(any("stored-vs-revalidated" in x for x in doc["problems"]))
 
     def test_empty_input_fails(self):
@@ -223,6 +278,113 @@ class TestIntegrity(unittest.TestCase):
             p = write_raw(d, [])
             doc = R.build_report([p])
         self.assertTrue(any("has no records" in x for x in doc["problems"]))
+
+
+class TestSingleCorruption(unittest.TestCase):
+    """One corruption in one record of an otherwise full and correct
+    matrix must fail the report (review point 2: no false success)."""
+
+    def _build(self, mutate):
+        recs = full_matrix()
+        mutate(recs[100])
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, recs)
+            return R.build_report([p], expected=exp(s1="b"))
+
+    def test_missing_final_event(self):
+        doc = self._build(lambda r: r.pop("final_event"))
+        self.assertTrue(any("missing final_event" in x for x in doc["problems"]))
+        r = full_matrix()[100]
+        r.pop("final_event")
+        self.assertEqual(R.category(r), "unfinished")
+
+    def test_null_text(self):
+        def mut(r):
+            r["text"] = None
+            r["text_len"] = 0
+        doc = self._build(mut)
+        self.assertTrue(any("text: not str" in x for x in doc["problems"]))
+        self.assertEqual(doc["revalidation"]["without_text"], 1)
+
+    def test_missing_finish_only(self):
+        doc = self._build(lambda r: r.pop("finish"))
+        self.assertTrue(any("missing finish" in x for x in doc["problems"]))
+        r = full_matrix()[100]
+        r.pop("finish")
+        self.assertEqual(R.category(r), "other_finish")
+
+    def test_missing_finish_and_flag_is_unfinished(self):
+        def mut(r):
+            r.pop("finish")
+            r.pop("finish_present")
+        doc = self._build(mut)
+        self.assertTrue(any("missing finish" in x for x in doc["problems"]))
+        r = full_matrix()[100]
+        r.pop("finish")
+        r.pop("finish_present")
+        self.assertEqual(R.category(r), "unfinished")
+
+    def test_usage_flag_false_with_tokens(self):
+        doc = self._build(lambda r: r.__setitem__("usage_present", False))
+        self.assertTrue(any("usage_present" in x for x in doc["problems"]))
+        recs = full_matrix()
+        recs[100]["usage_present"] = False
+        key = (recs[100]["workload"], recs[100]["batch"], recs[100]["repeat"])
+        rows = R.run_rows([r for r in recs
+                           if (r["workload"], r["batch"], r["repeat"]) == key])
+        self.assertFalse(rows[0]["tok_included"])
+        self.assertEqual(rows[0]["tok_exclusion"], "usage missing")
+
+    def test_tpot_value_breaks(self):
+        doc = self._build(lambda r: r.__setitem__("tpot_ms", r["tpot_ms"] + 1.0))
+        self.assertTrue(any("tpot_ms" in x for x in doc["problems"]))
+
+    def test_text_len_mismatch(self):
+        doc = self._build(lambda r: r.__setitem__("text_len", r["text_len"] + 3))
+        self.assertTrue(any("text_len" in x for x in doc["problems"]))
+
+    def test_tpot_counts_stop_valid_only(self):
+        recs = [rec(), rec(), rec()]
+        bad = rec()
+        bad.pop("finish")
+        bad.pop("finish_present")
+        self.assertIsNotNone(bad["tpot_ms"])
+        recs.append(bad)
+        s = R.cell_summary(recs)
+        self.assertEqual(s["tpot_n"], 3)
+        self.assertEqual(s["tpot_excluded"], 1)
+
+
+class TestFormats(unittest.TestCase):
+    def test_detect_format(self):
+        self.assertEqual(R.detect_format([]), "empty")
+        self.assertEqual(R.detect_format([v1rec()]), "v1")
+        self.assertEqual(R.detect_format([rec()]), "v2")
+        r = v1rec()
+        r["text"] = None
+        self.assertEqual(R.detect_format([r]), "v2")
+
+    def test_v1_file_supported_explicitly(self):
+        recs = []
+        for w in R.MATRIX_WORKLOADS:
+            for b in R.MATRIX_BATCHES:
+                for rep in range(2):
+                    for i in range(b):
+                        r = v1rec(workload=w, batch=b, rep=rep)
+                        r["idx"] = i
+                        recs.append(r)
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, recs, name="raw-old.jsonl")
+            doc = R.build_report([p], expected=exp(s1="b"))
+        self.assertEqual(doc["problems"], [])
+        self.assertEqual(doc["formats"], {"raw-old.jsonl": "v1"})
+        self.assertEqual(doc["revalidation"]["without_text"], 1014)
+
+    def test_v1_file_forced_v2_fails(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = write_raw(d, [v1rec()], name="raw-old.jsonl")
+            doc = R.build_report([p], expected=exp(s1="b"), fmt="v2")
+        self.assertTrue(any("missing text" in x for x in doc["problems"]))
 
 
 if __name__ == "__main__":

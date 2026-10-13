@@ -1,19 +1,35 @@
 #!/usr/bin/env python3
-"""T10 section-10 comparison, report v2 (TZ 6.2/6.3).
+"""T10 section-10 comparison report (TZ 6.2/6.3) - tool revision 4.
 
-Reads one or more raw JSONL files of the comparison collector (`v1` of
-2026-10-12 or `v2`; v2 records carry the answer text and the stream end
-state) and writes a reproducible summary with complete completion
-categories, declared denominators and methods, per-request and
-batch-run aggregation, and an independent re-validation of v2 answers.
+Reads one or more raw JSONL files of the comparison collectors and
+writes a reproducible summary with complete completion categories,
+declared denominators and methods, per-request and batch-run
+aggregation, and an independent re-validation of stored answers.
+
+Two record formats are supported and validated per file (detected
+from the fields present, or forced with `--format`):
+
+  v2  every record exactly as emitted by `xgrammar_bench2.py`: 22 keys
+      (session, backend, workload, batch, repeat, idx, wall_s, status,
+      finish, ttft_ms, e2e_ms, tokens, tpot_ms, valid, invalid_reason,
+      text_len, text, final_event, usage_present, finish_present,
+      transport_error, error_excerpt). All keys are mandatory and
+      typed; value consistency is checked (text_len against len(text),
+      finish_present against finish, tokens against usage_present,
+      tpot_ms against (e2e_ms - ttft_ms)/(tokens - 1) and against its
+      definedness rule). `text` is always a string.
+  v1  every record exactly as emitted by `xgrammar_bench.py` (the
+      2026-10-12 series): the same keys without text, final_event,
+      usage_present, finish_present and transport_error.
 
 Counting rules (each request falls into exactly one category; the
 report fails on a partition mismatch):
 
   failed_http_transport   HTTP status != 200 or a transport exception
-  unfinished              HTTP 200, no finish_reason received, or (v2
-                          records) the final stream event ([DONE]) was
-                          not observed
+  unfinished              HTTP 200 and no finish_reason received; in a
+                          v2 file also a final stream event ([DONE])
+                          that was not observed - a missing final_event
+                          field counts as not observed
   stop_invalid            finish stop, answer fails validation
   stop_valid              finish stop, answer passes validation
   length                  finish length (cut by max_tokens; NOT counted
@@ -21,22 +37,33 @@ report fails on a partition mismatch):
                           check is applied when the text is stored)
   other_finish            any other finish_reason
 
-Tool revision 3 (2026-10-13) adds the integrity checks the review
-required: matrix completeness (every session must carry the declared
-workloads x batches x repeats with run sizes equal to the batch),
-request-key uniqueness and idx range, the stream-end requirement (a
-v2 record without `final_event` is `unfinished` and becomes a
-problem), usage required on HTTP-200 finished records (a missing
-usage is never counted as zero tokens: such runs leave the token
-metrics with a stated reason), stored-vs-revalidated disagreements
-raise problems, and an empty input set fails. `--repeats` (default
-2) declares the recorded matrix; it does not change the counting
-rules.
+Integrity checks (any problem fails the tool, exit 1; each of the
+false-success modes was reproduced against an earlier revision before
+it was closed):
+
+  - the compared session set and the backend of every session must be
+    declared before the report is built, via --expect or --manifest
+    (the manifest written by tools/run_compact.sh carries `sessions`
+    and `session_backends`); a declared session missing from the
+    inputs, an undeclared session or a backend mismatch is a problem,
+    so a report over a subset of the sessions cannot pass;
+  - matrix completeness: every session must carry the declared
+    workloads x batches x repeats with run sizes equal to the batch;
+  - request keys unique, idx inside [0, batch);
+  - per-file record schema, types and value consistency as above; a
+    file counts as v2 as soon as any record carries any v2 field, so a
+    stripped field cannot hide behind the v1 format;
+  - usage required on HTTP-200 finished records; a usage that was not
+    observed is never counted as zero tokens (such runs leave the
+    token metrics with the reason `usage missing`);
+  - stored-vs-revalidated disagreements raise problems; an empty input
+    set fails.
 
 Timing samples and methods are named in the output: TTFT over HTTP-200
-records with a first token; TPOT over records where
-(e2e - TTFT)/(tokens - 1) is defined (stop_valid only, tokens > 1);
-p90 = statistics.quantiles(n=10)[8] when n >= 10, otherwise the maximum,
+records with a first token; TPOT over `stop_valid` records only with
+tokens > 1 and both timestamps, and the stored value is re-checked
+against (e2e - TTFT)/(tokens - 1); p90 =
+statistics.quantiles(n=10)[8] when n >= 10, otherwise the maximum,
 named as such. Batch-run rows count a run (session, repeat) only when
 it has no failed request and no invalid stop, like the historical
 report; the report lists excluded runs and reasons. `length` records
@@ -44,7 +71,9 @@ stay in all samples where their fields are defined; they are never
 silently dropped.
 
 Usage:
-  python xgrammar_report.py RAW... --out-json J --out-md M [--title T]
+  python xgrammar_report.py RAW... --out-json J --out-md M \
+      (--expect "L1:backend,L2:backend,..." | --manifest PATH) \
+      [--repeats 2] [--format auto|v1|v2] [--title T]
 """
 
 import argparse
@@ -59,14 +88,117 @@ import sys
 from xgrammar_common import completion_check, validate
 
 
-def load_records(paths):
-    recs = []
+# Collector formats: every record must carry every key with the declared
+# type. `text` is a string on v2 records (possibly empty), never None -
+# the collector emits it on every record, so a null text is a violation.
+
+V2_SCHEMA = {
+    "session": "str", "backend": "str", "workload": "str",
+    "batch": "int", "repeat": "int", "idx": "int",
+    "wall_s": "num", "status": "int|null", "finish": "str|null",
+    "ttft_ms": "num|null", "e2e_ms": "num", "tokens": "int|null",
+    "tpot_ms": "num|null", "valid": "bool", "invalid_reason": "str",
+    "text_len": "int", "text": "str", "final_event": "bool",
+    "usage_present": "bool", "finish_present": "bool",
+    "transport_error": "bool", "error_excerpt": "str",
+}
+V1_SCHEMA = {
+    "session": "str", "backend": "str", "workload": "str",
+    "batch": "int", "repeat": "int", "idx": "int",
+    "wall_s": "num", "status": "int|null", "finish": "str|null",
+    "ttft_ms": "num|null", "e2e_ms": "num", "tokens": "int|null",
+    "tpot_ms": "num|null", "valid": "bool", "invalid_reason": "str",
+    "text_len": "int", "error_excerpt": "str",
+}
+V2_MARKER_KEYS = ("text", "final_event", "usage_present", "finish_present",
+                  "transport_error")
+
+
+def _type_ok(x, spec):
+    if spec == "str":
+        return isinstance(x, str)
+    if spec == "bool":
+        return isinstance(x, bool)
+    if spec == "int":
+        return isinstance(x, int) and not isinstance(x, bool)
+    if spec == "int|null":
+        return x is None or (isinstance(x, int) and not isinstance(x, bool))
+    if spec == "num":
+        return isinstance(x, (int, float)) and not isinstance(x, bool)
+    if spec == "num|null":
+        return x is None or (isinstance(x, (int, float)) and not isinstance(x, bool))
+    if spec == "str|null":
+        return x is None or isinstance(x, str)
+    raise AssertionError(f"unknown type spec {spec!r}")
+
+
+def detect_format(recs):
+    """v2 as soon as any record carries any v2 field (even with a null
+    value); otherwise v1; `empty` when there are no records."""
+    if not recs:
+        return "empty"
+    for r in recs:
+        if any(k in r for k in V2_MARKER_KEYS):
+            return "v2"
+    return "v1"
+
+
+def check_record(rec, fmt):
+    """Format and value-consistency violations of one record."""
+    out = []
+    for k, spec in (V2_SCHEMA if fmt == "v2" else V1_SCHEMA).items():
+        if k not in rec:
+            out.append(f"missing {k}")
+        elif not _type_ok(rec[k], spec):
+            out.append(f"{k}: not {spec}")
+    if out:
+        return out  # type problems would cascade into consistency noise
+    if fmt == "v2":
+        if rec["finish_present"] != (rec["finish"] is not None):
+            out.append("finish_present does not match finish")
+        if not rec["usage_present"] and rec["tokens"] is not None:
+            out.append("tokens set while usage_present is false")
+        if rec["text_len"] != len(rec["text"]):
+            out.append(f"text_len {rec['text_len']} != len(text) {len(rec['text'])}")
+    if rec["tpot_ms"] is not None:
+        if not (rec["valid"] and rec["ttft_ms"] is not None
+                and rec["tokens"] is not None and rec["tokens"] > 1):
+            out.append("tpot_ms set although it is not defined for this record")
+        else:
+            want = (rec["e2e_ms"] - rec["ttft_ms"]) / (rec["tokens"] - 1)
+            if abs(rec["tpot_ms"] - want) > 1e-6 + 1e-9 * abs(want):
+                out.append("tpot_ms != (e2e_ms - ttft_ms)/(tokens - 1)")
+    elif (rec["valid"] and rec["ttft_ms"] is not None
+          and rec["tokens"] is not None and rec["tokens"] > 1):
+        out.append("tpot_ms missing although it is defined for this record")
+    return out
+
+
+def load_files(paths, fmt="auto"):
+    """Load all files; returns (flat records, per-file formats, format
+    problems). Each record is tagged with its file format in `_fmt`."""
+    recs, formats, problems = [], {}, []
     for p in paths:
+        file_recs = []
         with open(p, encoding="utf-8") as f:
-            for line in f:
+            for lineno, line in enumerate(f, 1):
                 if line.strip():
-                    recs.append(json.loads(line))
-    return recs
+                    file_recs.append((json.loads(line), lineno))
+        f_fmt = fmt if fmt in ("v1", "v2") else detect_format([r for r, _ in file_recs])
+        formats[os.path.basename(p)] = f_fmt
+        bad = []
+        for r, lineno in file_recs:
+            vio = check_record(r, f_fmt)
+            if vio:
+                bad.append(f"line {lineno}: " + "; ".join(vio))
+            r["_fmt"] = f_fmt
+            recs.append(r)
+        if bad:
+            shown = "; ".join(bad[:3])
+            more = "" if len(bad) <= 3 else f" (+{len(bad) - 3} more)"
+            problems.append(f"{os.path.basename(p)}: {len(bad)} record format "
+                            f"violation(s) in the {f_fmt} format: {shown}{more}")
+    return recs, formats, problems
 
 
 def sha256(p):
@@ -84,13 +216,34 @@ def finish_present(rec):
     return fp
 
 
+def final_seen(rec):
+    """v2: was the final stream event ([DONE]) observed? A missing
+    final_event field in a v2 record counts as not observed (and is a
+    format violation on top). v1 records do not record the stream end
+    state at all."""
+    fmt = rec.get("_fmt")
+    is_v2 = fmt == "v2" or (fmt is None and any(k in rec for k in V2_MARKER_KEYS))
+    if not is_v2:
+        return True
+    return rec.get("final_event") is True
+
+
+def usage_ok(rec):
+    """Was a usage observed and a token count stored? A v1 record has
+    no usage_present field: its token count counts when present."""
+    up = rec.get("usage_present")
+    if up is None:
+        return rec.get("tokens") is not None
+    return bool(up) and rec.get("tokens") is not None
+
+
 def category(rec):
     """The single completion category of a record (rules in the docstring)."""
     if rec.get("transport_error") or rec.get("status") != 200:
         return "failed_http_transport"
     if not finish_present(rec):
         return "unfinished"
-    if "final_event" in rec and not rec["final_event"]:
+    if not final_seen(rec):
         # v2 record: the stream did not reach its final event ([DONE])
         return "unfinished"
     if rec.get("finish") == "stop":
@@ -102,7 +255,7 @@ def category(rec):
 
 MATRIX_WORKLOADS = ("w1_json_small", "w2_json_nested", "w3_regex64")
 MATRIX_BATCHES = (1, 8, 32, 128)
-TOOL_REVISION = 3
+TOOL_REVISION = 4
 
 
 CATEGORIES = ("failed_http_transport", "unfinished", "stop_invalid", "stop_valid",
@@ -137,8 +290,9 @@ def run_rows(recs):
 
     A run is complete when it holds exactly `batch` records; an
     incomplete run is excluded from the throughput columns with its
-    reason, and a missing usage never turns into zero tokens (such a
-    run leaves the token metrics with the stated reason).
+    reason, and a usage that was not observed (usage_present false or
+    no token count) never turns into zero tokens (such a run leaves
+    the token metrics with the stated reason).
     """
     runs = {}
     for r in recs:
@@ -157,7 +311,7 @@ def run_rows(recs):
         expected = k[3]
         complete = len(rs) == expected
         wall = max((r.get("wall_s") or 0) for r in rs)
-        tokens_missing = any(r.get("tokens") is None for r in rs)
+        tokens_missing = any(not usage_ok(r) for r in rs)
         toks = sum(r["tokens"] for r in rs if r.get("tokens") is not None)
         included = complete and bad is None and wall > 0
         exclusion = None
@@ -222,13 +376,12 @@ def cell_summary(recs):
     rec = {
         "requests": n, "categories": cats,
         "partition_ok": total == n,
-        "usage_missing": sum(1 for r in recs if not r.get("usage_present",
-                                                           r.get("tokens") is not None)),
-        "final_event_missing": sum(1 for r in recs if "final_event" in r
-                                   and not r["final_event"]),
+        "usage_missing": sum(1 for r in recs if not usage_ok(r)),
+        "final_event_missing": sum(1 for r in recs if not final_seen(r)),
     }
     ttft = [r.get("ttft_ms") for r in recs if r.get("status") == 200 and r.get("ttft_ms") is not None]
-    tpot = [r.get("tpot_ms") for r in recs if r.get("tpot_ms") is not None]
+    tpot = [r.get("tpot_ms") for r in recs
+            if category(r) == "stop_valid" and r.get("tpot_ms") is not None]
     e2e = [r.get("e2e_ms") for r in recs if r.get("status") == 200 and r.get("e2e_ms") is not None]
     rec["ttft_ms_median"], rec["ttft_n"] = med(ttft), len(ttft)
     rec["tpot_ms_median"], rec["tpot_n"] = med(tpot), len(tpot)
@@ -258,7 +411,8 @@ def cell_summary(recs):
         rec["cold_warm"][f"rep{rep}"] = {
             "requests": len(part),
             "ttft_ms_median": med([r.get("ttft_ms") for r in part if r.get("status") == 200]),
-            "tpot_ms_median": med([r.get("tpot_ms") for r in part]),
+            "tpot_ms_median": med([r.get("tpot_ms") for r in part
+                                   if category(r) == "stop_valid"]),
         }
     return rec
 
@@ -272,14 +426,39 @@ def file_record_count(path):
     return n
 
 
-def build_report(paths, repeats=2):
-    recs = load_records(paths)
-    problems = []
+def build_report(paths, repeats=2, expected=None, fmt="auto"):
+    recs, formats, problems = load_files(paths, fmt)
     if not recs:
         problems.append("no records loaded from the inputs")
     for p in paths:
         if file_record_count(p) == 0:
             problems.append(f"input file has no records: {os.path.basename(p)}")
+    # declared session set: a missing or an undeclared session fails
+    exp_source, exp_sessions = None, {}
+    if expected:
+        exp_source = expected.get("source")
+        exp_sessions = dict(expected.get("sessions") or {})
+    else:
+        problems.append("expected session set not declared "
+                        '(pass --expect "L:backend,..." or --manifest PATH)')
+    present = sorted({r["session"] for r in recs})
+    missing_sessions, unexpected, backend_bad = [], [], []
+    for lab, bexp in sorted(exp_sessions.items()):
+        if lab not in present:
+            missing_sessions.append(lab)
+            problems.append(f"expected session missing from the inputs: {lab}")
+        elif bexp is not None:
+            bad = sorted({r.get("backend") for r in recs
+                          if r["session"] == lab and r.get("backend") != bexp})
+            if bad:
+                backend_bad.append(lab)
+                problems.append(f"session {lab}: backend {bad} does not match "
+                                f"the declared {bexp}")
+    if exp_sessions:
+        for lab in present:
+            if lab not in exp_sessions:
+                unexpected.append(lab)
+                problems.append(f"unexpected session in the inputs: {lab}")
     # request-key uniqueness and idx range
     seen = {}
     for r in recs:
@@ -295,7 +474,7 @@ def build_report(paths, repeats=2):
         problems.append(f"request idx outside [0, batch): {idx_bad}")
     # matrix completeness per session
     matrix = {}
-    for s in sorted({r["session"] for r in recs}):
+    for s in present:
         sess = [r for r in recs if r["session"] == s]
         runs = run_rows(sess)
         by = {(r["workload"], r["batch"], r["repeat"]): r for r in runs}
@@ -323,9 +502,9 @@ def build_report(paths, repeats=2):
             problems.append(f"{s}: runs with the wrong request count: {len(short)}")
         if extra:
             problems.append(f"{s}: runs outside the declared matrix: {len(extra)}")
-    # stream end, usage and stored text on finished HTTP-200 records
+    # stream end and usage on finished HTTP-200 records
     no_final = [r for r in recs
-                if "final_event" in r and not r["final_event"]
+                if "final_event" in r and r.get("final_event") is not True
                 and not r.get("transport_error") and r.get("status") == 200]
     if no_final:
         problems.append(f"final stream event ([DONE]) not observed: {len(no_final)}")
@@ -333,10 +512,6 @@ def build_report(paths, repeats=2):
                 if r.get("status") == 200 and finish_present(r) and r.get("tokens") is None]
     if no_usage:
         problems.append(f"usage missing on finished HTTP-200 records: {len(no_usage)}")
-    no_text = [r for r in recs
-               if "final_event" in r and r.get("status") == 200 and "text" not in r]
-    if no_text:
-        problems.append(f"v2 records without stored text: {len(no_text)}")
     backends = sorted({r["backend"] for r in recs})
     workloads = sorted({r["workload"] for r in recs})
     batches = sorted({r["batch"] for r in recs})
@@ -358,18 +533,33 @@ def build_report(paths, repeats=2):
     doc = {
         "about": "T10 section-10 comparison summary v2 (complete completion categories, "
                  "declared denominators; see the method block) - tool revision "
-                 f"{TOOL_REVISION} with matrix/stream/usage integrity checks",
+                 f"{TOOL_REVISION} with a declared session set, per-file input-format "
+                 "validation and matrix/stream/usage integrity checks",
         "method": {
             "categories": "each request exactly one of " + ", ".join(CATEGORIES),
-            "integrity": "problems (non-empty fails the tool) cover matrix completeness, "
-                         "duplicate keys, idx range, missing final stream event or usage on "
-                         "finished HTTP-200 records, missing stored text on v2 records, "
-                         "stored-vs-revalidated disagreements and empty inputs",
+            "integrity": "problems (non-empty fails the tool) cover the declared session set "
+                         "(missing or undeclared session, backend mismatch), per-file record "
+                         "formats (mandatory fields, types, value consistency), matrix "
+                         "completeness, duplicate keys, idx range, missing final stream event "
+                         "or usage on finished HTTP-200 records, stored-vs-revalidated "
+                         "disagreements and empty inputs",
+            "input_format": "records must match the collector that produced them: v2 = every "
+                            "field emitted by xgrammar_bench2.py (all mandatory and typed; "
+                            "text always a string; finish_present checked against finish, "
+                            "tokens against usage_present, tpot_ms against (e2e_ms - "
+                            "ttft_ms)/(tokens - 1)); v1 = every field emitted by "
+                            "xgrammar_bench.py (no answer text); detected per file unless "
+                            "--format forces one",
+            "expected_sessions": "the session set and each session's backend are declared via "
+                                 "--expect or --manifest before the report is built; every "
+                                 "declared session must appear in the inputs, no undeclared "
+                                 "session may appear and the recorded backend must match",
             "ttft": "seconds from send to the first content delta; median over HTTP-200 records "
                     "with a first token (n stated)",
             "tpot": "(e2e - ttft)/(completion_tokens - 1), client-observed per-token time "
-                    "including server overheads, NOT a profiled mask cost; median over records "
-                    "where it is defined (stop_valid only, tokens > 1; n and exclusions stated)",
+                    "including server overheads, NOT a profiled mask cost; median over "
+                    "stop_valid records only where it is defined (tokens > 1; the stored "
+                    "value is re-checked against the formula; n and exclusions stated)",
             "throughput": "completion tokens / batch wall time, median over complete batch runs "
                           "with no failed request, no invalid stop, no unfinished request and a "
                           "recorded usage for every request (run counts stated; a missing "
@@ -384,7 +574,11 @@ def build_report(paths, repeats=2):
                            "text is stored (declared suffix list, not a proof)",
         },
         "generated_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "sessions": sorted({r["session"] for r in recs}),
+        "expected_sessions": {"source": exp_source, "sessions": exp_sessions,
+                              "missing": missing_sessions, "unexpected": unexpected,
+                              "backend_mismatch": backend_bad},
+        "formats": formats,
+        "sessions": present,
         "matrix_repeats": repeats,
         "matrix": matrix,
         "records": len(recs),
@@ -420,6 +614,17 @@ def write_md(doc, out_md, title):
                       f"{m['expected_runs']} | {len(m['missing_runs'])} | "
                       f"{len(m['short_runs'])} | {len(m['extra_runs'])} |")
         md.append("")
+        es = doc.get("expected_sessions", {})
+        sess_txt = ", ".join(f"{lab} ({be})" if be else lab
+                             for lab, be in sorted((es.get("sessions") or {}).items())) \
+            or "none declared"
+        md += [f"Expected sessions (from {es.get('source') or 'no declaration'}): {sess_txt}; "
+               f"missing: {', '.join(es.get('missing') or []) or 'none'}; "
+               f"undeclared: {', '.join(es.get('unexpected') or []) or 'none'}.", "",
+               "Input formats: "
+               + ", ".join(f"{fn} {fv}" for fn, fv in sorted(doc.get("formats", {}).items()))
+               + " (every record checked against its format: mandatory keys, types and "
+                 "value consistency).", ""]
     backends = sorted({k.split("|")[0] for k in doc["cells"]})
     workloads = sorted({k.split("|")[1] for k in doc["cells"]})
     for w in workloads:
@@ -468,12 +673,49 @@ def main():
     ap.add_argument("--out-md", required=True)
     ap.add_argument("--repeats", type=int, default=2,
                     help="repeats per (workload, batch) in the recorded matrix (default 2)")
+    ap.add_argument("--format", choices=("auto", "v1", "v2"), default="auto",
+                    help="record format; auto detects it per file (default)")
     ap.add_argument("--title", default="XGrammar comparison (T10 section 10)")
+    g = ap.add_mutually_exclusive_group()
+    g.add_argument("--expect", metavar='"L1:backend,L2:backend,..."',
+                   help="declare the compared sessions and their backends")
+    g.add_argument("--manifest", metavar="PATH",
+                   help="manifest carrying `sessions` and `session_backends`")
     args = ap.parse_args()
+    expected = None
+    if args.expect:
+        sessions = {}
+        for item in args.expect.split(","):
+            item = item.strip()
+            if not item:
+                continue
+            if ":" not in item:
+                ap.error(f"--expect item {item!r} must be LABEL:BACKEND")
+            lab, be = item.split(":", 1)
+            if lab in sessions:
+                ap.error(f"--expect: duplicate session {lab!r}")
+            sessions[lab] = be
+        if not sessions:
+            ap.error("--expect declares no sessions")
+        expected = {"source": f"--expect {args.expect}", "sessions": sessions}
+    elif args.manifest:
+        with open(args.manifest, encoding="utf-8") as f:
+            man = json.load(f)
+        sess = man.get("sessions")
+        if not (isinstance(sess, list) and sess and all(isinstance(x, str) for x in sess)):
+            ap.error(f"--manifest {args.manifest}: no usable session list")
+        if len(set(sess)) != len(sess):
+            ap.error(f"--manifest {args.manifest}: duplicate sessions")
+        sb = man.get("session_backends") or {}
+        if sb and set(sb) != set(sess):
+            ap.error(f"--manifest {args.manifest}: session_backends does not cover sessions")
+        expected = {"source": f"manifest {os.path.abspath(args.manifest)} "
+                              f"sha256 {sha256(args.manifest)}",
+                    "sessions": {s: sb.get(s) for s in sess}}
     paths = []
     for p in args.raw:
         paths.extend(sorted(glob.glob(p)))
-    doc = build_report(paths, repeats=args.repeats)
+    doc = build_report(paths, repeats=args.repeats, expected=expected, fmt=args.format)
     with open(args.out_json, "w", encoding="utf-8") as f:
         json.dump(doc, f, indent=1)
         f.write("\n")

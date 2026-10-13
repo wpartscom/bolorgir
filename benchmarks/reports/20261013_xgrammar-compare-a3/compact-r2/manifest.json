@@ -6,6 +6,12 @@
   "x2d",
   "b2d"
  ],
+ "session_backends": {
+  "x1d": "xgrammar",
+  "b1d": "bolorgir",
+  "x2d": "xgrammar",
+  "b2d": "bolorgir"
+ },
  "repeats": 2,
  "core": {
   "path": "python/bolorgir/_lib/libbolorgir.so.0.1.0",

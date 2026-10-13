@@ -1,6 +1,12 @@
 #!/bin/bash
 # run_compact.sh OUT_DIR [--labels L1 L2 L3 L4] [--repeats N] [--port N]
-# run_compact.sh --check-only
+# run_compact.sh [--check-only] [--labels ...] [--repeats N] [--port N]
+#
+# OUT_DIR is the positional first argument; --labels takes exactly the
+# four session labels that follow it (consumed until the next option);
+# --port moves the server and the client (--base-url) together;
+# --check-only validates the setup and prints the resolved configuration
+# without touching the GPU.
 #
 # Standalone reproduction of the compact-JSON re-collection of the T10
 # section-10 comparison (protocol amendments A3/A4, see PROTOCOL.md).
@@ -12,7 +18,8 @@
 # Environment: VLLM_DIR (default <root>/benchmarks/local/venv-vllm),
 # HF_HOME (default <root>/benchmarks/local/hf-cache when present),
 # BLG_AGENT_TRACE is set for the bolorgir sessions (traces land in
-# OUT_DIR). One `vllm serve` per session on port 8021 (PORT/$--port);
+# OUT_DIR). One `vllm serve` per session on port 8021 or `--port` (the
+# client is pointed at the same URL via `--base-url`);
 # the xgrammar sessions must report disable_any_whitespace=True in the
 # server log. For every session the EngineCore binding is captured
 # twice: during the session, as soon as the first records are on disk,
@@ -47,10 +54,15 @@ OUT=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --check-only) CHECK=1; shift;;
-    --labels) shift; IFS=' ' read -r -a LABELS <<< "${1:-}"; shift;;
+    --labels)
+      shift
+      LABELS=()
+      while [ $# -gt 0 ] && [ "${1#--}" = "$1" ]; do
+        LABELS+=("$1"); shift
+      done;;
     --repeats) REPEATS="${2:?--repeats needs a value}"; shift 2;;
     --port) PORT="${2:?--port needs a value}"; shift 2;;
-    -h|--help) sed -n '2,33p' "$0"; exit 0;;
+    -h|--help) sed -n '2,37p' "$0"; exit 0;;
     *) OUT="$1"; shift;;
   esac
 done
@@ -64,9 +76,13 @@ refuse() { echo "refused: $*"; exit 2; }
 [ -f "$CORE" ] || refuse "core library not found: $CORE"
 [ "$(sha256sum "$CORE" | cut -d' ' -f1)" = "$CORE_SHA_EXPECTED" ] \
   || refuse "core is not the pinned candidate $CORE_SHA_EXPECTED"
-[ "${#LABELS[@]}" -eq 4 ] || refuse "need exactly four session labels"
+case "$PORT" in ''|*[!0-9]*) refuse "invalid --port: $PORT";; esac
+[ "${#LABELS[@]}" -eq 4 ] || refuse "need exactly four session labels (got ${#LABELS[@]})"
+[ "$(printf '%s\n' "${LABELS[@]}" | sort -u | wc -l)" -eq 4 ] \
+  || refuse "session labels must be unique"
 if [ "$CHECK" = 1 ]; then
   echo "== setup checks passed (--check-only): venv, tools, core $CORE_SHA_EXPECTED"
+  echo "== labels=${LABELS[*]} url=$URL repeats=$REPEATS out=${OUT:-<positional OUT_DIR not set>}"
   exit 0
 fi
 [ -n "$OUT" ] || refuse "usage: run_compact.sh OUT_DIR [--labels L1 L2 L3 L4] [--repeats N] [--port N]"
@@ -164,7 +180,8 @@ session() {  # label backend
   prov "$label" || exit 2
   echo "== $label client start $(date -u +%FT%TZ)"
   ( cd "$ROOT" && exec "$PY" "$SCRIPT_DIR/xgrammar_bench2.py" --session "$label" \
-      --backend "$backend" --out "$OUT/raw-$label.jsonl" --repeats "$REPEATS" ) &
+      --backend "$backend" --out "$OUT/raw-$label.jsonl" --repeats "$REPEATS" \
+      --base-url "$URL" ) &
   cpid=$!
   for i in $(seq 1 240); do
     [ -s "$OUT/raw-$label.jsonl" ] && break
@@ -233,6 +250,8 @@ man = {
   "about": "Compact-JSON re-collection of the T10 section-10 comparison "
            "(tools/run_compact.sh, standalone; amendments A3/A4)",
   "sessions": labels,
+  "session_backends": {lab: ("xgrammar" if i % 2 == 0 else "bolorgir")
+                       for i, lab in enumerate(labels)},
   "repeats": repeats,
   "core": {"path": "python/bolorgir/_lib/libbolorgir.so.0.1.0",
            "sha256": sha(os.path.join(root, "python/bolorgir/_lib/libbolorgir.so.0.1.0"))},
@@ -263,11 +282,13 @@ for s in labels:
 with open(os.path.join(out, "manifest.json"), "w", encoding="utf-8") as f:
     json.dump(man, f, indent=1)
     f.write("\n")
-print(json.dumps({k: man[k] for k in ("sessions", "core", "vllm_version",
-                                      "xgrammar_version", "records_per_session")}, indent=1))
+print(json.dumps({k: man[k] for k in ("sessions", "session_backends", "core",
+                                      "vllm_version", "xgrammar_version",
+                                      "records_per_session")}, indent=1))
 EOF
 
 echo "== report"
 "$PY" "$SCRIPT_DIR/xgrammar_report.py" "$OUT"/raw-*.jsonl --repeats "$REPEATS" \
+    --manifest "$OUT/manifest.json" \
     --out-json "$OUT/summary-v2.json" --out-md "$OUT/REPORT-v2.md" || exit 2
 echo "== run_compact done"

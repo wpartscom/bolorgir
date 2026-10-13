@@ -56,9 +56,9 @@ Why this series exists (tasks TZ §6.1–§6.3 of the reviewer task):
 | `CONCLUSIONS.md` | conclusions, wording aligned with the tasks above |
 | `compact/raw-*.jsonl`, `compact-r2/raw-*.jsonl` | raw records, 1014 per session in each pass; every record keeps the response text, so validity is re-checkable |
 | `compact/server-*.log`, `compact/prov-*.txt` (and the same in `compact-r2/`) | server logs and per-session provenance (argv, library hash, parsed `StructuredOutputsConfig`) |
-| `compact-r2/engine-*.txt`, `compact-r2/manifest.json` | per-session EngineCore scans and the manifest with the parsed `engine` block (see below) |
+| `compact-r2/engine-*.txt`, `compact-r2/manifest.json` | per-session EngineCore scans and the manifest with the parsed `engine` block and the declared `session_backends` (see below) |
 | `compact/engine-core-check/` | supplementary standalone EngineCore check of the A3 configuration (kept as a quick re-check) |
-| `tools/` | everything needed to reproduce: `run_compact.sh` (standalone), `run_compact_a3.sh` (historical A3 script), `engine_core_check.sh`, `xgrammar_bench2.py` (collector), `xgrammar_common.py` (schemas/prompts), `xgrammar_report.py` (report, revision 3), `test_xgrammar_report.py` (17 tests), `xgrammar_report_change_note.md` |
+| `tools/` | everything needed to reproduce: `run_compact.sh` (standalone), `run_compact_a3.sh` (historical A3 script), `engine_core_check.sh`, `xgrammar_bench2.py` (collector), `xgrammar_common.py` (schemas/prompts), `xgrammar_report.py` (report, revision 4), `test_xgrammar_report.py` (33 tests), `xgrammar_report_change_note.md` |
 | `SHA256SUMS` | checksums of every versioned file in this directory |
 
 Reproduce (any working directory; the script resolves the repository
@@ -78,17 +78,21 @@ existing one), takes the vLLM environment from `VLLM_DIR` (default
 EngineCore scans `engine-<label>.txt` (bolorgir must show the mapping
 in both scans, xgrammar must not), then writes `manifest.json` and
 produces the report pair `summary-v2.json` / `REPORT-v2.md` with the
-published report tool; a non-empty problem list fails the run.
+published report tool, which declares the compared sessions from that
+manifest; a non-empty problem list fails the run.
 
 Regeneration from the stored raw files was re-checked on 2026-10-13
-with report revision 3 (stricter integrity checks: matrix
-completeness, stream end, usage, uniqueness, re-validation
-agreement; see `tools/xgrammar_report_change_note.md`):
-`summary-v2.json` and `REPORT-v2.md` reproduce from
-`compact-r2/raw-*.jsonl` (and from `compact/raw-*.jsonl`) exactly
-apart from the input list (paths and order) and the generation
-timestamp; every measured value, category and denominator is equal,
-with `problems: []`.
+with report revision 4 (declared session set, per-file record-format
+validation, matrix/stream/usage integrity; see
+`tools/xgrammar_report_change_note.md`): `compact-r2/summary-v2.json`
+reproduces from `compact-r2/raw-*.jsonl` with
+`--manifest compact-r2/manifest.json`, and the first pass and the
+old-series accounting with an explicit `--expect` list (the report
+tool refuses to build without one of the two). The outputs agree with
+the revision-3 ones in every measured value, category and denominator
+apart from the input list (paths and order), the generation timestamp
+and the new declared-composition block, with `problems: []` in all
+three.
 
 ## Headline numbers (repeat pass A4; first pass named where they differ)
 

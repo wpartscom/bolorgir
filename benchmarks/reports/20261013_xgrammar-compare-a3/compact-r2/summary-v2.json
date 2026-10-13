@@ -1,17 +1,37 @@
 {
- "about": "T10 section-10 comparison summary v2 (complete completion categories, declared denominators; see the method block) - tool revision 3 with matrix/stream/usage integrity checks",
+ "about": "T10 section-10 comparison summary v2 (complete completion categories, declared denominators; see the method block) - tool revision 4 with a declared session set, per-file input-format validation and matrix/stream/usage integrity checks",
  "method": {
   "categories": "each request exactly one of failed_http_transport, unfinished, stop_invalid, stop_valid, length, other_finish",
-  "integrity": "problems (non-empty fails the tool) cover matrix completeness, duplicate keys, idx range, missing final stream event or usage on finished HTTP-200 records, missing stored text on v2 records, stored-vs-revalidated disagreements and empty inputs",
+  "integrity": "problems (non-empty fails the tool) cover the declared session set (missing or undeclared session, backend mismatch), per-file record formats (mandatory fields, types, value consistency), matrix completeness, duplicate keys, idx range, missing final stream event or usage on finished HTTP-200 records, stored-vs-revalidated disagreements and empty inputs",
+  "input_format": "records must match the collector that produced them: v2 = every field emitted by xgrammar_bench2.py (all mandatory and typed; text always a string; finish_present checked against finish, tokens against usage_present, tpot_ms against (e2e_ms - ttft_ms)/(tokens - 1)); v1 = every field emitted by xgrammar_bench.py (no answer text); detected per file unless --format forces one",
+  "expected_sessions": "the session set and each session's backend are declared via --expect or --manifest before the report is built; every declared session must appear in the inputs, no undeclared session may appear and the recorded backend must match",
   "ttft": "seconds from send to the first content delta; median over HTTP-200 records with a first token (n stated)",
-  "tpot": "(e2e - ttft)/(completion_tokens - 1), client-observed per-token time including server overheads, NOT a profiled mask cost; median over records where it is defined (stop_valid only, tokens > 1; n and exclusions stated)",
+  "tpot": "(e2e - ttft)/(completion_tokens - 1), client-observed per-token time including server overheads, NOT a profiled mask cost; median over stop_valid records only where it is defined (tokens > 1; the stored value is re-checked against the formula; n and exclusions stated)",
   "throughput": "completion tokens / batch wall time, median over complete batch runs with no failed request, no invalid stop, no unfinished request and a recorded usage for every request (run counts stated; a missing usage removes the run from this column, never zero tokens)",
   "stop_valid_per_s": "stop_valid documents / batch wall time, median over complete runs with no failed/invalid/unfinished request",
   "p90": "statistics.quantiles(n=10)[8] when n >= 10, otherwise the maximum, labeled max(n<10)",
   "cold_warm": "repeat 0 against the remaining repeats, both shown",
   "length_cuts": "kept in every sample where their fields are defined; not counted as completed documents; a bounded completion check is applied when the text is stored (declared suffix list, not a proof)"
  },
- "generated_utc": "2026-10-13T10:15:57Z",
+ "generated_utc": "2026-10-13T10:38:28Z",
+ "expected_sessions": {
+  "source": "manifest /home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/reports/20261013_xgrammar-compare-a3/compact-r2/manifest.json sha256 146b521374f268cc98a130ef583645365da7ed57984b1b10189be854a1ed6874",
+  "sessions": {
+   "x1d": "xgrammar",
+   "b1d": "bolorgir",
+   "x2d": "xgrammar",
+   "b2d": "bolorgir"
+  },
+  "missing": [],
+  "unexpected": [],
+  "backend_mismatch": []
+ },
+ "formats": {
+  "raw-b1d.jsonl": "v2",
+  "raw-b2d.jsonl": "v2",
+  "raw-x1d.jsonl": "v2",
+  "raw-x2d.jsonl": "v2"
+ },
  "sessions": [
   "b1d",
   "b2d",
@@ -60,26 +80,26 @@
  "records": 4056,
  "inputs": [
   {
-   "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t10-gpu-1/xgrammar-compare/compact-r2/raw-b1d.jsonl",
+   "path": "compact-r2/raw-b1d.jsonl",
    "sha256": "ef66aa7c7558442bbbefeb280ce2772e35b9a087e2766db4586e2df07e2e1e25"
   },
   {
-   "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t10-gpu-1/xgrammar-compare/compact-r2/raw-b2d.jsonl",
+   "path": "compact-r2/raw-b2d.jsonl",
    "sha256": "b78293646aafb86605de5ccca1963c4f71a8fea3dbb64789a104971d4c569509"
   },
   {
-   "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t10-gpu-1/xgrammar-compare/compact-r2/raw-x1d.jsonl",
+   "path": "compact-r2/raw-x1d.jsonl",
    "sha256": "ddfe6b295b3aaa18a39ead34d420d3117183d541a9a3f74e7c444e62a001abba"
   },
   {
-   "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t10-gpu-1/xgrammar-compare/compact-r2/raw-x2d.jsonl",
+   "path": "compact-r2/raw-x2d.jsonl",
    "sha256": "3761b746519dd88ba2a5ae88ccf110bba2c6c058319b2d31151918b5bb57d25c"
   }
  ],
  "tool": {
   "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/reports/20261013_xgrammar-compare-a3/tools/xgrammar_report.py",
-  "sha256": "00fb3d18acd6e88d6c6bf2b8312373e831161d790536fc3c6de7997f7c6a0003",
-  "revision": 3
+  "sha256": "a183a7182feb93c2664c5b863a17d695bd41cf2e8b905d0879be2d77c5e0919b",
+  "revision": 4
  },
  "revalidation": {
   "with_text": 4056,
