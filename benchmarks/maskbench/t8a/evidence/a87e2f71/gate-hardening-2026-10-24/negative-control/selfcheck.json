@@ -1,0 +1,162 @@
+{
+ "ok": false,
+ "repo": "/tmp/bolorgir-a1a965b",
+ "bench": "/tmp/bolorgir-a1a965b/benchmarks/bench_adr0007.py",
+ "checks": [
+  {
+   "check": "control passes",
+   "ok": true,
+   "detail": "exit 0, gate 'PASS'"
+  },
+  {
+   "check": "control compares every mask",
+   "ok": false,
+   "detail": "maskbench_states = 401 (old sampler: 401)"
+  },
+  {
+   "check": "control has zero errors",
+   "ok": false,
+   "detail": "fill=None validation=None"
+  },
+  {
+   "check": "control publishes a trace digest",
+   "ok": false,
+   "detail": "trace_sha256 = None"
+  },
+  {
+   "check": "mask-401 fails",
+   "ok": false,
+   "detail": "exit = 0"
+  },
+  {
+   "check": "mask-401 names the fault",
+   "ok": false,
+   "detail": "message = 0"
+  },
+  {
+   "check": "mask-401 leaves evidence",
+   "ok": false,
+   "detail": "artifacts = []"
+  },
+  {
+   "check": "mask-401 writes no success JSON",
+   "ok": false,
+   "detail": "json written = True"
+  },
+  {
+   "check": "status-409 fails",
+   "ok": false,
+   "detail": "exit = 0"
+  },
+  {
+   "check": "status-409 names the fault",
+   "ok": false,
+   "detail": "message = 0"
+  },
+  {
+   "check": "status-409 leaves evidence",
+   "ok": false,
+   "detail": "artifacts = []"
+  },
+  {
+   "check": "status-409 writes no success JSON",
+   "ok": false,
+   "detail": "json written = True"
+  },
+  {
+   "check": "accept-409 fails",
+   "ok": false,
+   "detail": "exit = 0"
+  },
+  {
+   "check": "accept-409 names the fault",
+   "ok": false,
+   "detail": "message = 0"
+  },
+  {
+   "check": "accept-409 leaves evidence",
+   "ok": false,
+   "detail": "artifacts = []"
+  },
+  {
+   "check": "accept-409 writes no success JSON",
+   "ok": false,
+   "detail": "json written = True"
+  },
+  {
+   "check": "fill-both-409 fails",
+   "ok": false,
+   "detail": "exit = 0"
+  },
+  {
+   "check": "fill-both-409 names the fault",
+   "ok": false,
+   "detail": "message = 0"
+  },
+  {
+   "check": "fill-both-409 leaves evidence",
+   "ok": false,
+   "detail": "artifacts = []"
+  },
+  {
+   "check": "fill-both-409 writes no success JSON",
+   "ok": false,
+   "detail": "json written = True"
+  },
+  {
+   "check": "valid-both-409 fails",
+   "ok": false,
+   "detail": "exit = 0"
+  },
+  {
+   "check": "valid-both-409 names the fault",
+   "ok": false,
+   "detail": "message = 0"
+  },
+  {
+   "check": "valid-both-409 leaves evidence",
+   "ok": false,
+   "detail": "artifacts = []"
+  },
+  {
+   "check": "valid-both-409 writes no success JSON",
+   "ok": false,
+   "detail": "json written = True"
+  },
+  {
+   "check": "SKIP is rejected",
+   "ok": false,
+   "detail": "status = 'pass'"
+  },
+  {
+   "check": "SKIP reason is recorded",
+   "ok": false,
+   "detail": "skipped = None"
+  },
+  {
+   "check": "stale JSON is not accepted",
+   "ok": false,
+   "detail": "verdict = 'gate.maskbench_states = 425'"
+  },
+  {
+   "check": "stale JSON is left untouched",
+   "ok": true,
+   "detail": "sha256 before/after = 62b1a8c762ad/62b1a8c762ad"
+  },
+  {
+   "check": "stale JSON fails the run id check",
+   "ok": false,
+   "detail": "checks = []"
+  },
+  {
+   "check": "matching run id passes",
+   "ok": true,
+   "detail": "gate.maskbench_states = 425"
+  },
+  {
+   "check": "different run id fails",
+   "ok": false,
+   "detail": "gate.maskbench_states = 425"
+  }
+ ]
+}

@@ -11,11 +11,13 @@
 > (ADR-0014), a standalone regex constraint (ADR-0015), a vLLM
 > structured-output backend with a pinned source patch
 > (`docs/integrations/vllm.md`) and the Zig 0.17.0 / CPython
-> 3.12-3.15 preparation. These features change the core: the fresh R6
-> acceptance of the current core `9a5baf3e…` is admitted (`review-2`,
-> 2026-10-13), while the T8a MaskBench run and the release preparation
-> are still open; the rc1 acceptance verdict names an earlier build and
-> is not carried over. Read
+> 3.12-3.15 preparation. These features changed the core, and every
+> acceptance verdict names one build only: the admitted R6 review
+> (`review-2`, 2026-10-13) names the earlier release-line core
+> `9a5baf3e…`, whose T8a MaskBench run finished `T8A_RUN_DONE
+> not_accepted` on 2026-10-18, so that acceptance stays open. The
+> current tree has no R6 verdict or T8a run of its own, and the rc1
+> verdict is not carried over. Read
 > [Preview status and known limits](#preview-status-and-known-limits) and
 > install from source as shown in [Install](#install) until then.
 
@@ -135,8 +137,9 @@ it builds the Python extension with a C compiler and needs no Zig.
 
 For serving, the vLLM structured-output backend is documented in
 [docs/integrations/vllm.md](docs/integrations/vllm.md); it needs the
-pinned upstream patch (`integrations/vllm/`) and the `[vllm]` extra, and
-its GPU checks have not run yet.
+pinned upstream patch (`integrations/vllm/`) and the `[vllm]` extra. Its
+GPU checks ran on the pinned stack for the `9a5baf3e` core (2026-10-12)
+and have not run on the current tree.
 
 ### Quickstart
 
@@ -247,23 +250,25 @@ a standalone regex constraint ([ADR-0015](docs/adr/ADR-0015-regex-constraint.md)
 and tool-call framing plus the vLLM backend with its backend trace
 ([ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md));
 the next preview (planned as `0.2.0rc2`) waits for the owner's release
-preparation: the fresh acceptance of the current core is admitted (see
-below) and the T8a MaskBench run is still open. What this line has and
+preparation: the admitted R6 review of 2026-10-13 names the earlier core
+`9a5baf3e...`, the core moved after that review, and the current tree
+still needs its own R6 verdict and its T8a run. What this line has and
 has not passed:
 
 - **Profiles.** `canonical-v1` is the default profile, a frozen subset.
   `spec-v1` is experimental: it covers much more of JSON Schema and is
   selected with `profile="spec-v1"`
   ([Schema profiles and limitations](#schema-profiles-and-limitations)).
-- **Acceptance.** The T3/R6 verdict of record for the earlier core
-  build (sha256 `6e62e0d1...`) names that build only and is historical.
-  The fresh R6 review of the current release-line core `9a5baf3e...`
-  from the saved T3 data with the owner's D4 decisions of 2026-10-13 is
-  **admitted**
+- **Acceptance.** Two verdicts are historical, and each names its own
+  build only: the T3/R6 record for the earlier core (sha256 `6e62e0d1...`)
+  and the admitted R6 review of the release-line core `9a5baf3e...`
   (`benchmarks/coverage/spec-v1/t3-9a5baf3e/review-2/`: 50/50 checks ok,
-  81/81 transition rows approved). The T8a MaskBench run of the same core
-  is still open and is part of the release preparation; the final gate
-  stays with the owner.
+  81/81 transition rows approved, 2026-10-13, from the saved T3 data with
+  the owner's D4 decisions). The core changed after that review (masks,
+  state copying, the certificate cache), so the current tree has no R6
+  verdict of its own, and its T8a MaskBench run has not been made: the
+  earlier w12 run ended `T8A_RUN_DONE not_accepted` on 2026-10-18. The
+  final gate stays with the owner.
 - **Slow masks, `RESOURCE_LIMIT`, long runs.** On some `spec-v1` schemas
   with a large vocabulary (128k tokens) a single mask takes about a
   second, and a file of a few documents can exceed 900 s. For one MaskBench
@@ -291,9 +296,13 @@ has not passed:
   macOS, Windows and Linux aarch64 are not built or tested.
 - **vLLM.** The backend is functionally checked on CPU (request
   compilation, masks, terminals, rollback, failure policy, structural
-  tags, the backend trace) including on the pinned model tokenizer;
-  end-to-end GPU serving checks have not run yet. See
-  [docs/integrations/vllm.md](docs/integrations/vllm.md).
+  tags, the backend trace) including on the pinned model tokenizer. The
+  GPU stage of the T10 checks ran the serving scenarios on the pinned
+  vLLM 0.31.0 stack for the `9a5baf3e` core (2026-10-12, rounds 7 and
+  7b), and the XGrammar comparison of 2026-10-13 is published as
+  `benchmarks/reports/20261013_xgrammar-compare-a3/compact/REPORT-v2.md`.
+  Both name that stack and that build; no GPU check has run on the
+  current tree. See [docs/integrations/vllm.md](docs/integrations/vllm.md).
 
 Problems are welcome: see [Reporting a problem](#reporting-a-problem).
 
@@ -560,7 +569,8 @@ benchmarks/                corpus, measurement scripts, acceptance protocol,
 ## Development
 
 ```sh
-zig build test --summary all      # core tests (Debug and ReleaseSafe)
+zig build test --summary all      # core tests, default (Debug)
+zig build test -Drelease=true --summary all  # core tests, ReleaseSafe
 zig fmt --check build.zig src
 
 cd python && ZIG=$(command -v zig) python3 setup.py build_ext --inplace && cd ..

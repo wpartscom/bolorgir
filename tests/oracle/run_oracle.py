@@ -199,9 +199,7 @@ def byte_tokenizer_spec() -> "reference.TokenizerSpec":
                                    special_ids=(257,)).validate()
 
 
-# ---------------------------------------------------------------------------
 # Value-preserving serializer (spec-v1 feed path; R6)
-# ---------------------------------------------------------------------------
 
 def load_value_serializer():
     """Load python/bolorgir/serializer.py standalone (pure stdlib, imports
@@ -289,9 +287,7 @@ def inject_dialect(schema, draft: str):
     return schema, "default"
 
 
-# ---------------------------------------------------------------------------
 # Exact-decimal layer (R6): sensitivity marking + independent Decimal oracle
-# ---------------------------------------------------------------------------
 
 def _is_number(v, lexeme_cls) -> bool:
     if isinstance(v, bool):
@@ -438,9 +434,7 @@ def decimal_row_info(schema, data, draft: str, lexeme_cls,
     return info
 
 
-# ---------------------------------------------------------------------------
 # Suite loading
-# ---------------------------------------------------------------------------
 
 def iter_cases(drafts, include=None, exclude=None, include_optional=False,
                lexeme_parse=None):
@@ -480,9 +474,7 @@ def iter_cases(drafts, include=None, exclude=None, include_optional=False,
                 }
 
 
-# ---------------------------------------------------------------------------
 # Engine interaction (ctypes backend; only zig-out/lib/libbolorgir.so needed)
-# ---------------------------------------------------------------------------
 
 def pointer_for_offset(data: bytes, offset: int) -> str | None:
     """Best-effort RFC 6901 JSON pointer of the value containing byte
@@ -707,9 +699,7 @@ def validator_verdict(validator_cls, schema, data):
         return None
 
 
-# ---------------------------------------------------------------------------
 # Comparison
-# ---------------------------------------------------------------------------
 
 def classify(engine: bool, suite: bool, validator) -> tuple[str, str | None]:
     """-> (outcome, mismatch_class) for a fed test."""
@@ -749,9 +739,7 @@ def match_known_gap(gaps, row) -> dict | None:
     return None
 
 
-# ---------------------------------------------------------------------------
 # Run
-# ---------------------------------------------------------------------------
 
 def run(drafts=DEFAULT_DRAFTS, include=None, exclude=None,
         include_optional=False, profile="canonical-v1", use_known_gaps=True,
@@ -1013,9 +1001,7 @@ def run(drafts=DEFAULT_DRAFTS, include=None, exclude=None,
     return report
 
 
-# ---------------------------------------------------------------------------
 # Reporting
-# ---------------------------------------------------------------------------
 
 def markdown_summary(report: dict) -> str:
     h, s = report["header"], report["summary"]

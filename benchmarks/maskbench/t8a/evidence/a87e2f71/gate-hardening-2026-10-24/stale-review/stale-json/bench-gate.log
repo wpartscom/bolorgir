@@ -1,0 +1,8 @@
+$ /usr/bin/python3 -B /tmp/review-verdicts-final/stale-json/missing_dependency.py /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/bench_adr0007.py /tmp/review-verdicts-final/stale-json/bench_gate.json
+
+{"status": "SKIP", "reason": "bolorgir package is not installed: the core is not built yet"}
+
+---- stderr ----
+
+---- exit 0, 0.0 s ----
+---- verdict FAIL run_id = None (expected 'bench-gate-26147-1792858287400526792'); ok gate.maskbench_states = 425 (ok=False) ----

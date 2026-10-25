@@ -1,0 +1,40 @@
+Slice leg (pkg-cert, library 69a24712...26da):
+
+$ mask_equiv.py --run ... --files .../equiv/slice.txt --out equiv/slice_cert.json
+files 43, calls 684, mask 0.2 s (aborts 0: 0.0 s), wall 0.4 s
+TBM ms: {"p50": 0.007, "p75": 0.101, "p90": 0.697, "p99": 4.166, "share_calls_ge_1s": 0.0, "share_time_ge_1s": 0.0}
+mismatched files: 0, errors: 0, capped: 0
+RC=0
+
+VE leg (pkg-cert, library 69a24712...26da):
+
+$ mask_equiv.py --run ... --files .../equiv/ve_mask_limit_list.txt --allow-missing-stream --out /tmp/ve_meter_cert.json
+files 6, calls 1515, mask 1273.1 s (aborts 19: 1147.4 s), wall 1273.4 s
+TBM ms: {"p50": 0.008, "p75": 1.287, "p90": 30.921, "p99": 58013.229, "share_calls_ge_1s": 0.0326, "share_time_ge_1s": 0.9837}
+mismatched files: 0, errors: 2, capped: 0
+  MISMATCH Github_easy---o58839.json - compile failed: ResourceLimitError('grammar exceeds node budget of 100000')
+  MISMATCH Github_hard---o90895.json - compile failed: ResourceLimitError('grammar exceeds node budget of 100000')
+RC=1
+
+The exit code 1 comes from the two expected corpus compile limits only (the
+same two files as in the ORIG leg); both are named apart and accepted by
+the strict comparator.
+
+Strict comparison against the ORIG leg 9a5baf3e...0c41:
+
+$ compare_ve_meters.py ve_meter_orig.json ve_meter_cert.json \
+    --out ve_meter_compare_cert \
+    --expect-orig-lib 9a5baf3e...0c41 --expect-fix-lib 69a24712...26da
+| file | instances | calls | orig mask s | orig aborts | fix mask s | fix aborts | delta s |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Github_easy---o13129.json | 4 | 0 | 239.83 | 239.83 (4) | 236.9 | 236.9 (4) | -2.93 |
+| Github_hard---o12278.json | 7 | 240 | 475.71 | 412.65 (7) | 411.58 | 411.43 (7) | -64.13 |
+| Github_hard---o74466.json | 5 | 681 | 427.32 | 229.08 (2) | 223.52 | 220.21 (2) | -203.79 |
+| Github_medium---o54553.json | 4 | 216 | 326.72 | 89.74 (1) | 184.51 | 85.05 (1) | -142.21 |
+| Github_medium---o90904.json | 6 | 317 | 146.28 | 2.4 (2) | 13.28 | 1.55 (2) | -133.0 |
+| JsonSchemaStore---codeship-services.json | 4 | 61 | 260.22 | 188.23 (3) | 203.35 | 192.3 (3) | -56.87 |
+
+Totals: orig 1876.1 s of masks (1161.9 s in 19 refusals), fix 1273.1 s
+(1147.4 s in 19 refusals); mismatched files 0.
+VERDICT: all checks passed
+cmp_exit=0

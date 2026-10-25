@@ -1,0 +1,4 @@
+matrix: scale=quick out=/home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/maskbench/t8a/evidence/a87e2f71/gate-hardening-2026-10-24/warm-acceptance
+job warm-acceptance ...
+  pass in 84.8 s
+PASS; report /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/maskbench/t8a/evidence/a87e2f71/gate-hardening-2026-10-24/warm-acceptance/matrix.md

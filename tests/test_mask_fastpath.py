@@ -75,9 +75,7 @@ def assert_fastpath_equal(spec, schema, prefix: bytes):
     return st0, ids_of(spec, w0)
 
 
-# ---------------------------------------------------------------------------
 # Length limits: minLength/maxLength edges, tokens at cp == R-1, R, R+1.
-# ---------------------------------------------------------------------------
 
 def test_length_bounds_residual_edges():
     spec = make_spec([b"ab", b"abc", b"abcd", "é".encode(), "éé".encode()])
@@ -117,9 +115,7 @@ def test_tokens_longer_than_every_bound():
     assert 256 in ids  # cp == R exactly
 
 
-# ---------------------------------------------------------------------------
 # Value boundaries: tokens closing a string and continuing into the parent.
-# ---------------------------------------------------------------------------
 
 def test_closing_tokens_continue_into_parent():
     spec = make_spec([b'{"a":', b'x"', b'x",', b'x","b":', b'x"}', b'1}', b'1'])
@@ -228,9 +224,7 @@ def test_eos_at_can_end_transitions():
     assert ids == {spec.eos_ids[0]}
 
 
-# ---------------------------------------------------------------------------
 # Unicode and escapes.
-# ---------------------------------------------------------------------------
 
 def test_unicode_codepoints_and_traps():
     e_acute = "é".encode()               # cp1
@@ -297,9 +291,7 @@ def test_tokens_ending_mid_codepoint_refused_from_fast_class():
     assert ord('"') not in ids         # cannot close mid-codepoint
 
 
-# ---------------------------------------------------------------------------
 # Kill switch.
-# ---------------------------------------------------------------------------
 
 def test_config_kill_switch_matches_default_and_env():
     # mask_fast_path=1 (explicit on) equals the default; =2 equals it too
@@ -356,11 +348,9 @@ def test_env_kill_switch():
     assert int(ops0) > int(ops1)
 
 
-# ---------------------------------------------------------------------------
 # Normal-form mask cache (ADR-0007 D2+): every string-content position of a
 # schema shares one cache entry when R >= r_cap, so the second position's
 # fill is a cache hit; masks stay bit-for-bit identical to the plain walk.
-# ---------------------------------------------------------------------------
 
 def test_string_content_positions_share_one_cache_entry():
     spec = make_spec([b"bc", b"def", b"ghij"])

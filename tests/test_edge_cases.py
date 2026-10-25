@@ -36,10 +36,6 @@ def _schema_ctx_session(ctx, schema):
     return g, s
 
 
-# ---------------------------------------------------------------------------
-# vocab not a multiple of 32
-# ---------------------------------------------------------------------------
-
 def test_vocab_not_multiple_of_32_tail_bits_zero(byte_ctx, byte_tok):
     assert byte_tok.vocab_size % 32 != 0
     g, s = _schema_ctx_session(byte_ctx, corpora.BOOL)
@@ -56,10 +52,6 @@ def test_vocab_not_multiple_of_32_tail_bits_zero(byte_ctx, byte_tok):
         s.destroy()
         zg.grammar_release(g)
 
-
-# ---------------------------------------------------------------------------
-# empty batch
-# ---------------------------------------------------------------------------
 
 def test_empty_batch_ok():
     status, statuses = zg.fill_masks_batch([], 8)
@@ -85,9 +77,7 @@ def test_batch_with_finished_session(byte_ctx):
         zg.grammar_release(g2)
 
 
-# ---------------------------------------------------------------------------
 # invalid token id / small buffer
-# ---------------------------------------------------------------------------
 
 def test_invalid_token_id(byte_ctx, byte_tok):
     g, s = _schema_ctx_session(byte_ctx, corpora.BOOL)
@@ -115,9 +105,7 @@ def test_buffer_too_small(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # repeated EOS (API.md §blg_accept_token: EOS at canEnd does not change state)
-# ---------------------------------------------------------------------------
 
 def test_repeated_eos_ok(byte_ctx, byte_tok):
     g, s = _schema_ctx_session(byte_ctx, corpora.BOOL)
@@ -146,10 +134,6 @@ def test_eos_before_can_end_invalid(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
-# PAD/special in an active session
-# ---------------------------------------------------------------------------
-
 def test_pad_special_invalid_token(byte_ctx, byte_tok):
     g, s = _schema_ctx_session(byte_ctx, corpora.BOOL)
     try:
@@ -165,9 +149,7 @@ def test_pad_special_invalid_token(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # token with several structural characters (dict tokenizer)
-# ---------------------------------------------------------------------------
 
 def test_multi_structural_token(dict_tok):
     backend = make_backend(dict_tok, "lazy")
@@ -186,10 +168,6 @@ def test_multi_structural_token(dict_tok):
         session.close()
         constraint.release()
 
-
-# ---------------------------------------------------------------------------
-# unfinished UTF-8 between tokens
-# ---------------------------------------------------------------------------
 
 def test_unfinished_utf8_between_tokens(byte_ctx, byte_tok):
     schema = {"type": "string", "minLength": 1, "maxLength": 1}
@@ -210,9 +188,7 @@ def test_unfinished_utf8_between_tokens(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # escapes at token boundaries
-# ---------------------------------------------------------------------------
 
 def test_escape_split_across_tokens(byte_ctx, byte_tok):
     schema = {"type": "string", "minLength": 1, "maxLength": 1}
@@ -235,9 +211,7 @@ def test_escape_split_across_tokens(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # empty string: as a value and as a literal-set alternative
-# ---------------------------------------------------------------------------
 
 def test_empty_string_value(byte_ctx, byte_tok):
     g, s = _schema_ctx_session(byte_ctx, {"type": "string"})
@@ -266,10 +240,6 @@ def test_empty_string_literal_alternative(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
-# enum with common prefixes
-# ---------------------------------------------------------------------------
-
 def test_enum_common_prefixes(byte_ctx, byte_tok):
     g, s = _schema_ctx_session(byte_ctx, corpora.ENUM_PREFIX)
     try:
@@ -288,9 +258,7 @@ def test_enum_common_prefixes(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # optional keys: skip, order, no going back
-# ---------------------------------------------------------------------------
 
 def test_optional_keys_skip_order_no_return(byte_ctx, byte_tok):
     g, s = _schema_ctx_session(byte_ctx, corpora.OPT_KEYS)
@@ -334,9 +302,7 @@ def test_required_key_cannot_be_skipped(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # number before a delimiter (lazy completion)
-# ---------------------------------------------------------------------------
 
 def test_number_before_delimiter(byte_ctx, byte_tok):
     g, s = _schema_ctx_session(byte_ctx, corpora.ARR_INT)
@@ -365,9 +331,7 @@ def test_number_before_delimiter(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # min/max lengths of strings and arrays
-# ---------------------------------------------------------------------------
 
 def test_string_min_length_enforced(byte_ctx, byte_tok):
     g, s = _schema_ctx_session(byte_ctx, {"type": "string", "minLength": 2})
@@ -411,10 +375,8 @@ def test_array_min_max_items_enforced(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # DeadEnd: per DESIGN §1.9 unreachable on valid traces in canonical-v1.
 # Fixed by test: no valid trace yields an empty mask.
-# ---------------------------------------------------------------------------
 
 def test_dead_end_never_on_valid_traces(byte_ctx, byte_tok):
     eos = set(byte_tok.eos_ids)
@@ -452,9 +414,7 @@ def test_dead_end_never_on_valid_traces(byte_ctx, byte_tok):
             zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # WrongState / finish without can_end
-# ---------------------------------------------------------------------------
 
 def test_wrong_state_after_finish_and_abort(byte_ctx, byte_tok):
     g, s = _schema_ctx_session(byte_ctx, corpora.BOOL)
@@ -509,9 +469,7 @@ def test_accept_forbidden_token_keeps_state(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # Dead-end tokens must not be allowed
-# ---------------------------------------------------------------------------
 
 def test_dead_end_token_excluded_on_partial_vocab():
     """[ab, a, <eos>] with literal "ab": "a" is byte-legal but nothing can
@@ -571,9 +529,7 @@ def test_dead_end_token_excluded_json_schema_object():
             ctx.destroy()
 
 
-# ---------------------------------------------------------------------------
 # Busy / invalid struct_size / conflicting limits (via the ctypes layer)
-# ---------------------------------------------------------------------------
 
 def test_destroy_busy_context(byte_tok):
     ctx = zg.Context(byte_tok, zg.BLG_MODE_LAZY)
@@ -628,9 +584,7 @@ def test_cache_limit_above_memory_limit_invalid(byte_tok):
     assert ei.value.status == zg.BLG_ERR_INVALID_ARGUMENT
 
 
-# ---------------------------------------------------------------------------
 # Grammar ownership and artifact cache budget
-# ---------------------------------------------------------------------------
 
 def test_context_busy_with_live_grammar_cached_and_lazy(byte_tok):
     # The old "cache + user" refcount gave a false equality of the

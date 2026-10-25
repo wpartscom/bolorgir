@@ -1,0 +1,8 @@
+$ /usr/bin/python3 -B /tmp/negative-control/stale/skip.py /tmp/bolorgir-a1a965b/benchmarks/bench_adr0007.py /tmp/negative-control/stale/bench_gate.json
+
+{"status": "SKIP", "reason": "synthetic missing dependency"}
+
+---- stderr ----
+
+---- exit 0, 0.0 s ----
+---- verdict gate.maskbench_states = 425 (ok=True) ----

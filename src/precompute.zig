@@ -16,12 +16,10 @@ const io_mod = @import("io.zig");
 
 pub const Error = error{Cancelled};
 
-// ---------------------------------------------------------------------------
 // ADR-0007 Decision 1: precomputed token classification for the
 // string-content fast class. Everything here is derived once per tokenizer
 // from the decoded token byte images (tokenizer identity therefore covers
 // it, ADR-0003); no per-state parsing is involved.
-// ---------------------------------------------------------------------------
 
 /// cp_len value marking a token that is NOT pure string content; such
 /// tokens always stay in the exact class.

@@ -1,0 +1,33 @@
+ok   control passes: exit 0, gate 'PASS'
+FAIL control compares every mask: maskbench_states = 401 (old sampler: 401)
+FAIL control has zero errors: fill=None validation=None
+FAIL control publishes a trace digest: trace_sha256 = None
+FAIL mask-401 fails: exit = 0
+FAIL mask-401 names the fault: message = 0
+FAIL mask-401 leaves evidence: artifacts = []
+FAIL mask-401 writes no success JSON: json written = True
+FAIL status-409 fails: exit = 0
+FAIL status-409 names the fault: message = 0
+FAIL status-409 leaves evidence: artifacts = []
+FAIL status-409 writes no success JSON: json written = True
+FAIL accept-409 fails: exit = 0
+FAIL accept-409 names the fault: message = 0
+FAIL accept-409 leaves evidence: artifacts = []
+FAIL accept-409 writes no success JSON: json written = True
+FAIL fill-both-409 fails: exit = 0
+FAIL fill-both-409 names the fault: message = 0
+FAIL fill-both-409 leaves evidence: artifacts = []
+FAIL fill-both-409 writes no success JSON: json written = True
+FAIL valid-both-409 fails: exit = 0
+FAIL valid-both-409 names the fault: message = 0
+FAIL valid-both-409 leaves evidence: artifacts = []
+FAIL valid-both-409 writes no success JSON: json written = True
+FAIL SKIP is rejected: status = 'pass'
+FAIL SKIP reason is recorded: skipped = None
+FAIL stale JSON is not accepted: verdict = 'gate.maskbench_states = 425'
+ok   stale JSON is left untouched: sha256 before/after = 62b1a8c762ad/62b1a8c762ad
+FAIL stale JSON fails the run id check: checks = []
+ok   matching run id passes: gate.maskbench_states = 425
+FAIL different run id fails: gate.maskbench_states = 425
+
+FAIL: 3/31 checks pass; report /tmp/negative-control/selfcheck.json

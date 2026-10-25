@@ -1,0 +1,2770 @@
+{
+ "kind": "warm-pair-diagnostic",
+ "acceptance": false,
+ "note": "Exploratory base/candidate pair only. It does not judge the warm guard, does not replace the stored 2d982b60 FAIL, and cannot serve as an acceptance measurement.",
+ "generated_utc": "2026-10-24T16:02:38Z",
+ "finished_utc": "2026-10-24T16:05:15Z",
+ "base": {
+  "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/2d982b60/libbolorgir.so.0.1.0",
+  "sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e"
+ },
+ "candidate": {
+  "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+  "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+ },
+ "protocol": {
+  "observations": 2000,
+  "rounds": 5,
+  "threshold_ns": 1300,
+  "cpu": 7,
+  "order": "library order alternates per round; leg order alternates off/on across rounds",
+  "probes": [
+   "permissive_string_content",
+   "permissive_string_in_object"
+  ]
+ },
+ "conditions": {
+  "requested_cpu": 7,
+  "limits": {
+   "max_load1": 2.0,
+   "max_cpu_pressure_avg10": 0.5
+  },
+  "parent": {
+   "utc": "2026-10-24T16:05:15Z",
+   "cpu_affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+   ],
+   "cpu_now": null,
+   "cpu": {
+    "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+    "affinity": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ],
+    "governors": {
+     "0": "powersave",
+     "1": "powersave",
+     "2": "powersave",
+     "3": "powersave",
+     "4": "powersave",
+     "5": "powersave",
+     "6": "powersave",
+     "7": "powersave",
+     "8": "powersave",
+     "9": "powersave",
+     "10": "powersave",
+     "11": "powersave",
+     "12": "powersave",
+     "13": "powersave",
+     "14": "powersave",
+     "15": "powersave",
+     "16": "powersave",
+     "17": "powersave",
+     "18": "powersave",
+     "19": "powersave"
+    },
+    "cur_freq_khz": {
+     "0": 799791,
+     "1": 800000,
+     "2": 800000,
+     "3": 800765,
+     "4": 800000,
+     "5": 4224053,
+     "6": 4700000,
+     "7": 4341482,
+     "8": 4314117,
+     "9": 800000,
+     "10": 1415844,
+     "11": 800000,
+     "12": 3600770,
+     "13": 2289705,
+     "14": 800000,
+     "15": 800000,
+     "16": 800000,
+     "17": 800000,
+     "18": 800000,
+     "19": 800000
+    },
+    "max_freq_khz": {
+     "0": 4800000,
+     "1": 4800000,
+     "2": 4800000,
+     "3": 4800000,
+     "4": 4800000,
+     "5": 4800000,
+     "6": 4800000,
+     "7": 4800000,
+     "8": 4900000,
+     "9": 4900000,
+     "10": 4900000,
+     "11": 4900000,
+     "12": 4800000,
+     "13": 4800000,
+     "14": 4800000,
+     "15": 4800000,
+     "16": 3600000,
+     "17": 3600000,
+     "18": 3600000,
+     "19": 3600000
+    }
+   },
+   "load": {
+    "loadavg": [
+     1.578125,
+     1.31298828125,
+     1.0537109375
+    ],
+    "procs_running": 3,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  "ok": true,
+  "problems": []
+ },
+ "rows": [
+  {
+   "which": "base",
+   "round": 1,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1180.321,
+   "p50_ns": 1115,
+   "p95_ns": 1337,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4105748
+   },
+   "load_start": {
+    "loadavg": [
+     0.998046875,
+     1.0126953125,
+     0.91845703125
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     0.998046875,
+     1.0126953125,
+     0.91845703125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 1,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1247.0845,
+   "p50_ns": 1218,
+   "p95_ns": 1312,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4188213
+   },
+   "load_start": {
+    "loadavg": [
+     0.998046875,
+     1.0126953125,
+     0.91845703125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.31884765625,
+     1.0791015625,
+     0.9404296875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 1,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1198.641,
+   "p50_ns": 1157,
+   "p95_ns": 1246,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4700000
+   },
+   "load_start": {
+    "loadavg": [
+     1.7314453125,
+     1.17578125,
+     0.9736328125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.7314453125,
+     1.17578125,
+     0.9736328125
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 1,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1106.886,
+   "p50_ns": 1075,
+   "p95_ns": 1166,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800000
+   },
+   "load_start": {
+    "loadavg": [
+     1.7314453125,
+     1.17578125,
+     0.9736328125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.75341796875,
+     1.18994140625,
+     0.9794921875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 1,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 1112.3885,
+   "p50_ns": 1002,
+   "p95_ns": 1203,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800574
+   },
+   "load_start": {
+    "loadavg": [
+     1.31884765625,
+     1.0791015625,
+     0.9404296875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.53369140625,
+     1.1279296875,
+     0.95703125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 1,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1257.467,
+   "p50_ns": 1221,
+   "p95_ns": 1313,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 2373924
+   },
+   "load_start": {
+    "loadavg": [
+     1.53369140625,
+     1.1279296875,
+     0.95703125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.7314453125,
+     1.17578125,
+     0.9736328125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 1,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 1158.1105,
+   "p50_ns": 1084,
+   "p95_ns": 1215,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 2166193
+   },
+   "load_start": {
+    "loadavg": [
+     1.75341796875,
+     1.18994140625,
+     0.9794921875
+    ],
+    "procs_running": 3,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.69287109375,
+     1.1865234375,
+     0.97998046875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 1,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1233.6185,
+   "p50_ns": 1196,
+   "p95_ns": 1280,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 2687500
+   },
+   "load_start": {
+    "loadavg": [
+     1.69287109375,
+     1.1865234375,
+     0.97998046875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.63720703125,
+     1.18310546875,
+     0.98046875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 2,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1204.4245,
+   "p50_ns": 1145,
+   "p95_ns": 1240,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4700637
+   },
+   "load_start": {
+    "loadavg": [
+     1.53564453125,
+     1.1875,
+     0.98779296875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.5732421875,
+     1.201171875,
+     0.99365234375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 2,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1256.2495,
+   "p50_ns": 1218,
+   "p95_ns": 1311,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 3715034
+   },
+   "load_start": {
+    "loadavg": [
+     1.4951171875,
+     1.17333984375,
+     0.98193359375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.53564453125,
+     1.1875,
+     0.98779296875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 2,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1051.5555,
+   "p50_ns": 1018,
+   "p95_ns": 1125,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800000
+   },
+   "load_start": {
+    "loadavg": [
+     1.5859375,
+     1.1796875,
+     0.98095703125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.5859375,
+     1.1796875,
+     0.98095703125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 2,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1097.4415,
+   "p50_ns": 1066,
+   "p95_ns": 1169,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800845
+   },
+   "load_start": {
+    "loadavg": [
+     1.63720703125,
+     1.18310546875,
+     0.98046875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.5859375,
+     1.1796875,
+     0.98095703125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 2,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 1248.0455,
+   "p50_ns": 1195,
+   "p95_ns": 1277,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800235
+   },
+   "load_start": {
+    "loadavg": [
+     1.5732421875,
+     1.201171875,
+     0.99365234375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.607421875,
+     1.21484375,
+     0.99951171875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 2,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1169.806,
+   "p50_ns": 1136,
+   "p95_ns": 1226,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800726
+   },
+   "load_start": {
+    "loadavg": [
+     1.5732421875,
+     1.201171875,
+     0.99365234375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.5732421875,
+     1.201171875,
+     0.99365234375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 2,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 1072.1165,
+   "p50_ns": 1046,
+   "p95_ns": 1136,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 2786181
+   },
+   "load_start": {
+    "loadavg": [
+     1.53857421875,
+     1.17626953125,
+     0.9814453125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.4951171875,
+     1.17333984375,
+     0.98193359375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 2,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1226.0215,
+   "p50_ns": 1212,
+   "p95_ns": 1297,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800615
+   },
+   "load_start": {
+    "loadavg": [
+     1.5859375,
+     1.1796875,
+     0.98095703125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.53857421875,
+     1.17626953125,
+     0.9814453125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 3,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1097.1385,
+   "p50_ns": 1075,
+   "p95_ns": 1150,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4252362
+   },
+   "load_start": {
+    "loadavg": [
+     1.607421875,
+     1.21484375,
+     0.99951171875
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.63916015625,
+     1.22802734375,
+     1.00537109375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 3,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1137.723,
+   "p50_ns": 1111,
+   "p95_ns": 1189,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800653
+   },
+   "load_start": {
+    "loadavg": [
+     1.63916015625,
+     1.22802734375,
+     1.00537109375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.66845703125,
+     1.2412109375,
+     1.0107421875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 3,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1257.162,
+   "p50_ns": 1209,
+   "p95_ns": 1308,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 801421
+   },
+   "load_start": {
+    "loadavg": [
+     1.6953125,
+     1.25390625,
+     1.01611328125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.63916015625,
+     1.24951171875,
+     1.015625
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 3,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1160.892,
+   "p50_ns": 1135,
+   "p95_ns": 1220,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4591385
+   },
+   "load_start": {
+    "loadavg": [
+     1.63916015625,
+     1.24951171875,
+     1.015625
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.587890625,
+     1.2451171875,
+     1.01513671875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 3,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 1084.8035,
+   "p50_ns": 1050,
+   "p95_ns": 1157,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 3499907
+   },
+   "load_start": {
+    "loadavg": [
+     1.66845703125,
+     1.2412109375,
+     1.0107421875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.66845703125,
+     1.2412109375,
+     1.0107421875
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 3,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1206.797,
+   "p50_ns": 1183,
+   "p95_ns": 1276,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4712737
+   },
+   "load_start": {
+    "loadavg": [
+     1.6953125,
+     1.25390625,
+     1.01611328125
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.6953125,
+     1.25390625,
+     1.01611328125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 3,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 1167.492,
+   "p50_ns": 1138,
+   "p95_ns": 1211,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4021093
+   },
+   "load_start": {
+    "loadavg": [
+     1.587890625,
+     1.2451171875,
+     1.01513671875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.54052734375,
+     1.24072265625,
+     1.0146484375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 3,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1261.504,
+   "p50_ns": 1234,
+   "p95_ns": 1308,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4700000
+   },
+   "load_start": {
+    "loadavg": [
+     1.54052734375,
+     1.24072265625,
+     1.0146484375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.54052734375,
+     1.24072265625,
+     1.0146484375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 4,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1208.37,
+   "p50_ns": 1146,
+   "p95_ns": 1365,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800577
+   },
+   "load_start": {
+    "loadavg": [
+     1.46044921875,
+     1.24072265625,
+     1.0185546875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.42333984375,
+     1.236328125,
+     1.01806640625
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 4,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1293.5965,
+   "p50_ns": 1238,
+   "p95_ns": 1403,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 801071
+   },
+   "load_start": {
+    "loadavg": [
+     1.46044921875,
+     1.24072265625,
+     1.0185546875
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.46044921875,
+     1.24072265625,
+     1.0185546875
+    ],
+    "procs_running": 9,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 4,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1307.507,
+   "p50_ns": 1234,
+   "p95_ns": 1388,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 2985670
+   },
+   "load_start": {
+    "loadavg": [
+     1.4970703125,
+     1.236328125,
+     1.01416015625
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.45703125,
+     1.23193359375,
+     1.013671875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 4,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1241.581,
+   "p50_ns": 1166,
+   "p95_ns": 1281,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4491964
+   },
+   "load_start": {
+    "loadavg": [
+     1.54052734375,
+     1.24072265625,
+     1.0146484375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.4970703125,
+     1.236328125,
+     1.01416015625
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 4,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 1174.9335,
+   "p50_ns": 1139,
+   "p95_ns": 1222,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800000
+   },
+   "load_start": {
+    "loadavg": [
+     1.5498046875,
+     1.265625,
+     1.02880859375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.74609375,
+     1.31103515625,
+     1.044921875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 4,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1101.389,
+   "p50_ns": 1053,
+   "p95_ns": 1207,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 978747
+   },
+   "load_start": {
+    "loadavg": [
+     1.42333984375,
+     1.236328125,
+     1.01806640625
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.5498046875,
+     1.265625,
+     1.02880859375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 4,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 991.557,
+   "p50_ns": 947,
+   "p95_ns": 1028,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800837
+   },
+   "load_start": {
+    "loadavg": [
+     1.5009765625,
+     1.2451171875,
+     1.01904296875
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.46044921875,
+     1.24072265625,
+     1.0185546875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 4,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1098.556,
+   "p50_ns": 1065,
+   "p95_ns": 1151,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800357
+   },
+   "load_start": {
+    "loadavg": [
+     1.45703125,
+     1.23193359375,
+     1.013671875
+    ],
+    "procs_running": 3,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.5009765625,
+     1.2451171875,
+     1.01904296875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 5,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1171.224,
+   "p50_ns": 1133,
+   "p95_ns": 1215,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 3486672
+   },
+   "load_start": {
+    "loadavg": [
+     1.74609375,
+     1.31103515625,
+     1.044921875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.74609375,
+     1.31103515625,
+     1.044921875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 5,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1146.0325,
+   "p50_ns": 1101,
+   "p95_ns": 1174,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4611016
+   },
+   "load_start": {
+    "loadavg": [
+     1.7666015625,
+     1.32275390625,
+     1.05029296875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.7666015625,
+     1.32275390625,
+     1.05029296875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 5,
+   "probe": "permissive_string_content",
+   "leg": "off",
+   "mean_ns": 1285.951,
+   "p50_ns": 1228,
+   "p95_ns": 1324,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800000
+   },
+   "load_start": {
+    "loadavg": [
+     1.6484375,
+     1.31201171875,
+     1.04931640625
+    ],
+    "procs_running": 2,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.59619140625,
+     1.306640625,
+     1.048828125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 5,
+   "probe": "permissive_string_content",
+   "leg": "on",
+   "mean_ns": 1150.284,
+   "p50_ns": 1124,
+   "p95_ns": 1224,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800647
+   },
+   "load_start": {
+    "loadavg": [
+     1.59619140625,
+     1.306640625,
+     1.048828125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.59619140625,
+     1.306640625,
+     1.048828125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 5,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 1254.1175,
+   "p50_ns": 1202,
+   "p95_ns": 1313,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 801097
+   },
+   "load_start": {
+    "loadavg": [
+     1.7666015625,
+     1.32275390625,
+     1.05029296875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.705078125,
+     1.3173828125,
+     1.0498046875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "base",
+   "round": 5,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1203.503,
+   "p50_ns": 1152,
+   "p95_ns": 1323,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 4700000
+   },
+   "load_start": {
+    "loadavg": [
+     1.705078125,
+     1.3173828125,
+     1.0498046875
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.6484375,
+     1.31201171875,
+     1.04931640625
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 5,
+   "probe": "permissive_string_in_object",
+   "leg": "off",
+   "mean_ns": 1168.783,
+   "p50_ns": 1147,
+   "p95_ns": 1222,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800528
+   },
+   "load_start": {
+    "loadavg": [
+     1.59619140625,
+     1.306640625,
+     1.048828125
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.62890625,
+     1.318359375,
+     1.05419921875
+    ],
+    "procs_running": 3,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  },
+  {
+   "which": "candidate",
+   "round": 5,
+   "probe": "permissive_string_in_object",
+   "leg": "on",
+   "mean_ns": 1126.016,
+   "p50_ns": 1085,
+   "p95_ns": 1235,
+   "count": 2000,
+   "all_hits": true,
+   "cache_hits": 2000,
+   "observations": 2000,
+   "loaded_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+   "cpu_affinity": [
+    7
+   ],
+   "cpu_now": null,
+   "extension_version": "0.2.0rc1",
+   "governors": {
+    "7": "powersave"
+   },
+   "cur_freq_khz": {
+    "7": 800000
+   },
+   "load_start": {
+    "loadavg": [
+     1.62890625,
+     1.318359375,
+     1.05419921875
+    ],
+    "procs_running": 4,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   },
+   "load_end": {
+    "loadavg": [
+     1.578125,
+     1.31298828125,
+     1.0537109375
+    ],
+    "procs_running": 1,
+    "cpu_pressure_some": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    },
+    "cpu_pressure_full": {
+     "avg10": 0.0,
+     "avg60": 0.0,
+     "avg300": 0.0
+    }
+   }
+  }
+ ],
+ "summary": {
+  "base": {
+   "on_legs": 10,
+   "on_means_ns": [
+    1247.0845,
+    1257.467,
+    1256.2495,
+    1169.806,
+    1137.723,
+    1206.797,
+    1293.5965,
+    1101.389,
+    1146.0325,
+    1203.503
+   ],
+   "on_p50_ns": [
+    1218,
+    1221,
+    1218,
+    1136,
+    1111,
+    1183,
+    1238,
+    1053,
+    1101,
+    1152
+   ],
+   "mean_of_means_ns": 1201.9648,
+   "min_mean_ns": 1101.389,
+   "max_mean_ns": 1293.5965,
+   "median_mean_ns": 1205.15,
+   "all_hits": true
+  },
+  "candidate": {
+   "on_legs": 10,
+   "on_means_ns": [
+    1106.886,
+    1233.6185,
+    1097.4415,
+    1226.0215,
+    1160.892,
+    1261.504,
+    1241.581,
+    1098.556,
+    1150.284,
+    1126.016
+   ],
+   "on_p50_ns": [
+    1075,
+    1196,
+    1066,
+    1212,
+    1135,
+    1234,
+    1166,
+    1065,
+    1124,
+    1085
+   ],
+   "mean_of_means_ns": 1170.28005,
+   "min_mean_ns": 1097.4415,
+   "max_mean_ns": 1261.504,
+   "median_mean_ns": 1155.5880000000002,
+   "all_hits": true
+  },
+  "paired_on": [
+   {
+    "round": 1,
+    "probe": "permissive_string_content",
+    "base_ns": 1247.0845,
+    "candidate_ns": 1106.886,
+    "delta_ns": -140.19849999999997,
+    "ratio": 0.8875789892344905
+   },
+   {
+    "round": 1,
+    "probe": "permissive_string_in_object",
+    "base_ns": 1257.467,
+    "candidate_ns": 1233.6185,
+    "delta_ns": -23.848500000000058,
+    "ratio": 0.9810344923564595
+   },
+   {
+    "round": 2,
+    "probe": "permissive_string_content",
+    "base_ns": 1256.2495,
+    "candidate_ns": 1097.4415,
+    "delta_ns": -158.808,
+    "ratio": 0.8735856213276105
+   },
+   {
+    "round": 2,
+    "probe": "permissive_string_in_object",
+    "base_ns": 1169.806,
+    "candidate_ns": 1226.0215,
+    "delta_ns": 56.21550000000002,
+    "ratio": 1.0480554040584507
+   },
+   {
+    "round": 3,
+    "probe": "permissive_string_content",
+    "base_ns": 1137.723,
+    "candidate_ns": 1160.892,
+    "delta_ns": 23.169000000000096,
+    "ratio": 1.0203643593387846
+   },
+   {
+    "round": 3,
+    "probe": "permissive_string_in_object",
+    "base_ns": 1206.797,
+    "candidate_ns": 1261.504,
+    "delta_ns": 54.70699999999988,
+    "ratio": 1.045332396417956
+   },
+   {
+    "round": 4,
+    "probe": "permissive_string_content",
+    "base_ns": 1293.5965,
+    "candidate_ns": 1241.581,
+    "delta_ns": -52.0155000000002,
+    "ratio": 0.9597900118004338
+   },
+   {
+    "round": 4,
+    "probe": "permissive_string_in_object",
+    "base_ns": 1101.389,
+    "candidate_ns": 1098.556,
+    "delta_ns": -2.8329999999998563,
+    "ratio": 0.9974277934499075
+   },
+   {
+    "round": 5,
+    "probe": "permissive_string_content",
+    "base_ns": 1146.0325,
+    "candidate_ns": 1150.284,
+    "delta_ns": 4.251500000000078,
+    "ratio": 1.0037097551771001
+   },
+   {
+    "round": 5,
+    "probe": "permissive_string_in_object",
+    "base_ns": 1203.503,
+    "candidate_ns": 1126.016,
+    "delta_ns": -77.48699999999985,
+    "ratio": 0.9356154492344433
+   }
+  ],
+  "paired_delta_ns_mean": -31.684749999999987,
+  "paired_delta_ns_median": -13.340749999999957,
+  "paired_delta_ns_min": -158.808,
+  "paired_delta_ns_max": 56.21550000000002,
+  "paired_ratio_mean": 0.9752494272395636,
+  "threshold_ns": 1300,
+  "threshold_exceedances": {
+   "base": [],
+   "candidate": []
+  }
+ }
+}

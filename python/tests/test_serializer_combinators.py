@@ -47,9 +47,7 @@ def serialize(value, schema) -> bytes:
     return payload
 
 
-# ----------------------------------------------------------------------
 # Byte output of the serializer (no native calls)
-# ----------------------------------------------------------------------
 
 def test_oneof_branch_properties_order():
     # Data order differs from the declaration order of the only fitting
@@ -198,9 +196,7 @@ def test_allof_disjoint_keys_keep_first_appearance_order():
         b'{"a":2,"b":4,"c":3,"d":1}'
 
 
-# ----------------------------------------------------------------------
 # Engine acceptance of the serialized payload (real core)
-# ----------------------------------------------------------------------
 
 @pytest.mark.skipif(not _CORE_AVAILABLE,
                     reason="zig-out/lib/libbolorgir.so is not built")

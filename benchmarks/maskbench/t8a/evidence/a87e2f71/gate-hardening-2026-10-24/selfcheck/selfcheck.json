@@ -1,0 +1,162 @@
+{
+ "ok": true,
+ "repo": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig",
+ "bench": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/bench_adr0007.py",
+ "checks": [
+  {
+   "check": "control passes",
+   "ok": true,
+   "detail": "exit 0, gate 'PASS'"
+  },
+  {
+   "check": "control compares every mask",
+   "ok": true,
+   "detail": "maskbench_states = 410 (old sampler: 401)"
+  },
+  {
+   "check": "control has zero errors",
+   "ok": true,
+   "detail": "fill=0 validation=0"
+  },
+  {
+   "check": "control publishes a trace digest",
+   "ok": true,
+   "detail": "trace_sha256 = '91879e0f6e7d3209b5954f591e461f00f78668e479ebbc4c843e3f39768bb4fa'"
+  },
+  {
+   "check": "mask-401 fails",
+   "ok": true,
+   "detail": "exit = GATE FAILURE: maskbench gate failed (mask x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "mask-401 names the fault",
+   "ok": true,
+   "detail": "message = GATE FAILURE: maskbench gate failed (mask x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "mask-401 leaves evidence",
+   "ok": true,
+   "detail": "artifacts = ['gate-failure-maskbench-1792858303161.json']"
+  },
+  {
+   "check": "mask-401 writes no success JSON",
+   "ok": true,
+   "detail": "json written = False"
+  },
+  {
+   "check": "status-409 fails",
+   "ok": true,
+   "detail": "exit = GATE FAILURE: maskbench gate failed (fill x1, instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "status-409 names the fault",
+   "ok": true,
+   "detail": "message = GATE FAILURE: maskbench gate failed (fill x1, instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "status-409 leaves evidence",
+   "ok": true,
+   "detail": "artifacts = ['gate-failure-maskbench-1792858303163.json']"
+  },
+  {
+   "check": "status-409 writes no success JSON",
+   "ok": true,
+   "detail": "json written = False"
+  },
+  {
+   "check": "accept-409 fails",
+   "ok": true,
+   "detail": "exit = GATE FAILURE: maskbench gate failed (instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "accept-409 names the fault",
+   "ok": true,
+   "detail": "message = GATE FAILURE: maskbench gate failed (instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "accept-409 leaves evidence",
+   "ok": true,
+   "detail": "artifacts = ['gate-failure-maskbench-1792858303165.json']"
+  },
+  {
+   "check": "accept-409 writes no success JSON",
+   "ok": true,
+   "detail": "json written = False"
+  },
+  {
+   "check": "fill-both-409 fails",
+   "ok": true,
+   "detail": "exit = GATE FAILURE: maskbench gate failed (fill x2, validation x2; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "fill-both-409 names the fault",
+   "ok": true,
+   "detail": "message = GATE FAILURE: maskbench gate failed (fill x2, validation x2; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "fill-both-409 leaves evidence",
+   "ok": true,
+   "detail": "artifacts = ['gate-failure-maskbench-1792858303167.json']"
+  },
+  {
+   "check": "fill-both-409 writes no success JSON",
+   "ok": true,
+   "detail": "json written = False"
+  },
+  {
+   "check": "valid-both-409 fails",
+   "ok": true,
+   "detail": "exit = GATE FAILURE: maskbench gate failed (validation x2; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "valid-both-409 names the fault",
+   "ok": true,
+   "detail": "message = GATE FAILURE: maskbench gate failed (validation x2; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "valid-both-409 leaves evidence",
+   "ok": true,
+   "detail": "artifacts = ['gate-failure-maskbench-1792858303169.json']"
+  },
+  {
+   "check": "valid-both-409 writes no success JSON",
+   "ok": true,
+   "detail": "json written = False"
+  },
+  {
+   "check": "SKIP is rejected",
+   "ok": true,
+   "detail": "status = 'fail'"
+  },
+  {
+   "check": "SKIP reason is recorded",
+   "ok": true,
+   "detail": "skipped = 'synthetic missing dependency'"
+  },
+  {
+   "check": "stale JSON is not accepted",
+   "ok": true,
+   "detail": "verdict = \"FAIL run_id = None (expected 'bench-gate-26670-1792858303169897769'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; FAIL gate.maskbench_fill_errors: KeyError: 'maskbench_fill_errors'; FAIL gate.maskbench_validation_errors: KeyError: 'maskbench_validation_errors'\""
+  },
+  {
+   "check": "stale JSON is left untouched",
+   "ok": true,
+   "detail": "sha256 before/after = 62b1a8c762ad/62b1a8c762ad"
+  },
+  {
+   "check": "stale JSON fails the run id check",
+   "ok": true,
+   "detail": "checks = ['gate.maskbench_fill_errors', 'gate.maskbench_states', 'gate.maskbench_validation_errors', 'run_id', 'status']"
+  },
+  {
+   "check": "matching run id passes",
+   "ok": true,
+   "detail": "ok run_id = 'fresh-1' (expected 'fresh-1'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; ok gate.maskbench_fill_errors = 0; ok gate.maskbench_validation_errors = 0"
+  },
+  {
+   "check": "different run id fails",
+   "ok": true,
+   "detail": "FAIL run_id = 'fresh-1' (expected 'fresh-2'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; ok gate.maskbench_fill_errors = 0; ok gate.maskbench_validation_errors = 0"
+  }
+ ]
+}

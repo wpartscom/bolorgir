@@ -2,8 +2,10 @@
 
 ## Supported versions
 
-Security fixes are provided for the latest release line (`0.1.x`) and the
-current preview (`0.2.0rc1`, a GitHub pre-release).
+Security fixes are provided for the latest published release line
+(`0.1.x`). The `0.2.0rc1` pre-release was withdrawn on 2026-10-11 and is
+not a supported version; the `main` development line has no published
+artifacts right now.
 
 ## Reporting a vulnerability
 

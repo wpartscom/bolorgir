@@ -180,10 +180,8 @@ def test_p4_numbers_boundary_mask(byte_ctx):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # Numeric conjunctions (ADR-0011): no runtime RESOURCE_LIMIT, no fallback
 # search on byte-complete vocabularies, exact masks on number bytes.
-# ---------------------------------------------------------------------------
 
 from exact_numbers import exact_is_valid  # noqa: E402
 from reference import NumConj, TokenizerSpec, numconj_reachable  # noqa: E402

@@ -8,10 +8,21 @@ const work_mod = @import("work.zig");
 const cache_mod = @import("cache.zig");
 const precompute = @import("precompute.zig");
 const io_mod = @import("io.zig");
+const diag = @import("diag.zig");
 
 pub const Error = error{ DeadEnd, ResourceLimit, Cancelled, OutOfMemory };
 
-const StackFrame = struct { node: u32, next_edge: u32 };
+const StackFrame = struct {
+    node: u32,
+    next_edge: u32,
+    /// The path from the root to this node is all ASCII string content. Only
+    /// used when the exact walk is allowed to skip such prefixes.
+    pure: bool = true,
+    /// Number of ASCII content bytes on a pure path.
+    prefix_len: u32 = 0,
+    /// The frame's state slot holds the state after `prefix_len` bytes.
+    slot_valid: bool = false,
+};
 
 /// Mask-call scratch for the trie walk: one parser state per branching
 /// trie level plus a spare for chain descent. Allocated lazily on the first
@@ -67,24 +78,45 @@ pub const MaskBuf = struct {
 /// reachability check that exhausts its budget/depth/memory is UNKNOWN, not
 /// alive, and fails the whole mask call with ResourceLimit (ADR-0005 D3).
 pub fn fillMask(g: *const grammar.Grammar, tok: *const tokenizer.Tokenizer, st: *const parser.State, out: []u32, w: *work_mod.Work, buf: *MaskBuf, side: *parser.Side) Error!void {
-    const mw = tok.maskWords();
-    std.debug.assert(out.len >= mw);
-    @memset(out[0..mw], 0);
-
+    std.debug.assert(out.len >= tok.maskWords());
+    diag.incr(&diag.c.fill_calls, 1);
+    diag.incr(&diag.c.exact_walk_calls, 1);
+    const ops = w.ops;
     // Completion filter (ADR-0005): partial vocabularies over finite
     // literal languages, and any grammar with deferred value verdicts
-    // (needs_reachability) on any vocabulary.
-    const filtered = (!tok.byte_complete and g.finite_literal) or g.needs_reachability;
+    // (needs_reachability) on any vocabulary. There is no way to switch it
+    // off: masks produced without it may allow tokens whose state cannot
+    // finish, and a diagnostic build must match the release build.
     if (g.needs_reachability) {
         buf.completion.reset();
         buf.completion.fill_budget = complete.fillBudget();
     }
+    return fillMaskWalk(g, tok, st, out, w, buf, side) catch |err| {
+        // The walk's required allocations (its state pool, parser chunks
+        // and the name copies of openKeyAppend) share the session budget
+        // with the optional certificate cache, and they can fail before the
+        // filter reaches another certification or search, where its release
+        // rules live. Give the cache back and retry the fill once: the retry
+        // runs with exactly the memory a cache-off caller has, and the walk
+        // rebuilds `out` from the initial state.
+        if (err != error.OutOfMemory or !buf.completion.holdsOptional()) return err;
+        buf.completion.releaseOptional();
+        buf.completion.fill_budget = complete.fillBudget();
+        w.ops = ops;
+        return fillMaskWalk(g, tok, st, out, w, buf, side);
+    };
+}
+
+fn fillMaskWalk(g: *const grammar.Grammar, tok: *const tokenizer.Tokenizer, st: *const parser.State, out: []u32, w: *work_mod.Work, buf: *MaskBuf, side: *parser.Side) Error!void {
+    const mw = tok.maskWords();
+    @memset(out[0..mw], 0);
+    const filtered = (!tok.byte_complete and g.finite_literal) or g.needs_reachability;
     const trie = &tok.trie;
     try buf.ensure(trie.max_stack);
     buf.states.items.len = 0;
     buf.frames.items.len = 0;
-    buf.states.appendAssumeCapacity(st.*);
-    parser.retainState(side, &buf.states.items[0]);
+    buf.states.items.len = 1;
+    parser.copyStateRetain(side, &buf.states.items[0], st);
     defer {
         for (buf.states.items) |*x| parser.releaseState(side, x);
         buf.states.items.len = 0;
@@ -103,6 +135,7 @@ pub fn fillMask(g: *const grammar.Grammar, tok: *const tokenizer.Tokenizer, st: 
     }
     while (buf.frames.items.len > 0) {
         try w.charge(1);
+        diag.incr(&diag.c.trie_nodes, 1);
         const top = buf.frames.items.len - 1;
         const fr = &buf.frames.items[top];
         const node = fr.node;
@@ -126,8 +159,7 @@ pub fn fillMask(g: *const grammar.Grammar, tok: *const tokenizer.Tokenizer, st: 
                 else => |e| return e,
             };
             parser.releaseState(side, &buf.states.items[top]);
-            buf.states.items[top] = buf.spare;
-            buf.spare.n = 0;
+            parser.moveState(&buf.states.items[top], &buf.spare);
             fr.* = .{ .node = child, .next_edge = 0 };
             try setNodeTokens(g, tok, filtered, &buf.states.items[top], child, out, &any, w, buf, side);
         } else {
@@ -158,9 +190,7 @@ fn setBit(out: []u32, id: u32) void {
     out[id / 32] |= @as(u32, 1) << @as(u5, @intCast(id % 32));
 }
 
-// ---------------------------------------------------------------------------
 // ADR-0007 Decision 1: the string-content fast class.
-// ---------------------------------------------------------------------------
 
 /// State condition of the string-content equivalence lemma: S is a uniform
 /// string-content state when every live thread has a top frame `.str` with
@@ -169,6 +199,12 @@ fn setBit(out: []u32, id: u32) void {
 /// budget R = max_len - count over the live threads (a token is allowed
 /// when ANY thread accepts it and acceptance is monotone in R), or null
 /// when the state is not uniform. O(live threads).
+///
+/// The maximum is the union bound for ALTERNATIVE threads (a lazy `.choice`
+/// union spawns one thread per alternative, and only one of them has to
+/// accept). Threads bound by a combinator frame are a conjunction, not a
+/// union, and the caller refuses those states before using R (see
+/// `contentDependentEnclosure`).
 pub fn uniformStringResidual(g: *const grammar.Grammar, st: *const parser.State) ?u32 {
     if (st.n == 0) return null;
     var r_max: u32 = 0;
@@ -185,6 +221,63 @@ pub fn uniformStringResidual(g: *const grammar.Grammar, st: *const parser.State)
         }
     }
     return r_max;
+}
+
+/// State condition of the open-object name lemma (K1): every live thread's
+/// top frame is an `.open_obj` in phase `.key_str` whose key machine is in
+/// its normal content state (`u.key.st == .normal`, `rem == 0`), so feeding
+/// a token of the existing strict content class only appends to the free
+/// name. Such a state has no residual: a name has no length budget.
+///
+/// The remaining conditions keep every free name dispatchable and closable
+/// and keep the parent verdict independent of the name:
+///
+///   * `max_props == UNBOUNDED`: a fresh key never meets the count cap
+///     (with a cap and a required key the exact mask forbids free names;
+///     the `maxProperties: 1` counterexample of the design note, section
+///     14);
+///   * `deps.len == 0`, `pattern_lit == null`, `pattern_dfa == null`,
+///     `prop_names == null`, `!names_forbidden`: dispatch accepts the fresh
+///     name unchanged and routes it to the undeclared-value schema;
+///   * `!capture`: this frame arms no whole-object capture (parent captures
+///     are covered by the thread-level tap count in the enclosure check);
+///   * no key length bounds: a fresh name can always be extended past every
+///     declared and seen name;
+///   * `isAnyNode(value)`: the effective compiled undeclared-value schema is
+///     the compiler's unconstrained node. Checked on the compiled node, not
+///     on the source schema: a guard can attach a constraint of the same
+///     shape through unevaluatedProperties, and then a free key is not a
+///     guaranteed completion.
+///
+/// Under these conditions a live state allows every pure-content token: the
+/// key machine appends it without a Parse error, and the successor stays
+/// alive because the name can be extended to a spelling absent from the
+/// declared and seen sets, dispatched to the unconstrained value (which has
+/// a witness), while the remaining required names and the close do not
+/// depend on the prefix. Tokens that carry the closing quote or a
+/// backslash, and tokens that stop inside a UTF-8 sequence, stay in the
+/// exact class and are decided per token. The parent side reuses the string
+/// lemma's enclosure check (`contentDependentEnclosure`). O(live threads).
+pub fn uniformNameState(g: *const grammar.Grammar, st: *const parser.State) bool {
+    if (st.n == 0) return false;
+    for (st.threads[0..st.n]) |*t| {
+        if (t.len == 0) return false;
+        const of = switch (t.frames[t.len - 1]) {
+            .open_obj => |of| of,
+            else => return false,
+        };
+        if (of.phase != .key_str) return false;
+        if (of.u.key.st != .normal or of.u.key.rem != 0) return false;
+        const on = g.node(of.node).open_obj;
+        if (on.max_props != grammar.UNBOUNDED) return false;
+        if (on.deps.len != 0) return false;
+        if (on.pattern_lit != null or on.pattern_dfa != null) return false;
+        if (on.prop_names != null) return false;
+        if (on.names_forbidden or on.capture) return false;
+        if (on.key_min_len != 0 or on.key_max_len != grammar.UNBOUNDED) return false;
+        if (!g.isAnyNode(on.value)) return false;
+    }
+    return true;
 }
 
 /// Normal form of a uniform string-content state for the mask cache
@@ -218,10 +311,12 @@ pub fn normalizeUniformString(g: *const grammar.Grammar, st: *const parser.State
 /// Fast-path mask construction (ADR-0007). Returns false when the state is
 /// not covered by a proven lemma (the caller then runs the exact
 /// `fillMask`); otherwise fills `out` bit-for-bit identically to
-/// `fillMask` and returns true. The mask is split into token classes:
-/// pure-content tokens are decided by the equivalence lemma
-/// (cp(t) <= R(S)) via precomputed word bitsets, every other token by the
-/// plain trie walk pruned to subtrees that may contain exact-class tokens.
+/// `fillMask` and returns true. Two lemmas are covered: the string-content
+/// lemma decides pure-content tokens by the residual rule cp(t) <= R(S),
+/// and the open-object name lemma (K1, `uniformNameState`) decides every
+/// pure-content token of a `.key_str` state. In both cases every other
+/// token goes through the plain trie walk pruned to subtrees that may
+/// contain exact-class tokens.
 /// `wc`/`mu` give access to the widened (equivalence-class) cache of
 /// Decision 2; `max_workers` > 1 splits the classification over disjoint
 /// word ranges (determinism is contractual: same bits for any worker
@@ -239,43 +334,158 @@ pub fn fillMaskFast(
     mu: ?*io_mod.Mutex,
     max_workers: u32,
 ) Error!bool {
-    const r_max = uniformStringResidual(g, st) orelse return false;
+    diag.incr(&diag.c.fast_calls, 1);
+    const ops = w.ops;
+    // A fill starts with the certificate cache enabled: the per-fill memo
+    // of the previous fill is stale, and a release is scoped to one fill
+    // (`dropCerts`). The retry below must not repeat this reset, or it
+    // would re-enable the very memory it just gave back.
+    if (g.needs_reachability) {
+        buf.completion.reset();
+        buf.completion.fill_budget = complete.fillBudget();
+    }
+    return fillMaskFastImpl(g, tok, st, out, w, buf, side, fast, wc, mu, max_workers) catch |err| {
+        // The initial-state certification stores a certificate and its
+        // key before the exact-class walk asks for its state pool, and the
+        // walk's parser feeds allocate after that. The certificate is
+        // optional memory: if one of those required allocations fails, a
+        // fill that fits with the cache off must not turn into
+        // OutOfMemory. Give the cache back and retry once, exactly as a
+        // cache-off caller would run; the content mask and the walk both
+        // rebuild `out` from the initial state.
+        if (err != error.OutOfMemory or !buf.completion.holdsOptional()) return err;
+        buf.completion.releaseOptional();
+        buf.completion.fill_budget = complete.fillBudget();
+        w.ops = ops;
+        return fillMaskFastImpl(g, tok, st, out, w, buf, side, fast, wc, mu, max_workers);
+    };
+}
+
+fn fillMaskFastImpl(
+    g: *const grammar.Grammar,
+    tok: *const tokenizer.Tokenizer,
+    st: *const parser.State,
+    out: []u32,
+    w: *work_mod.Work,
+    buf: *MaskBuf,
+    side: *parser.Side,
+    fast: *const precompute.FastData,
+    wc: ?*cache_mod.Cache,
+    mu: ?*io_mod.Mutex,
+    max_workers: u32,
+) Error!bool {
+    // Two lemmas share the machinery below. The string lemma needs every
+    // live top frame to be a `.str` in its normal state and carries a
+    // residual length budget; the open-object name lemma K1 needs every top
+    // frame to be an `.open_obj` in `.key_str` and has no residual (a free
+    // name has no length bound). K1 is only tried when the string lemma does
+    // not apply.
+    const str_r = uniformStringResidual(g, st);
+    const name_state = str_r == null;
+    if (name_state) {
+        diag.incr(&diag.c.refuse_not_uniform, 1);
+        if (!uniformNameState(g, st)) {
+            diag.incr(&diag.c.refuse_name_state, 1);
+            return false;
+        }
+    }
     // The completion filter needs per-token parser states, which
     // the lemma does not provide; such pairs stay on the exact walk. (A
     // uniform string-content state implies a str node, hence
     // !g.finite_literal - this is a guard, not a load-bearing check.) The
     // same holds for grammars with deferred value verdicts (ADR-0005):
     // the widened-content lemma knows nothing of boundary verdicts.
-    if ((!tok.byte_complete and g.finite_literal) or g.needs_reachability) return false;
+    if (!tok.byte_complete and g.finite_literal) {
+        diag.incr(&diag.c.refuse_byte_incomplete, 1);
+        return false;
+    }
+    // Scope of the lemma: it proves that every content byte with
+    // cp(t) <= R keeps the STRING closable, on the premise that the
+    // enclosing frames ignore the string's CONTENT. Two shapes break that
+    // premise and stay on the exact path until they have their own proof:
+    //
+    //   * combinator frames. oneOf votes at the value boundary (exactly one
+    //     branch accepting), allOf requires every branch and if/then/else
+    //     keys the branch choice on the completed value. The threads are a
+    //     conjunction, so the union bound max(R) is not the intersection
+    //     bound: allOf[maxLength 1, maxLength 2] lets 'ab' through via the
+    //     longer branch although the shorter one refuses the value. The one
+    //     provable exception is a oneOf with exactly one live branch: a dead
+    //     branch can never accept the value, so the group verdict is that
+    //     branch's acceptance and the content decides only its own language
+    //     (contentDependentEnclosure checks the set of live branches per
+    //     activation).
+    //   * armed byte taps. uniqueItems/contains re-parse the captured
+    //     element bytes at the element close and schema-kind dependencies
+    //     re-parse the whole object, so a duplicate or forbidden spelling
+    //     decides the parent verdict: in ["a"," with maxLength 1 the next
+    //     'a' closes a duplicate element and can never finish.
+    //
+    // tap_count counts exactly the armed captures on this thread; a comb
+    // frame is any frame below the top `.str` frame.
+    if (contentDependentEnclosure(g, st)) {
+        diag.incr(&diag.c.refuse_content_dep, 1);
+        return false;
+    }
+    // With the content-independent enclosure established, every content
+    // byte keeps the string closable and leaves the enclosing frames
+    // untouched, so the lemma's residual test already settles aliveness for
+    // the content class; only the exact-class terminals (the closing quote,
+    // escapes) can lead into a dead state and keep the completion filter
+    // (fillMaskExactPruned). The state itself must still be alive - one
+    // check per mask, not per terminal - so a dead state yields the empty
+    // mask the exact path would produce. Grammars without deferred verdicts
+    // need no check: the byte-legal state is alive.
+    if (g.needs_reachability) {
+        // The wrapper prepared the memo and the per-fill budget; a release
+        // in force keeps the cache off and `stateAlive` re-proves instead.
+        const alive = complete.stateAlive(g, tok, st, &buf.completion, w, side) catch |err| switch (err) {
+            error.ResourceLimit => return error.ResourceLimit,
+            else => |e| return e,
+        };
+        if (!alive) {
+            diag.incr(&diag.c.alive_dead, 1);
+            return false;
+        }
+    }
 
     const mw = tok.maskWords();
     std.debug.assert(out.len >= mw);
 
-    // Content class: allowed iff cp(t) <= R (equivalence lemma). The class
-    // bits depend only on R_capped = min(R, CP_MAX + 1), the lemma's
-    // equivalence-class descriptor, so they are cacheable under it
-    // (ADR-0007 D2); the exact-class bits of the same state are never
-    // stored under the widened key.
-    const r_cap: u64 = @min(@as(u64, r_max), @as(u64, fast.cp_max) + 1);
-    var hit = false;
-    if (wc) |c| {
-        const wk: cache_mod.WKey = .{
-            .grammar_id = g.id,
-            .grammar_hi = g.id_hi,
-            .tokenizer_id = tok.identity,
-            .r_capped = r_cap,
-        };
-        if (mu) |m| m.lock();
-        hit = c.getWidened(wk, out[0..mw]);
-        if (mu) |m| m.unlock();
-        if (!hit) {
-            computeContentMask(tok, fast, r_max, out[0..mw], max_workers);
-            if (mu) |m| m.lock();
-            c.putWidened(wk, out[0..mw]);
-            if (mu) |m| m.unlock();
-        }
+    if (name_state) {
+        // K1: the key machine has no length budget, so the content class is
+        // the whole strict pure-content class; passing CP_MAX selects the
+        // precomputed all-content bitset (no residual test).
+        computeContentMask(tok, fast, fast.cp_max, out[0..mw], max_workers);
     } else {
-        computeContentMask(tok, fast, r_max, out[0..mw], max_workers);
+        const r_max = str_r.?;
+        // Content class: allowed iff cp(t) <= R (equivalence lemma). The
+        // class bits depend only on R_capped = min(R, CP_MAX + 1), the
+        // lemma's equivalence-class descriptor, so they are cacheable under
+        // it (ADR-0007 D2); the exact-class bits of the same state are
+        // never stored under the widened key.
+        const r_cap: u64 = @min(@as(u64, r_max), @as(u64, fast.cp_max) + 1);
+        var hit = false;
+        if (wc) |c| {
+            const wk: cache_mod.WKey = .{
+                .grammar_id = g.id,
+                .grammar_hi = g.id_hi,
+                .tokenizer_id = tok.identity,
+                .r_capped = r_cap,
+            };
+            if (mu) |m| m.lock();
+            hit = c.getWidened(wk, out[0..mw]);
+            if (mu) |m| m.unlock();
+            if (hit) diag.incr(&diag.c.content_cache_hits, 1);
+            if (!hit) {
+                computeContentMask(tok, fast, r_max, out[0..mw], max_workers);
+                if (mu) |m| m.lock();
+                c.putWidened(wk, out[0..mw]);
+                if (mu) |m| m.unlock();
+            }
+        } else {
+            computeContentMask(tok, fast, r_max, out[0..mw], max_workers);
+        }
     }
     // The classification is charged once, identically on a widened hit, a
     // miss and for any worker count: the work accounting depends on the
@@ -283,13 +493,69 @@ pub fn fillMaskFast(
     try w.charge(@intCast(mw));
     var any = anyWords(out[0..mw]);
 
-    // EOS is excluded: a str top frame can never end (threadCanEnd returns
-    // false on it), so canEnd(S) is false in a uniform state.
+    // EOS is excluded: neither a `.str` top frame nor an `.open_obj` frame
+    // in `.key_str` can end (threadCanEnd returns false on both), so
+    // canEnd(S) is false in a uniform state.
     // Exact class: the plain walk, pruned to subtrees that may contain
-    // exact-class tokens; everything else was decided by the lemma.
-    try fillMaskExactPruned(g, tok, st, out, w, buf, side, fast, &any);
+    // exact-class tokens; everything else was decided by the lemma. ASCII
+    // prefixes of exact-class tokens are skipped only for the string lemma;
+    // K1 needs the key bytes and keeps the plain walk.
+    try fillMaskExactPruned(g, tok, st, out, w, buf, side, fast, g.needs_reachability, !name_state, &any);
     if (!any) return error.DeadEnd;
+    diag.incr(&diag.c.fast_used, 1);
+    if (name_state) diag.incr(&diag.c.name_used, 1);
     return true;
+}
+
+/// True when an enclosing construct makes the typed string's CONTENT (or the
+/// typed property NAME, for K1) part of a parent verdict, which the fast
+/// path's lemmas do not model. Such a live thread has either an armed byte
+/// tap (uniqueItems/contains element capture, dependentSchemas whole-object
+/// capture) or a combinator frame below its top machine frame whose verdict
+/// can still depend on the content.
+///
+/// One combinator shape is provably content-independent: a `oneOf` with
+/// exactly one live branch. A branch whose threads all died can never accept
+/// the value (threads never revive), and with one live branch the group
+/// verdict is exactly that branch's acceptance, so the content can only
+/// decide the branch's own string language, which the lemma covers. The
+/// branch set is counted over distinct `(inst, branch)` pairs across all
+/// live threads, not over threads: alternatives inside one branch and nested
+/// activations must not be mistaken for separate branches. `allOf`,
+/// `if/then/else` and a `oneOf` with another live branch stay on the exact
+/// walk. The check is O(live threads x depth x live threads) and runs once
+/// per fast-path attempt.
+fn contentDependentEnclosure(g: *const grammar.Grammar, st: *const parser.State) bool {
+    for (st.threads[0..st.n]) |*t| {
+        if (t.tap_count != 0) return true;
+        var d: usize = 0;
+        // The top frame is the string machine itself; everything below it
+        // is an enclosure.
+        while (d + 1 < t.len) : (d += 1) {
+            const cf = switch (t.frames[d]) {
+                .comb => |c| c,
+                else => continue,
+            };
+            if (g.node(cf.node).comb.kind != .oneof) return true;
+            // Distinct live branches of this activation, over all threads.
+            var seen: u64 = 0;
+            var branches: u32 = 0;
+            for (st.threads[0..st.n]) |*t2| {
+                for (t2.frames[0..t2.len]) |*f2| {
+                    if (f2.* == .comb and f2.comb.inst == cf.inst) {
+                        const b = @as(u64, 1) << @as(u6, @intCast(f2.comb.branch));
+                        if ((seen & b) == 0) {
+                            seen |= b;
+                            branches += 1;
+                        }
+                        break; // one frame per activation per thread
+                    }
+                }
+            }
+            if (branches != 1) return true;
+        }
+    }
+    return false;
 }
 
 fn anyWords(words: []const u32) bool {
@@ -304,7 +570,9 @@ fn anyWords(words: []const u32) bool {
 /// content_bits memcpy; otherwise a word loop (~vocab/32 word builds).
 fn computeContentMask(tok: *const tokenizer.Tokenizer, fast: *const precompute.FastData, r_max: u32, out: []u32, max_workers: u32) void {
     const mw = tok.maskWords();
+    diag.incr(&diag.c.content_masks, 1);
     if (r_max >= fast.cp_max) {
+        diag.incr(&diag.c.content_memcpy, 1);
         @memcpy(out[0..mw], fast.content_bits);
         return;
     }
@@ -369,25 +637,28 @@ fn fillMaskExactPruned(
     buf: *MaskBuf,
     side: *parser.Side,
     fast: *const precompute.FastData,
+    filtered: bool,
+    prefix_skip: bool,
     any: *bool,
 ) Error!void {
     const trie = &tok.trie;
     try buf.ensure(trie.max_stack);
     buf.states.items.len = 0;
     buf.frames.items.len = 0;
-    buf.states.appendAssumeCapacity(st.*);
-    parser.retainState(side, &buf.states.items[0]);
+    buf.states.items.len = 1;
+    parser.copyStateRetain(side, &buf.states.items[0], st);
     defer {
         for (buf.states.items) |*x| parser.releaseState(side, x);
         buf.states.items.len = 0;
         buf.frames.items.len = 0;
         parser.releaseState(side, &buf.spare);
     }
-    buf.frames.appendAssumeCapacity(.{ .node = 0, .next_edge = 0 });
+    buf.frames.appendAssumeCapacity(.{ .node = 0, .next_edge = 0, .slot_valid = true });
 
-    setExactTokens(tok, fast, 0, out, any);
+    setExactTokens(g, tok, fast, 0, st, filtered, out, any, w, buf, side) catch |e| return e;
     while (buf.frames.items.len > 0) {
         try w.charge(1);
+        diag.incr(&diag.c.trie_nodes, 1);
         const top = buf.frames.items.len - 1;
         const fr = &buf.frames.items[top];
         const node = fr.node;
@@ -403,38 +674,117 @@ fn fillMaskExactPruned(
         fr.next_edge += 1;
         const child = trie.edge_child[ei];
         if (!fast.subtreeHasExact(child)) continue; // pure-content subtree: the lemma decided it
+        const b = trie.edge_byte[ei];
+        if (prefix_skip and fr.pure and asciiContentByte(b)) {
+            // The state-equivalence lemma (parser.stringContentPrefix): an
+            // ASCII content prefix only advances the count of every live
+            // string thread. Do not feed it; materialize the state at the
+            // first special byte from the root length.
+            const plen = fr.prefix_len + 1;
+            if (trie.node_edge_len[node] == 1) {
+                fr.* = .{ .node = child, .next_edge = 0, .pure = true, .prefix_len = plen, .slot_valid = false };
+            } else {
+                const dst = &buf.states.allocatedSlice()[top + 1];
+                dst.n = 0;
+                dst.max_threads = st.max_threads;
+                buf.states.items.len = top + 2;
+                buf.frames.appendAssumeCapacity(.{ .node = child, .next_edge = 0, .pure = true, .prefix_len = plen, .slot_valid = false });
+            }
+            continue; // a terminal on a pure path is a content token
+        }
+        if (prefix_skip and fr.pure) {
+            // First special byte: materialize the state after prefix_len
+            // ASCII content bytes, then feed from there as the exact path.
+            if (!fr.slot_valid) {
+                parser.releaseState(side, &buf.states.items[top]);
+                if (fr.prefix_len == 0) {
+                    parser.copyStateRetain(side, &buf.states.items[top], st);
+                } else if (!parser.stringContentPrefix(g, side, st, fr.prefix_len, &buf.states.items[top])) {
+                    continue; // every thread passed its maxLength: prune
+                }
+                fr.slot_valid = true;
+            }
+        }
+        const input = &buf.states.items[top];
         if (trie.node_edge_len[node] == 1) {
-            parser.feedBytes(g, side, &buf.states.items[top], &[1]u8{trie.edge_byte[ei]}, &buf.spare, &buf.states.allocatedSlice()[top + 1]) catch |err| switch (err) {
+            const res = parser.feedBytes(g, side, input, &[1]u8{b}, &buf.spare, &buf.states.allocatedSlice()[top + 1]);
+            res catch |err| switch (err) {
                 error.Parse => continue, // prune the subtree
                 else => |e| return e,
             };
             parser.releaseState(side, &buf.states.items[top]);
-            buf.states.items[top] = buf.spare;
-            buf.spare.n = 0;
-            fr.* = .{ .node = child, .next_edge = 0 };
-            setExactTokens(tok, fast, child, out, any);
+            parser.moveState(&buf.states.items[top], &buf.spare);
+            fr.* = .{ .node = child, .next_edge = 0, .pure = false };
+            setExactTokens(g, tok, fast, child, &buf.states.items[top], filtered, out, any, w, buf, side) catch |e| return e;
         } else {
             const dst = &buf.states.allocatedSlice()[top + 1];
-            parser.feedBytes(g, side, &buf.states.items[top], &[1]u8{trie.edge_byte[ei]}, dst, &buf.spare) catch |err| switch (err) {
+            const res = parser.feedBytes(g, side, input, &[1]u8{b}, dst, &buf.spare);
+            res catch |err| switch (err) {
                 error.Parse => continue, // prune the subtree
                 else => |e| return e,
             };
             buf.states.items.len = top + 2;
-            buf.frames.appendAssumeCapacity(.{ .node = child, .next_edge = 0 });
-            setExactTokens(tok, fast, child, out, any);
+            buf.frames.appendAssumeCapacity(.{ .node = child, .next_edge = 0, .pure = false });
+            setExactTokens(g, tok, fast, child, &buf.states.items[top + 1], filtered, out, any, w, buf, side) catch |e| return e;
         }
     }
+}
+
+/// ASCII string content: accepted by the `.str` machine in `.normal` with
+/// `rem == 0`, one code point per byte, and safe to skip in the exact walk.
+fn asciiContentByte(b: u8) bool {
+    return b >= 0x20 and b < 0x80 and b != '"' and b != '\\';
 }
 
 /// Sets the bits of the exact-class ids of the token chain at `node`.
 /// Content-class ids of the chain are skipped: the lemma already decided
 /// them (a chain shares one byte image, hence one class, but the per-id
 /// check keeps this independent of that invariant).
-fn setExactTokens(tok: *const tokenizer.Tokenizer, fast: *const precompute.FastData, node: u32, out: []u32, any: *bool) void {
+///
+/// With the completion filter active (grammars with deferred value
+/// verdicts) the state after the feed is checked once per node that
+/// actually carries an exact-class id: a dead state contributes no bits,
+/// exactly as the plain walk's per-terminal filter would decide. Nodes
+/// whose whole chain is content class cost nothing - the lemma settled
+/// them.
+fn setExactTokens(
+    g: *const grammar.Grammar,
+    tok: *const tokenizer.Tokenizer,
+    fast: *const precompute.FastData,
+    node: u32,
+    cur: *const parser.State,
+    filtered: bool,
+    out: []u32,
+    any: *bool,
+    w: *work_mod.Work,
+    buf: *MaskBuf,
+    side: *parser.Side,
+) Error!void {
+    var has_exact = false;
+    var probe_id = tok.trie.node_token[node];
+    while (probe_id != tokenizer.NO_TOKEN) : (probe_id = tok.token_chain[probe_id]) {
+        if (fast.cp_len[probe_id] == precompute.EXACT) {
+            has_exact = true;
+            break;
+        }
+    }
+    if (!has_exact) return;
+    if (filtered) {
+        diag.incr(&diag.c.state_alive_calls, 1);
+        const alive = complete.stateAlive(g, tok, cur, &buf.completion, w, side) catch |err| switch (err) {
+            error.ResourceLimit => return error.ResourceLimit,
+            else => |e| return e,
+        };
+        if (!alive) {
+            diag.incr(&diag.c.alive_dead, 1);
+            return;
+        }
+    }
     var id = tok.trie.node_token[node];
     while (id != tokenizer.NO_TOKEN) : (id = tok.token_chain[id]) {
         if (fast.cp_len[id] == precompute.EXACT) {
             setBit(out, id);
+            diag.incr(&diag.c.exact_tokens, 1);
             any.* = true;
         }
     }
@@ -461,12 +811,17 @@ fn setNodeTokens(
     // let dead bytes through, e.g. oneOf "^(ab|c)$"/"^(ab|d)$" admitted 'b'
     // after the prefix `"a` in every mode).
     if (filtered) {
+        diag.incr(&diag.c.state_alive_calls, 1);
         const alive = complete.stateAlive(g, tok, cur, &buf.completion, w, side) catch |err| switch (err) {
             error.ResourceLimit => return error.ResourceLimit,
             else => |e| return e,
         };
-        if (!alive) return;
+        if (!alive) {
+            diag.incr(&diag.c.alive_dead, 1);
+            return;
+        }
     }
+    diag.incr(&diag.c.trie_terminals, 1);
     var id = tok.trie.node_token[child];
     while (id != tokenizer.NO_TOKEN) : (id = tok.token_chain[id]) {
         setBit(out, id);
@@ -802,7 +1157,7 @@ test "mask: first-byte filter is not the final decision" {
     try testing.expectError(error.DeadEnd, fill(alloc, &g, &tk, &st, &out));
 }
 
-test "mask: token leading to a dead end is not allowed (TZ 3.1)" {
+test "mask: token leading to a dead end is not allowed" {
     const alloc = testing.allocator;
     var g = try litGrammar(alloc, "ab");
     defer g.deinit();
@@ -1186,6 +1541,42 @@ test "fast path: non-uniform states are refused (escape, mid-codepoint, root)" {
     try testing.expect(!try fillFast(alloc, &g, &tk, &st3, &out, &fast, null, 1));
 }
 
+test "fast path: ASCII prefix advances each thread and drops it at maxLength" {
+    const alloc = testing.allocator;
+    var arena = Arena.init(alloc);
+    const aa = arena.allocator();
+    var b = grammar.Builder.init(aa);
+    // Two alternative strings: maxLength 0 (accepts only "") and
+    // minLength 2 / maxLength 5. The union bound is R_max = 5.
+    const s0 = try b.addNode(.{ .str = .{ .min_len = 0, .max_len = 0 } });
+    const s1 = try b.addNode(.{ .str = .{ .min_len = 2, .max_len = 5 } });
+    const root = try b.addNode(.{ .choice = try b.copyNodeIds(&.{ s0, s1 }) });
+    var g = try b.finish(arena, .json_schema, root, .{});
+    defer g.deinit();
+    var tk = try fastTok(alloc);
+    defer tk.deinit();
+    var fast = try precompute.FastData.build(alloc, &tk);
+    defer fast.deinit();
+    var st = try initStateT(&g, 4);
+    try feedOkT(&g, &st, "\"");
+    try testing.expect(uniformStringResidual(&g, &st) != null);
+
+    var out_trie = [_]u32{0};
+    var out_fast = [_]u32{0};
+    try fill(alloc, &g, &tk, &st, &out_trie);
+    try testing.expect(try fillFast(alloc, &g, &tk, &st, &out_fast, &fast, null, 1));
+    try testing.expectEqual(out_trie[0], out_fast[0]);
+    // 'a"': the ASCII prefix 'a' kills the maxLength-0 thread at the prefix;
+    // the other thread reaches the quote with count 1 and refuses it
+    // (minLength 2). A prefix skip that kept the dead thread would let its
+    // quote through (the close checks minLength, not maxLength).
+    try testing.expect(!bit(&out_fast, 6));
+    // The empty string closes through the maxLength-0 thread.
+    try testing.expect(bit(&out_fast, 5));
+    // One content code point is allowed by the other thread.
+    try testing.expect(bit(&out_fast, 0));
+}
+
 test "fast path: string value inside an object (thread stack with parents)" {
     const alloc = testing.allocator;
     var g = try objGrammar(alloc);
@@ -1376,4 +1767,214 @@ test "fast path: three-way differential on random string grammars" {
             if (uniformStringResidual(&g, &st) == null) break;
         }
     }
+}
+
+test "fast path: certificate cache does not change a filtered mask" {
+    const alloc = testing.allocator;
+    const schema_mod = @import("schema.zig");
+    var sdiag: schema_mod.Diagnostic = .{};
+    var cw = work_mod.Work{};
+    var g = try schema_mod.compile(alloc, "{\"type\":\"string\",\"pattern\":\"^ab*$\"}", 64, &sdiag, &cw, false, .spec_v1, &.{});
+    defer g.deinit();
+    try testing.expect(g.needs_reachability);
+    var tk = try makeTok(alloc, 6, &.{ "\"", "a", "b", "a\"", "ab\"", "" }, &.{5}, &.{});
+    defer tk.deinit();
+    var fast = try precompute.FastData.build(alloc, &tk);
+    defer fast.deinit();
+    var st = try initStateT(&g, 4);
+    try feedOkT(&g, &st, "\"");
+
+    var out_on = [_]u32{0};
+    var out_off = [_]u32{0};
+    var out_fast = [_]u32{0};
+    complete.test_overrides.cert_cache_off = false;
+    defer complete.test_overrides.cert_cache_off = false;
+    // The switch must be live in this build (the test build compiles the
+    // hooks in): otherwise the differential below would compare the cache
+    // against itself.
+    try testing.expect(!complete.certCacheOff());
+    var buf_on = MaskBuf.init(alloc, alloc);
+    defer buf_on.deinit();
+    var w_on = work_mod.Work{};
+    var side_on = parser.Side{ .a = undefined };
+    try fillMask(&g, &tk, &st, &out_on, &w_on, &buf_on, &side_on);
+    try testing.expect(buf_on.completion.cert_lookups > 0); // the cache path ran
+    complete.test_overrides.cert_cache_off = true;
+    try testing.expect(complete.certCacheOff()); // the hook really disables it
+    var buf_off = MaskBuf.init(alloc, alloc);
+    defer buf_off.deinit();
+    var w_off = work_mod.Work{};
+    var side_off = parser.Side{ .a = undefined };
+    try fillMask(&g, &tk, &st, &out_off, &w_off, &buf_off, &side_off);
+    try testing.expectEqual(@as(u64, 0), buf_off.completion.cert_lookups); // not consulted at all
+    complete.test_overrides.cert_cache_off = false;
+    try testing.expectEqualSlices(u32, &out_off, &out_on);
+    // If the fast path applies to this state, its mask must match too.
+    // A pattern string is not a uniform `.str` state, so it may refuse.
+    var st_fast = try initStateT(&g, 4);
+    try feedOkT(&g, &st_fast, "\"");
+    if (try fillFast(alloc, &g, &tk, &st_fast, &out_fast, &fast, null, 1)) {
+        try testing.expectEqualSlices(u32, &out_on, &out_fast);
+    }
+}
+
+const CacheFillLeg = struct {
+    ok: bool,
+    err: ?Error,
+    peak: u64,
+    word: u32,
+    entries: usize,
+    muted: bool,
+};
+
+/// A whole `fillMask` under an `Accounting` limit. The walk's own
+/// allocations - the state
+/// pool, parser chunks and the name copies of `openKeyAppend` - share the
+/// budget with the certificate cache and can fail between certifications,
+/// where the filter's release rules never run.
+fn cacheFillLeg(limit: u64, off: bool) !CacheFillLeg {
+    const alloc = testing.allocator;
+    const alloc_mod = @import("alloc.zig");
+    const schema_mod = @import("schema.zig");
+    var sdiag: schema_mod.Diagnostic = .{};
+    var cw = work_mod.Work{};
+    var g = try schema_mod.compile(alloc, "{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\",\"pattern\":\"^a*$\"}}", 128, &sdiag, &cw, false, .spec_v1, &.{});
+    defer g.deinit();
+    try testing.expect(g.needs_reachability);
+    const long = try alloc.alloc(u8, 1024);
+    defer alloc.free(long);
+    @memset(long, 'a');
+    var tk = try makeTok(alloc, 4, &.{ "a", long, "\":\"\"}", "" }, &.{3}, &.{});
+    defer tk.deinit();
+    var acc = alloc_mod.Accounting.init(alloc, limit);
+    var side = parser.Side.init(acc.allocator(.session));
+    defer side.deinit();
+    var buf = MaskBuf.init(acc.allocator(.temp), acc.allocator(.temp));
+    defer buf.deinit();
+    var st = try parser.initState(&g, 8, &side);
+    var st1: parser.State = undefined;
+    var work: parser.State = undefined;
+    try parser.feedBytes(&g, &side, &st, "{\"", &st1, &work);
+    defer parser.releaseState(&side, &st1);
+    complete.test_overrides.cert_cache_off = off;
+    defer complete.test_overrides.cert_cache_off = false;
+    const out = try alloc.alloc(u32, tk.maskWords());
+    defer alloc.free(out);
+    var w = work_mod.Work{};
+    const res = fillMask(&g, &tk, &st1, out, &w, &buf, &side);
+    var err: ?Error = null;
+    if (res) |_| {} else |e| err = e;
+    return .{
+        .ok = err == null,
+        .err = err,
+        .peak = acc.totalPeak(),
+        .word = out[0],
+        .entries = buf.completion.cert_map.count(),
+        .muted = buf.completion.cert_muted,
+    };
+}
+
+test "fast path: the certificate cache cannot fail a fill's walk" {
+    const plain = try cacheFillLeg(std.math.maxInt(u64), true);
+    const on = try cacheFillLeg(std.math.maxInt(u64), false);
+    try testing.expect(plain.ok);
+    try testing.expect(on.ok);
+    try testing.expectEqual(plain.word, on.word);
+    try testing.expect(on.peak > plain.peak); // the cache really held memory
+    // Same limit as the cache-off peak: the walk's required allocations must
+    // succeed, because the optional cache is released and the fill retried.
+    const tight_off = try cacheFillLeg(plain.peak, true);
+    const tight_on = try cacheFillLeg(plain.peak, false);
+    try testing.expect(tight_off.ok);
+    try testing.expect(tight_on.ok); // OutOfMemory before the fix
+    try testing.expectEqual(tight_off.word, tight_on.word); // a full, equal mask
+    try testing.expect(tight_on.muted); // the release happened
+    try testing.expectEqual(@as(usize, 0), tight_on.entries);
+}
+
+const FastFillLeg = struct {
+    ok: bool,
+    err: ?Error,
+    peak: u64,
+    word: u32,
+    entries: usize,
+    muted: bool,
+    done: bool,
+    ops: u64,
+};
+
+/// `fillMaskFast` on a K1-eligible reachable state under an `Accounting`
+/// limit. The
+/// initial-state certificate is stored before `fillMaskExactPruned` asks
+/// for its state pool, and the walk's parser feeds allocate after that;
+/// with the certificate cache on, the fast fill fails exactly at the
+/// cache-off peak. `c_api.zig` calls `fillMaskFast` directly, so the
+/// `fillMask` wrapper cannot cover this site.
+fn fastFillLeg(limit: u64, off: bool) !FastFillLeg {
+    const alloc = testing.allocator;
+    const alloc_mod = @import("alloc.zig");
+    const schema_mod = @import("schema.zig");
+    var sdiag: schema_mod.Diagnostic = .{};
+    var cw = work_mod.Work{};
+    var g = try schema_mod.compile(alloc, "{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"string\",\"pattern\":\"^a*$\"}}}", 128, &sdiag, &cw, false, .spec_v1, &.{});
+    defer g.deinit();
+    try testing.expect(g.needs_reachability);
+    const long: [1024]u8 = @splat('a');
+    var tk = try makeTok(alloc, 4, &.{ "a", &long, "\":\"\"}", "" }, &.{3}, &.{});
+    defer tk.deinit();
+    var fast = try precompute.FastData.build(alloc, &tk);
+    defer fast.deinit();
+    var acc = alloc_mod.Accounting.init(alloc, limit);
+    var side = parser.Side.init(acc.allocator(.session));
+    defer side.deinit();
+    var buf = MaskBuf.init(acc.allocator(.temp), acc.allocator(.temp));
+    defer buf.deinit();
+    var st = try parser.initState(&g, 8, &side);
+    defer parser.releaseState(&side, &st);
+    var st1: parser.State = undefined;
+    var work: parser.State = undefined;
+    try parser.feedBytes(&g, &side, &st, "{\"", &st1, &work);
+    defer parser.releaseState(&side, &st1);
+    complete.test_overrides.cert_cache_off = off;
+    defer complete.test_overrides.cert_cache_off = false;
+    var out = [_]u32{0};
+    var w = work_mod.Work.init(100_000, null);
+    const res = fillMaskFast(&g, &tk, &st1, &out, &w, &buf, &side, &fast, null, null, 1);
+    var err: ?Error = null;
+    var done = false;
+    if (res) |d| done = d else |e| err = e;
+    return .{
+        .ok = err == null,
+        .err = err,
+        .peak = acc.totalPeak(),
+        .word = out[0],
+        .entries = buf.completion.cert_map.count(),
+        .muted = buf.completion.cert_muted,
+        .done = done,
+        .ops = w.ops,
+    };
+}
+
+test "fast path: the certificate cache cannot fail a fast fill" {
+    const plain = try fastFillLeg(std.math.maxInt(u64), true);
+    const on = try fastFillLeg(std.math.maxInt(u64), false);
+    try testing.expect(plain.ok and plain.done);
+    try testing.expect(on.ok and on.done);
+    try testing.expectEqual(plain.word, on.word);
+    try testing.expectEqual(@as(u32, 7), plain.word); // a, long, close
+    try testing.expectEqual(plain.ops, on.ops); // membership is cache-free
+    try testing.expectEqual(@as(u64, 9), plain.ops);
+    try testing.expect(on.peak > plain.peak); // the certificate really held memory
+    // Same limit as the cache-off peak: the fast path's required state pool
+    // and parser feeds must succeed, because the optional certificate is
+    // released and the fill is retried.
+    const tight_off = try fastFillLeg(plain.peak, true);
+    const tight_on = try fastFillLeg(plain.peak, false);
+    try testing.expect(tight_off.ok and tight_off.done);
+    try testing.expect(tight_on.ok); // OutOfMemory before the wrapper
+    try testing.expect(tight_on.done);
+    try testing.expectEqual(tight_off.word, tight_on.word); // a full, equal mask
+    try testing.expectEqual(tight_off.ops, tight_on.ops); // retry restores the work count
+    try testing.expect(tight_on.muted); // the release happened
+    try testing.expectEqual(@as(usize, 0), tight_on.entries);
 }

@@ -1,0 +1,225 @@
+{
+ "kind": "adr0007-conclusion",
+ "generated_utc": "2026-10-24T17:10:42Z",
+ "repository": {
+  "head": "bbaf3e1e55030b9b9b250c7f4f80f21bea6407ed",
+  "head_short": "bbaf3e1",
+  "branch": "main",
+  "dirty": false,
+  "tracked_changes": [],
+  "new_evidence_package": true
+ },
+ "artifact": {
+  "path": "benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+  "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+  "size": 1268464,
+  "checkpoint": "a87e2f71"
+ },
+ "functional": {
+  "scale": "full",
+  "only": [
+   "zig-three-way",
+   "fastpath-curated",
+   "fastpath-fuzz",
+   "differential-reference",
+   "cache-onoff",
+   "bench-gate"
+  ],
+  "partial_run": true,
+  "note": "six of the seven matrix rows; the warm-acceptance row is not part of this run",
+  "overall": "PASS",
+  "rows": [
+   {
+    "id": "zig-three-way",
+    "status": "pass",
+    "tests": 328,
+    "collected": 0,
+    "duration_s": 39.9
+   },
+   {
+    "id": "fastpath-curated",
+    "status": "pass",
+    "tests": 13,
+    "collected": 13,
+    "duration_s": 0.5
+   },
+   {
+    "id": "fastpath-fuzz",
+    "status": "pass",
+    "tests": 1,
+    "collected": 0,
+    "duration_s": 0.5
+   },
+   {
+    "id": "differential-reference",
+    "status": "pass",
+    "tests": 1,
+    "collected": 0,
+    "duration_s": 2.0
+   },
+   {
+    "id": "cache-onoff",
+    "status": "pass",
+    "tests": 1,
+    "collected": 0,
+    "duration_s": 0.9
+   },
+   {
+    "id": "bench-gate",
+    "status": "pass",
+    "tests": 0,
+    "collected": 0,
+    "duration_s": 12.6
+   }
+  ],
+  "campaigns": {
+   "zig_tests": 328,
+   "curated_cases": 13,
+   "differential": {
+    "schemas": 600,
+    "walks": 593,
+    "both_rejected": 7,
+    "mask_cmps": 5412
+   },
+   "cache": {
+    "schemas": 120,
+    "traces": 120,
+    "mask_cmps": 5808,
+    "accepts": 7744
+   },
+   "fastpath_fuzz_schemas": 150
+  },
+  "gate": {
+   "probe_states": 4,
+   "status": "PASS",
+   "maskbench_states": 564,
+   "maskbench_instances": 24,
+   "maskbench_terminal_states": 24,
+   "maskbench_terminal_complete": true,
+   "maskbench_fill_errors": 0,
+   "maskbench_terminal_fill_errors": 0,
+   "maskbench_input_errors": 0,
+   "maskbench_completion_errors": 0,
+   "maskbench_accept_errors": 0,
+   "maskbench_validation_errors": 0,
+   "maskbench_trace_sha256": "2ab0c91894b0fbee4e2abcd7bfba088834a2368cb847a248c92ca69ba5d9ab61"
+  },
+  "gate_json": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-bbaf3e1-2026-10-24/artifacts/bench_gate.json",
+   "sha256": "56ae5d60510bda32a87ebcb8f19e2f2f889867d0d354cf2d917c64c7feac7956"
+  },
+  "matrix_json": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-bbaf3e1-2026-10-24/matrix.json",
+   "sha256": "657129d80d5a7f44cae31e5c3ad7dc4e49eeae5e55da582929cbb62f39574972"
+  },
+  "matrix_md": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-bbaf3e1-2026-10-24/matrix.md",
+   "sha256": "6bc490d0be552af829c294d9e51b932152750c30e69e41b0e8e6595a1fcd316a"
+  },
+  "fuzz_artifacts": {
+   "cache": {
+    "schemas": 120,
+    "traces": 120,
+    "mask_cmps": 5808,
+    "accepts": 7744,
+    "threaded_traces": 120,
+    "threaded_mismatches": 0,
+    "seed": 20260915
+   },
+   "differential": {
+    "schemas": 600,
+    "both_rejected": 7,
+    "walks": 593,
+    "mask_cmps": 5412,
+    "accepts": 3257,
+    "rejects": 548,
+    "dead_ends": 0,
+    "finishes": 491,
+    "seed": 20260914
+   }
+  }
+ },
+ "warm_acceptance": {
+  "measured_now": false,
+  "source_package": "benchmarks/maskbench/t8a/evidence/a87e2f71/terminal-warm-2026-10-24",
+  "json": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/terminal-warm-2026-10-24/warm-acceptance/artifacts/warm_acceptance.json",
+   "sha256": "a334ccff68f9d6e2dc771166d68822f3e82f2deaff4d0ee555f11669d516491f"
+  },
+  "run_id": "warm-acceptance-37564-1792859274280580845",
+  "protocol": {
+   "repeats": 5,
+   "observations": 2000,
+   "threshold_ns": 1300,
+   "probes": [
+    "permissive_string_content",
+    "permissive_string_in_object"
+   ],
+   "on_legs": 10,
+   "cpu": 7,
+   "lib_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+  },
+  "on_means_ns": [
+   1190.5225,
+   1218.288,
+   1214.6535,
+   1188.3635,
+   1267.498,
+   1126.723,
+   1264.101,
+   1254.696,
+   1167.2285,
+   1085.027
+  ],
+  "on_p50_ns": [
+   1155,
+   1187,
+   1179,
+   1159,
+   1236,
+   1103,
+   1231,
+   1220,
+   1137,
+   1052
+  ],
+  "conditions": {
+   "recorded": true,
+   "complete": true,
+   "ok": true,
+   "requested_cpu": 7,
+   "limits": {
+    "max_load1": 2.0,
+    "max_cpu_pressure_avg10": 0.5
+   },
+   "legs": 20,
+   "first_leg_start_utc": "2026-10-24T16:28:06Z",
+   "last_leg_end_utc": "2026-10-24T16:29:14Z"
+  },
+  "matrix_report": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/terminal-warm-2026-10-24/warm-acceptance/matrix.json",
+   "sha256": "20ea3881b2109cfea7158f3aa5c5bf4e5902b069e4c21f0c2fdbff384ed2e4c9",
+   "row_status": "pass",
+   "verdict_ok": true
+  },
+  "note": "measurement of 2026-10-24, stored; not repeated in this run"
+ },
+ "warm_verification": {
+  "json": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/gate-review-cc11475-2026-10-24/saved-warm-verify/verify-clean.json",
+   "sha256": "9890a6550a0b3e9f2e124923a74a74ee57b68a7ca5a68547896366ec9d97c5e7"
+  },
+  "pass": true,
+  "problems": [],
+  "on_legs": 10,
+  "expected_lib_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+  "source_sha256": "a334ccff68f9d6e2dc771166d68822f3e82f2deaff4d0ee555f11669d516491f",
+  "measured_now": false,
+  "kind": "warm-verify"
+ },
+ "statement": "The functional matrix was run at full scale without the warm row; the warm acceptance is the separately stored 2026-10-24 measurement, re-verified offline, not a new measurement.",
+ "report_md": {
+  "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-bbaf3e1-2026-10-24/CONCLUSION.md",
+  "sha256": "736e518144245f2ba11b6ea3d5095e210201962da6929f2d23590ee8235f6015"
+ }
+}

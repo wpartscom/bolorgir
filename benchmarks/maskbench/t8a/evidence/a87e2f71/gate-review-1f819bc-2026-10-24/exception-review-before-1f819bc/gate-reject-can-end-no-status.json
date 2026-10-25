@@ -1,0 +1,211 @@
+{
+ "status": "OK",
+ "case": "adr0007_mask_fast_path",
+ "run_id": "gate-reject-can-end-no-status",
+ "lib": "/tmp/wt-1f819bc/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+ "environment": {
+  "started_utc": "2026-10-24T16:59:55Z",
+  "finished_utc": "2026-10-24T16:59:55Z",
+  "kernel": "6.8.0-138-generic",
+  "python": "3.10.12",
+  "core_version": null,
+  "lib_path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+  "lib_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+  "loaded_lib": {
+   "path": "/tmp/wt-1f819bc/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+   "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+  },
+  "cpu": {
+   "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+   "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+   ],
+   "governors": {
+    "0": "powersave",
+    "1": "powersave",
+    "2": "powersave",
+    "3": "powersave",
+    "4": "powersave",
+    "5": "powersave",
+    "6": "powersave",
+    "7": "powersave",
+    "8": "powersave",
+    "9": "powersave",
+    "10": "powersave",
+    "11": "powersave",
+    "12": "powersave",
+    "13": "powersave",
+    "14": "powersave",
+    "15": "powersave",
+    "16": "powersave",
+    "17": "powersave",
+    "18": "powersave",
+    "19": "powersave"
+   },
+   "cur_freq_khz": {
+    "0": 800000,
+    "1": 800000,
+    "2": 3948492,
+    "3": 800000,
+    "4": 2259047,
+    "5": 800000,
+    "6": 3922781,
+    "7": 800000,
+    "8": 3700679,
+    "9": 4600000,
+    "10": 4600000,
+    "11": 800000,
+    "12": 3535965,
+    "13": 2674575,
+    "14": 800000,
+    "15": 800000,
+    "16": 800000,
+    "17": 1379554,
+    "18": 800000,
+    "19": 800000
+   },
+   "max_freq_khz": {
+    "0": 4800000,
+    "1": 4800000,
+    "2": 4800000,
+    "3": 4800000,
+    "4": 4800000,
+    "5": 4800000,
+    "6": 4800000,
+    "7": 4800000,
+    "8": 4900000,
+    "9": 4900000,
+    "10": 4900000,
+    "11": 4900000,
+    "12": 4800000,
+    "13": 4800000,
+    "14": 4800000,
+    "15": 4800000,
+    "16": 3600000,
+    "17": 3600000,
+    "18": 3600000,
+    "19": 3600000
+   }
+  },
+  "load": {
+   "loadavg": [
+    1.04052734375,
+    0.67724609375,
+    0.8935546875
+   ],
+   "procs_running": 2,
+   "cpu_pressure_some": {
+    "avg10": 0.0,
+    "avg60": 0.0,
+    "avg300": 0.0
+   },
+   "cpu_pressure_full": {
+    "avg10": 0.0,
+    "avg60": 0.0,
+    "avg300": 0.0
+   }
+  }
+ },
+ "vocab_size": 2,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS",
+  "maskbench_states": 1,
+  "maskbench_instances": 1,
+  "maskbench_terminal_states": 1,
+  "maskbench_terminal_complete": true,
+  "maskbench_fill_errors": 0,
+  "maskbench_terminal_fill_errors": 0,
+  "maskbench_input_errors": 0,
+  "maskbench_completion_errors": 0,
+  "maskbench_accept_errors": 2,
+  "maskbench_validation_errors": 0,
+  "maskbench_trace_sha256": "d1ae6d12f39ec1108127b1da43609d6fd594a7474628ed87c57a69b97e35a2d6"
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {},
+   "warm": {}
+  },
+  "permissive_string_in_object": {
+   "cold": {},
+   "warm": {}
+  }
+ },
+ "maskbench_slice": {
+  "files": [
+   "one"
+  ],
+  "off": {
+   "tbm_us": {
+    "count": 1,
+    "min": 0.837,
+    "p50": 0.837,
+    "p95": 0.837,
+    "p99": 0.837,
+    "max": 0.837,
+    "mean": 0.837
+   },
+   "stats": {
+    "files": 1,
+    "compiled": 1,
+    "compile_error": 0,
+    "instances": 1,
+    "masks": 1,
+    "fill_errors": 0,
+    "accept_errors": 1,
+    "terminal_masks": 1,
+    "terminal_fill_errors": 0,
+    "input_errors": 0,
+    "completion_errors": 0,
+    "validation_error": 0
+   },
+   "trace_sha256": "d1ae6d12f39ec1108127b1da43609d6fd594a7474628ed87c57a69b97e35a2d6"
+  },
+  "on": {
+   "tbm_us": {
+    "count": 1,
+    "min": 0.425,
+    "p50": 0.425,
+    "p95": 0.425,
+    "p99": 0.425,
+    "max": 0.425,
+    "mean": 0.425
+   },
+   "stats": {
+    "files": 1,
+    "compiled": 1,
+    "compile_error": 0,
+    "instances": 1,
+    "masks": 1,
+    "fill_errors": 0,
+    "accept_errors": 1,
+    "terminal_masks": 1,
+    "terminal_fill_errors": 0,
+    "input_errors": 0,
+    "completion_errors": 0,
+    "validation_error": 0
+   },
+   "trace_sha256": "d1ae6d12f39ec1108127b1da43609d6fd594a7474628ed87c57a69b97e35a2d6"
+  }
+ }
+}

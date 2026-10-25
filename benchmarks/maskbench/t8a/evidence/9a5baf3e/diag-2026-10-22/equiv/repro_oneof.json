@@ -1,0 +1,129 @@
+{
+  "core_sha256": "4b567de3b3d42ae5434c22a486ed3eb283edbc1a24965a944f073e900d5ebbd3",
+  "tokenizer": "all 256 byte tokens plus ab, aa, bb",
+  "work_limit_ops": "default",
+  "cases": [
+    [
+      "uniqueItems",
+      {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "uniqueItems": true,
+        "minItems": 2,
+        "maxItems": 2
+      },
+      "[\"a\","
+    ],
+    [
+      "allOf",
+      {
+        "allOf": [
+          {
+            "type": "string",
+            "maxLength": 1
+          },
+          {
+            "type": "string",
+            "maxLength": 2
+          }
+        ]
+      },
+      "\""
+    ]
+  ],
+  "comparisons": [
+    {
+      "case": "uniqueItems",
+      "mode": "lazy",
+      "equal": true,
+      "fast_used": 0,
+      "extra_ids": [],
+      "extra_tokens": [],
+      "missing_ids": []
+    },
+    {
+      "case": "allOf",
+      "mode": "lazy",
+      "equal": true,
+      "fast_used": 0,
+      "extra_ids": [],
+      "extra_tokens": [],
+      "missing_ids": []
+    },
+    {
+      "case": "uniqueItems",
+      "mode": "adaptive",
+      "equal": true,
+      "fast_used": 0,
+      "extra_ids": [],
+      "extra_tokens": [],
+      "missing_ids": []
+    },
+    {
+      "case": "allOf",
+      "mode": "adaptive",
+      "equal": true,
+      "fast_used": 0,
+      "extra_ids": [],
+      "extra_tokens": [],
+      "missing_ids": []
+    }
+  ],
+  "raw": {
+    "0": [
+      {
+        "case": "uniqueItems",
+        "mode": "lazy",
+        "mask_hex": "000000000400000000000000000000000000000000000000000000000000000000000000",
+        "fast_used": 0
+      },
+      {
+        "case": "allOf",
+        "mode": "lazy",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 0
+      },
+      {
+        "case": "uniqueItems",
+        "mode": "adaptive",
+        "mask_hex": "000000000400000000000000000000000000000000000000000000000000000000000000",
+        "fast_used": 0
+      },
+      {
+        "case": "allOf",
+        "mode": "adaptive",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 0
+      }
+    ],
+    "1": [
+      {
+        "case": "uniqueItems",
+        "mode": "lazy",
+        "mask_hex": "000000000400000000000000000000000000000000000000000000000000000000000000",
+        "fast_used": 0
+      },
+      {
+        "case": "allOf",
+        "mode": "lazy",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 0
+      },
+      {
+        "case": "uniqueItems",
+        "mode": "adaptive",
+        "mask_hex": "000000000400000000000000000000000000000000000000000000000000000000000000",
+        "fast_used": 0
+      },
+      {
+        "case": "allOf",
+        "mode": "adaptive",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 0
+      }
+    ]
+  }
+}

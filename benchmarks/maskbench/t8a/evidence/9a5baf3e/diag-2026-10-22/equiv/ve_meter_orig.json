@@ -1,0 +1,95 @@
+{
+ "files": 6,
+ "mismatched_files": 0,
+ "errors": [
+  {
+   "file": "Github_easy---o58839.json",
+   "why": "compile failed: ResourceLimitError('grammar exceeds node budget of 100000')"
+  },
+  {
+   "file": "Github_hard---o90895.json",
+   "why": "compile failed: ResourceLimitError('grammar exceeds node budget of 100000')"
+  }
+ ],
+ "capped": [],
+ "wall_s": 1876.4,
+ "mask_s": 1876.1,
+ "abort_s": 1161.9,
+ "aborts": 19,
+ "calls": 1515,
+ "tbm_ms": {
+  "p50": 0.007,
+  "p75": 830.815,
+  "p90": 946.654,
+  "p99": 57398.151,
+  "share_calls_ge_1s": 0.0926,
+  "share_time_ge_1s": 0.8652
+ },
+ "per_file": [
+  {
+   "file": "Github_easy---o13129.json",
+   "instances": 4,
+   "calls": 0,
+   "mask_us": 239829704,
+   "abort_us": 239829704,
+   "aborts": 4,
+   "mismatches": []
+  },
+  {
+   "file": "Github_hard---o12278.json",
+   "instances": 7,
+   "calls": 240,
+   "mask_us": 475709877,
+   "abort_us": 412648684,
+   "aborts": 7,
+   "mismatches": []
+  },
+  {
+   "file": "Github_hard---o74466.json",
+   "instances": 5,
+   "calls": 681,
+   "mask_us": 427318002,
+   "abort_us": 229079282,
+   "aborts": 2,
+   "mismatches": []
+  },
+  {
+   "file": "Github_medium---o54553.json",
+   "instances": 4,
+   "calls": 216,
+   "mask_us": 326722142,
+   "abort_us": 89737704,
+   "aborts": 1,
+   "mismatches": []
+  },
+  {
+   "file": "Github_medium---o90904.json",
+   "instances": 6,
+   "calls": 317,
+   "mask_us": 146281222,
+   "abort_us": 2403759,
+   "aborts": 2,
+   "mismatches": []
+  },
+  {
+   "file": "JsonSchemaStore---codeship-services.json",
+   "instances": 4,
+   "calls": 61,
+   "mask_us": 260218822,
+   "abort_us": 188225591,
+   "aborts": 3,
+   "mismatches": []
+  }
+ ],
+ "library": {
+  "realpath": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-work-9a5baf3e/venv-pinned/lib/python3.12/site-packages/bolorgir/_lib/libbolorgir.so.0.1.0",
+  "sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+  "records": 2,
+  "phases": [
+   "during",
+   "after"
+  ],
+  "first_utc": "2026-10-22T20:26:32Z",
+  "last_utc": "2026-10-22T20:49:20Z"
+ }
+}

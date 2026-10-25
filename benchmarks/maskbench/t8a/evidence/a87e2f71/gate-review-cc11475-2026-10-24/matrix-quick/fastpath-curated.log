@@ -1,0 +1,8 @@
+$ /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/local/t8a-work-9a5baf3e/venv-pinned/bin/python -m pytest tests/test_mask_fastpath.py -x -q
+
+.............                                                            [100%]
+13 passed in 0.38s
+
+---- stderr ----
+
+---- exit 0, 0.5 s ----

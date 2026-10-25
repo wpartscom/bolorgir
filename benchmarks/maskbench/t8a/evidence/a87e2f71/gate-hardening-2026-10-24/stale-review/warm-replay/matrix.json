@@ -1,0 +1,712 @@
+{
+ "scale": "review-saved-data",
+ "lib": null,
+ "generated_utc": "2026-10-24T16:11:27Z",
+ "jobs": [
+  {
+   "id": "warm-acceptance",
+   "requirement": "saved-data warm failure replay; no new timing",
+   "run_id": "warm-acceptance-26147-1792858287334839383",
+   "status": "fail",
+   "exit": 1,
+   "duration_s": 0.1,
+   "skipped": null,
+   "collected_cases": 0,
+   "tests_passed": 0,
+   "tests_failed": 0,
+   "verdict": {
+    "ok": false,
+    "detail": "ok run_id = 'warm-acceptance-26147-1792858287334839383' (expected 'warm-acceptance-26147-1792858287334839383'); FAIL warm_acceptance.pass = False",
+    "checks": [
+     {
+      "check": "run_id",
+      "ok": true,
+      "detail": "run_id = 'warm-acceptance-26147-1792858287334839383' (expected 'warm-acceptance-26147-1792858287334839383')"
+     },
+     {
+      "check": "warm_acceptance.pass",
+      "ok": false,
+      "detail": "warm_acceptance.pass = False"
+     }
+    ],
+    "json": "/tmp/review-verdicts-final/warm-replay/warm_acceptance.json"
+   },
+   "collect_sample": [],
+   "log": "../../../../../../tmp/review-verdicts-final/warm-replay/warm-acceptance.log",
+   "tail": [
+    "warm-ext probe permissive_string_in_object round 2/5 (on,off) (C extension) ...",
+    "warm-ext probe permissive_string_in_object round 3/5 (off,on) (C extension) ...",
+    "warm-ext probe permissive_string_in_object round 4/5 (on,off) (C extension) ...",
+    "warm-ext probe permissive_string_in_object round 5/5 (off,on) (C extension) ...",
+    "wrote /tmp/review-verdicts-final/warm-replay/warm_acceptance.json",
+    "WARM ACCEPTANCE FAILED: conditions: saved-data replay: measurement conditions were not recorded (no new measurement); permissive_string_content round 4 on: mean 1305.375 ns > 1300; permissive_string_in_object round 1 on: mean 1327.0175 ns > 1300; permissive_string_in_object round 2 on: mean 1309.821 ns > 1300; permissive_string_in_object round 3 on: mean 1302.3275 ns > 1300; permissive_string_in_object round 5 on: mean 1314.538 ns > 1300"
+   ]
+  }
+ ],
+ "warm_acceptance": {
+  "threshold_ns": 1300,
+  "protocol": {
+   "repeats": 5,
+   "observations": 2000,
+   "threshold_ns": 1300,
+   "probes": [
+    "permissive_string_content",
+    "permissive_string_in_object"
+   ],
+   "on_legs": 10,
+   "cpu": null,
+   "lib_sha256": "2d982b60cec55f3328206570659c29307e2050e3453b97b956649aa48e45b94e"
+  },
+  "on_legs": 10,
+  "on_means_ns": [
+   1265.5835,
+   1279.05,
+   1173.957,
+   1305.375,
+   1131.0605,
+   1327.0175,
+   1309.821,
+   1302.3275,
+   1189.47,
+   1314.538
+  ],
+  "on_p50_ns": [
+   1221,
+   1240,
+   1135,
+   1266,
+   1096,
+   1280,
+   1276,
+   1283,
+   1138,
+   1259
+  ],
+  "pass": false,
+  "problems": [
+   "conditions: saved-data replay: measurement conditions were not recorded (no new measurement)",
+   "permissive_string_content round 4 on: mean 1305.375 ns > 1300",
+   "permissive_string_in_object round 1 on: mean 1327.0175 ns > 1300",
+   "permissive_string_in_object round 2 on: mean 1309.821 ns > 1300",
+   "permissive_string_in_object round 3 on: mean 1302.3275 ns > 1300",
+   "permissive_string_in_object round 5 on: mean 1314.538 ns > 1300"
+  ],
+  "conditions": {
+   "requested_cpu": null,
+   "recorded": false,
+   "limits": {
+    "max_load1": 1.0,
+    "max_cpu_pressure_avg10": 1.0
+   },
+   "parent": {
+    "utc": "2026-10-24T16:11:27Z",
+    "cpu_affinity": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ],
+    "cpu_now": null,
+    "cpu": {
+     "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+     "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+     ],
+     "governors": {
+      "0": "powersave",
+      "1": "powersave",
+      "2": "powersave",
+      "3": "powersave",
+      "4": "powersave",
+      "5": "powersave",
+      "6": "powersave",
+      "7": "powersave",
+      "8": "powersave",
+      "9": "powersave",
+      "10": "powersave",
+      "11": "powersave",
+      "12": "powersave",
+      "13": "powersave",
+      "14": "powersave",
+      "15": "powersave",
+      "16": "powersave",
+      "17": "powersave",
+      "18": "powersave",
+      "19": "powersave"
+     },
+     "cur_freq_khz": {
+      "0": 4234149,
+      "1": 800000,
+      "2": 2847527,
+      "3": 800000,
+      "4": 4544846,
+      "5": 800000,
+      "6": 4262502,
+      "7": 4519928,
+      "8": 4499954,
+      "9": 800000,
+      "10": 2565518,
+      "11": 800000,
+      "12": 4500000,
+      "13": 4513818,
+      "14": 1862345,
+      "15": 800000,
+      "16": 800000,
+      "17": 2961203,
+      "18": 800000,
+      "19": 800000
+     },
+     "max_freq_khz": {
+      "0": 4800000,
+      "1": 4800000,
+      "2": 4800000,
+      "3": 4800000,
+      "4": 4800000,
+      "5": 4800000,
+      "6": 4800000,
+      "7": 4800000,
+      "8": 4900000,
+      "9": 4900000,
+      "10": 4900000,
+      "11": 4900000,
+      "12": 4800000,
+      "13": 4800000,
+      "14": 4800000,
+      "15": 4800000,
+      "16": 3600000,
+      "17": 3600000,
+      "18": 3600000,
+      "19": 3600000
+     }
+    },
+    "load": {
+     "loadavg": [
+      1.06787109375,
+      1.19677734375,
+      1.0849609375
+     ],
+     "procs_running": 3,
+     "cpu_pressure_some": {
+      "avg10": 0.0,
+      "avg60": 0.0,
+      "avg300": 0.0
+     },
+     "cpu_pressure_full": {
+      "avg10": 0.0,
+      "avg60": 0.0,
+      "avg300": 0.0
+     }
+    }
+   },
+   "legs": [
+    {
+     "probe": "permissive_string_content",
+     "round": 1,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 1,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 2,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 2,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 3,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 3,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 4,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 4,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 5,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 5,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 1,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 1,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 2,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 2,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 3,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 3,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 4,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 4,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 5,
+     "leg": "off",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 5,
+     "leg": "on",
+     "cpu_affinity": null,
+     "cpu_now": null,
+     "extension_version": null,
+     "governors": null,
+     "cur_freq_khz": null,
+     "load_start": null,
+     "load_end": null
+    }
+   ],
+   "ok": false,
+   "problems": [
+    "saved-data replay: measurement conditions were not recorded (no new measurement)"
+   ]
+  },
+  "rows": [
+   {
+    "probe": "permissive_string_content",
+    "round": 1,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1306.429,
+    "p50_ns": 1244,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 1,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1265.5835,
+    "p50_ns": 1221,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 2,
+    "order": "on,off",
+    "leg": "off",
+    "mean_ns": 1131.5785,
+    "p50_ns": 1076,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 2,
+    "order": "on,off",
+    "leg": "on",
+    "mean_ns": 1279.05,
+    "p50_ns": 1240,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 3,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1265.52,
+    "p50_ns": 1213,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 3,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1173.957,
+    "p50_ns": 1135,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 4,
+    "order": "on,off",
+    "leg": "off",
+    "mean_ns": 1264.0535,
+    "p50_ns": 1217,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 4,
+    "order": "on,off",
+    "leg": "on",
+    "mean_ns": 1305.375,
+    "p50_ns": 1266,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 5,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1263.809,
+    "p50_ns": 1227,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 5,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1131.0605,
+    "p50_ns": 1096,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 1,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1299.8825,
+    "p50_ns": 1200,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 1,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1327.0175,
+    "p50_ns": 1280,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 2,
+    "order": "on,off",
+    "leg": "off",
+    "mean_ns": 1315.8445,
+    "p50_ns": 1272,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 2,
+    "order": "on,off",
+    "leg": "on",
+    "mean_ns": 1309.821,
+    "p50_ns": 1276,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 3,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1222.178,
+    "p50_ns": 1179,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 3,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1302.3275,
+    "p50_ns": 1283,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 4,
+    "order": "on,off",
+    "leg": "off",
+    "mean_ns": 1178.114,
+    "p50_ns": 1133,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 4,
+    "order": "on,off",
+    "leg": "on",
+    "mean_ns": 1189.47,
+    "p50_ns": 1138,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 5,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1131.4605,
+    "p50_ns": 1072,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 5,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1314.538,
+    "p50_ns": 1259,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity": null
+   }
+  ]
+ },
+ "fuzz_artifacts": [],
+ "warm_cpu": null,
+ "warm_limits": null,
+ "only": [
+  "warm-acceptance"
+ ]
+}

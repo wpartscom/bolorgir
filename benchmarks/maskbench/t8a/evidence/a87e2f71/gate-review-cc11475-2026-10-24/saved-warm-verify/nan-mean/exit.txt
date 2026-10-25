@@ -1,0 +1,1 @@
+nan-mean exit=1

@@ -375,7 +375,6 @@ pub const RangeIter = struct {
     }
 };
 
-// ---------------------------------------------------------------------------
 // spec-v1 (ADR-0005): exact per-state length-acceptance descriptors.
 //
 // The search-mode wrapper keeps a live state for every content byte even
@@ -389,7 +388,6 @@ pub const RangeIter = struct {
 // powerset, so it is eventually periodic; the first repeat pins the
 // preperiod and the period, and bit l of `bits` records
 // "accept reachable in exactly l steps" for l < preperiod + period.
-// ---------------------------------------------------------------------------
 
 pub const LenDescr = struct {
     preperiod: u32,

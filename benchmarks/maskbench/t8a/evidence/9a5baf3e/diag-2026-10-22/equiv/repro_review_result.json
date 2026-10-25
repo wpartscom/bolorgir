@@ -1,0 +1,153 @@
+{
+  "core_sha256": "17294af13be791a06171d7cbf4c488987aed5db9b29ab1548fb7ea9f1daf488c",
+  "tokenizer": "all 256 byte tokens plus ab, aa, bb",
+  "work_limit_ops": "default",
+  "cases": [
+    [
+      "uniqueItems",
+      {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "maxLength": 1
+        },
+        "uniqueItems": true,
+        "minItems": 2,
+        "maxItems": 2
+      },
+      "[\"a\",\""
+    ],
+    [
+      "allOf",
+      {
+        "allOf": [
+          {
+            "type": "string",
+            "maxLength": 1
+          },
+          {
+            "type": "string",
+            "maxLength": 2
+          }
+        ]
+      },
+      "\""
+    ]
+  ],
+  "comparisons": [
+    {
+      "case": "uniqueItems",
+      "mode": "lazy",
+      "equal": false,
+      "fast_used": 1,
+      "extra_ids": [
+        97
+      ],
+      "extra_tokens": [
+        "a"
+      ],
+      "missing_ids": []
+    },
+    {
+      "case": "allOf",
+      "mode": "lazy",
+      "equal": false,
+      "fast_used": 1,
+      "extra_ids": [
+        256,
+        257,
+        258
+      ],
+      "extra_tokens": [
+        "ab",
+        "aa",
+        "bb"
+      ],
+      "missing_ids": []
+    },
+    {
+      "case": "uniqueItems",
+      "mode": "adaptive",
+      "equal": false,
+      "fast_used": 1,
+      "extra_ids": [
+        97
+      ],
+      "extra_tokens": [
+        "a"
+      ],
+      "missing_ids": []
+    },
+    {
+      "case": "allOf",
+      "mode": "adaptive",
+      "equal": false,
+      "fast_used": 1,
+      "extra_ids": [
+        256,
+        257,
+        258
+      ],
+      "extra_tokens": [
+        "ab",
+        "aa",
+        "bb"
+      ],
+      "missing_ids": []
+    }
+  ],
+  "raw": {
+    "0": [
+      {
+        "case": "uniqueItems",
+        "mode": "lazy",
+        "mask_hex": "00000000fffffffffffffffffdffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 0
+      },
+      {
+        "case": "allOf",
+        "mode": "lazy",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 0
+      },
+      {
+        "case": "uniqueItems",
+        "mode": "adaptive",
+        "mask_hex": "00000000fffffffffffffffffdffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 0
+      },
+      {
+        "case": "allOf",
+        "mode": "adaptive",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 0
+      }
+    ],
+    "1": [
+      {
+        "case": "uniqueItems",
+        "mode": "lazy",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 1
+      },
+      {
+        "case": "allOf",
+        "mode": "lazy",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0007000000",
+        "fast_used": 1
+      },
+      {
+        "case": "uniqueItems",
+        "mode": "adaptive",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0000000000",
+        "fast_used": 1
+      },
+      {
+        "case": "allOf",
+        "mode": "adaptive",
+        "mask_hex": "00000000ffffffffffffffffffffffff0000000000000000fcffffffffff1f0007000000",
+        "fast_used": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,3211 @@
+{
+ "status": "FAIL",
+ "case": "adr0007_mask_fast_path",
+ "run_id": "warm-missing-loaded-end",
+ "lib": "/tmp/sc-r3b/warm-lib.so",
+ "environment": {
+  "started_utc": "2026-10-24T16:46:21Z",
+  "finished_utc": "2026-10-24T16:46:21Z",
+  "kernel": "6.8.0-138-generic",
+  "python": "3.10.12",
+  "core_version": null,
+  "lib_path": "/tmp/sc-r3b/warm-lib.so",
+  "lib_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+  "loaded_lib": {
+   "path": null,
+   "sha256": null
+  },
+  "cpu": {
+   "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+   "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+   ],
+   "governors": {
+    "0": "powersave",
+    "1": "powersave",
+    "2": "powersave",
+    "3": "powersave",
+    "4": "powersave",
+    "5": "powersave",
+    "6": "powersave",
+    "7": "powersave",
+    "8": "powersave",
+    "9": "powersave",
+    "10": "powersave",
+    "11": "powersave",
+    "12": "powersave",
+    "13": "powersave",
+    "14": "powersave",
+    "15": "powersave",
+    "16": "powersave",
+    "17": "powersave",
+    "18": "powersave",
+    "19": "powersave"
+   },
+   "cur_freq_khz": {
+    "0": 800000,
+    "1": 800000,
+    "2": 800000,
+    "3": 800000,
+    "4": 3382979,
+    "5": 800000,
+    "6": 800000,
+    "7": 800000,
+    "8": 800000,
+    "9": 4700000,
+    "10": 4675214,
+    "11": 800000,
+    "12": 4063793,
+    "13": 4539511,
+    "14": 800000,
+    "15": 800000,
+    "16": 800000,
+    "17": 800000,
+    "18": 3054713,
+    "19": 800000
+   },
+   "max_freq_khz": {
+    "0": 4800000,
+    "1": 4800000,
+    "2": 4800000,
+    "3": 4800000,
+    "4": 4800000,
+    "5": 4800000,
+    "6": 4800000,
+    "7": 4800000,
+    "8": 4900000,
+    "9": 4900000,
+    "10": 4900000,
+    "11": 4900000,
+    "12": 4800000,
+    "13": 4800000,
+    "14": 4800000,
+    "15": 4800000,
+    "16": 3600000,
+    "17": 3600000,
+    "18": 3600000,
+    "19": 3600000
+   }
+  },
+  "load": {
+   "loadavg": [
+    1.11474609375,
+    1.04931640625,
+    1.0166015625
+   ],
+   "procs_running": 3,
+   "cpu_pressure_some": {
+    "avg10": 0.0,
+    "avg60": 0.0,
+    "avg300": 0.0
+   },
+   "cpu_pressure_full": {
+    "avg10": 0.0,
+    "avg60": 0.0,
+    "avg300": 0.0
+   }
+  }
+ },
+ "vocab_size": 2,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS"
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {},
+   "warm": {},
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+     },
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "conditions": {
+      "start": {
+       "cpu_affinity": [
+        0
+       ],
+       "cpu_now": 0,
+       "extension_version": "synthetic-not-a-measurement",
+       "cpu": {
+        "governors": {
+         "0": "powersave"
+        }
+       },
+       "load": {
+        "loadavg": [
+         0.0,
+         0.0,
+         0.0
+        ],
+        "cpu_pressure_some": {
+         "avg10": 0.0
+        }
+       }
+      },
+      "end": {
+       "cpu_affinity": [
+        0
+       ],
+       "cpu_now": 0,
+       "extension_version": "synthetic-not-a-measurement",
+       "cpu": {
+        "governors": {
+         "0": "powersave"
+        }
+       },
+       "load": {
+        "loadavg": [
+         0.0,
+         0.0,
+         0.0
+        ],
+        "cpu_pressure_some": {
+         "avg10": 0.0
+        }
+       }
+      }
+     },
+     "fill_wall_ns": {
+      "mean": 1000.0,
+      "p50": 1000,
+      "count": 2000
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+     },
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "conditions": {
+      "start": {
+       "cpu_affinity": [
+        0
+       ],
+       "cpu_now": 0,
+       "extension_version": "synthetic-not-a-measurement",
+       "cpu": {
+        "governors": {
+         "0": "powersave"
+        }
+       },
+       "load": {
+        "loadavg": [
+         0.0,
+         0.0,
+         0.0
+        ],
+        "cpu_pressure_some": {
+         "avg10": 0.0
+        }
+       }
+      },
+      "end": {
+       "cpu_affinity": [
+        0
+       ],
+       "cpu_now": 0,
+       "extension_version": "synthetic-not-a-measurement",
+       "cpu": {
+        "governors": {
+         "0": "powersave"
+        }
+       },
+       "load": {
+        "loadavg": [
+         0.0,
+         0.0,
+         0.0
+        ],
+        "cpu_pressure_some": {
+         "avg10": 0.0
+        }
+       }
+      }
+     },
+     "fill_wall_ns": {
+      "mean": 1000.0,
+      "p50": 1000,
+      "count": 2000
+     }
+    }
+   },
+   "warm_ext_repeats": [
+    {
+     "round": 1,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    },
+    {
+     "round": 2,
+     "order": "on,off",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    },
+    {
+     "round": 3,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    },
+    {
+     "round": 4,
+     "order": "on,off",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    },
+    {
+     "round": 5,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    }
+   ]
+  },
+  "permissive_string_in_object": {
+   "cold": {},
+   "warm": {},
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+     },
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "conditions": {
+      "start": {
+       "cpu_affinity": [
+        0
+       ],
+       "cpu_now": 0,
+       "extension_version": "synthetic-not-a-measurement",
+       "cpu": {
+        "governors": {
+         "0": "powersave"
+        }
+       },
+       "load": {
+        "loadavg": [
+         0.0,
+         0.0,
+         0.0
+        ],
+        "cpu_pressure_some": {
+         "avg10": 0.0
+        }
+       }
+      },
+      "end": {
+       "cpu_affinity": [
+        0
+       ],
+       "cpu_now": 0,
+       "extension_version": "synthetic-not-a-measurement",
+       "cpu": {
+        "governors": {
+         "0": "powersave"
+        }
+       },
+       "load": {
+        "loadavg": [
+         0.0,
+         0.0,
+         0.0
+        ],
+        "cpu_pressure_some": {
+         "avg10": 0.0
+        }
+       }
+      }
+     },
+     "fill_wall_ns": {
+      "mean": 1000.0,
+      "p50": 1000,
+      "count": 2000
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+     },
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "conditions": {
+      "start": {
+       "cpu_affinity": [
+        0
+       ],
+       "cpu_now": 0,
+       "extension_version": "synthetic-not-a-measurement",
+       "cpu": {
+        "governors": {
+         "0": "powersave"
+        }
+       },
+       "load": {
+        "loadavg": [
+         0.0,
+         0.0,
+         0.0
+        ],
+        "cpu_pressure_some": {
+         "avg10": 0.0
+        }
+       }
+      },
+      "end": {
+       "cpu_affinity": [
+        0
+       ],
+       "cpu_now": 0,
+       "extension_version": "synthetic-not-a-measurement",
+       "cpu": {
+        "governors": {
+         "0": "powersave"
+        }
+       },
+       "load": {
+        "loadavg": [
+         0.0,
+         0.0,
+         0.0
+        ],
+        "cpu_pressure_some": {
+         "avg10": 0.0
+        }
+       }
+      }
+     },
+     "fill_wall_ns": {
+      "mean": 1000.0,
+      "p50": 1000,
+      "count": 2000
+     }
+    }
+   },
+   "warm_ext_repeats": [
+    {
+     "round": 1,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    },
+    {
+     "round": 2,
+     "order": "on,off",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    },
+    {
+     "round": 3,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    },
+    {
+     "round": 4,
+     "order": "on,off",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    },
+    {
+     "round": 5,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+      },
+      "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+      "conditions": {
+       "start": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       },
+       "end": {
+        "cpu_affinity": [
+         0
+        ],
+        "cpu_now": 0,
+        "extension_version": "synthetic-not-a-measurement",
+        "cpu": {
+         "governors": {
+          "0": "powersave"
+         }
+        },
+        "load": {
+         "loadavg": [
+          0.0,
+          0.0,
+          0.0
+         ],
+         "cpu_pressure_some": {
+          "avg10": 0.0
+         }
+        }
+       }
+      },
+      "fill_wall_ns": {
+       "mean": 1000.0,
+       "p50": 1000,
+       "count": 2000
+      }
+     }
+    }
+   ]
+  }
+ },
+ "warm_acceptance": {
+  "threshold_ns": 1300,
+  "protocol": {
+   "repeats": 5,
+   "observations": 2000,
+   "threshold_ns": 1300,
+   "probes": [
+    "permissive_string_content",
+    "permissive_string_in_object"
+   ],
+   "cpu": 0,
+   "governor": "powersave",
+   "lib_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "on_legs": 10
+  },
+  "on_legs": 10,
+  "on_means_ns": [
+   1000.0,
+   1000.0,
+   1000.0,
+   1000.0,
+   1000.0,
+   1000.0,
+   1000.0,
+   1000.0,
+   1000.0,
+   1000.0
+  ],
+  "on_p50_ns": [
+   1000,
+   1000,
+   1000,
+   1000,
+   1000,
+   1000,
+   1000,
+   1000,
+   1000,
+   1000
+  ],
+  "pass": false,
+  "problems": [
+   "permissive_string_content round 1 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 1 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 2 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 2 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 3 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 3 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 4 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 4 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 5 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 5 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 1 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 1 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 2 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 2 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 3 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 3 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 4 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 4 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 5 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 5 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+  ],
+  "conditions": {
+   "requested_cpu": 0,
+   "recorded": true,
+   "complete": false,
+   "limits": {
+    "max_load1": 1.0,
+    "max_cpu_pressure_avg10": 1.0,
+    "expected_governor": "powersave"
+   },
+   "parent": {
+    "utc": "2026-10-24T16:46:21Z",
+    "cpu_affinity": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ],
+    "cpu_now": 10,
+    "cpu": {
+     "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+     "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+     ],
+     "governors": {
+      "0": "powersave",
+      "1": "powersave",
+      "2": "powersave",
+      "3": "powersave",
+      "4": "powersave",
+      "5": "powersave",
+      "6": "powersave",
+      "7": "powersave",
+      "8": "powersave",
+      "9": "powersave",
+      "10": "powersave",
+      "11": "powersave",
+      "12": "powersave",
+      "13": "powersave",
+      "14": "powersave",
+      "15": "powersave",
+      "16": "powersave",
+      "17": "powersave",
+      "18": "powersave",
+      "19": "powersave"
+     },
+     "cur_freq_khz": {
+      "0": 800000,
+      "1": 800000,
+      "2": 800000,
+      "3": 800000,
+      "4": 3382979,
+      "5": 800000,
+      "6": 800000,
+      "7": 800000,
+      "8": 800000,
+      "9": 4677389,
+      "10": 4677919,
+      "11": 800000,
+      "12": 4063793,
+      "13": 3809904,
+      "14": 800000,
+      "15": 800000,
+      "16": 3178539,
+      "17": 1640379,
+      "18": 1480214,
+      "19": 800000
+     },
+     "max_freq_khz": {
+      "0": 4800000,
+      "1": 4800000,
+      "2": 4800000,
+      "3": 4800000,
+      "4": 4800000,
+      "5": 4800000,
+      "6": 4800000,
+      "7": 4800000,
+      "8": 4900000,
+      "9": 4900000,
+      "10": 4900000,
+      "11": 4900000,
+      "12": 4800000,
+      "13": 4800000,
+      "14": 4800000,
+      "15": 4800000,
+      "16": 3600000,
+      "17": 3600000,
+      "18": 3600000,
+      "19": 3600000
+     }
+    },
+    "load": {
+     "loadavg": [
+      1.11474609375,
+      1.04931640625,
+      1.0166015625
+     ],
+     "procs_running": 2,
+     "cpu_pressure_some": {
+      "avg10": 0.0,
+      "avg60": 0.0,
+      "avg300": 0.0
+     },
+     "cpu_pressure_full": {
+      "avg10": 0.0,
+      "avg60": 0.0,
+      "avg300": 0.0
+     }
+    }
+   },
+   "legs": [
+    {
+     "probe": "permissive_string_content",
+     "round": 1,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 1,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 2,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 2,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 3,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 3,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 4,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 4,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 5,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 5,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 1,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 1,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 2,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 2,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 3,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 3,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 4,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 4,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 5,
+     "leg": "off",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 5,
+     "leg": "on",
+     "cpu_affinity_start": [
+      0
+     ],
+     "cpu_affinity_end": [
+      0
+     ],
+     "cpu_now_start": 0,
+     "cpu_now_end": 0,
+     "extension_version_start": "synthetic-not-a-measurement",
+     "extension_version_end": "synthetic-not-a-measurement",
+     "governors": {
+      "0": "powersave"
+     },
+     "governor_start": "powersave",
+     "governor_end": "powersave",
+     "cur_freq_khz": null,
+     "load_start": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       0.0,
+       0.0,
+       0.0
+      ],
+      "cpu_pressure_some": {
+       "avg10": 0.0
+      }
+     },
+     "loaded_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+     "loaded_end_sha256": null,
+     "expected_sha256": "a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+    }
+   ],
+   "ok": true,
+   "problems": []
+  },
+  "rows": [
+   {
+    "probe": "permissive_string_content",
+    "round": 1,
+    "order": "off,on",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 1,
+    "order": "off,on",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 2,
+    "order": "on,off",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 2,
+    "order": "on,off",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 3,
+    "order": "off,on",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 3,
+    "order": "off,on",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 4,
+    "order": "on,off",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 4,
+    "order": "on,off",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 5,
+    "order": "off,on",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 5,
+    "order": "off,on",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 1,
+    "order": "off,on",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 1,
+    "order": "off,on",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 2,
+    "order": "on,off",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 2,
+    "order": "on,off",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 3,
+    "order": "off,on",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 3,
+    "order": "off,on",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 4,
+    "order": "on,off",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 4,
+    "order": "on,off",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 5,
+    "order": "off,on",
+    "leg": "off",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 5,
+    "order": "off,on",
+    "leg": "on",
+    "observations": 2000,
+    "cache_hits": 2000,
+    "fill_count": 2000,
+    "mean_ns": 1000.0,
+    "p50_ns": 1000,
+    "mean_ok": true,
+    "p50_ok": true,
+    "hits_ok": true,
+    "hash_ok": false,
+    "cpu_affinity_start": [
+     0
+    ],
+    "cpu_affinity_end": [
+     0
+    ],
+    "cpu_now_start": 0,
+    "cpu_now_end": 0
+   }
+  ]
+ },
+ "failure": {
+  "stage": "warm_acceptance",
+  "problems": [
+   "permissive_string_content round 1 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 1 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 2 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 2 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 3 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 3 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 4 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 4 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 5 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_content round 5 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 1 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 1 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 2 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 2 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 3 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 3 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 4 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 4 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 5 off: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609",
+   "permissive_string_in_object round 5 on: loaded 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' / after loop None, expected a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609"
+  ]
+ }
+}

@@ -8,7 +8,8 @@
 
 - [ ] Tests added/updated for behavior changes
 - [ ] `zig fmt --check build.zig src` stays clean
-- [ ] `zig build test --summary all` passes (Debug and ReleaseSafe)
+- [ ] `zig build test --summary all` passes (Debug)
+- [ ] `zig build test -Drelease=true --summary all` passes (ReleaseSafe)
 - [ ] `PYTHONPATH=python BLG_TEST_BACKEND=ctypes python3 -m pytest tests/ python/tests/ -q` passes
 - [ ] `PYTHONPATH=python BLG_TEST_BACKEND=package python3 -m pytest tests/ python/tests/ -q` passes
 - [ ] Docs updated (`docs/`, `README.md`) if public behavior changed

@@ -1,0 +1,11 @@
+{
+ "schemas": 40,
+ "both_rejected": 0,
+ "walks": 40,
+ "mask_cmps": 346,
+ "accepts": 233,
+ "rejects": 24,
+ "dead_ends": 0,
+ "finishes": 31,
+ "seed": 20260914
+}

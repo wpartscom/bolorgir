@@ -5,8 +5,10 @@ pub fn build(b: *std.Build) void {
     const optimize = b.standardOptimizeOption(.{ .preferred_optimize_mode = .ReleaseSafe });
 
     const test_hooks = b.option(bool, "test_hooks", "Export the test-only blg_test_* hooks (never in release artifacts)") orelse false;
+    const diag_counters = b.option(bool, "diag_counters", "Keep the mask-path diagnostic counters (relaxed atomic adds); false compiles the increments out") orelse true;
     const build_options = b.addOptions();
     build_options.addOption(bool, "test_hooks", test_hooks);
+    build_options.addOption(bool, "diag_counters", diag_counters);
 
     const strip = b.option(bool, "strip", "Omit debug information from the library (release artifacts: reproducible bytes)") orelse false;
 
@@ -35,7 +37,15 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    test_mod.addOptions("build_options", build_options);
+    // The unit tests are the only place the test-only switches are used
+    // (the certificate-cache differential, the forced verdicts, the budget
+    // overrides), so the test build always compiles the hooks in: with the
+    // release default the switches would silently do nothing and the
+    // differentials would compare a build against itself.
+    const test_build_options = b.addOptions();
+    test_build_options.addOption(bool, "test_hooks", true);
+    test_build_options.addOption(bool, "diag_counters", diag_counters);
+    test_mod.addOptions("build_options", test_build_options);
     const unit_tests = b.addTest(.{ .root_module = test_mod, .use_llvm = true });
     const run_tests = b.addRunArtifact(unit_tests);
     const test_step = b.step("test", "Run core unit tests");

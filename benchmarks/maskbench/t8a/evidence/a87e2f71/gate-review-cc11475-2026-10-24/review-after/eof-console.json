@@ -1,0 +1,71 @@
+{
+  "library_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+  "actual": {
+    "initial_fill": 0,
+    "initial_mask": [
+      1
+    ],
+    "accept_1": 0,
+    "can_end_after_1": false,
+    "tail_fill": 0,
+    "tail_mask": [
+      2
+    ],
+    "finish": 11
+  },
+  "harness_trace": {
+    "states": [
+      [
+        "one",
+        1,
+        0,
+        0,
+        [
+          1,
+          0,
+          0,
+          0
+        ],
+        0
+      ]
+    ],
+    "terminals": [
+      [
+        "one",
+        1,
+        0,
+        [
+          2
+        ],
+        false,
+        null,
+        11,
+        null
+      ]
+    ],
+    "instances": [
+      [
+        "one",
+        1,
+        false,
+        true,
+        false,
+        "rejected:finish:11"
+      ]
+    ]
+  },
+  "harness_stats": {
+    "files": 1,
+    "compiled": 1,
+    "compile_error": 0,
+    "instances": 1,
+    "masks": 1,
+    "fill_errors": 0,
+    "accept_errors": 0,
+    "terminal_masks": 1,
+    "terminal_fill_errors": 0,
+    "input_errors": 0,
+    "completion_errors": 0,
+    "validation_error": 0
+  }
+}

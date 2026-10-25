@@ -1,0 +1,104 @@
+{
+ "runs": 18,
+ "problems": [],
+ "groups": {
+  "BFCL_java_0": {
+   "off": {
+    "n": 3,
+    "median": 5.615,
+    "min": 5.562,
+    "max": 5.618,
+    "spread_pct": 1.0,
+    "wall_median_s": 3.91,
+    "runs": [
+     5.615,
+     5.618,
+     5.562
+    ]
+   },
+   "on": {
+    "n": 3,
+    "median": 5.755,
+    "min": 5.736,
+    "max": 6.025,
+    "spread_pct": 5.0,
+    "wall_median_s": 3.9,
+    "runs": [
+     6.025,
+     5.755,
+     5.736
+    ]
+   }
+  },
+  "Github_medium---o30212": {
+   "off": {
+    "n": 3,
+    "median": 1759.369,
+    "min": 1729.309,
+    "max": 1769.973,
+    "spread_pct": 2.3,
+    "wall_median_s": 109.38,
+    "runs": [
+     1769.973,
+     1759.369,
+     1729.309
+    ]
+   },
+   "on": {
+    "n": 3,
+    "median": 1785.9,
+    "min": 1730.801,
+    "max": 1796.094,
+    "spread_pct": 3.7,
+    "wall_median_s": 110.94,
+    "runs": [
+     1730.801,
+     1796.094,
+     1785.9
+    ]
+   }
+  },
+  "Github_trivial---o41679": {
+   "off": {
+    "n": 3,
+    "median": 2.847,
+    "min": 2.761,
+    "max": 2.902,
+    "spread_pct": 5.0,
+    "wall_median_s": 3.89,
+    "runs": [
+     2.847,
+     2.902,
+     2.761
+    ]
+   },
+   "on": {
+    "n": 3,
+    "median": 2.874,
+    "min": 2.869,
+    "max": 2.878,
+    "spread_pct": 0.3,
+    "wall_median_s": 3.86,
+    "runs": [
+     2.869,
+     2.878,
+     2.874
+    ]
+   }
+  }
+ },
+ "ratios": {
+  "BFCL_java_0": {
+   "ratio": 1.025,
+   "extra_us": 140.0
+  },
+  "Github_medium---o30212": {
+   "ratio": 1.015,
+   "extra_us": 26531.0
+  },
+  "Github_trivial---o41679": {
+   "ratio": 1.009,
+   "extra_us": 27.0
+  }
+ }
+}

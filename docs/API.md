@@ -1,9 +1,14 @@
 # API reference
 
 This document describes the public interfaces of Bolorgir: the C ABI
-(`include/bolorgir.h`, ABI version 1) and the Python package `bolorgir`
-(0.1.0), including the Hugging Face Transformers adapter and the spec-v1
-serializer.
+(`include/bolorgir.h`, ABI version 1) and the Python package `bolorgir`,
+including the Hugging Face Transformers adapter and the spec-v1
+serializer. Three version numbers are distinct: `BLG_ABI_VERSION` is 1;
+the shared library keeps the file name `libbolorgir.so.0.1.0` from the
+0.1.0 line, which the additive ABI version 1 changes do not alter; and
+the version of the Python package in the development tree is `0.2.0rc1`
+(`python/pyproject.toml`, `bolorgir.__version__`), with no package
+published right now.
 
 Related documents:
 
@@ -47,8 +52,9 @@ returned as `bytes` of `mask_words * 4` bytes in little-endian word order.
   smaller `struct_size` and gets documented defaults for the fields it does
   not know about. The library never writes beyond the caller's
   `struct_size`. Accepted legacy sizes: `blg_error` 268,
-  `blg_context_config` 56 to 104 (any earlier tail), `blg_stats` 208 and
-  264, `blg_compile_request` 32 and 48.
+  `blg_context_config` 56 up to 120 (every earlier tail is accepted, so
+  56, 88, 104 and 112 work as well; the missing fields take their
+  defaults), `blg_stats` 208 and 264, `blg_compile_request` 32 and 48.
 - **ABI evolution.** `BLG_ABI_VERSION` is 1 and is checked for exact
   equality, so raising it breaks every existing client; changes are
   additive and keep the version. New struct fields go only to the tail of a

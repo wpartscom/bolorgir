@@ -114,9 +114,7 @@ def run_instance(engine, data):
     return payload, accepted, finished
 
 
-# ---------------------------------------------------------------------------
 # Root strings, including JSON look-alikes: value and verdict preserved
-# ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("value", [
     "hello", "1", "true", "[1]", '"x"', "", "null", "{}", "café",
@@ -143,9 +141,7 @@ def test_non_string_kept_but_rejected_by_string_schema(make_engine, value):
     assert not (accepted and finished)
 
 
-# ---------------------------------------------------------------------------
 # Root numbers / booleans / null / objects / arrays
-# ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("value", [0, 1, -7, 2.5, -0.0, 1e2, 10**30])
 def test_root_number_value_preserved(make_engine, value):
@@ -193,9 +189,7 @@ def test_root_array_wrong_item_rejected(make_engine):
     assert not (accepted and finished)
 
 
-# ---------------------------------------------------------------------------
 # Hook protocol: off-switch and the section 7 refusal bucket
-# ---------------------------------------------------------------------------
 
 def test_serializer_off_falls_back_to_runner(make_engine):
     engine = make_engine(STRING_SCHEMA, serializer=False)

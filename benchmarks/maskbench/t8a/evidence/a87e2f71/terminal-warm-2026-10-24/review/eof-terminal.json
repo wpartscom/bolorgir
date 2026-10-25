@@ -1,0 +1,39 @@
+{
+ "library_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+ "case": {
+  "schema": {"type": "integer", "enum": [10]},
+  "data": 1,
+  "expected_valid": false,
+  "input_tokens": [0]
+ },
+ "actual": {
+  "initial_fill": 0,
+  "initial_mask": [1, 0, 0, 0],
+  "accept_1": 0,
+  "can_end_after_1": false,
+  "tail_fill": 0,
+  "tail_mask": [2, 0, 0, 0],
+  "finish": 11
+ },
+ "harness_stats": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 1,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "terminal_masks": 1,
+  "terminal_fill_errors": 0,
+  "input_errors": 0,
+  "completion_errors": 0,
+  "validation_error": 0
+ },
+ "harness_instances": [
+  ["one", 1, false, true, false, "rejected:finish:11"]
+ ],
+ "harness_terminals": [
+  ["one", 1, 0, [2, 0, 0, 0], false, null, 11, null]
+ ],
+ "note": "real a87e2f71 ABI, vocabulary 1/0/EOS, input '1'. Token consumption succeeds, can_end is false, the tail mask excludes EOS, finish returns 11 (WRONG_STATE). The harness now records a correct semantic rejection with validation_error 0."
+}

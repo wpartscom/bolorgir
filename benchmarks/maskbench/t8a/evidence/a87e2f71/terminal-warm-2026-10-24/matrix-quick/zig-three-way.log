@@ -1,0 +1,335 @@
+$ /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/local/toolchain/zig-x86_64-linux-0.17.0/zig test -O ReleaseSafe -fllvm --dep build_options -Mroot=src/tests.zig -Mbuild_options=/home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/maskbench/t8a/evidence/a87e2f71/terminal-warm-2026-10-24/matrix-quick/artifacts/matrix_build_options.zig
+
+
+---- stderr ----
+1/328 tests.test_0...OK
+2/328 grammar.test.cmpNumConst: exact decimal ordering by value...OK
+3/328 grammar.test.numConstInRange: inclusive/exclusive bounds by value...OK
+4/328 grammar.test.numConstIsMultiple: exact decimal divisibility...OK
+5/328 tokenizer.test.tokenizer create validates coverage and empties...OK
+6/328 tokenizer.test.trie: shared prefixes, duplicate byte images chained, eos/special excluded...OK
+7/328 tokenizer.test.trie: byte-complete vocab builds 257 nodes...OK
+8/328 json.test.parse nested document with escapes and surrogate pair...OK
+9/328 json.test.parse string escapes...OK
+10/328 json.test.reject duplicate object keys...OK
+11/328 json.test.reject malformed JSON...OK
+12/328 schema.test.diagnostics carry a JSON Pointer to the failing node...OK
+13/328 schema.test.diagnostics pointer: root node, $defs target, literal-set style escaping...OK
+14/328 schema.test.compile object schema from spec example...OK
+15/328 schema.test.enum with common prefixes...OK
+16/328 schema.test.$defs and local $ref...OK
+17/328 schema.test.enum numbers normalized exactly without binary64...OK
+18/328 schema.test.enum filtered by integer type is unsatisfiable...OK
+19/328 schema.test.enum filtered by minLength...OK
+20/328 schema.test.anyOf is unsupported...OK
+21/328 schema.test.min greater than max is unsatisfiable...OK
+22/328 schema.test.circular $ref is invalid...OK
+23/328 schema.test.required with unknown name is invalid...OK
+24/328 schema.test.duplicate JSON key is invalid...OK
+25/328 schema.test.boolean schemas are unsupported...OK
+26/328 schema.test.depth limit maps to resource limit...OK
+27/328 schema.test.string key canonical escaping...OK
+28/328 schema.test.spec-v1: any_nodes is allocated before finish and does not alias pat_len...OK
+29/328 schema.test.spec-v1: type union compiles to a choice of arms...OK
+30/328 schema.test.spec-v1: integer arm is the value-based int_num node...OK
+31/328 schema.test.spec-v1: const number compiles to canonical num_const...OK
+32/328 schema.test.spec-v1: const -0 canonicalizes to unsigned zero...OK
+33/328 schema.test.spec-v1: enum dedups values equal by canonical form...OK
+34/328 schema.test.spec-v1: enum values are filtered by the type set, empty root refuses...OK
+35/328 schema.test.spec-v1: integer type membership is value-based...OK
+36/328 schema.test.spec-v1: type list validation errors...OK
+37/328 schema.test.spec-v1: structural const object compiles to a closed object...OK
+38/328 schema.test.spec-v1: empty-language subschema is an empty node, root a refusal...OK
+39/328 schema.test.spec-v1: inapplicable validation keywords are ignored...OK
+40/328 schema.test.spec-v1 P2: tuple items compile to a prefix repeat...OK
+41/328 schema.test.spec-v1 P2: prefixItems with items false caps the array...OK
+42/328 schema.test.spec-v1 P2: contains bounds and unsatisfiable forms...OK
+43/328 schema.test.spec-v1 P2: min/maxContains without contains are ignored...OK
+44/328 schema.test.spec-v1 P2: uniqueItems form and finite count...OK
+45/328 schema.test.spec-v1 P2: min/maxProperties are value-based integers...OK
+46/328 schema.test.spec-v1 P2: propertyNames filters declared keys at compile time...OK
+47/328 schema.test.spec-v1 P2: patternProperties literal subset and refusals...OK
+48/328 schema.test.spec-v1 P4: pattern keyword and regex patternProperties...OK
+49/328 schema.test.spec-v1 P2: dependencies normalization and reductions...OK
+50/328 schema.test.spec-v1 P2: dependencies draft-04 form...OK
+51/328 schema.test.spec-v1 P2: dialect-scoped keywords are ignored outside their dialect...OK
+52/328 schema.test.spec-v1 P2: additionalProperties schema constrains undeclared values...OK
+53/328 schema.test.spec-v1 P3: anyOf compiles to a plain union...OK
+54/328 schema.test.spec-v1 P3: oneOf and allOf compile to comb nodes...OK
+55/328 schema.test.spec-v1 R2: const next to enum intersects by value...OK
+56/328 schema.test.spec-v1 R2: const object honours sibling object assertions...OK
+57/328 schema.test.spec-v1 R2: enum arrays honour sibling array assertions...OK
+58/328 schema.test.spec-v1 R2: undecidable sibling combinations refuse with a pointer...OK
+59/328 schema.test.spec-v1 R3: oneOf counts equal const objects by value...OK
+60/328 schema.test.spec-v1 R3: allOf object branches with contradictory key orders merge by value...OK
+61/328 schema.test.spec-v1 R3: allOf of equal const objects intersects by value...OK
+62/328 schema.test.spec-v1 P3: if/then/else compiles to a three-slot comb...OK
+63/328 schema.test.spec-v1 P3: not over type/const/enum/required...OK
+64/328 schema.test.spec-v1 P3: not refusals are UNSUPPORTED_FEATURE with a pointer...OK
+65/328 schema.test.spec-v1 P6b: assertion keywords next to $ref conjoin (2020-12 sibling rule)...OK
+66/328 schema.test.spec-v1: allOf of disjoint JSON types is an empty language...OK
+67/328 schema.test.spec-v1 P3: combinator parts conjoin with the typed core...OK
+68/328 schema.test.spec-v1 P4: minimum/maximum compile to a num_range arm...OK
+69/328 schema.test.spec-v1 P4: exclusive bounds and dialect normalization...OK
+70/328 schema.test.spec-v1 P4: multipleOf compiles to a num_mult arm...OK
+71/328 schema.test.spec-v1 P4: numeric keyword validation errors carry a pointer...OK
+72/328 schema.test.spec-v1 P4: contradictory bounds empty the numeric arms...OK
+73/328 schema.test.spec-v1 P4: numeric assertion filters enum/const numbers...OK
+74/328 schema.test.spec-v1 P4: canonical-v1 keeps refusing the numeric keywords...OK
+75/328 schema.test.spec-v1 P5: recursive local $ref compiles (bounded unrolling, ADR-0008)...OK
+76/328 schema.test.spec-v1 P5: unproductive recursion is the empty-language refusal...OK
+77/328 schema.test.spec-v1 P5: recursion truncation at the unroll limit is the empty-language node...OK
+78/328 schema.test.spec-v1 P5: depth budget inside recursion truncates instead of refusing...OK
+79/328 schema.test.spec-v1 P5: URI-fragment percent-decoding in $ref...OK
+80/328 schema.test.spec-v1 P5: external $ref through the registry snapshot (ADR-0006 D5)...OK
+81/328 schema.test.spec-v1 P5: registry refusals carry status and pointer...OK
+82/328 schema.test.spec-v1 P5: recursion across registry documents shares the unroll budget...OK
+83/328 schema.test.spec-v1: unevaluatedProperties fold compiles...OK
+84/328 schema.test.spec-v1: unevaluated* inert reductions compile...OK
+85/328 schema.test.spec-v1: unevaluated* ignored in draft-07...OK
+86/328 schema.test.spec-v1: unevaluated* over a nested combinator branch refuses with pointer...OK
+87/328 schema.test.spec-v1: unevaluatedItems with several conjunctive contains refuses...OK
+88/328 schema.test.spec-v1: unevaluated* with external $ref refuses...OK
+89/328 schema.test.spec-v1: unevaluated* anyOf branch budget refuses...OK
+90/328 schema.test.spec-v1 P6b: content keywords are annotations (2020-12 section 8)...OK
+91/328 schema.test.spec-v1 P6b: relative $id resources and RFC 3986 resolution...OK
+92/328 schema.test.spec-v1 P6b: relative $ref reaches the registry by resolved URI...OK
+93/328 schema.test.spec-v1 P6b: $dynamicRef dynamic scope resolution compiles...OK
+94/328 schema.test.spec-v1 P6b: $dynamicRef across a registry document...OK
+95/328 schema.test.spec-v1 P6b: $dynamicRef forms and dialect gating...OK
+96/328 schema.test.spec-v1 P6b: $recursiveRef and $recursiveAnchor (2019-09)...OK
+97/328 schema.test.spec-v1 P6b: $dynamicRef next to unevaluated* refuses with a pointer...OK
+98/328 literals.test.single literal compiles to literal node...OK
+99/328 literals.test.multiple literals with common prefix and duplicates...OK
+100/328 literals.test.empty string is a valid alternative...OK
+101/328 literals.test.unicode and escaped input decode to raw bytes...OK
+102/328 literals.test.reject empty array, non-array and non-string elements...OK
+103/328 parser.test.literal: basic feed, partitions, tail byte rejected...OK
+104/328 parser.test.literal len 0 completes instantly...OK
+105/328 parser.test.choice: common prefix a/ab...OK
+106/328 parser.test.choice exceeding max_threads -> ResourceLimit...OK
+107/328 parser.test.str: minLength/maxLength in symbols...OK
+108/328 parser.test.str: escapes table...OK
+109/328 parser.test.str: escapes split across feedBytes calls...OK
+110/328 parser.test.str: escape counts as one symbol...OK
+111/328 parser.test.str: utf-8 split, validation, close with pending rem...OK
+112/328 parser.test.int: forms, leading zero, root canEnd...OK
+113/328 parser.test.num: fraction and exponent...OK
+114/328 parser.test.repeat: number before delimiter, min/max items...OK
+115/328 parser.test.seq node and virtual canEnd cascade...OK
+116/328 parser.test.object: order, optional skip, duplicate key, required guard...OK
+117/328 parser.test.object: optional key before required can be skipped...OK
+118/328 parser.test.object: enum a/ab value, canEnd waits for separator...OK
+119/328 parser.test.single feed carrying many structural chars...OK
+120/328 parser.test.hashState/eqlStates stable across feed partitions...OK
+121/328 parser.test.lit_trie: shared prefix, completion forks, canEnd...OK
+122/328 parser.test.lit_trie: empty alternative completes immediately...OK
+123/328 parser.test.lit_trie: object value, enum with shared prefix...OK
+124/328 parser.test.open_obj: interleave, uniqueness, required guards...OK
+125/328 parser.test.open_obj: COW seen-set across value-choice spawns...OK
+126/328 parser.test.open_obj: cross-owner state equality and hash (ADR-0006 D2/D3)...OK
+127/328 parser.test.open_obj: key escapes canonical, escaped declared key match...OK
+128/328 parser.test.int_num: integer by value (semantics-spec-v1 4.4)...OK
+129/328 parser.test.num_const: const by value (ADR-0006 D6)...OK
+130/328 parser.test.num_range: inclusive bounds by value (semantics-spec-v1 4.4)...OK
+131/328 parser.test.num_range: exclusive bounds and zero bound...OK
+132/328 parser.test.num_mult: exact decimal divisibility (multipleOf)...OK
+133/328 parser.test.num_range/num_mult: boundary verdict feeds comb groups (P3 cascade)...OK
+134/328 parser.test.int_num/num_const: frames fit the 32-byte frame budget...OK
+135/328 parser.test.repeat: tuple prefix by position...OK
+136/328 parser.test.repeat: contains with min/max contains...OK
+137/328 parser.test.repeat: uniqueItems by canonical value...OK
+138/328 parser.test.repeat: uniqueItems finite-set residual...OK
+139/328 parser.test.open_obj: min/maxProperties and dependencies...OK
+140/328 parser.test.comb oneOf: exactly one branch must accept (ADR-0005 D2)...OK
+141/328 parser.test.comb allOf: every branch must accept...OK
+142/328 parser.test.comb if/then/else: (if /\ then) \/ (~if /\ else)...OK
+143/328 parser.test.comb if/then without else and born-doomed allOf...OK
+144/328 parser.test.comb sweep: a dead branch kills the allOf group mid-array...OK
+145/328 parser.test.not_int_num: numbers whose value is not an integer...OK
+146/328 parser.test.str_excl: string language minus a forbidden set...OK
+147/328 parser.test.num_excl: number language minus up to two constants...OK
+148/328 parser.test.comb nested in an object property value...OK
+149/328 parser.test.comb nested in a closed object property value...OK
+150/328 parser.test.comb allOf as an array item...OK
+151/328 parser.test.comb siblings spawned on an array element's first byte see it once...OK
+152/328 parser.test.untyped anyOf branches spawned on a number's first byte all see it...OK
+153/328 parser.test.comb group resolution survives per-byte state hand-off (C ABI loop)...OK
+154/328 parser.test.spec-v1 AnyJSON arrays: converged duplicate threads are merged...OK
+155/328 parser.test.str_pat: regex-constrained string machine...OK
+156/328 parser.test.str_pat: pattern failure is an exact boundary reject (ADR-0005)...OK
+157/328 parser.test.str_pat: comb boundary rejection and sweep...OK
+158/328 parser.test.str_pat: end-to-end through schema.compile...OK
+159/328 parser.test.str: a \u escape spells only U+0000..U+001F...OK
+160/328 mask.test.cache normal form: minLength close gate is preserved (ADR-0007 D2+)...OK
+161/328 mask.test.mask: literal ab, eos only at end, multi-char token...OK
+162/328 mask.test.mask: vocab 33, tail bits of last word are zero...OK
+163/328 mask.test.mask: special non-eos never allowed, multiple eos...OK
+164/328 mask.test.mask: duplicate byte images set every chained id...OK
+165/328 mask.test.mask: DeadEnd when no token and no eos allowed...OK
+166/328 mask.test.mask: deterministic, extra words untouched...OK
+167/328 mask.test.mask: first-byte filter is not the final decision...OK
+168/328 mask.test.mask: token leading to a dead end is not allowed (TZ 3.1)...OK
+169/328 mask.test.mask: completion filter keeps multi-token completions alive...OK
+170/328 mask.test.mask: object walk with multi-structural tokens...OK
+171/328 mask.test.mask: trie walk equals linear scan on random vocabularies...OK
+172/328 mask.test.mask: lit_trie grammar equals choice grammar on random vocabularies...OK
+173/328 mask.test.fast path: uniform string state equals the trie walk, R edges...OK
+174/328 mask.test.fast path: non-uniform states are refused (escape, mid-codepoint, root)...OK
+175/328 mask.test.fast path: ASCII prefix advances each thread and drops it at maxLength...OK
+176/328 mask.test.fast path: string value inside an object (thread stack with parents)...OK
+177/328 mask.test.fast path: widened cache shares class bits by capped residual...OK
+178/328 mask.test.fast path: max_workers does not change the mask...OK
+179/328 mask.test.fast path: three-way differential on random string grammars...OK
+180/328 mask.test.fast path: certificate cache does not change a filtered mask...OK
+181/328 mask.test.fast path: the certificate cache cannot fail a fill's walk...OK
+182/328 mask.test.fast path: the certificate cache cannot fail a fast fill...OK
+183/328 alloc.test.accounting: alloc/free per category, used returns to zero...OK
+184/328 alloc.test.accounting: peak tracks maximum...OK
+185/328 alloc.test.accounting: total limit refuses allocation...OK
+186/328 alloc.test.accounting: resize keeps counters consistent...OK
+187/328 alloc.test.session account: own limit triggers before parent limit...OK
+188/328 alloc.test.session account: parent limit also enforced for sessions...OK
+189/328 alloc.test.limited: hard cap on charged bytes...OK
+190/328 alloc.test.accounting and arena: charges do not depend on in-place growth...OK
+191/328 alloc.test.arena: last allocation resizes and frees in place, own chunks go back...OK
+192/328 alloc.test.accounting: header keeps category through raw interface...OK
+193/328 stats.test.stats: counters accumulate...OK
+194/328 stats.test.stats: fillMemory maps categories to indices...OK
+195/328 cache.test.cache: miss then hit, mask copied, counters...OK
+196/328 cache.test.cache: same key with different state is a miss (hash collision guard)...OK
+197/328 cache.test.cache: budget eviction from LRU tail...OK
+198/328 cache.test.cache: get refreshes LRU order...OK
+199/328 cache.test.cache: entry bigger than budget is not stored...OK
+200/328 cache.test.cache: budget 0 disables the cache...OK
+201/328 cache.test.cache: seen counters count misses per key, bounded and budget-aware...OK
+202/328 cache.test.cache: put with same key replaces entry without eviction...OK
+203/328 cache.test.cache: stored mask is an owned copy...OK
+204/328 cache.test.cache: no leak under injected allocation failure...OK
+205/328 cache.test.cache: hard budget never exceeded...OK
+206/328 cache.test.cache: widened put/get, full-descriptor equality, counters...OK
+207/328 cache.test.cache: widened entries share the hard budget and LRU accounting...OK
+208/328 cache.test.cache: widened disabled at budget 0...OK
+209/328 coverage.test.coverage: literal ab with vocab [a, eos] is rejected...OK
+210/328 coverage.test.coverage: literal segmentation with single and multi tokens...OK
+211/328 coverage.test.coverage: every choice alternative must be covered...OK
+212/328 coverage.test.coverage: object requires structural tokens...OK
+213/328 coverage.test.coverage: string content must be producible up to min_len...OK
+214/328 coverage.test.coverage: integer needs a digit token...OK
+215/328 coverage.test.coverage: byte-complete vocabulary always passes...OK
+216/328 work.test.work: cancel flag wins, limit counts ops, zero means unlimited...OK
+217/328 precompute.test.fastpath: cpPureLen pure content and code-point counting...OK
+218/328 precompute.test.fastpath: cpPureLen rejects quotes, backslashes and controls...OK
+219/328 precompute.test.fastpath: cpPureLen strict UTF-8 traps...OK
+220/328 precompute.test.fastpath: FastData build on a handcrafted vocabulary...OK
+221/328 c_api.test.abi: version, context lifecycle, stats...OK
+222/328 c_api.test.abi: root allocator packs small allocations into slabs (no per-alloc VMA)...OK
+223/328 c_api.test.abi: invalid config rejected...OK
+224/328 c_api.test.abi: enum session flow, mask bits, errors...OK
+225/328 c_api.test.abi: busy context...OK
+226/328 c_api.test.abi: concurrent compile/session accounting stays exact...OK
+227/328 c_api.test.abi: integer schema and batch...OK
+228/328 c_api.test.abi: literal set...OK
+229/328 c_api.test.abi: partial vocabulary with an infinite language is refused...OK
+230/328 c_api.test.abi: dead-end token is neither masked nor accepted...OK
+231/328 c_api.test.abi: strip-lead-space flag models the SP decoder...OK
+232/328 c_api.test.abi: cache budget and accounting agree...OK
+233/328 c_api.test.abi: bad compile requests...OK
+234/328 c_api.test.abi: compile rejects constraint the tokenizer cannot cover...OK
+235/328 c_api.test.abi: compile artifacts are cached and eviction keeps live sessions...OK
+236/328 c_api.test.abi: live grammar refs keep the context busy...OK
+237/328 c_api.test.abi: artifact cache budget counts retained grammars...OK
+238/328 c_api.test.abi: destroy during concurrent compile stays busy...OK
+239/328 c_api.test.abi: destroy during in-flight compile stays busy...OK
+240/328 c_api.test.abi: cache_limit_bytes 0 disables the cache, CACHE_DEFAULT restores it...OK
+241/328 c_api.test.abi: cache budget is a hard limit...OK
+242/328 c_api.test.abi: legacy struct sizes are accepted with defaults...OK
+243/328 c_api.test.abi: adaptive policy skips cheap one-shot masks, keeps frequent and expensive...OK
+244/328 c_api.test.abi: precompute mode warms the mask cache at compile...OK
+245/328 c_api.test.abi: cancel flag aborts fill_mask and compile...OK
+246/328 c_api.test.abi: work_limit_ops bounds fill_mask and compile, zero is unlimited...OK
+247/328 c_api.test.abi: compile diagnostics carry a JSON Pointer...OK
+248/328 c_api.test.abi: spec-v1 open object session (side allocator outlives create)...OK
+249/328 c_api.test.abi: mask_fast_path / max_workers config validation and legacy sizes...OK
+250/328 c_api.test.abi: fast path on/off bit-for-bit, fewer charged ops...OK
+251/328 c_api.test.abi: fast path on/off bit-for-bit under needs_reachability...OK
+252/328 c_api.test.abi: fast path scope - content-dependent enclosures and boundary tokens...OK
+253/328 c_api.test.abi: name-state lemma K1 - scope, boundaries and counters...OK
+254/328 c_api.test.abi: max_workers does not change the mask (1 vs 8)...OK
+255/328 c_api.test.abi: session rollback restores the mask and keeps max_rollback_tokens records...OK
+256/328 c_api.test.abi: a rollback record that does not fit the session budget fails the accept unchanged...OK
+257/328 c_api.test.abi: regex constraint masks, refusals, rollback and validation...OK
+258/328 c_api.test.abi: structural-tag constraint masks, rollback and validation...OK
+259/328 c_api.test.abi: structural-tag content completion filter, endable and the active segment...OK
+260/328 c_api.test.abi: an end-literal prefix is offered by the completion filter (same bytes, two splits)...OK
+261/328 c_api.test.abi: the free-text walk tolerates tokens deeper than the frame budget...OK
+262/328 regex.test.regex: full match over code points...OK
+263/328 regex.test.regex: states that cannot reach an accept state are refused...OK
+264/328 regex.test.regex: ECMA classes, dot and line terminators...OK
+265/328 regex.test.regex: surrogates and overlong forms are illegal bytes...OK
+266/328 regex.test.regex: a strip-lead-space decoder drops one leading space...OK
+267/328 regex.test.regex: unsupported constructs and empty languages...OK
+268/328 structtag.test.structtag: hermes-shaped triggered tags accept text, tag and text...OK
+269/328 structtag.test.structtag: the JSON content gates the suffix and can end inside...OK
+270/328 structtag.test.structtag: tags_with_separator requires adjacent tags and supports repetition...OK
+271/328 structtag.test.structtag: a partial begin in tags_with_separator cannot end...OK
+272/328 structtag.test.structtag: an optional tag can end only before its first byte...OK
+273/328 structtag.test.structtag: a partial trigger stays free text and can end...OK
+274/328 structtag.test.structtag: activeSegment names the variant or stays ambiguous...OK
+275/328 structtag.test.structtag: stop_after_first closes the language...OK
+276/328 structtag.test.structtag: any_text accepts anything...OK
+277/328 structtag.test.structtag: the pinned xgrammar any_text serialization is accepted...OK
+278/328 structtag.test.structtag: legacy structures shape...OK
+279/328 structtag.test.structtag: the pinned xgrammar content serialization is accepted...OK
+280/328 structtag.test.structtag: the pinned xgrammar triggered serialization is accepted...OK
+281/328 structtag.test.structtag: refusals name the unsupported construct...OK
+282/328 structtag.test.structtag: a failing byte leaves the source state untouched...OK
+283/328 structtag.test.structtag: a rejected token mid-way leaves the state byte-identical...OK
+284/328 structtag.test.structtag: the certificate cache cannot fail a mask fill...OK
+285/328 pattern.test.literal concatenation and dot...OK
+286/328 pattern.test.predefined classes: ASCII digit/word, ECMA space with Unicode spaces...OK
+287/328 pattern.test.character classes: ranges, negation, edge literals, nested escapes...OK
+288/328 pattern.test.quantifiers: exact, bounded, unbounded, lazy...OK
+289/328 pattern.test.groups, alternation, nesting, named groups, empty branches...OK
+290/328 pattern.test.escapes: unicode, surrogate pairs, control, identity...OK
+291/328 pattern.test.braced literal forms (Annex B)...OK
+292/328 pattern.test.search mode is an unanchored partial match...OK
+293/328 pattern.test.anchors bind to string edges in search mode...OK
+294/328 pattern.test.empty pattern in full mode matches only the empty string...OK
+295/328 pattern.test.shortestAccept: BFS length and witness...OK
+296/328 pattern.test.invalid patterns are rejected with error.Invalid...OK
+297/328 pattern.test.unsupported constructs are refused with error.Unsupported...OK
+298/328 pattern.test.limits: repeat count, pattern length, DFA state budget...OK
+299/328 pattern.test.DFA stepping: ranges iteration, feed, accept, dead...OK
+300/328 pattern.test.run state serialization roundtrip...OK
+301/328 pattern.test.compileJsonSchema defaults to search mode...OK
+302/328 pattern.test.compile frees everything under injected allocation failure...OK
+303/328 pattern.test.matching runs leak-free on the testing allocator...OK
+304/328 complete.test.complete: dead-end state is not alive, [ab, a, eos] vs literal ab...OK
+305/328 complete.test.complete: certificate cache hits, resets per fill, falls back when full...OK
+306/328 complete.test.complete: certificate cache never takes memory from the search...OK
+307/328 complete.test.complete: a proof degraded by cache memory is re-proven without it...OK
+308/328 complete.test.complete: the certificate key buffer does not starve the first proof...OK
+309/328 complete.test.complete: reset frees the certificate table instead of keeping it...OK
+310/328 complete.test.complete: byte-complete vocabulary is detected...OK
+311/328 complete.test.complete: object with an open class is not a finite literal language...OK
+312/328 complete.test.complete r1: allof enum intersection kills dead prefixes...OK
+313/328 complete.test.complete r1: certification agrees with exhaustive search (number machines)...OK
+314/328 complete.test.complete r1: frozen mantissa shorter than the bound's digits...OK
+315/328 complete.test.complete r1: numeric conjunctions certify jointly (ADR-0011)...OK
+316/328 complete.test.complete: contains and uniqueItems element residuals...OK
+317/328 complete.test.complete r1: open_obj residual certifies remaining required keys...OK
+318/328 complete.test.complete: maxProperties counts the owed names and the in-flight key...OK
+319/328 complete.test.complete r1: oneof vote-link residual doom (lit_trie overlap)...OK
+320/328 complete.test.complete r1: oneof vote-link residual doom (pattern overlap)...OK
+321/328 complete.test.complete: pattern key completions are counted exactly on both dispatch sides...OK
+322/328 witset.test.numPlusPower: exact signed decimal addition...OK
+323/328 witset.test.ceilInt / floorInt: exact decimal rounding...OK
+324/328 witset.test.intInRange: bounds and exclusivity...OK
+325/328 witset.test.acceptsValue: leaf and comb membership...OK
+326/328 witset.test.acceptsValue: open object with required, fallback, prop bounds...OK
+327/328 witset.test.witness: verified members of common shapes...OK
+328/328 witset.test.disjoint: type partition, constants, discriminated objects...OK
+All 328 tests passed.
+
+---- exit 0, 40.4 s ----

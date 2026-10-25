@@ -1,0 +1,33 @@
+ok   control passes: exit 0, gate 'PASS'
+ok   control compares every mask: maskbench_states = 410 (old sampler: 401)
+ok   control has zero errors: fill=0 validation=0
+ok   control publishes a trace digest: trace_sha256 = '91879e0f6e7d3209b5954f591e461f00f78668e479ebbc4c843e3f39768bb4fa'
+ok   mask-401 fails: exit = GATE FAILURE: maskbench gate failed (mask x1; 410 state(s), 1 instance(s) compared)
+ok   mask-401 names the fault: message = GATE FAILURE: maskbench gate failed (mask x1; 410 state(s), 1 instance(s) compared)
+ok   mask-401 leaves evidence: artifacts = ['gate-failure-maskbench-1792858303161.json']
+ok   mask-401 writes no success JSON: json written = False
+ok   status-409 fails: exit = GATE FAILURE: maskbench gate failed (fill x1, instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)
+ok   status-409 names the fault: message = GATE FAILURE: maskbench gate failed (fill x1, instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)
+ok   status-409 leaves evidence: artifacts = ['gate-failure-maskbench-1792858303163.json']
+ok   status-409 writes no success JSON: json written = False
+ok   accept-409 fails: exit = GATE FAILURE: maskbench gate failed (instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)
+ok   accept-409 names the fault: message = GATE FAILURE: maskbench gate failed (instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)
+ok   accept-409 leaves evidence: artifacts = ['gate-failure-maskbench-1792858303165.json']
+ok   accept-409 writes no success JSON: json written = False
+ok   fill-both-409 fails: exit = GATE FAILURE: maskbench gate failed (fill x2, validation x2; 410 state(s), 1 instance(s) compared)
+ok   fill-both-409 names the fault: message = GATE FAILURE: maskbench gate failed (fill x2, validation x2; 410 state(s), 1 instance(s) compared)
+ok   fill-both-409 leaves evidence: artifacts = ['gate-failure-maskbench-1792858303167.json']
+ok   fill-both-409 writes no success JSON: json written = False
+ok   valid-both-409 fails: exit = GATE FAILURE: maskbench gate failed (validation x2; 410 state(s), 1 instance(s) compared)
+ok   valid-both-409 names the fault: message = GATE FAILURE: maskbench gate failed (validation x2; 410 state(s), 1 instance(s) compared)
+ok   valid-both-409 leaves evidence: artifacts = ['gate-failure-maskbench-1792858303169.json']
+ok   valid-both-409 writes no success JSON: json written = False
+ok   SKIP is rejected: status = 'fail'
+ok   SKIP reason is recorded: skipped = 'synthetic missing dependency'
+ok   stale JSON is not accepted: verdict = "FAIL run_id = None (expected 'bench-gate-26670-1792858303169897769'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; FAIL gate.maskbench_fill_errors: KeyError: 'maskbench_fill_errors'; FAIL gate.maskbench_validation_errors: KeyError: 'maskbench_validation_errors'"
+ok   stale JSON is left untouched: sha256 before/after = 62b1a8c762ad/62b1a8c762ad
+ok   stale JSON fails the run id check: checks = ['gate.maskbench_fill_errors', 'gate.maskbench_states', 'gate.maskbench_validation_errors', 'run_id', 'status']
+ok   matching run id passes: ok run_id = 'fresh-1' (expected 'fresh-1'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; ok gate.maskbench_fill_errors = 0; ok gate.maskbench_validation_errors = 0
+ok   different run id fails: FAIL run_id = 'fresh-1' (expected 'fresh-2'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; ok gate.maskbench_fill_errors = 0; ok gate.maskbench_validation_errors = 0
+
+PASS: 31/31 checks pass; report /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/maskbench/t8a/evidence/a87e2f71/gate-hardening-2026-10-24/selfcheck/selfcheck.json

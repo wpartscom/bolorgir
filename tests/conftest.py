@@ -21,9 +21,7 @@ import reference  # noqa: E402
 from reference import TokenizerSpec  # noqa: E402
 
 
-# ---------------------------------------------------------------------------
 # Mini tokenizers
-# ---------------------------------------------------------------------------
 
 def make_byte_tokenizer() -> TokenizerSpec:
     """Byte-level: one token per byte (id 0..255), eos=256, pad=257.
@@ -64,9 +62,7 @@ def dict_tok() -> TokenizerSpec:
     return make_dict_tokenizer()
 
 
-# ---------------------------------------------------------------------------
 # Backend abstraction
-# ---------------------------------------------------------------------------
 
 class BackendUnavailable(Exception):
     pass
@@ -320,9 +316,7 @@ def any_mode(request) -> str:
     return request.param
 
 
-# ---------------------------------------------------------------------------
 # Test utilities
-# ---------------------------------------------------------------------------
 
 def describe_ids(ids, spec: TokenizerSpec, limit: int = 16) -> str:
     """ids -> readable rendering for mismatch messages."""

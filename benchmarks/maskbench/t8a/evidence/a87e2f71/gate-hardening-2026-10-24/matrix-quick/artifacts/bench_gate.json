@@ -1,0 +1,397 @@
+{
+ "status": "OK",
+ "case": "adr0007_mask_fast_path",
+ "run_id": "bench-gate-20261024T161016Z-24257",
+ "lib": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+ "environment": {
+  "started_utc": "2026-10-24T16:10:16Z",
+  "finished_utc": "2026-10-24T16:10:29Z",
+  "kernel": "6.8.0-138-generic",
+  "python": "3.12.15",
+  "core_version": "0.2.0rc1",
+  "lib_path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+  "lib_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+  "loaded_lib": {
+   "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+   "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+  },
+  "cpu": {
+   "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+   "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+   ],
+   "governors": {
+    "0": "powersave",
+    "1": "powersave",
+    "2": "powersave",
+    "3": "powersave",
+    "4": "powersave",
+    "5": "powersave",
+    "6": "powersave",
+    "7": "powersave",
+    "8": "powersave",
+    "9": "powersave",
+    "10": "powersave",
+    "11": "powersave",
+    "12": "powersave",
+    "13": "powersave",
+    "14": "powersave",
+    "15": "powersave",
+    "16": "powersave",
+    "17": "powersave",
+    "18": "powersave",
+    "19": "powersave"
+   },
+   "cur_freq_khz": {
+    "0": 800000,
+    "1": 2827687,
+    "2": 798921,
+    "3": 800000,
+    "4": 2836603,
+    "5": 800000,
+    "6": 799714,
+    "7": 800000,
+    "8": 4500000,
+    "9": 800000,
+    "10": 800000,
+    "11": 4499954,
+    "12": 2205551,
+    "13": 800000,
+    "14": 3415782,
+    "15": 800000,
+    "16": 2927339,
+    "17": 801334,
+    "18": 800000,
+    "19": 2420511
+   },
+   "max_freq_khz": {
+    "0": 4800000,
+    "1": 4800000,
+    "2": 4800000,
+    "3": 4800000,
+    "4": 4800000,
+    "5": 4800000,
+    "6": 4800000,
+    "7": 4800000,
+    "8": 4900000,
+    "9": 4900000,
+    "10": 4900000,
+    "11": 4900000,
+    "12": 4800000,
+    "13": 4800000,
+    "14": 4800000,
+    "15": 4800000,
+    "16": 3600000,
+    "17": 3600000,
+    "18": 3600000,
+    "19": 3600000
+   }
+  },
+  "load": {
+   "loadavg": [
+    1.17333984375,
+    1.21630859375,
+    1.08447265625
+   ],
+   "procs_running": 2,
+   "cpu_pressure_some": {
+    "avg10": 0.0,
+    "avg60": 0.02,
+    "avg300": 0.0
+   },
+   "cpu_pressure_full": {
+    "avg10": 0.0,
+    "avg60": 0.0,
+    "avg300": 0.0
+   }
+  }
+ },
+ "vocab_size": 128256,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS",
+  "maskbench_states": 564,
+  "maskbench_instances": 24,
+  "maskbench_fill_errors": 0,
+  "maskbench_accept_errors": 0,
+  "maskbench_validation_errors": 0,
+  "maskbench_trace_sha256": "1c72ad5dd5fe8fee679403dd1408d4c31c9e9908c3934e659be86af764f43f4a"
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 1,
+      "min": 15980007,
+      "p50": 15980007,
+      "p95": 15980007,
+      "p99": 15980007,
+      "max": 15980007,
+      "mean": 15980007.0
+     },
+     "core_ns": {
+      "count": 1,
+      "min": 15717568,
+      "p50": 15717568,
+      "p95": 15717568,
+      "p99": 15717568,
+      "max": 15717568,
+      "mean": 15717568.0
+     },
+     "work_ops": {
+      "count": 1,
+      "min": 383647,
+      "p50": 383647,
+      "p95": 383647,
+      "p99": 383647,
+      "max": 383647,
+      "mean": 383647.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 1,
+      "min": 4381298,
+      "p50": 4381298,
+      "p95": 4381298,
+      "p99": 4381298,
+      "max": 4381298,
+      "mean": 4381298.0
+     },
+     "core_ns": {
+      "count": 1,
+      "min": 4182690,
+      "p50": 4182690,
+      "p95": 4182690,
+      "p99": 4182690,
+      "max": 4182690,
+      "mean": 4182690.0
+     },
+     "work_ops": {
+      "count": 1,
+      "min": 20744,
+      "p50": 20744,
+      "p95": 20744,
+      "p99": 20744,
+      "max": 20744,
+      "mean": 20744.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 200,
+     "cache_hits": 200,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 200,
+      "min": 2005,
+      "p50": 2204,
+      "p95": 2413,
+      "p99": 4677,
+      "max": 13991,
+      "mean": 2305.875
+     }
+    },
+    "on": {
+     "observations": 200,
+     "cache_hits": 200,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 200,
+      "min": 1957,
+      "p50": 2116,
+      "p95": 2577,
+      "p99": 4680,
+      "max": 10620,
+      "mean": 2242.22
+     }
+    }
+   }
+  },
+  "permissive_string_in_object": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 1,
+      "min": 16748040,
+      "p50": 16748040,
+      "p95": 16748040,
+      "p99": 16748040,
+      "max": 16748040,
+      "mean": 16748040.0
+     },
+     "core_ns": {
+      "count": 1,
+      "min": 16518636,
+      "p50": 16518636,
+      "p95": 16518636,
+      "p99": 16518636,
+      "max": 16518636,
+      "mean": 16518636.0
+     },
+     "work_ops": {
+      "count": 1,
+      "min": 383662,
+      "p50": 383662,
+      "p95": 383662,
+      "p99": 383662,
+      "max": 383662,
+      "mean": 383662.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 1,
+      "min": 4295716,
+      "p50": 4295716,
+      "p95": 4295716,
+      "p99": 4295716,
+      "max": 4295716,
+      "mean": 4295716.0
+     },
+     "core_ns": {
+      "count": 1,
+      "min": 4090020,
+      "p50": 4090020,
+      "p95": 4090020,
+      "p99": 4090020,
+      "max": 4090020,
+      "mean": 4090020.0
+     },
+     "work_ops": {
+      "count": 1,
+      "min": 20759,
+      "p50": 20759,
+      "p95": 20759,
+      "p99": 20759,
+      "max": 20759,
+      "mean": 20759.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 200,
+     "cache_hits": 200,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 200,
+      "min": 1985,
+      "p50": 2145,
+      "p95": 2708,
+      "p99": 5503,
+      "max": 14314,
+      "mean": 2312.445
+     }
+    },
+    "on": {
+     "observations": 200,
+     "cache_hits": 200,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 200,
+      "min": 1917,
+      "p50": 2100,
+      "p95": 2306,
+      "p99": 4841,
+      "max": 15300,
+      "mean": 2236.26
+     }
+    }
+   }
+  }
+ },
+ "maskbench_slice": {
+  "files": [
+   "BFCL_java_6",
+   "BFCL_java_10",
+   "BFCL_java_18",
+   "BFCL_java_22",
+   "BFCL_java_23",
+   "BFCL_java_24",
+   "BFCL_java_25",
+   "BFCL_java_27",
+   "BFCL_java_32",
+   "BFCL_java_44",
+   "BFCL_java_47",
+   "BFCL_java_49",
+   "BFCL_java_53",
+   "BFCL_java_57",
+   "BFCL_java_63",
+   "BFCL_java_73",
+   "BFCL_java_74",
+   "BFCL_java_76",
+   "BFCL_java_77",
+   "BFCL_java_78",
+   "BFCL_java_79",
+   "BFCL_java_80",
+   "BFCL_java_92",
+   "BFCL_java_98"
+  ],
+  "off": {
+   "tbm_us": {
+    "count": 564,
+    "min": 124.926,
+    "p50": 141.86,
+    "p95": 12264.828,
+    "p99": 13407.655,
+    "max": 14011.825,
+    "mean": 3077.228524822695
+   },
+   "stats": {
+    "files": 24,
+    "compiled": 24,
+    "compile_error": 0,
+    "instances": 24,
+    "masks": 564,
+    "fill_errors": 0,
+    "accept_errors": 0,
+    "validation_error": 0
+   },
+   "trace_sha256": "1c72ad5dd5fe8fee679403dd1408d4c31c9e9908c3934e659be86af764f43f4a"
+  },
+  "on": {
+   "tbm_us": {
+    "count": 564,
+    "min": 126.564,
+    "p50": 140.521,
+    "p95": 848.091,
+    "p99": 3927.814,
+    "max": 4615.964,
+    "mean": 346.4870124113475
+   },
+   "stats": {
+    "files": 24,
+    "compiled": 24,
+    "compile_error": 0,
+    "instances": 24,
+    "masks": 564,
+    "fill_errors": 0,
+    "accept_errors": 0,
+    "validation_error": 0
+   },
+   "trace_sha256": "1c72ad5dd5fe8fee679403dd1408d4c31c9e9908c3934e659be86af764f43f4a"
+  }
+ }
+}

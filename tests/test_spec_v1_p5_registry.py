@@ -93,9 +93,7 @@ def _refusal(ctx, schema, status, registry=None, profile=b"spec-v1"):
     return str(ei.value)
 
 
-# ---------------------------------------------------------------------------
 # Resolution
-# ---------------------------------------------------------------------------
 
 def test_remote_whole_document(byte_ctx):
     _check(byte_ctx, {"$ref": "http://ex.com/int.json"}, REG_V1,
@@ -165,9 +163,7 @@ def test_mixed_local_and_remote_recursion(byte_ctx):
            ['{"w":{"inner":"s"}}'])
 
 
-# ---------------------------------------------------------------------------
 # Snapshot versioning and the cache
-# ---------------------------------------------------------------------------
 
 def test_registry_swap_invalidates_artifacts(byte_ctx):
     """The registry bytes join the artifact key (ADR-0006 D5): compiling
@@ -229,9 +225,7 @@ def test_live_sessions_survive_registry_swap(byte_ctx):
         zg.grammar_release(g2)
 
 
-# ---------------------------------------------------------------------------
 # Refusals
-# ---------------------------------------------------------------------------
 
 def test_unknown_base_uri_refusal(byte_ctx):
     msg = _refusal(byte_ctx,

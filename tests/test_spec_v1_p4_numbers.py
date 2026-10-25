@@ -69,9 +69,7 @@ def _refusal(ctx, schema, status, profile=b"spec-v1"):
     return str(ei.value)
 
 
-# ---------------------------------------------------------------------------
 # minimum / maximum: value-based inclusive bounds
-# ---------------------------------------------------------------------------
 
 def test_minimum_value_based(byte_ctx):
     _check(byte_ctx, {"minimum": 1.1},
@@ -128,9 +126,7 @@ def test_bounds_exponent_spellings(byte_ctx):
            ["99", "1001", "1.0001e3", "99.999"])
 
 
-# ---------------------------------------------------------------------------
 # multipleOf: exact decimal divisibility
-# ---------------------------------------------------------------------------
 
 def test_multipleof_integer_divisor(byte_ctx):
     _check(byte_ctx, {"multipleOf": 2},
@@ -168,9 +164,7 @@ def test_multipleof_zero_instance(byte_ctx):
            [])
 
 
-# ---------------------------------------------------------------------------
 # Applicability, type/enum/const/union combinations
-# ---------------------------------------------------------------------------
 
 def test_numeric_keywords_inapplicable_to_non_numbers(byte_ctx):
     # minimum constrains only numbers; every other type passes.
@@ -245,9 +239,7 @@ def test_numeric_keywords_in_array_items(byte_ctx):
            ["[3]", "[2,3]", "[2.5]"])
 
 
-# ---------------------------------------------------------------------------
 # Dialect normalization (draft-04 boolean modifiers)
-# ---------------------------------------------------------------------------
 
 def test_draft04_exclusive_modifiers(byte_ctx):
     # boolean modifier makes the named bound exclusive.
@@ -287,9 +279,7 @@ def test_minimum_and_exclusive_conjoin(byte_ctx):
            ["2.5", "3"])
 
 
-# ---------------------------------------------------------------------------
 # Refusal surface and canonical-v1 freeze
-# ---------------------------------------------------------------------------
 
 def test_numeric_keyword_validation_errors(byte_ctx):
     _refusal(byte_ctx, {"minimum": "5"}, "INVALID_SCHEMA")

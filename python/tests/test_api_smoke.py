@@ -32,9 +32,7 @@ def mini_bundle() -> TokenizerBundle:
     return TokenizerBundle.from_token_bytes(tokens, eos_ids=[EOS_ID])
 
 
-# ----------------------------------------------------------------------
 # Machinery without native calls
-# ----------------------------------------------------------------------
 
 def test_exception_hierarchy():
     for name in (
@@ -226,9 +224,7 @@ def test_allowed_token_ids_parsing():
         assert engine.mask_words == (VOCAB + 31) // 32
 
 
-# ----------------------------------------------------------------------
 # Calls through the C ABI (pass with a stub core and the real one)
-# ----------------------------------------------------------------------
 
 def test_context_compile_session_lifecycle():
     with Engine(mode="adaptive") as engine:
@@ -269,9 +265,7 @@ def test_fill_mask_shape_and_batch():
         c2.close()
 
 
-# ----------------------------------------------------------------------
 # Cancellation API and the work/adaptive budgets
-# ----------------------------------------------------------------------
 
 @pytest.mark.skipif(CORE_IS_STUB, reason="stub core does not compute masks")
 def test_cancel_token_wins_even_on_cache_hit():

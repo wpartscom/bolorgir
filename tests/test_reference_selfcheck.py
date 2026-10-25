@@ -23,9 +23,7 @@ from reference import (
 )
 
 
-# ---------------------------------------------------------------------------
 # Canonical string serialization (DESIGN §1.1)
-# ---------------------------------------------------------------------------
 
 def test_escape_table_short():
     assert escape_string('"') == b'\\"'
@@ -54,9 +52,7 @@ def test_escape_raw_bytes():
     assert canonical_string('a"b') == b'"a\\"b"'
 
 
-# ---------------------------------------------------------------------------
 # enum/const number normalization (DESIGN §1.6)
-# ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("lexeme,expected", [
     ("1e2", b"100"),
@@ -101,9 +97,7 @@ def test_normalize_number_precision_cap():
         normalize_number(Decimal("1." + "1" * 401))
 
 
-# ---------------------------------------------------------------------------
 # Enumeration of small schemas with manual expectations
-# ---------------------------------------------------------------------------
 
 def test_enum_action_amount():
     lang = compile_schema(corpora.ACTION_AMOUNT)
@@ -248,9 +242,7 @@ def test_enumeration_cap_raises():
         enumerate_language(lang, max_string_len=3, cap_docs=10)
 
 
-# ---------------------------------------------------------------------------
 # Literal alternatives
-# ---------------------------------------------------------------------------
 
 def test_compile_literals_basic():
     lang = compile_literals(["", "a", "ab", "b"])
@@ -273,9 +265,7 @@ def test_literals_raw_not_json_quoted():
     assert "日本".encode("utf-8") in docs
 
 
-# ---------------------------------------------------------------------------
 # PrefixOracle (over an enumeration)
-# ---------------------------------------------------------------------------
 
 def test_prefix_oracle_basics():
     docs = {b'"a"', b'"ab"'}
@@ -323,9 +313,7 @@ def test_prefix_oracle_excludes_dead_end_tokens():
     assert o.mask(b"a", spec_ok) == {1}
 
 
-# ---------------------------------------------------------------------------
 # Matcher (incremental oracle): manual semantics checks
-# ---------------------------------------------------------------------------
 
 def feed_seq(lang, data):
     m = Matcher(lang)
@@ -543,9 +531,7 @@ def test_matcher_can_end_virtual_number_pop():
     assert m.can_end()
 
 
-# ---------------------------------------------------------------------------
 # Cross-check: Matcher agrees with enumeration on bounded schemas
-# ---------------------------------------------------------------------------
 
 def _all_prefixes(docs):
     out = set()
@@ -603,9 +589,7 @@ def test_matcher_mask_matches_prefix_oracle():
         assert m_mask == o_mask, p
 
 
-# ---------------------------------------------------------------------------
 # Mini-validator and cross-check with jsonschema (if installed)
-# ---------------------------------------------------------------------------
 
 def test_validate_instance_subset():
     schema = corpora.OPT_KEYS
@@ -657,9 +641,7 @@ def test_enum_numeric_equality_without_binary64():
     assert not validate_document(b"1.1000000001", schema_text)
 
 
-# ---------------------------------------------------------------------------
 # Schema acceptance in the reference itself (mirror of test_schema_acceptance)
-# ---------------------------------------------------------------------------
 
 def test_reference_rejects_unsupported_keywords():
     cases = {

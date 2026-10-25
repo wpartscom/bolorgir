@@ -123,9 +123,7 @@ def expect_refusal(ctx, schema, status: str):
     assert status in str(ei.value)
 
 
-# ---------------------------------------------------------------------------
 # R2: const/enum x sibling object keywords
-# ---------------------------------------------------------------------------
 
 R2_OBJECT_MATRIX = [
     # (schema, valid docs, invalid docs) - invalid rows either feed-reject
@@ -185,9 +183,7 @@ def test_r2_const_object_siblings(ctx, schema, ok, bad):
         check_value(ctx, schema, doc)  # fed-rejected or exactly refused
 
 
-# ---------------------------------------------------------------------------
 # R2: const/enum x sibling array keywords
-# ---------------------------------------------------------------------------
 
 R2_ARRAY_MATRIX = [
     ({"const": [1, 2], "minItems": 2}, ["[1,2]"], []),
@@ -285,9 +281,7 @@ def test_r2_const_next_to_enum_intersects(ctx):
                    "UNSATISFIABLE_CONSTRAINT")
 
 
-# ---------------------------------------------------------------------------
 # R3: oneOf/allOf over object values
-# ---------------------------------------------------------------------------
 
 def test_r3_oneof_equal_const_objects_unsatisfiable(ctx):
     schema = {"oneOf": [{"const": {"a": 1, "b": 2}},

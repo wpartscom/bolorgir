@@ -90,21 +90,53 @@ class _RecordingTokenizer:
 
 
 def _install_recorders(engine):
-    """Wrap reset, serialize_instance and commit_token of the engine; the
-    current file's records go to engine.t8a_tests."""
+    """Wrap reset, serialize_instance, compute_mask and commit_token of the
+    engine; the current file's records go to engine.t8a_tests.
+
+    A call that raises records the phase, the instance and the token index on
+    the current instance record (`aborted`) before the exception continues.
+    The file-level wrapper `process_file` copies the same marker into the
+    result file when the exception escapes, so a crash names its cause
+    instead of leaving a bare pending marker. The marker stays a marker:
+    status_of still classifies the file as crash_or_timeout."""
     engine.t8a_tests = []
+    engine.t8a_abort = None
 
     def cur():
         return engine.t8a_tests[-1] if engine.t8a_tests else None
 
-    reset = engine.reset
+    def note_abort(phase, at):
+        def wrap(fn):
+            def call(*a, **kw):
+                try:
+                    return fn(*a, **kw)
+                except Exception as e:
+                    c = cur()
+                    marker = {"phase": phase, "at": at(c), "error": type(e).__name__,
+                              "instance": None if c is None else c.get("i")}
+                    if c is not None and "aborted" not in c:
+                        c["aborted"] = marker
+                    if engine.t8a_abort is None:
+                        engine.t8a_abort = marker
+                    raise
+            return call
+        return wrap
 
-    def reset_rec():
+    reset = engine.reset
+    engine.reset = note_abort("reset", lambda c: 0)(reset)
+
+    reset_rec = engine.reset
+
+    def reset_then_record():
         engine.t8a_tests.append({"i": len(engine.t8a_tests), "consumed": 0,
                                  "rejected_at": None})
-        return reset()
+        return reset_rec()
 
-    engine.reset = reset_rec
+    engine.reset = reset_then_record
+
+    compute = engine.compute_mask
+    engine.compute_mask = note_abort(
+        "compute_mask", lambda c: 0 if c is None else c["consumed"])(compute)
 
     ser = getattr(engine, "serialize_instance", None)
     if ser is not None:
@@ -118,9 +150,11 @@ def _install_recorders(engine):
         engine.serialize_instance = serialize_rec
 
     commit = engine.commit_token
+    commit_rec = note_abort(
+        "commit_token", lambda c: 0 if c is None else c["consumed"])(commit)
 
-    def commit_rec(t):
-        ok = commit(t)
+    def commit_then_record(t):
+        ok = commit_rec(t)
         c = cur()
         if c is not None:
             if ok:
@@ -129,7 +163,7 @@ def _install_recorders(engine):
                 c["rejected_at"] = c["consumed"]
         return ok
 
-    engine.commit_token = commit_rec
+    engine.commit_token = commit_then_record
 
     def sink(text, ids):
         c = cur()
@@ -142,11 +176,40 @@ def _install_recorders(engine):
     engine.t8a_sink = sink
 
 
+def _write_abort_marker(engine, file):
+    """Name the cause in the pending marker of a file whose processing
+    raised. The marker keeps its `pending_file` key, so the report still
+    counts the file as crash_or_timeout; `aborted` records the phase, the
+    instance and the token index. Best effort: a missing or unreadable
+    marker leaves the file as it was."""
+    if not getattr(engine, "multi", False):
+        return
+    path = os.path.join(runner.output_path, os.path.basename(file))
+    try:
+        with open(path, encoding="utf-8") as f:
+            rec = json.load(f)
+    except (OSError, ValueError):
+        return
+    if "pending_file" not in rec or "aborted" in rec:
+        return
+    rec["aborted"] = getattr(engine, "t8a_abort", None) or {
+        "phase": "unknown", "at": None, "error": "unknown"}
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(rec, f, indent=2)
+    os.replace(tmp, path)
+
+
 def process_file(engine, file, compact=False):
     if not isinstance(engine.tokenizer, _RecordingTokenizer):
         engine.tokenizer = _RecordingTokenizer(engine.tokenizer, engine.t8a_sink)
     engine.t8a_tests = []
-    status = _process_file(engine, file, compact)
+    engine.t8a_abort = None
+    try:
+        status = _process_file(engine, file, compact)
+    except Exception:
+        _write_abort_marker(engine, file)
+        raise
     if status is not None:
         d = os.path.join(runner.output_path, "t8a_streams")
         os.makedirs(d, exist_ok=True)

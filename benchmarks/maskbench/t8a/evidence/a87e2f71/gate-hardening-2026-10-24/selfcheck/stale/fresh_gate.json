@@ -1,0 +1,11 @@
+{
+ "status": "OK",
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS",
+  "maskbench_states": 425,
+  "maskbench_fill_errors": 0,
+  "maskbench_validation_errors": 0
+ },
+ "run_id": "fresh-1"
+}

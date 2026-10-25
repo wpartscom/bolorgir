@@ -575,9 +575,9 @@ def test_t8a_default_memory_limit_is_the_maskbench_limit(tmp_path):
 
 
 def test_embedded_smoke_uses_the_run_threads():
-    """The smoke of a full run uses the runner processes of the run (second
-    review of R6/T8a: no fixed 4 workers; 4 x 40 GB exceeds this machine,
-    where a full run starts with one)."""
+    """The smoke of a full run uses the run's runner processes: no fixed 4
+    workers; 4 x 40 GB exceeds this machine, where a full run starts with
+    one."""
     with open(os.path.join(T8A, "run_t8a.sh"), encoding="utf-8") as f:
         calls = [line for line in f if '--smoke 20 "$W/smoke"' in line]
     assert len(calls) == 1, calls
@@ -1053,3 +1053,108 @@ print(json.dumps(Compiler.calls))
     assert r.returncode == 0, r.stderr
     assert json.loads(r.stdout) == [['{"type": "integer"}', {
         "any_whitespace": False, "separators": [",", ":"], "strict_mode": True}]]
+
+
+# --- abort-phase recording in the T8a runner -------------------------------
+
+ABORT_RUNNER = '''
+import json, os
+
+output_path = None
+
+def process_file(engine, file, compact=False):
+    name = os.path.basename(file)
+    out = os.path.join(output_path, name)
+    if getattr(engine, "multi", False):
+        with open(out, "w") as f:
+            f.write(json.dumps({"pending_file": 1}))
+    engine.compile_grammar({})
+    engine.reset()
+    for tid in engine.ids:
+        engine.compute_mask()
+        engine.commit_token(tid)
+    with open(out, "w") as f:
+        f.write(json.dumps({"num_tests": 1}))
+
+def get_engine(args):
+    raise SystemExit("unused")
+'''
+
+ABORT_SCRIPT = '''
+import json, os, sys
+import paired_runner
+from maskbench import runner
+
+class Engine:
+    multi = True
+    tokenizer = object()
+
+    def __init__(self, phase):
+        self.phase = phase
+        self.ids = [7]
+        self.t8a_tests = []
+
+    def compile_grammar(self, schema):
+        pass
+
+    def reset(self):
+        if self.phase == "reset":
+            raise RuntimeError("boom-reset")
+
+    def compute_mask(self):
+        if self.phase == "compute_mask":
+            raise RuntimeError("boom-mask")
+
+    def commit_token(self, tid):
+        if self.phase == "commit_token":
+            raise RuntimeError("boom-commit")
+        return True
+
+out_dir, in_dir = sys.argv[1], sys.argv[2]
+runner.output_path = out_dir
+file = os.path.join(in_dir, "x.json")
+result = {}
+for phase in ("reset", "compute_mask", "commit_token"):
+    engine = Engine(phase)
+    paired_runner._install_recorders(engine)
+    try:
+        paired_runner.process_file(engine, file, compact=True)
+    except RuntimeError:
+        pass
+    with open(os.path.join(out_dir, "x.json"), encoding="utf-8") as f:
+        result[phase] = {"marker": json.load(f), "tests": engine.t8a_tests}
+print(json.dumps(result))
+'''
+
+def test_abort_marker_names_the_phase_and_keeps_the_pending_status(tmp_path):
+    """reset, compute_mask and commit_token failures leave a named cause.
+
+    The result file stays a pending marker (status_of keeps classifying the
+    file as crash_or_timeout), but it carries `aborted` with the phase, the
+    instance and the token index; the instance record carries the same
+    marker. This is the shape that lets the next run's diagnosis interpret a
+    truncated instance instead of calling it corrupt.
+    """
+    mb = tmp_path / "mb"
+    (mb / "maskbench").mkdir(parents=True)
+    (mb / "maskbench" / "__init__.py").write_text("")
+    (mb / "maskbench" / "runner.py").write_text(ABORT_RUNNER)
+    out_dir = tmp_path / "out"
+    in_dir = tmp_path / "in"
+    out_dir.mkdir()
+    in_dir.mkdir()
+    (in_dir / "x.json").write_text('{"schema": {}, "tests": []}')
+    script = tmp_path / "abort.py"
+    script.write_text(ABORT_SCRIPT)
+    env = dict(os.environ, PYTHONPATH=f"{T8A}:{mb}", PYTHONDONTWRITEBYTECODE="1")
+    env.pop("T8A_SERIALIZER", None)
+    r = subprocess.run([sys.executable, str(script), str(out_dir), str(in_dir)],
+                       cwd=mb, env=env, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stderr
+    got = json.loads(r.stdout)
+    for phase in ("reset", "compute_mask", "commit_token"):
+        marker = got[phase]["marker"]
+        assert marker["pending_file"] == 1
+        assert marker["aborted"] == {"phase": phase, "at": 0,
+                                     "error": "RuntimeError", "instance": 0}
+        assert got[phase]["tests"][0]["aborted"] == marker["aborted"]

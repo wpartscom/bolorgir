@@ -1,0 +1,56 @@
+ok   control passes: exit 0, gate 'PASS'
+ok   control compares every mask: maskbench_states = 410 (old sampler: 401)
+FAIL control runs every terminal check: terminals = None, complete = None
+FAIL control has zero errors: fill=0 terminal_fill=None input=None completion=None validation=0
+ok   control publishes a trace digest: trace_sha256 = '91879e0f6e7d3209b5954f591e461f00f78668e479ebbc4c843e3f39768bb4fa'
+ok   mask-401 fails: exit = GATE FAILURE: maskbench gate failed (mask x1; 410 state(s), 1 instance(s) compared)
+ok   mask-401 names the fault: message = GATE FAILURE: maskbench gate failed (mask x1; 410 state(s), 1 instance(s) compared)
+ok   mask-401 leaves evidence: artifacts = ['gate-failure-maskbench-1792859468488.json']
+ok   mask-401 writes no success JSON: json written = False
+ok   status-409 fails: exit = GATE FAILURE: maskbench gate failed (fill x1, instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)
+ok   status-409 names the fault: message = GATE FAILURE: maskbench gate failed (fill x1, instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)
+ok   status-409 leaves evidence: artifacts = ['gate-failure-maskbench-1792859468490.json']
+ok   status-409 writes no success JSON: json written = False
+ok   accept-409 fails: exit = GATE FAILURE: maskbench gate failed (instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)
+FAIL accept-409 names the fault: message = GATE FAILURE: maskbench gate failed (instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)
+ok   accept-409 leaves evidence: artifacts = ['gate-failure-maskbench-1792859468493.json']
+ok   accept-409 writes no success JSON: json written = False
+ok   fill-both-409 fails: exit = GATE FAILURE: maskbench gate failed (fill x2, validation x2; 410 state(s), 1 instance(s) compared)
+ok   fill-both-409 names the fault: message = GATE FAILURE: maskbench gate failed (fill x2, validation x2; 410 state(s), 1 instance(s) compared)
+ok   fill-both-409 leaves evidence: artifacts = ['gate-failure-maskbench-1792859468495.json']
+ok   fill-both-409 writes no success JSON: json written = False
+FAIL cannot-end fails: exit = 0
+FAIL cannot-end names the fault: message = 0
+FAIL cannot-end leaves evidence: artifacts = []
+FAIL cannot-end writes no success JSON: json written = True
+FAIL tail-mask fails: exit = 0
+FAIL tail-mask names the fault: message = 0
+FAIL tail-mask leaves evidence: artifacts = []
+FAIL tail-mask writes no success JSON: json written = True
+FAIL finish-error-both fails: exit = 0
+FAIL finish-error-both names the fault: message = 0
+FAIL finish-error-both leaves evidence: artifacts = []
+FAIL finish-error-both writes no success JSON: json written = True
+FAIL cannot-end-both fails: exit = 0
+FAIL cannot-end-both names the fault: message = 0
+FAIL cannot-end-both leaves evidence: artifacts = []
+FAIL cannot-end-both writes no success JSON: json written = True
+FAIL incomplete number is a correct rejection: exit 'GATE FAILURE: maskbench gate failed (validation x2; 1 state(s), 1 instance(s) compared)', gate None
+FAIL incomplete number has no false validation error: validation=None completion=None
+FAIL incomplete number ran its terminal check: states=None terminals=None complete=None
+FAIL incomplete number leaves no failure artifact: artifacts = ['gate-failure-maskbench-1792859468504.json']
+ok   warm control acceptance: exit 0, pass True, problems []
+ok   warm control matrix verdict: ok run_id = 'warm-control' (expected 'warm-control'); ok status = 'OK' (expected 'OK'); ok warm_acceptance.pass = True; ok warm_acceptance.protocol.repeats = 5; ok warm_acceptance.protocol.observations = 2000; ok warm_acceptance.protocol.threshold_ns = 1300; ok warm_acceptance.protocol.cpu = 0; ok warm_acceptance.conditions.ok = True; ok warm_acceptance.conditions.limits.max_load1 = 1.0; ok warm_acceptance.conditions.limits.max_cpu_pressure_avg10 = 1.0; ok environment.lib_sha256 = 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' (expected 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609')
+FAIL warm missing-load acceptance: exit 0, pass True, problems []
+FAIL warm missing-load matrix verdict: ok run_id = 'warm-missing-load' (expected 'warm-missing-load'); ok status = 'OK' (expected 'OK'); ok warm_acceptance.pass = True; ok warm_acceptance.protocol.repeats = 5; ok warm_acceptance.protocol.observations = 2000; ok warm_acceptance.protocol.threshold_ns = 1300; ok warm_acceptance.protocol.cpu = 0; ok warm_acceptance.conditions.ok = True; ok warm_acceptance.conditions.limits.max_load1 = 1.0; ok warm_acceptance.conditions.limits.max_cpu_pressure_avg10 = 1.0; ok environment.lib_sha256 = 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' (expected 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609')
+FAIL warm end-affinity acceptance: exit 0, pass True, problems []
+FAIL warm end-affinity matrix verdict: ok run_id = 'warm-end-affinity' (expected 'warm-end-affinity'); ok status = 'OK' (expected 'OK'); ok warm_acceptance.pass = True; ok warm_acceptance.protocol.repeats = 5; ok warm_acceptance.protocol.observations = 2000; ok warm_acceptance.protocol.threshold_ns = 1300; ok warm_acceptance.protocol.cpu = 0; ok warm_acceptance.conditions.ok = True; ok warm_acceptance.conditions.limits.max_load1 = 1.0; ok warm_acceptance.conditions.limits.max_cpu_pressure_avg10 = 1.0; ok environment.lib_sha256 = 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' (expected 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609')
+ok   SKIP is rejected: status = 'fail'
+ok   SKIP reason is recorded: skipped = 'synthetic missing dependency'
+ok   stale JSON is not accepted: verdict = "FAIL run_id = None (expected 'bench-gate-40512-1792859468522939612'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; FAIL gate.maskbench_fill_errors: KeyError: 'maskbench_fill_errors'; FAIL gate.maskbench_validation_errors: KeyError: 'maskbench_validation_errors'"
+ok   stale JSON is left untouched: sha256 before/after = 62b1a8c762ad/62b1a8c762ad
+ok   stale JSON fails the run id check: checks = ['gate.maskbench_fill_errors', 'gate.maskbench_states', 'gate.maskbench_validation_errors', 'run_id', 'status']
+ok   matching run id passes: ok run_id = 'fresh-1' (expected 'fresh-1'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; ok gate.maskbench_fill_errors = 0; ok gate.maskbench_validation_errors = 0
+ok   different run id fails: FAIL run_id = 'fresh-1' (expected 'fresh-2'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; ok gate.maskbench_fill_errors = 0; ok gate.maskbench_validation_errors = 0
+
+FAIL: 27/54 checks pass; report /tmp/negative-control-711ad70/selfcheck.json

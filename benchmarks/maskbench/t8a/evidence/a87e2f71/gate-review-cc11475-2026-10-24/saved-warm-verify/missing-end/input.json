@@ -1,0 +1,4567 @@
+{
+ "status": "OK",
+ "case": "adr0007_mask_fast_path",
+ "run_id": "warm-acceptance-37564-1792859274280580845",
+ "lib": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+ "environment": {
+  "started_utc": "2026-10-24T16:27:54Z",
+  "finished_utc": "2026-10-24T16:29:18Z",
+  "kernel": "6.8.0-138-generic",
+  "python": "3.12.15",
+  "core_version": "0.2.0rc1",
+  "lib_path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+  "lib_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+  "loaded_lib": {
+   "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+   "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+  },
+  "cpu": {
+   "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+   "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+   ],
+   "governors": {
+    "0": "powersave",
+    "1": "powersave",
+    "2": "powersave",
+    "3": "powersave",
+    "4": "powersave",
+    "5": "powersave",
+    "6": "powersave",
+    "7": "powersave",
+    "8": "powersave",
+    "9": "powersave",
+    "10": "powersave",
+    "11": "powersave",
+    "12": "powersave",
+    "13": "powersave",
+    "14": "powersave",
+    "15": "powersave",
+    "16": "powersave",
+    "17": "powersave",
+    "18": "powersave",
+    "19": "powersave"
+   },
+   "cur_freq_khz": {
+    "0": 800000,
+    "1": 800965,
+    "2": 801066,
+    "3": 798929,
+    "4": 801310,
+    "5": 800712,
+    "6": 800000,
+    "7": 801052,
+    "8": 800991,
+    "9": 800892,
+    "10": 4219098,
+    "11": 4500000,
+    "12": 1759661,
+    "13": 2967930,
+    "14": 4133117,
+    "15": 800000,
+    "16": 801711,
+    "17": 800498,
+    "18": 797666,
+    "19": 800952
+   },
+   "max_freq_khz": {
+    "0": 4800000,
+    "1": 4800000,
+    "2": 4800000,
+    "3": 4800000,
+    "4": 4800000,
+    "5": 4800000,
+    "6": 4800000,
+    "7": 4800000,
+    "8": 4900000,
+    "9": 4900000,
+    "10": 4900000,
+    "11": 4900000,
+    "12": 4800000,
+    "13": 4800000,
+    "14": 4800000,
+    "15": 4800000,
+    "16": 3600000,
+    "17": 3600000,
+    "18": 3600000,
+    "19": 3600000
+   }
+  },
+  "load": {
+   "loadavg": [
+    1.39892578125,
+    1.015625,
+    0.89404296875
+   ],
+   "procs_running": 1,
+   "cpu_pressure_some": {
+    "avg10": 0.0,
+    "avg60": 0.01,
+    "avg300": 0.0
+   },
+   "cpu_pressure_full": {
+    "avg10": 0.0,
+    "avg60": 0.0,
+    "avg300": 0.0
+   }
+  }
+ },
+ "vocab_size": 128256,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS"
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 1,
+      "min": 16250746,
+      "p50": 16250746,
+      "p95": 16250746,
+      "p99": 16250746,
+      "max": 16250746,
+      "mean": 16250746.0
+     },
+     "core_ns": {
+      "count": 1,
+      "min": 16043044,
+      "p50": 16043044,
+      "p95": 16043044,
+      "p99": 16043044,
+      "max": 16043044,
+      "mean": 16043044.0
+     },
+     "work_ops": {
+      "count": 1,
+      "min": 383647,
+      "p50": 383647,
+      "p95": 383647,
+      "p99": 383647,
+      "max": 383647,
+      "mean": 383647.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 1,
+      "min": 4398332,
+      "p50": 4398332,
+      "p95": 4398332,
+      "p99": 4398332,
+      "max": 4398332,
+      "mean": 4398332.0
+     },
+     "core_ns": {
+      "count": 1,
+      "min": 4180801,
+      "p50": 4180801,
+      "p95": 4180801,
+      "p99": 4180801,
+      "max": 4180801,
+      "mean": 4180801.0
+     },
+     "work_ops": {
+      "count": 1,
+      "min": 20744,
+      "p50": 20744,
+      "p95": 20744,
+      "p99": 20744,
+      "max": 20744,
+      "mean": 20744.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1763,
+      "p50": 1944,
+      "p95": 2161,
+      "p99": 2420,
+      "max": 25988,
+      "mean": 2006.862
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1866,
+      "p50": 2072,
+      "p95": 2296,
+      "p99": 2766,
+      "max": 18527,
+      "mean": 2126.787
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+      "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+     },
+     "loaded_end": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+      "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+     },
+     "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+     "conditions": {
+      "start": {
+       "utc": "2026-10-24T16:28:02Z",
+       "cpu_affinity": [
+        7
+       ],
+       "cpu_now": 7,
+       "cpu": {
+        "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+        "affinity": [
+         7
+        ],
+        "governors": {
+         "7": "powersave"
+        },
+        "cur_freq_khz": {
+         "7": 4670361
+        },
+        "max_freq_khz": {
+         "7": 4800000
+        }
+       },
+       "load": {
+        "loadavg": [
+         1.447265625,
+         1.0322265625,
+         0.900390625
+        ],
+        "procs_running": 2,
+        "cpu_pressure_some": {
+         "avg10": 0.0,
+         "avg60": 0.01,
+         "avg300": 0.0
+        },
+        "cpu_pressure_full": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        }
+       },
+       "extension_version": "0.2.0rc1"
+      },
+      "end": {
+       "utc": "2026-10-24T16:28:02Z",
+       "cpu_affinity": [
+        7
+       ],
+       "cpu_now": 7,
+       "cpu": {
+        "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+        "affinity": [
+         7
+        ],
+        "governors": {
+         "7": "powersave"
+        },
+        "cur_freq_khz": {
+         "7": 4700000
+        },
+        "max_freq_khz": {
+         "7": 4800000
+        }
+       },
+       "load": {
+        "loadavg": [
+         1.447265625,
+         1.0322265625,
+         0.900390625
+        ],
+        "procs_running": 1,
+        "cpu_pressure_some": {
+         "avg10": 0.0,
+         "avg60": 0.01,
+         "avg300": 0.0
+        },
+        "cpu_pressure_full": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        }
+       },
+       "extension_version": "0.2.0rc1"
+      }
+     },
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 984,
+      "p50": 1104,
+      "p95": 1182,
+      "p99": 1385,
+      "max": 21340,
+      "mean": 1127.891
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+      "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+     },
+     "loaded_end": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+      "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+     },
+     "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+     "conditions": {
+      "start": {
+       "utc": "2026-10-24T16:28:06Z",
+       "cpu_affinity": [
+        7
+       ],
+       "cpu_now": 7,
+       "cpu": {
+        "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+        "affinity": [
+         7
+        ],
+        "governors": {
+         "7": "powersave"
+        },
+        "cur_freq_khz": {
+         "7": 4699952
+        },
+        "max_freq_khz": {
+         "7": 4800000
+        }
+       },
+       "load": {
+        "loadavg": [
+         1.4111328125,
+         1.03125,
+         0.9013671875
+        ],
+        "procs_running": 1,
+        "cpu_pressure_some": {
+         "avg10": 0.0,
+         "avg60": 0.01,
+         "avg300": 0.0
+        },
+        "cpu_pressure_full": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        }
+       },
+       "extension_version": "0.2.0rc1"
+      },
+      "end": {
+       "utc": "2026-10-24T16:28:06Z",
+       "cpu_affinity": [
+        7
+       ],
+       "cpu_now": 7,
+       "cpu": {
+        "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+        "affinity": [
+         7
+        ],
+        "governors": {
+         "7": "powersave"
+        },
+        "cur_freq_khz": {
+         "7": 4700000
+        },
+        "max_freq_khz": {
+         "7": 4800000
+        }
+       },
+       "load": {
+        "loadavg": [
+         1.4111328125,
+         1.03125,
+         0.9013671875
+        ],
+        "procs_running": 1,
+        "cpu_pressure_some": {
+         "avg10": 0.0,
+         "avg60": 0.01,
+         "avg300": 0.0
+        },
+        "cpu_pressure_full": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        }
+       },
+       "extension_version": "0.2.0rc1"
+      }
+     },
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1059,
+      "p50": 1155,
+      "p95": 1241,
+      "p99": 1569,
+      "max": 18297,
+      "mean": 1190.5225
+     }
+    }
+   },
+   "warm_ext_repeats": [
+    {
+     "round": 1,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:02Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4670361
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.447265625,
+          1.0322265625,
+          0.900390625
+         ],
+         "procs_running": 2,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.01,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:02Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.447265625,
+          1.0322265625,
+          0.900390625
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.01,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 984,
+       "p50": 1104,
+       "p95": 1182,
+       "p99": 1385,
+       "max": 21340,
+       "mean": 1127.891
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:06Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4699952
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.4111328125,
+          1.03125,
+          0.9013671875
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.01,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:06Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.4111328125,
+          1.03125,
+          0.9013671875
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.01,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1059,
+       "p50": 1155,
+       "p95": 1241,
+       "p99": 1569,
+       "max": 18297,
+       "mean": 1190.5225
+      }
+     }
+    },
+    {
+     "round": 2,
+     "order": "on,off",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:13Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.34765625,
+          1.029296875,
+          0.9033203125
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:14Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.34765625,
+          1.029296875,
+          0.9033203125
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1006,
+       "p50": 1108,
+       "p95": 1207,
+       "p99": 1449,
+       "max": 17878,
+       "mean": 1149.033
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:10Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.3779296875,
+          1.0302734375,
+          0.90234375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.01,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:10Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4679117
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.3779296875,
+          1.0302734375,
+          0.90234375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.01,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1109,
+       "p50": 1187,
+       "p95": 1259,
+       "p99": 1383,
+       "max": 20259,
+       "mean": 1218.288
+      }
+     }
+    },
+    {
+     "round": 3,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:17Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.34765625,
+          1.029296875,
+          0.9033203125
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:18Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4645845
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.34765625,
+          1.029296875,
+          0.9033203125
+         ],
+         "procs_running": 3,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 907,
+       "p50": 1030,
+       "p95": 1122,
+       "p99": 1305,
+       "max": 21957,
+       "mean": 1058.584
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:21Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4652139
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.3193359375,
+          1.02880859375,
+          0.904296875
+         ],
+         "procs_running": 3,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:22Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.3193359375,
+          1.02880859375,
+          0.904296875
+         ],
+         "procs_running": 3,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1067,
+       "p50": 1179,
+       "p95": 1272,
+       "p99": 1507,
+       "max": 19219,
+       "mean": 1214.6535
+      }
+     }
+    },
+    {
+     "round": 4,
+     "order": "on,off",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:29Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.35009765625,
+          1.044921875,
+          0.91162109375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:29Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4687634
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.35009765625,
+          1.044921875,
+          0.91162109375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 974,
+       "p50": 1081,
+       "p95": 1191,
+       "p99": 1622,
+       "max": 27711,
+       "mean": 1149.0625
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:25Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4699952
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.29345703125,
+          1.0283203125,
+          0.9052734375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:25Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4800000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.29345703125,
+          1.0283203125,
+          0.9052734375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1003,
+       "p50": 1159,
+       "p95": 1286,
+       "p99": 1594,
+       "max": 19596,
+       "mean": 1188.3635
+      }
+     }
+    },
+    {
+     "round": 5,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:33Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4672411
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.35009765625,
+          1.044921875,
+          0.91162109375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:33Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4659357
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.32177734375,
+          1.0439453125,
+          0.912109375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1096,
+       "p50": 1220,
+       "p95": 1296,
+       "p99": 1413,
+       "max": 18481,
+       "mean": 1238.826
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:37Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.32177734375,
+          1.0439453125,
+          0.912109375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:37Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.32177734375,
+          1.0439453125,
+          0.912109375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1151,
+       "p50": 1236,
+       "p95": 1302,
+       "p99": 1451,
+       "max": 18697,
+       "mean": 1267.498
+      }
+     }
+    }
+   ]
+  },
+  "permissive_string_in_object": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 1,
+      "min": 17022905,
+      "p50": 17022905,
+      "p95": 17022905,
+      "p99": 17022905,
+      "max": 17022905,
+      "mean": 17022905.0
+     },
+     "core_ns": {
+      "count": 1,
+      "min": 16812890,
+      "p50": 16812890,
+      "p95": 16812890,
+      "p99": 16812890,
+      "max": 16812890,
+      "mean": 16812890.0
+     },
+     "work_ops": {
+      "count": 1,
+      "min": 383662,
+      "p50": 383662,
+      "p95": 383662,
+      "p99": 383662,
+      "max": 383662,
+      "mean": 383662.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 1,
+      "min": 4893189,
+      "p50": 4893189,
+      "p95": 4893189,
+      "p99": 4893189,
+      "max": 4893189,
+      "mean": 4893189.0
+     },
+     "core_ns": {
+      "count": 1,
+      "min": 4696244,
+      "p50": 4696244,
+      "p95": 4696244,
+      "p99": 4696244,
+      "max": 4696244,
+      "mean": 4696244.0
+     },
+     "work_ops": {
+      "count": 1,
+      "min": 20759,
+      "p50": 20759,
+      "p95": 20759,
+      "p99": 20759,
+      "max": 20759,
+      "mean": 20759.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1985,
+      "p50": 2180,
+      "p95": 2668,
+      "p99": 4611,
+      "max": 27202,
+      "mean": 2321.395
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1935,
+      "p50": 2138,
+      "p95": 2549,
+      "p99": 4217,
+      "max": 22329,
+      "mean": 2250.368
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+      "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+     },
+     "loaded_end": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+      "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+     },
+     "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+     "conditions": {
+      "start": {
+       "utc": "2026-10-24T16:28:42Z",
+       "cpu_affinity": [
+        7
+       ],
+       "cpu_now": 7,
+       "cpu": {
+        "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+        "affinity": [
+         7
+        ],
+        "governors": {
+         "7": "powersave"
+        },
+        "cur_freq_khz": {
+         "7": 4748735
+        },
+        "max_freq_khz": {
+         "7": 4800000
+        }
+       },
+       "load": {
+        "loadavg": [
+         1.37646484375,
+         1.06005859375,
+         0.91796875
+        ],
+        "procs_running": 4,
+        "cpu_pressure_some": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        },
+        "cpu_pressure_full": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        }
+       },
+       "extension_version": "0.2.0rc1"
+      },
+      "end": {
+       "utc": "2026-10-24T16:28:43Z",
+       "cpu_affinity": [
+        7
+       ],
+       "cpu_now": 7,
+       "cpu": {
+        "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+        "affinity": [
+         7
+        ],
+        "governors": {
+         "7": "powersave"
+        },
+        "cur_freq_khz": {
+         "7": 4680877
+        },
+        "max_freq_khz": {
+         "7": 4800000
+        }
+       },
+       "load": {
+        "loadavg": [
+         1.37646484375,
+         1.06005859375,
+         0.91796875
+        ],
+        "procs_running": 1,
+        "cpu_pressure_some": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        },
+        "cpu_pressure_full": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        }
+       },
+       "extension_version": "0.2.0rc1"
+      }
+     },
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1060,
+      "p50": 1148,
+      "p95": 1236,
+      "p99": 1377,
+      "max": 33690,
+      "mean": 1185.583
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+      "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+     },
+     "loaded_end": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+      "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+     },
+     "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+     "conditions": {
+      "start": {
+       "utc": "2026-10-24T16:28:46Z",
+       "cpu_affinity": [
+        7
+       ],
+       "cpu_now": 7,
+       "cpu": {
+        "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+        "affinity": [
+         7
+        ],
+        "governors": {
+         "7": "powersave"
+        },
+        "cur_freq_khz": {
+         "7": 4680484
+        },
+        "max_freq_khz": {
+         "7": 4800000
+        }
+       },
+       "load": {
+        "loadavg": [
+         1.34619140625,
+         1.05859375,
+         0.91845703125
+        ],
+        "procs_running": 1,
+        "cpu_pressure_some": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        },
+        "cpu_pressure_full": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        }
+       },
+       "extension_version": "0.2.0rc1"
+      },
+      "end": {
+       "utc": "2026-10-24T16:28:46Z",
+       "cpu_affinity": [
+        7
+       ],
+       "cpu_now": 7,
+       "cpu": {
+        "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+        "affinity": [
+         7
+        ],
+        "governors": {
+         "7": "powersave"
+        },
+        "cur_freq_khz": {
+         "7": 4700000
+        },
+        "max_freq_khz": {
+         "7": 4800000
+        }
+       },
+       "load": {
+        "loadavg": [
+         1.34619140625,
+         1.05859375,
+         0.91845703125
+        ],
+        "procs_running": 2,
+        "cpu_pressure_some": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        },
+        "cpu_pressure_full": {
+         "avg10": 0.0,
+         "avg60": 0.0,
+         "avg300": 0.0
+        }
+       },
+       "extension_version": "0.2.0rc1"
+      }
+     },
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1001,
+      "p50": 1103,
+      "p95": 1189,
+      "p99": 1355,
+      "max": 19110,
+      "mean": 1126.723
+     }
+    }
+   },
+   "warm_ext_repeats": [
+    {
+     "round": 1,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:42Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4748735
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.37646484375,
+          1.06005859375,
+          0.91796875
+         ],
+         "procs_running": 4,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:43Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4680877
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.37646484375,
+          1.06005859375,
+          0.91796875
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1060,
+       "p50": 1148,
+       "p95": 1236,
+       "p99": 1377,
+       "max": 33690,
+       "mean": 1185.583
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:46Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4680484
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.34619140625,
+          1.05859375,
+          0.91845703125
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:46Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.34619140625,
+          1.05859375,
+          0.91845703125
+         ],
+         "procs_running": 2,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1001,
+       "p50": 1103,
+       "p95": 1189,
+       "p99": 1355,
+       "max": 19110,
+       "mean": 1126.723
+      }
+     }
+    },
+    {
+     "round": 2,
+     "order": "on,off",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:54Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700047
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.29248046875,
+          1.056640625,
+          0.91943359375
+         ],
+         "procs_running": 4,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:54Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4639260
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.29248046875,
+          1.056640625,
+          0.91943359375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1037,
+       "p50": 1136,
+       "p95": 1217,
+       "p99": 1371,
+       "max": 34145,
+       "mean": 1170.491
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:50Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4681834
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.318359375,
+          1.0576171875,
+          0.9189453125
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:50Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.318359375,
+          1.0576171875,
+          0.9189453125
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1044,
+       "p50": 1231,
+       "p95": 1334,
+       "p99": 1624,
+       "max": 28765,
+       "mean": 1264.101
+      }
+     }
+    },
+    {
+     "round": 3,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:28:58Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.29248046875,
+          1.056640625,
+          0.91943359375
+         ],
+         "procs_running": 4,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:28:58Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.29248046875,
+          1.056640625,
+          0.91943359375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 946,
+       "p50": 1065,
+       "p95": 1145,
+       "p99": 1341,
+       "max": 22092,
+       "mean": 1101.204
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:29:02Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4800000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.26904296875,
+          1.0556640625,
+          0.919921875
+         ],
+         "procs_running": 2,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:29:02Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4800000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.26904296875,
+          1.0556640625,
+          0.919921875
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1101,
+       "p50": 1220,
+       "p95": 1320,
+       "p99": 1481,
+       "max": 34331,
+       "mean": 1254.696
+      }
+     }
+    },
+    {
+     "round": 4,
+     "order": "on,off",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:29:09Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4799951
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.3818359375,
+          1.08740234375,
+          0.931640625
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:29:10Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4566319
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.3818359375,
+          1.08740234375,
+          0.931640625
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 969,
+       "p50": 1068,
+       "p95": 1222,
+       "p99": 1606,
+       "max": 19629,
+       "mean": 1111.405
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:29:06Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4699952
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.32763671875,
+          1.07177734375,
+          0.92578125
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:29:06Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4681828
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.32763671875,
+          1.07177734375,
+          0.92578125
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 1003,
+       "p50": 1137,
+       "p95": 1246,
+       "p99": 1425,
+       "max": 21066,
+       "mean": 1167.2285
+      }
+     }
+    },
+    {
+     "round": 5,
+     "order": "off,on",
+     "off": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:29:13Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.431640625,
+          1.10302734375,
+          0.9375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:29:14Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4626850
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.431640625,
+          1.10302734375,
+          0.9375
+         ],
+         "procs_running": 2,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 953,
+       "p50": 1073,
+       "p95": 1150,
+       "p99": 1460,
+       "max": 26402,
+       "mean": 1108.9815
+      }
+     },
+     "on": {
+      "observations": 2000,
+      "cache_hits": 2000,
+      "all_hits": true,
+      "loaded": {
+       "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+       "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+      },
+      "expected_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+      "conditions": {
+       "start": {
+        "utc": "2026-10-24T16:29:17Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.431640625,
+          1.10302734375,
+          0.9375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       },
+       "end": {
+        "utc": "2026-10-24T16:29:18Z",
+        "cpu_affinity": [
+         7
+        ],
+        "cpu_now": 7,
+        "cpu": {
+         "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+         "affinity": [
+          7
+         ],
+         "governors": {
+          "7": "powersave"
+         },
+         "cur_freq_khz": {
+          "7": 4700000
+         },
+         "max_freq_khz": {
+          "7": 4800000
+         }
+        },
+        "load": {
+         "loadavg": [
+          1.431640625,
+          1.10302734375,
+          0.9375
+         ],
+         "procs_running": 1,
+         "cpu_pressure_some": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         },
+         "cpu_pressure_full": {
+          "avg10": 0.0,
+          "avg60": 0.0,
+          "avg300": 0.0
+         }
+        },
+        "extension_version": "0.2.0rc1"
+       }
+      },
+      "fill_wall_ns": {
+       "count": 2000,
+       "min": 947,
+       "p50": 1052,
+       "p95": 1193,
+       "p99": 1359,
+       "max": 26710,
+       "mean": 1085.027
+      }
+     }
+    }
+   ]
+  }
+ },
+ "warm_acceptance": {
+  "threshold_ns": 1300,
+  "protocol": {
+   "repeats": 5,
+   "observations": 2000,
+   "threshold_ns": 1300,
+   "probes": [
+    "permissive_string_content",
+    "permissive_string_in_object"
+   ],
+   "on_legs": 10,
+   "cpu": 7,
+   "lib_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+  },
+  "on_legs": 10,
+  "on_means_ns": [
+   1190.5225,
+   1218.288,
+   1214.6535,
+   1188.3635,
+   1267.498,
+   1126.723,
+   1264.101,
+   1254.696,
+   1167.2285,
+   1085.027
+  ],
+  "on_p50_ns": [
+   1155,
+   1187,
+   1179,
+   1159,
+   1236,
+   1103,
+   1231,
+   1220,
+   1137,
+   1052
+  ],
+  "pass": true,
+  "problems": [],
+  "conditions": {
+   "requested_cpu": 7,
+   "recorded": true,
+   "complete": true,
+   "limits": {
+    "max_load1": 2.0,
+    "max_cpu_pressure_avg10": 0.5
+   },
+   "parent": {
+    "utc": "2026-10-24T16:29:18Z",
+    "cpu_affinity": [
+     0,
+     1,
+     2,
+     3,
+     4,
+     5,
+     6,
+     7,
+     8,
+     9,
+     10,
+     11,
+     12,
+     13,
+     14,
+     15,
+     16,
+     17,
+     18,
+     19
+    ],
+    "cpu_now": 12,
+    "cpu": {
+     "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+     "affinity": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19
+     ],
+     "governors": {
+      "0": "powersave",
+      "1": "powersave",
+      "2": "powersave",
+      "3": "powersave",
+      "4": "powersave",
+      "5": "powersave",
+      "6": "powersave",
+      "7": "powersave",
+      "8": "powersave",
+      "9": "powersave",
+      "10": "powersave",
+      "11": "powersave",
+      "12": "powersave",
+      "13": "powersave",
+      "14": "powersave",
+      "15": "powersave",
+      "16": "powersave",
+      "17": "powersave",
+      "18": "powersave",
+      "19": "powersave"
+     },
+     "cur_freq_khz": {
+      "0": 799421,
+      "1": 799224,
+      "2": 2705866,
+      "3": 800000,
+      "4": 800000,
+      "5": 800000,
+      "6": 4607378,
+      "7": 1757266,
+      "8": 800000,
+      "9": 800000,
+      "10": 800000,
+      "11": 4226883,
+      "12": 4620087,
+      "13": 800000,
+      "14": 800354,
+      "15": 800000,
+      "16": 800000,
+      "17": 800000,
+      "18": 2316569,
+      "19": 800000
+     },
+     "max_freq_khz": {
+      "0": 4800000,
+      "1": 4800000,
+      "2": 4800000,
+      "3": 4800000,
+      "4": 4800000,
+      "5": 4800000,
+      "6": 4800000,
+      "7": 4800000,
+      "8": 4900000,
+      "9": 4900000,
+      "10": 4900000,
+      "11": 4900000,
+      "12": 4800000,
+      "13": 4800000,
+      "14": 4800000,
+      "15": 4800000,
+      "16": 3600000,
+      "17": 3600000,
+      "18": 3600000,
+      "19": 3600000
+     }
+    },
+    "load": {
+     "loadavg": [
+      1.431640625,
+      1.10302734375,
+      0.9375
+     ],
+     "procs_running": 1,
+     "cpu_pressure_some": {
+      "avg10": 0.0,
+      "avg60": 0.0,
+      "avg300": 0.0
+     },
+     "cpu_pressure_full": {
+      "avg10": 0.0,
+      "avg60": 0.0,
+      "avg300": 0.0
+     }
+    }
+   },
+   "legs": [
+    {
+     "probe": "permissive_string_content",
+     "round": 1,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4670361
+     },
+     "load_start": {
+      "loadavg": [
+       1.447265625,
+       1.0322265625,
+       0.900390625
+      ],
+      "procs_running": 2,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.01,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.447265625,
+       1.0322265625,
+       0.900390625
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.01,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 1,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4699952
+     },
+     "load_start": {
+      "loadavg": [
+       1.4111328125,
+       1.03125,
+       0.9013671875
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.01,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.4111328125,
+       1.03125,
+       0.9013671875
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.01,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 2,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4700000
+     },
+     "load_start": {
+      "loadavg": [
+       1.34765625,
+       1.029296875,
+       0.9033203125
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.34765625,
+       1.029296875,
+       0.9033203125
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 2,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4700000
+     },
+     "load_start": {
+      "loadavg": [
+       1.3779296875,
+       1.0302734375,
+       0.90234375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.01,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.3779296875,
+       1.0302734375,
+       0.90234375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.01,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 3,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4700000
+     },
+     "load_start": {
+      "loadavg": [
+       1.34765625,
+       1.029296875,
+       0.9033203125
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.34765625,
+       1.029296875,
+       0.9033203125
+      ],
+      "procs_running": 3,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 3,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4652139
+     },
+     "load_start": {
+      "loadavg": [
+       1.3193359375,
+       1.02880859375,
+       0.904296875
+      ],
+      "procs_running": 3,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.3193359375,
+       1.02880859375,
+       0.904296875
+      ],
+      "procs_running": 3,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 4,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4700000
+     },
+     "load_start": {
+      "loadavg": [
+       1.35009765625,
+       1.044921875,
+       0.91162109375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.35009765625,
+       1.044921875,
+       0.91162109375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 4,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4699952
+     },
+     "load_start": {
+      "loadavg": [
+       1.29345703125,
+       1.0283203125,
+       0.9052734375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.29345703125,
+       1.0283203125,
+       0.9052734375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 5,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4672411
+     },
+     "load_start": {
+      "loadavg": [
+       1.35009765625,
+       1.044921875,
+       0.91162109375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.32177734375,
+       1.0439453125,
+       0.912109375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_content",
+     "round": 5,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4700000
+     },
+     "load_start": {
+      "loadavg": [
+       1.32177734375,
+       1.0439453125,
+       0.912109375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.32177734375,
+       1.0439453125,
+       0.912109375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 1,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4748735
+     },
+     "load_start": {
+      "loadavg": [
+       1.37646484375,
+       1.06005859375,
+       0.91796875
+      ],
+      "procs_running": 4,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.37646484375,
+       1.06005859375,
+       0.91796875
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 1,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4680484
+     },
+     "load_start": {
+      "loadavg": [
+       1.34619140625,
+       1.05859375,
+       0.91845703125
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.34619140625,
+       1.05859375,
+       0.91845703125
+      ],
+      "procs_running": 2,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 2,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4700047
+     },
+     "load_start": {
+      "loadavg": [
+       1.29248046875,
+       1.056640625,
+       0.91943359375
+      ],
+      "procs_running": 4,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.29248046875,
+       1.056640625,
+       0.91943359375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 2,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4681834
+     },
+     "load_start": {
+      "loadavg": [
+       1.318359375,
+       1.0576171875,
+       0.9189453125
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.318359375,
+       1.0576171875,
+       0.9189453125
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 3,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4700000
+     },
+     "load_start": {
+      "loadavg": [
+       1.29248046875,
+       1.056640625,
+       0.91943359375
+      ],
+      "procs_running": 4,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.29248046875,
+       1.056640625,
+       0.91943359375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 3,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4800000
+     },
+     "load_start": {
+      "loadavg": [
+       1.26904296875,
+       1.0556640625,
+       0.919921875
+      ],
+      "procs_running": 2,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.26904296875,
+       1.0556640625,
+       0.919921875
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 4,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4799951
+     },
+     "load_start": {
+      "loadavg": [
+       1.3818359375,
+       1.08740234375,
+       0.931640625
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.3818359375,
+       1.08740234375,
+       0.931640625
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 4,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4699952
+     },
+     "load_start": {
+      "loadavg": [
+       1.32763671875,
+       1.07177734375,
+       0.92578125
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.32763671875,
+       1.07177734375,
+       0.92578125
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 5,
+     "leg": "off",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4700000
+     },
+     "load_start": {
+      "loadavg": [
+       1.431640625,
+       1.10302734375,
+       0.9375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.431640625,
+       1.10302734375,
+       0.9375
+      ],
+      "procs_running": 2,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    },
+    {
+     "probe": "permissive_string_in_object",
+     "round": 5,
+     "leg": "on",
+     "cpu_affinity_start": [
+      7
+     ],
+     "cpu_affinity_end": [
+      7
+     ],
+     "cpu_now_start": 7,
+     "cpu_now_end": 7,
+     "extension_version_start": "0.2.0rc1",
+     "extension_version_end": "0.2.0rc1",
+     "governors": {
+      "7": "powersave"
+     },
+     "cur_freq_khz": {
+      "7": 4700000
+     },
+     "load_start": {
+      "loadavg": [
+       1.431640625,
+       1.10302734375,
+       0.9375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "load_end": {
+      "loadavg": [
+       1.431640625,
+       1.10302734375,
+       0.9375
+      ],
+      "procs_running": 1,
+      "cpu_pressure_some": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      },
+      "cpu_pressure_full": {
+       "avg10": 0.0,
+       "avg60": 0.0,
+       "avg300": 0.0
+      }
+     },
+     "loaded_end_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+    }
+   ],
+   "ok": true,
+   "problems": []
+  },
+  "rows": [
+   {
+    "probe": "permissive_string_content",
+    "round": 1,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1127.891,
+    "p50_ns": 1104,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 1,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1190.5225,
+    "p50_ns": 1155,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 2,
+    "order": "on,off",
+    "leg": "off",
+    "mean_ns": 1149.033,
+    "p50_ns": 1108,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 2,
+    "order": "on,off",
+    "leg": "on",
+    "mean_ns": 1218.288,
+    "p50_ns": 1187,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 3,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1058.584,
+    "p50_ns": 1030,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 3,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1214.6535,
+    "p50_ns": 1179,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 4,
+    "order": "on,off",
+    "leg": "off",
+    "mean_ns": 1149.0625,
+    "p50_ns": 1081,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 4,
+    "order": "on,off",
+    "leg": "on",
+    "mean_ns": 1188.3635,
+    "p50_ns": 1159,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 5,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1238.826,
+    "p50_ns": 1220,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_content",
+    "round": 5,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1267.498,
+    "p50_ns": 1236,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 1,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1185.583,
+    "p50_ns": 1148,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 1,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1126.723,
+    "p50_ns": 1103,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 2,
+    "order": "on,off",
+    "leg": "off",
+    "mean_ns": 1170.491,
+    "p50_ns": 1136,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 2,
+    "order": "on,off",
+    "leg": "on",
+    "mean_ns": 1264.101,
+    "p50_ns": 1231,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 3,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1101.204,
+    "p50_ns": 1065,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 3,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1254.696,
+    "p50_ns": 1220,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 4,
+    "order": "on,off",
+    "leg": "off",
+    "mean_ns": 1111.405,
+    "p50_ns": 1068,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 4,
+    "order": "on,off",
+    "leg": "on",
+    "mean_ns": 1167.2285,
+    "p50_ns": 1137,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 5,
+    "order": "off,on",
+    "leg": "off",
+    "mean_ns": 1108.9815,
+    "p50_ns": 1073,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   },
+   {
+    "probe": "permissive_string_in_object",
+    "round": 5,
+    "order": "off,on",
+    "leg": "on",
+    "mean_ns": 1085.027,
+    "p50_ns": 1052,
+    "hits_ok": true,
+    "hash_ok": true,
+    "cpu_affinity_start": [
+     7
+    ],
+    "cpu_affinity_end": [
+     7
+    ],
+    "cpu_now_start": 7,
+    "cpu_now_end": 7
+   }
+  ]
+ }
+}

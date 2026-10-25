@@ -1,0 +1,66 @@
+{
+ "file": "(all)",
+ "case": {
+  "states_compared": 2,
+  "instances": 1
+ },
+ "divergences": [
+  {
+   "kind": "terminal",
+   "case": [
+    "one",
+    1
+   ],
+   "off": {
+    "tail_status": 0,
+    "can_end": true,
+    "can_end_error": null,
+    "finish": 0,
+    "finish_error": null
+   },
+   "on": {
+    "tail_status": 0,
+    "can_end": true,
+    "can_end_error": null,
+    "finish": 0,
+    "finish_error": null
+   },
+   "off_words": [
+    2
+   ],
+   "on_words": [
+    0
+   ]
+  }
+ ],
+ "truncated": false,
+ "stats_off": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 2,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "terminal_masks": 1,
+  "terminal_fill_errors": 0,
+  "input_errors": 0,
+  "completion_errors": 0,
+  "validation_error": 0
+ },
+ "stats_on": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 2,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "terminal_masks": 1,
+  "terminal_fill_errors": 0,
+  "input_errors": 0,
+  "completion_errors": 0,
+  "validation_error": 0
+ },
+ "trace_sha256": "75c3318188ddfc7efae71e1c4220edfc63aedfc6f7d5af60e8abe9b7e9111c98"
+}

@@ -1,0 +1,211 @@
+{
+ "status": "OK",
+ "case": "adr0007_mask_fast_path",
+ "run_id": null,
+ "lib": "synthetic; no library loaded",
+ "environment": {
+  "started_utc": "2026-10-24T16:46:21Z",
+  "finished_utc": "2026-10-24T16:46:21Z",
+  "kernel": "6.8.0-138-generic",
+  "python": "3.10.12",
+  "core_version": null,
+  "lib_path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/synthetic; no library loaded",
+  "lib_sha256": null,
+  "loaded_lib": {
+   "path": null,
+   "sha256": null
+  },
+  "cpu": {
+   "model": "12th Gen Intel(R) Core(TM) i7-12700F",
+   "affinity": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+   ],
+   "governors": {
+    "0": "powersave",
+    "1": "powersave",
+    "2": "powersave",
+    "3": "powersave",
+    "4": "powersave",
+    "5": "powersave",
+    "6": "powersave",
+    "7": "powersave",
+    "8": "powersave",
+    "9": "powersave",
+    "10": "powersave",
+    "11": "powersave",
+    "12": "powersave",
+    "13": "powersave",
+    "14": "powersave",
+    "15": "powersave",
+    "16": "powersave",
+    "17": "powersave",
+    "18": "powersave",
+    "19": "powersave"
+   },
+   "cur_freq_khz": {
+    "0": 800000,
+    "1": 4293176,
+    "2": 799450,
+    "3": 800000,
+    "4": 800354,
+    "5": 800000,
+    "6": 800000,
+    "7": 800000,
+    "8": 800000,
+    "9": 4584059,
+    "10": 4584062,
+    "11": 800000,
+    "12": 801591,
+    "13": 4533203,
+    "14": 4429906,
+    "15": 800000,
+    "16": 1479292,
+    "17": 3553397,
+    "18": 2471935,
+    "19": 2484466
+   },
+   "max_freq_khz": {
+    "0": 4800000,
+    "1": 4800000,
+    "2": 4800000,
+    "3": 4800000,
+    "4": 4800000,
+    "5": 4800000,
+    "6": 4800000,
+    "7": 4800000,
+    "8": 4900000,
+    "9": 4900000,
+    "10": 4900000,
+    "11": 4900000,
+    "12": 4800000,
+    "13": 4800000,
+    "14": 4800000,
+    "15": 4800000,
+    "16": 3600000,
+    "17": 3600000,
+    "18": 3600000,
+    "19": 3600000
+   }
+  },
+  "load": {
+   "loadavg": [
+    1.11474609375,
+    1.04931640625,
+    1.0166015625
+   ],
+   "procs_running": 2,
+   "cpu_pressure_some": {
+    "avg10": 0.0,
+    "avg60": 0.0,
+    "avg300": 0.0
+   },
+   "cpu_pressure_full": {
+    "avg10": 0.0,
+    "avg60": 0.0,
+    "avg300": 0.0
+   }
+  }
+ },
+ "vocab_size": 2,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS",
+  "maskbench_states": 410,
+  "maskbench_instances": 1,
+  "maskbench_terminal_states": 1,
+  "maskbench_terminal_complete": true,
+  "maskbench_fill_errors": 0,
+  "maskbench_terminal_fill_errors": 0,
+  "maskbench_input_errors": 0,
+  "maskbench_completion_errors": 0,
+  "maskbench_accept_errors": 0,
+  "maskbench_validation_errors": 0,
+  "maskbench_trace_sha256": "64605f5bdcf32d7abee169d06cc65712e16c221079436113a8b946bcbc626353"
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {},
+   "warm": {}
+  },
+  "permissive_string_in_object": {
+   "cold": {},
+   "warm": {}
+  }
+ },
+ "maskbench_slice": {
+  "files": [
+   "case"
+  ],
+  "off": {
+   "tbm_us": {
+    "count": 410,
+    "min": 0.207,
+    "p50": 0.227,
+    "p95": 0.259,
+    "p99": 0.369,
+    "max": 2.041,
+    "mean": 0.23586829268292658
+   },
+   "stats": {
+    "files": 1,
+    "compiled": 1,
+    "compile_error": 0,
+    "instances": 1,
+    "masks": 410,
+    "fill_errors": 0,
+    "accept_errors": 0,
+    "terminal_masks": 1,
+    "terminal_fill_errors": 0,
+    "input_errors": 0,
+    "completion_errors": 0,
+    "validation_error": 0
+   },
+   "trace_sha256": "64605f5bdcf32d7abee169d06cc65712e16c221079436113a8b946bcbc626353"
+  },
+  "on": {
+   "tbm_us": {
+    "count": 410,
+    "min": 0.203,
+    "p50": 0.226,
+    "p95": 0.265,
+    "p99": 0.344,
+    "max": 0.493,
+    "mean": 0.23054146341463386
+   },
+   "stats": {
+    "files": 1,
+    "compiled": 1,
+    "compile_error": 0,
+    "instances": 1,
+    "masks": 410,
+    "fill_errors": 0,
+    "accept_errors": 0,
+    "terminal_masks": 1,
+    "terminal_fill_errors": 0,
+    "input_errors": 0,
+    "completion_errors": 0,
+    "validation_error": 0
+   },
+   "trace_sha256": "64605f5bdcf32d7abee169d06cc65712e16c221079436113a8b946bcbc626353"
+  }
+ }
+}

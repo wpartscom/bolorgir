@@ -336,9 +336,7 @@ def test_rollback_needs_a_depth_and_an_active_session():
         rig.close()
 
 
-# ---------------------------------------------------------------------------
 # BLG_CONSTRAINT_STRUCTURAL_TAG sessions through both backends (ADR-0016)
-# ---------------------------------------------------------------------------
 
 TAG_SPEC = {
     "type": "structural_tag",

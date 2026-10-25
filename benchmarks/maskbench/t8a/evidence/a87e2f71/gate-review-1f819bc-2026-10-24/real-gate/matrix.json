@@ -1,0 +1,107 @@
+{
+ "scale": "quick",
+ "lib": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+ "generated_utc": "2026-10-24T17:00:11Z",
+ "jobs": [
+  {
+   "id": "bench-gate",
+   "requirement": "Decision 4: on/off mask equality gate on the pinned probe states AND the pinned MaskBench slice (mandatory at every scale); timings only after it",
+   "run_id": "bench-gate-64197-1792861198666095812",
+   "status": "pass",
+   "exit": 0,
+   "duration_s": 12.4,
+   "skipped": null,
+   "collected_cases": 0,
+   "tests_passed": 0,
+   "tests_failed": 0,
+   "verdict": {
+    "ok": true,
+    "detail": "ok run_id = 'bench-gate-64197-1792861198666095812' (expected 'bench-gate-64197-1792861198666095812'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 564; ok gate.maskbench_instances = 24; ok gate.maskbench_terminal_states = 24; ok gate.maskbench_terminal_complete = True; ok gate.maskbench_fill_errors = 0; ok gate.maskbench_terminal_fill_errors = 0; ok gate.maskbench_input_errors = 0; ok gate.maskbench_completion_errors = 0; ok gate.maskbench_validation_errors = 0; ok environment.lib_sha256 = 'a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6' (expected 'a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6')",
+    "checks": [
+     {
+      "check": "run_id",
+      "ok": true,
+      "detail": "run_id = 'bench-gate-64197-1792861198666095812' (expected 'bench-gate-64197-1792861198666095812')"
+     },
+     {
+      "check": "status",
+      "ok": true,
+      "detail": "status = 'OK' (expected 'OK')"
+     },
+     {
+      "check": "gate.maskbench_states",
+      "ok": true,
+      "detail": "gate.maskbench_states = 564"
+     },
+     {
+      "check": "gate.maskbench_instances",
+      "ok": true,
+      "detail": "gate.maskbench_instances = 24"
+     },
+     {
+      "check": "gate.maskbench_terminal_states",
+      "ok": true,
+      "detail": "gate.maskbench_terminal_states = 24"
+     },
+     {
+      "check": "gate.maskbench_terminal_complete",
+      "ok": true,
+      "detail": "gate.maskbench_terminal_complete = True"
+     },
+     {
+      "check": "gate.maskbench_fill_errors",
+      "ok": true,
+      "detail": "gate.maskbench_fill_errors = 0"
+     },
+     {
+      "check": "gate.maskbench_terminal_fill_errors",
+      "ok": true,
+      "detail": "gate.maskbench_terminal_fill_errors = 0"
+     },
+     {
+      "check": "gate.maskbench_input_errors",
+      "ok": true,
+      "detail": "gate.maskbench_input_errors = 0"
+     },
+     {
+      "check": "gate.maskbench_completion_errors",
+      "ok": true,
+      "detail": "gate.maskbench_completion_errors = 0"
+     },
+     {
+      "check": "gate.maskbench_validation_errors",
+      "ok": true,
+      "detail": "gate.maskbench_validation_errors = 0"
+     },
+     {
+      "check": "environment.lib_sha256",
+      "ok": true,
+      "detail": "environment.lib_sha256 = 'a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6' (expected 'a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6')"
+     }
+    ],
+    "json": "/tmp/mq-r4/artifacts/bench_gate.json"
+   },
+   "collect_sample": [],
+   "log": "../../../../../../tmp/mq-r4/bench-gate.log",
+   "tail": [
+    "cold probe permissive_string_in_object off/on ...",
+    "warm probe permissive_string_in_object off/on ...",
+    "selecting compiling maskbench files ...",
+    "maskbench slice (24 files: BFCL_java_6, BFCL_java_10, BFCL_java_18, BFCL_java_22, BFCL_java_23, BFCL_java_24, BFCL_java_25, BFCL_java_27, BFCL_java_32, BFCL_java_44, BFCL_java_47, BFCL_java_49, BFCL_java_53, BFCL_java_57, BFCL_java_63, BFCL_java_73, BFCL_java_74, BFCL_java_76, BFCL_java_77, BFCL_java_78, BFCL_java_79, BFCL_java_80, BFCL_java_92, BFCL_java_98) OFF run ...",
+    "maskbench slice ON run ...",
+    "wrote /tmp/mq-r4/artifacts/bench_gate.json"
+   ]
+  }
+ ],
+ "warm_acceptance": null,
+ "fuzz_artifacts": [],
+ "warm_cpu": null,
+ "warm_limits": {
+  "max_load1": 1.0,
+  "max_cpu_pressure": 1.0
+ },
+ "warm_governor": null,
+ "only": [
+  "bench-gate"
+ ]
+}

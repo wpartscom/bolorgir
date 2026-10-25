@@ -427,6 +427,14 @@ pub const Grammar = struct {
     /// without search. yes/no are exact; unknown defers to the budgeted
     /// search, never guesses.
     nonempty: []const u8 = &.{},
+    /// spec-v1: bitset over node ids of the unconstrained value nodes the
+    /// schema compiler built (the AnyJSON language). This is a compiler
+    /// fact, not a node shape: an object guard can constrain a
+    /// structurally similar node through unevaluatedProperties, so a mask
+    /// lemma may only treat an undeclared-value schema as unconstrained
+    /// when the compiler marked that exact node. Empty for grammars built
+    /// outside the schema compiler.
+    any_nodes: []const u32 = &.{},
     /// RFC 6901 pointer of the subschema each node was compiled from (empty
     /// unless compiled with schema.Options.record_pointers; "" for nodes
     /// without one).
@@ -454,6 +462,15 @@ pub const Grammar = struct {
 
     pub fn literalBytes(self: *const Grammar, lit: Literal) []const u8 {
         return self.literal_pool[lit.off .. lit.off + lit.len];
+    }
+
+    /// True when node `id` is one of the compiler's unconstrained value
+    /// nodes (the AnyJSON language, schema.compileAnyJSON). A false result
+    /// covers both "constrained" and "not known to be unconstrained"; a
+    /// mask lemma must treat it as constrained.
+    pub fn isAnyNode(self: *const Grammar, id: NodeId) bool {
+        if (id / 32 >= self.any_nodes.len) return false;
+        return (self.any_nodes[id / 32] >> @as(u5, @intCast(id % 32))) & 1 == 1;
     }
 
     /// Bytes a value of node `id` can start with: every byte when the shape

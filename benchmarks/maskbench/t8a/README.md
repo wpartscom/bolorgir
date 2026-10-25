@@ -27,17 +27,20 @@ HF_HOME="<main tree>/benchmarks/local/hf-cache" \
   admitted T3 verdict of the core inside the wheel; before any install the
   preflight checks that verdict and the tokenizer snapshot against
   `benchmarks/t3/acceptance_pins.json`.
-- `T8A_T2C` is the class file of the Bolorgir errors (below). For the
-  wheel of the current line (core `9a5baf3e`) use
-  `evidence/9a5baf3e/t2c.json`: it names that core, the wheel `sha256`
-  and the full protocol of the run; its classes are added only from the
-  diagnosis of the first full run and decided by the owner, none is
-  carried over - until then the entries are empty and every Bolorgir
-  error stays open. The `evidence/6e62e0d1/` files (`t2c.json` for the
-  first wheel, `t2c-run2.json` for the wheel rebuilt after the
-  2026-10-11 comment cleanup) cover the earlier core only: a class file
-  for another core or protocol keeps every case open (keep the wheel
-  file; a different wheel needs its own class file).
+- `T8A_T2C` is the class file of the Bolorgir errors (below). It names
+  the core `sha256`, the wheel `sha256` and the full protocol of the run;
+  its classes are added only from the diagnosis of the first full run and
+  decided by the owner, none is carried over - until then the entries are
+  empty and every Bolorgir error stays open. The `evidence/6e62e0d1/`
+  files (`t2c.json` for the first wheel, `t2c-run2.json` for the wheel
+  rebuilt after the 2026-10-11 comment cleanup) cover the earlier core
+  only: a class file for another core or protocol keeps every case open
+  (keep the wheel file; a different wheel needs its own class file). The
+  command above reproduces the `9a5baf3e` wheel: that acceptance verdict
+  and `evidence/9a5baf3e/t2c.json` name that core and its wheel only. A
+  wheel built from a later core, including the current publication tree,
+  needs its own R6 verdict, its own acceptance JSON, its own class file
+  and the protocol chosen for that run: none of these is carried over.
 - `PY_BASE` creates both venvs and must be a Python 3.12 or newer (the
   wheel is `abi3` cp312 with `requires-python >= 3.12`; an older base
   fails the install). Nothing is installed into `PY_BASE` itself; the
@@ -118,7 +121,12 @@ another value keeps the case open; a classified timeout still fails a
 smoke. New classes are prepared with the diagnosis and decided by the
 owner; the committed files are `evidence/6e62e0d1/t2c.json` and
 `evidence/6e62e0d1/t2c-run2.json` for the earlier core (the 6e62e0d1
-wheels) and `evidence/9a5baf3e/t2c.json` for the current line's wheel
-(class D for the four format-only instances of two files, 2026-10-13;
+wheels) and `evidence/9a5baf3e/t2c.json` for the `9a5baf3e` wheel of that
+historical line (class D for the four format-only instances of two files,
+2026-10-13;
 an entry applies by file and status, its descriptive instance list is
 checked before the final acceptance; the timeouts stay open).
+`evidence/9a5baf3e/t2c-w12.json` is the scaffold (no classes decided
+yet) of the parallel protocol run (threads 12, work dir
+`benchmarks/local/t8a-work-9a5baf3e-w12`): its classes will be decided
+from the outcomes of that run only.

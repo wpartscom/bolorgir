@@ -1,0 +1,67 @@
+{
+ "status": "OK",
+ "case": "adr0007_mask_fast_path",
+ "lib": "synthetic; no library loaded",
+ "environment": {
+  "date_utc": "2026-10-24T16:05:35Z"
+ },
+ "vocab_size": 2,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS",
+  "maskbench_states": 401
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {},
+   "warm": {}
+  },
+  "permissive_string_in_object": {
+   "cold": {},
+   "warm": {}
+  }
+ },
+ "maskbench_slice": {
+  "files": [
+   "case"
+  ],
+  "off": {
+   "tbm_us": {
+    "count": 409,
+    "min": 0.17,
+    "p50": 0.183,
+    "p95": 0.211,
+    "p99": 0.256,
+    "max": 0.665,
+    "mean": 0.1891613691931538
+   },
+   "stats": {
+    "files": 1,
+    "compiled": 1,
+    "compile_error": 0,
+    "instances": 1,
+    "masks": 409,
+    "validation_error": 1
+   }
+  },
+  "on": {
+   "tbm_us": {
+    "count": 409,
+    "min": 0.17,
+    "p50": 0.183,
+    "p95": 0.208,
+    "p99": 0.254,
+    "max": 36.648,
+    "mean": 0.2761442542787284
+   },
+   "stats": {
+    "files": 1,
+    "compiled": 1,
+    "compile_error": 0,
+    "instances": 1,
+    "masks": 409,
+    "validation_error": 1
+   }
+  }
+ }
+}

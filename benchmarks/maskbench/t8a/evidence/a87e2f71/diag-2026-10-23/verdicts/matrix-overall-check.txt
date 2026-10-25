@@ -1,0 +1,19 @@
+# ADR-0007 Decision 4 acceptance matrix
+
+Scale: `quick`; library: `lib`; generated 2026-10-24T02:09:53Z UTC
+
+| job | status | tests | parametrised | s | requirement |
+|---|---|---:|---:|---:|---|
+| `bench-gate` | pass | 0 | 0 | 0.0 | gate |
+| `warm-acceptance` | fail | 0 | 0 | 0.0 | replay |
+
+Overall: **FAIL** (1/2 jobs pass)
+
+## JSON verdicts
+
+- `bench-gate`: ok (gate.maskbench_states = 425)
+- `warm-acceptance`: **FAIL** (warm_acceptance.pass = False)
+
+Fuzz artifacts produced by this run: none
+
+overall_ok= False

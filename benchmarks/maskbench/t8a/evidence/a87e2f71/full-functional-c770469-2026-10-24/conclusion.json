@@ -1,0 +1,308 @@
+{
+ "kind": "adr0007-conclusion",
+ "generated_utc": "2026-10-24T17:20:22Z",
+ "repository": {
+  "head": "c7704690371189a0f3aeb6556b22ed3dd87963d4",
+  "head_short": "c770469",
+  "branch": "main",
+  "dirty": false,
+  "tracked_changes": [],
+  "new_evidence_package": true
+ },
+ "artifact": {
+  "path": "benchmarks/local/t8a-checkpoints/a87e2f71/libbolorgir.so.0.1.0",
+  "sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+  "size": 1268464,
+  "checkpoint": "a87e2f71"
+ },
+ "functional": {
+  "scale": "full",
+  "only": [
+   "zig-three-way",
+   "fastpath-curated",
+   "fastpath-fuzz",
+   "differential-reference",
+   "cache-onoff",
+   "bench-gate"
+  ],
+  "partial_run": true,
+  "note": "six of the seven matrix rows; the warm-acceptance row is not part of this run",
+  "overall": "PASS",
+  "rows": [
+   {
+    "id": "zig-three-way",
+    "status": "pass",
+    "tests": 328,
+    "collected": 0,
+    "duration_s": 37.8
+   },
+   {
+    "id": "fastpath-curated",
+    "status": "pass",
+    "tests": 13,
+    "collected": 13,
+    "duration_s": 0.5
+   },
+   {
+    "id": "fastpath-fuzz",
+    "status": "pass",
+    "tests": 1,
+    "collected": 0,
+    "duration_s": 0.4
+   },
+   {
+    "id": "differential-reference",
+    "status": "pass",
+    "tests": 1,
+    "collected": 0,
+    "duration_s": 7.2
+   },
+   {
+    "id": "cache-onoff",
+    "status": "pass",
+    "tests": 1,
+    "collected": 0,
+    "duration_s": 0.9
+   },
+   {
+    "id": "bench-gate",
+    "status": "pass",
+    "tests": 0,
+    "collected": 0,
+    "duration_s": 12.6
+   }
+  ],
+  "differential": {
+   "equal_across_configs": true,
+   "n_schemas": 600,
+   "max_steps": 20,
+   "seed": 20260914,
+   "configs": [
+    {
+     "schemas": 600,
+     "both_rejected": 7,
+     "walks": 593,
+     "mask_cmps": 5412,
+     "accepts": 3257,
+     "rejects": 548,
+     "dead_ends": 0,
+     "finishes": 491,
+     "config": "cache_off-fast_on",
+     "mode": 0,
+     "cache_limit_bytes": 0,
+     "mask_fast_path": 1,
+     "max_workers": 0,
+     "trace_sha256": "11133709c850a4a9669b22332255b9fb70e20206c789a8968bac1e1ad2d43d69"
+    },
+    {
+     "schemas": 600,
+     "both_rejected": 7,
+     "walks": 593,
+     "mask_cmps": 5412,
+     "accepts": 3257,
+     "rejects": 548,
+     "dead_ends": 0,
+     "finishes": 491,
+     "config": "cache_off-fast_off",
+     "mode": 0,
+     "cache_limit_bytes": 0,
+     "mask_fast_path": 2,
+     "max_workers": 0,
+     "trace_sha256": "11133709c850a4a9669b22332255b9fb70e20206c789a8968bac1e1ad2d43d69"
+    },
+    {
+     "schemas": 600,
+     "both_rejected": 7,
+     "walks": 593,
+     "mask_cmps": 5412,
+     "accepts": 3257,
+     "rejects": 548,
+     "dead_ends": 0,
+     "finishes": 491,
+     "config": "cache_default-fast_on",
+     "mode": 1,
+     "cache_limit_bytes": 18446744073709551615,
+     "mask_fast_path": 1,
+     "max_workers": 0,
+     "trace_sha256": "11133709c850a4a9669b22332255b9fb70e20206c789a8968bac1e1ad2d43d69"
+    },
+    {
+     "schemas": 600,
+     "both_rejected": 7,
+     "walks": 593,
+     "mask_cmps": 5412,
+     "accepts": 3257,
+     "rejects": 548,
+     "dead_ends": 0,
+     "finishes": 491,
+     "config": "cache_default-fast_off",
+     "mode": 1,
+     "cache_limit_bytes": 18446744073709551615,
+     "mask_fast_path": 2,
+     "max_workers": 0,
+     "trace_sha256": "11133709c850a4a9669b22332255b9fb70e20206c789a8968bac1e1ad2d43d69"
+    }
+   ]
+  },
+  "cache": {
+   "schemas": 120,
+   "traces": 120,
+   "mask_cmps": 5808,
+   "accepts": 7744,
+   "threaded_traces": 120,
+   "threaded_mismatches": 0,
+   "seed": 20260915
+  },
+  "fastpath_fuzz_schemas": 150,
+  "zig_tests": 328,
+  "curated_cases": 13,
+  "gate": {
+   "probe_states": 4,
+   "status": "PASS",
+   "maskbench_states": 564,
+   "maskbench_instances": 24,
+   "maskbench_terminal_states": 24,
+   "maskbench_terminal_complete": true,
+   "maskbench_fill_errors": 0,
+   "maskbench_terminal_fill_errors": 0,
+   "maskbench_input_errors": 0,
+   "maskbench_completion_errors": 0,
+   "maskbench_accept_errors": 0,
+   "maskbench_validation_errors": 0,
+   "maskbench_trace_sha256": "2ab0c91894b0fbee4e2abcd7bfba088834a2368cb847a248c92ca69ba5d9ab61"
+  },
+  "gate_json": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-c770469-2026-10-24/artifacts/bench_gate.json",
+   "sha256": "872b907b355dca34c8a614eeb5b177fdf6698587b1dd17dac074b20f922cd5df"
+  },
+  "matrix_json": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-c770469-2026-10-24/matrix.json",
+   "sha256": "812b00b3c6470fa4c7437e6772baf23c7024df319b31bf0c0887a5ffed4fb786"
+  },
+  "matrix_md": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-c770469-2026-10-24/matrix.md",
+   "sha256": "f1c116f1f384d96fee6fef1bc7be3781287e3c4f07225560d58a9242d79bd859"
+  },
+  "differential_artifact": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-c770469-2026-10-24/artifacts/fuzz-artifacts/py_fuzz_differential.json",
+   "sha256": "f180d8506886cade6b9251e9236fac104050a0371a108af3393f8c63116c877e"
+  }
+ },
+ "performance": {
+  "tbm_diagnostic_slice": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/diag-2026-10-23/equiv/slice.json",
+   "sha256": "1b333ab940fce722ccae0aaa75695f760bc885b10b216bcf29dd055ed6b8b6d2",
+   "files": 43,
+   "calls": 684,
+   "p90_ms": 0.758,
+   "p50_ms": 0.006,
+   "p99_ms": 4.147
+  },
+  "tbm_gate_this_run": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-c770469-2026-10-24/artifacts/bench_gate.json",
+   "on_tbm_us": {
+    "count": 564,
+    "min": 124.355,
+    "p50": 138.778,
+    "p95": 796.543,
+    "p99": 3899.281,
+    "max": 4233.401,
+    "mean": 337.0832021276596
+   },
+   "note": "p95 of the pinned BFCL set; p90 of the same set is <= p95"
+  },
+  "previous_gate_on_p95_us": 907.087,
+  "scope": "measured workloads only (43-file diagnostic slice, pinned BFCL gate); not the full T8a corpus or VE tail",
+  "earlier_p90_1_42": {
+   "artifact": "642ba1ae",
+   "note": "historical result of that artifact, superseded for a87e2f71"
+  }
+ },
+ "warm_acceptance": {
+  "measured_now": false,
+  "source_package": "benchmarks/maskbench/t8a/evidence/a87e2f71/terminal-warm-2026-10-24",
+  "json": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/terminal-warm-2026-10-24/warm-acceptance/artifacts/warm_acceptance.json",
+   "sha256": "a334ccff68f9d6e2dc771166d68822f3e82f2deaff4d0ee555f11669d516491f"
+  },
+  "run_id": "warm-acceptance-37564-1792859274280580845",
+  "protocol": {
+   "repeats": 5,
+   "observations": 2000,
+   "threshold_ns": 1300,
+   "probes": [
+    "permissive_string_content",
+    "permissive_string_in_object"
+   ],
+   "on_legs": 10,
+   "cpu": 7,
+   "lib_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6"
+  },
+  "on_means_ns": [
+   1190.5225,
+   1218.288,
+   1214.6535,
+   1188.3635,
+   1267.498,
+   1126.723,
+   1264.101,
+   1254.696,
+   1167.2285,
+   1085.027
+  ],
+  "on_p50_ns": [
+   1155,
+   1187,
+   1179,
+   1159,
+   1236,
+   1103,
+   1231,
+   1220,
+   1137,
+   1052
+  ],
+  "conditions": {
+   "recorded": true,
+   "complete": true,
+   "ok": true,
+   "requested_cpu": 7,
+   "limits": {
+    "max_load1": 2.0,
+    "max_cpu_pressure_avg10": 0.5
+   },
+   "legs": 20,
+   "first_leg_start_utc": "2026-10-24T16:28:06Z",
+   "last_leg_end_utc": "2026-10-24T16:29:14Z"
+  },
+  "matrix_report": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/terminal-warm-2026-10-24/warm-acceptance/matrix.json",
+   "sha256": "20ea3881b2109cfea7158f3aa5c5bf4e5902b069e4c21f0c2fdbff384ed2e4c9",
+   "row_status": "pass",
+   "verdict_ok": true
+  },
+  "note": "measurement of 2026-10-24, stored; not repeated in this run"
+ },
+ "warm_verification": {
+  "json": {
+   "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/gate-review-cc11475-2026-10-24/saved-warm-verify/verify-clean.json",
+   "sha256": "9890a6550a0b3e9f2e124923a74a74ee57b68a7ca5a68547896366ec9d97c5e7"
+  },
+  "pass": true,
+  "problems": [],
+  "on_legs": 10,
+  "expected_lib_sha256": "a87e2f711fb31d54fc06c67d194fd43237065f01ca0bc0cc977aa472504515e6",
+  "source_sha256": "a334ccff68f9d6e2dc771166d68822f3e82f2deaff4d0ee555f11669d516491f",
+  "measured_now": false,
+  "kind": "warm-verify"
+ },
+ "statement": "The functional matrix was rerun at full scale after the differential campaign was extended to replay identical schemas and traces in four configurations; the warm row is the separately stored 2026-10-24 measurement, re-verified offline, not a new measurement.",
+ "report_md": {
+  "path": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-c770469-2026-10-24/CONCLUSION.md",
+  "sha256": "d47e42a30b7ccd50900fe74c590ca2a79354f4d0683b8bd5b6697497778dca76"
+ },
+ "correction_of": {
+  "package": "benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-bbaf3e1-2026-10-24",
+  "file": "CORRECTION.md"
+ }
+}

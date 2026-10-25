@@ -1,0 +1,95 @@
+{
+ "files": 6,
+ "mismatched_files": 0,
+ "errors": [
+  {
+   "file": "Github_easy---o58839.json",
+   "why": "compile failed: ResourceLimitError('grammar exceeds node budget of 100000')"
+  },
+  {
+   "file": "Github_hard---o90895.json",
+   "why": "compile failed: ResourceLimitError('grammar exceeds node budget of 100000')"
+  }
+ ],
+ "capped": [],
+ "wall_s": 1621.6,
+ "mask_s": 1621.3,
+ "abort_s": 1119.7,
+ "aborts": 19,
+ "calls": 1515,
+ "tbm_ms": {
+  "p50": 0.008,
+  "p75": 13.051,
+  "p90": 836.128,
+  "p99": 56578.46,
+  "share_calls_ge_1s": 0.0717,
+  "share_time_ge_1s": 0.9131
+ },
+ "per_file": [
+  {
+   "file": "Github_easy---o13129.json",
+   "instances": 4,
+   "calls": 0,
+   "mask_us": 230735610,
+   "abort_us": 230735610,
+   "aborts": 4,
+   "mismatches": []
+  },
+  {
+   "file": "Github_hard---o12278.json",
+   "instances": 7,
+   "calls": 240,
+   "mask_us": 404496843,
+   "abort_us": 396304217,
+   "aborts": 7,
+   "mismatches": []
+  },
+  {
+   "file": "Github_hard---o74466.json",
+   "instances": 5,
+   "calls": 681,
+   "mask_us": 370354998,
+   "abort_us": 220706737,
+   "aborts": 2,
+   "mismatches": []
+  },
+  {
+   "file": "Github_medium---o54553.json",
+   "instances": 4,
+   "calls": 216,
+   "mask_us": 296557832,
+   "abort_us": 84142236,
+   "aborts": 1,
+   "mismatches": []
+  },
+  {
+   "file": "Github_medium---o90904.json",
+   "instances": 6,
+   "calls": 317,
+   "mask_us": 64942412,
+   "abort_us": 2261831,
+   "aborts": 2,
+   "mismatches": []
+  },
+  {
+   "file": "JsonSchemaStore---codeship-services.json",
+   "instances": 4,
+   "calls": 61,
+   "mask_us": 254246391,
+   "abort_us": 185564304,
+   "aborts": 3,
+   "mismatches": []
+  }
+ ],
+ "library": {
+  "realpath": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/a4b10658/libbolorgir.so.0.1.0",
+  "sha256": "a4b10658eb393e347bc08762db5d0247e608be21f0a1aee078887b5d336e60aa",
+  "records": 2,
+  "phases": [
+   "before",
+   "after"
+  ],
+  "first_utc": "2026-10-22T20:26:32Z",
+  "last_utc": "2026-10-22T21:02:05Z"
+ }
+}

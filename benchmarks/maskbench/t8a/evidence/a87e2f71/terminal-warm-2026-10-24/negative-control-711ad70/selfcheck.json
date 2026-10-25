@@ -1,0 +1,277 @@
+{
+ "ok": false,
+ "repo": "/tmp/bolorgir-711ad70",
+ "bench": "/tmp/bolorgir-711ad70/benchmarks/bench_adr0007.py",
+ "checks": [
+  {
+   "check": "control passes",
+   "ok": true,
+   "detail": "exit 0, gate 'PASS'"
+  },
+  {
+   "check": "control compares every mask",
+   "ok": true,
+   "detail": "maskbench_states = 410 (old sampler: 401)"
+  },
+  {
+   "check": "control runs every terminal check",
+   "ok": false,
+   "detail": "terminals = None, complete = None"
+  },
+  {
+   "check": "control has zero errors",
+   "ok": false,
+   "detail": "fill=0 terminal_fill=None input=None completion=None validation=0"
+  },
+  {
+   "check": "control publishes a trace digest",
+   "ok": true,
+   "detail": "trace_sha256 = '91879e0f6e7d3209b5954f591e461f00f78668e479ebbc4c843e3f39768bb4fa'"
+  },
+  {
+   "check": "mask-401 fails",
+   "ok": true,
+   "detail": "exit = GATE FAILURE: maskbench gate failed (mask x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "mask-401 names the fault",
+   "ok": true,
+   "detail": "message = GATE FAILURE: maskbench gate failed (mask x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "mask-401 leaves evidence",
+   "ok": true,
+   "detail": "artifacts = ['gate-failure-maskbench-1792859468488.json']"
+  },
+  {
+   "check": "mask-401 writes no success JSON",
+   "ok": true,
+   "detail": "json written = False"
+  },
+  {
+   "check": "status-409 fails",
+   "ok": true,
+   "detail": "exit = GATE FAILURE: maskbench gate failed (fill x1, instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "status-409 names the fault",
+   "ok": true,
+   "detail": "message = GATE FAILURE: maskbench gate failed (fill x1, instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "status-409 leaves evidence",
+   "ok": true,
+   "detail": "artifacts = ['gate-failure-maskbench-1792859468490.json']"
+  },
+  {
+   "check": "status-409 writes no success JSON",
+   "ok": true,
+   "detail": "json written = False"
+  },
+  {
+   "check": "accept-409 fails",
+   "ok": true,
+   "detail": "exit = GATE FAILURE: maskbench gate failed (instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "accept-409 names the fault",
+   "ok": false,
+   "detail": "message = GATE FAILURE: maskbench gate failed (instance x1, status x1, validation x1; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "accept-409 leaves evidence",
+   "ok": true,
+   "detail": "artifacts = ['gate-failure-maskbench-1792859468493.json']"
+  },
+  {
+   "check": "accept-409 writes no success JSON",
+   "ok": true,
+   "detail": "json written = False"
+  },
+  {
+   "check": "fill-both-409 fails",
+   "ok": true,
+   "detail": "exit = GATE FAILURE: maskbench gate failed (fill x2, validation x2; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "fill-both-409 names the fault",
+   "ok": true,
+   "detail": "message = GATE FAILURE: maskbench gate failed (fill x2, validation x2; 410 state(s), 1 instance(s) compared)"
+  },
+  {
+   "check": "fill-both-409 leaves evidence",
+   "ok": true,
+   "detail": "artifacts = ['gate-failure-maskbench-1792859468495.json']"
+  },
+  {
+   "check": "fill-both-409 writes no success JSON",
+   "ok": true,
+   "detail": "json written = False"
+  },
+  {
+   "check": "cannot-end fails",
+   "ok": false,
+   "detail": "exit = 0"
+  },
+  {
+   "check": "cannot-end names the fault",
+   "ok": false,
+   "detail": "message = 0"
+  },
+  {
+   "check": "cannot-end leaves evidence",
+   "ok": false,
+   "detail": "artifacts = []"
+  },
+  {
+   "check": "cannot-end writes no success JSON",
+   "ok": false,
+   "detail": "json written = True"
+  },
+  {
+   "check": "tail-mask fails",
+   "ok": false,
+   "detail": "exit = 0"
+  },
+  {
+   "check": "tail-mask names the fault",
+   "ok": false,
+   "detail": "message = 0"
+  },
+  {
+   "check": "tail-mask leaves evidence",
+   "ok": false,
+   "detail": "artifacts = []"
+  },
+  {
+   "check": "tail-mask writes no success JSON",
+   "ok": false,
+   "detail": "json written = True"
+  },
+  {
+   "check": "finish-error-both fails",
+   "ok": false,
+   "detail": "exit = 0"
+  },
+  {
+   "check": "finish-error-both names the fault",
+   "ok": false,
+   "detail": "message = 0"
+  },
+  {
+   "check": "finish-error-both leaves evidence",
+   "ok": false,
+   "detail": "artifacts = []"
+  },
+  {
+   "check": "finish-error-both writes no success JSON",
+   "ok": false,
+   "detail": "json written = True"
+  },
+  {
+   "check": "cannot-end-both fails",
+   "ok": false,
+   "detail": "exit = 0"
+  },
+  {
+   "check": "cannot-end-both names the fault",
+   "ok": false,
+   "detail": "message = 0"
+  },
+  {
+   "check": "cannot-end-both leaves evidence",
+   "ok": false,
+   "detail": "artifacts = []"
+  },
+  {
+   "check": "cannot-end-both writes no success JSON",
+   "ok": false,
+   "detail": "json written = True"
+  },
+  {
+   "check": "incomplete number is a correct rejection",
+   "ok": false,
+   "detail": "exit 'GATE FAILURE: maskbench gate failed (validation x2; 1 state(s), 1 instance(s) compared)', gate None"
+  },
+  {
+   "check": "incomplete number has no false validation error",
+   "ok": false,
+   "detail": "validation=None completion=None"
+  },
+  {
+   "check": "incomplete number ran its terminal check",
+   "ok": false,
+   "detail": "states=None terminals=None complete=None"
+  },
+  {
+   "check": "incomplete number leaves no failure artifact",
+   "ok": false,
+   "detail": "artifacts = ['gate-failure-maskbench-1792859468504.json']"
+  },
+  {
+   "check": "warm control acceptance",
+   "ok": true,
+   "detail": "exit 0, pass True, problems []"
+  },
+  {
+   "check": "warm control matrix verdict",
+   "ok": true,
+   "detail": "ok run_id = 'warm-control' (expected 'warm-control'); ok status = 'OK' (expected 'OK'); ok warm_acceptance.pass = True; ok warm_acceptance.protocol.repeats = 5; ok warm_acceptance.protocol.observations = 2000; ok warm_acceptance.protocol.threshold_ns = 1300; ok warm_acceptance.protocol.cpu = 0; ok warm_acceptance.conditions.ok = True; ok warm_acceptance.conditions.limits.max_load1 = 1.0; ok warm_acceptance.conditions.limits.max_cpu_pressure_avg10 = 1.0; ok environment.lib_sha256 = 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' (expected 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609')"
+  },
+  {
+   "check": "warm missing-load acceptance",
+   "ok": false,
+   "detail": "exit 0, pass True, problems []"
+  },
+  {
+   "check": "warm missing-load matrix verdict",
+   "ok": false,
+   "detail": "ok run_id = 'warm-missing-load' (expected 'warm-missing-load'); ok status = 'OK' (expected 'OK'); ok warm_acceptance.pass = True; ok warm_acceptance.protocol.repeats = 5; ok warm_acceptance.protocol.observations = 2000; ok warm_acceptance.protocol.threshold_ns = 1300; ok warm_acceptance.protocol.cpu = 0; ok warm_acceptance.conditions.ok = True; ok warm_acceptance.conditions.limits.max_load1 = 1.0; ok warm_acceptance.conditions.limits.max_cpu_pressure_avg10 = 1.0; ok environment.lib_sha256 = 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' (expected 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609')"
+  },
+  {
+   "check": "warm end-affinity acceptance",
+   "ok": false,
+   "detail": "exit 0, pass True, problems []"
+  },
+  {
+   "check": "warm end-affinity matrix verdict",
+   "ok": false,
+   "detail": "ok run_id = 'warm-end-affinity' (expected 'warm-end-affinity'); ok status = 'OK' (expected 'OK'); ok warm_acceptance.pass = True; ok warm_acceptance.protocol.repeats = 5; ok warm_acceptance.protocol.observations = 2000; ok warm_acceptance.protocol.threshold_ns = 1300; ok warm_acceptance.protocol.cpu = 0; ok warm_acceptance.conditions.ok = True; ok warm_acceptance.conditions.limits.max_load1 = 1.0; ok warm_acceptance.conditions.limits.max_cpu_pressure_avg10 = 1.0; ok environment.lib_sha256 = 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609' (expected 'a214ae7932271f870816e1ded2677670ed4ebfb87df5c0d75112e8ee5e227609')"
+  },
+  {
+   "check": "SKIP is rejected",
+   "ok": true,
+   "detail": "status = 'fail'"
+  },
+  {
+   "check": "SKIP reason is recorded",
+   "ok": true,
+   "detail": "skipped = 'synthetic missing dependency'"
+  },
+  {
+   "check": "stale JSON is not accepted",
+   "ok": true,
+   "detail": "verdict = \"FAIL run_id = None (expected 'bench-gate-40512-1792859468522939612'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; FAIL gate.maskbench_fill_errors: KeyError: 'maskbench_fill_errors'; FAIL gate.maskbench_validation_errors: KeyError: 'maskbench_validation_errors'\""
+  },
+  {
+   "check": "stale JSON is left untouched",
+   "ok": true,
+   "detail": "sha256 before/after = 62b1a8c762ad/62b1a8c762ad"
+  },
+  {
+   "check": "stale JSON fails the run id check",
+   "ok": true,
+   "detail": "checks = ['gate.maskbench_fill_errors', 'gate.maskbench_states', 'gate.maskbench_validation_errors', 'run_id', 'status']"
+  },
+  {
+   "check": "matching run id passes",
+   "ok": true,
+   "detail": "ok run_id = 'fresh-1' (expected 'fresh-1'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; ok gate.maskbench_fill_errors = 0; ok gate.maskbench_validation_errors = 0"
+  },
+  {
+   "check": "different run id fails",
+   "ok": true,
+   "detail": "FAIL run_id = 'fresh-1' (expected 'fresh-2'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; ok gate.maskbench_fill_errors = 0; ok gate.maskbench_validation_errors = 0"
+  }
+ ]
+}

@@ -1,0 +1,46 @@
+{
+ "file": "(all)",
+ "case": {
+  "states_compared": 410,
+  "instances": 1
+ },
+ "divergences": [
+  {
+   "kind": "mask",
+   "index": 401,
+   "case": [
+    "case",
+    1,
+    401
+   ],
+   "off_words": [
+    1
+   ],
+   "on_words": [
+    3
+   ]
+  }
+ ],
+ "truncated": false,
+ "stats_off": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 410,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "validation_error": 0
+ },
+ "stats_on": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 410,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "validation_error": 0
+ },
+ "trace_sha256": "91879e0f6e7d3209b5954f591e461f00f78668e479ebbc4c843e3f39768bb4fa"
+}

@@ -1,0 +1,56 @@
+[
+  {
+    "case": "control",
+    "exit": 0,
+    "completion_errors": 0,
+    "matrix_ok": true
+  },
+  {
+    "case": "cannot-end",
+    "exit": "GATE FAILURE: maskbench gate failed (instance x1, terminal x1, validation x1; 2 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "completion_errors": null,
+    "matrix_ok": false
+  },
+  {
+    "case": "tail-mask",
+    "exit": "GATE FAILURE: maskbench gate failed (terminal x1; 2 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "completion_errors": null,
+    "matrix_ok": false
+  },
+  {
+    "case": "finish-resource",
+    "exit": "GATE FAILURE: maskbench gate failed (completion x2; 2 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "completion_errors": null,
+    "matrix_ok": false
+  },
+  {
+    "case": "reject-control",
+    "exit": 0,
+    "completion_errors": 0,
+    "matrix_ok": true
+  },
+  {
+    "case": "reject-finish-resource",
+    "exit": "GATE FAILURE: maskbench gate failed (completion x2; 1 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "completion_errors": null,
+    "matrix_ok": false
+  },
+  {
+    "case": "reject-can-end-error",
+    "exit": "GATE FAILURE: maskbench gate failed (completion x2; 1 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "completion_errors": null,
+    "matrix_ok": false
+  },
+  {
+    "case": "reject-can-end-no-status",
+    "exit": "GATE FAILURE: maskbench gate failed (completion x2; 1 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "completion_errors": null,
+    "matrix_ok": false
+  },
+  {
+    "case": "reject-can-end-memory-error",
+    "exit": "GATE FAILURE: maskbench gate failed (completion x2; 1 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "completion_errors": null,
+    "matrix_ok": false
+  }
+]

@@ -1,0 +1,198 @@
+{
+ "checks": [
+  {
+   "check": "file sets equal",
+   "result": "ok",
+   "detail": "orig 6, fix 6; only orig [], only fix []"
+  },
+  {
+   "check": "files field matches the table",
+   "result": "ok",
+   "detail": "6 / 6 / 6 / 6"
+  },
+  {
+   "check": "instance counts equal",
+   "result": "ok",
+   "detail": "{}"
+  },
+  {
+   "check": "call counts equal",
+   "result": "ok",
+   "detail": "{}"
+  },
+  {
+   "check": "call total matches the table",
+   "result": "ok",
+   "detail": "1515 / 1515"
+  },
+  {
+   "check": "refusal counts equal",
+   "result": "ok",
+   "detail": "{}"
+  },
+  {
+   "check": "no stream mismatches",
+   "result": "ok",
+   "detail": "{}"
+  },
+  {
+   "check": "no capped runs",
+   "result": "ok",
+   "detail": "{\"orig\": [], \"fix\": []}"
+  },
+  {
+   "check": "no unexpected errors",
+   "result": "ok",
+   "detail": "{\"orig\": [], \"fix\": []}"
+  },
+  {
+   "check": "expected compile limits match",
+   "result": "ok",
+   "detail": "orig ['Github_easy---o58839.json', 'Github_hard---o90895.json'], fix ['Github_easy---o58839.json', 'Github_hard---o90895.json']"
+  },
+  {
+   "check": "TBM percentiles present",
+   "result": "ok",
+   "detail": "{\"orig\": [\"p50\", \"p75\", \"p90\", \"p99\", \"share_calls_ge_1s\", \"share_time_ge_1s\"], \"fix\": [\"p50\", \"p75\", \"p90\", \"p99\", \"share_calls_ge_1s\", \"share_time_ge_1s\"]}"
+  },
+  {
+   "check": "library hash recorded on both sides",
+   "result": "ok",
+   "detail": "{\"orig\": \"9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41\", \"fix\": \"69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da\"}"
+  },
+  {
+   "check": "legs loaded different libraries",
+   "result": "ok",
+   "detail": "{\"orig\": \"9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41\", \"fix\": \"69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da\"}"
+  },
+  {
+   "check": "orig library is the run wheel",
+   "result": "ok",
+   "detail": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41"
+  },
+  {
+   "check": "fix library is the checkpoint",
+   "result": "ok",
+   "detail": "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da"
+  }
+ ],
+ "rows": [
+  {
+   "file": "Github_easy---o13129.json",
+   "instances": 4,
+   "calls": 0,
+   "orig_mask_s": 239.83,
+   "orig_abort_s": 239.83,
+   "orig_aborts": 4,
+   "fix_mask_s": 236.9,
+   "fix_abort_s": 236.9,
+   "fix_aborts": 4,
+   "delta_s": -2.93,
+   "mismatches": 0
+  },
+  {
+   "file": "Github_hard---o12278.json",
+   "instances": 7,
+   "calls": 240,
+   "orig_mask_s": 475.71,
+   "orig_abort_s": 412.65,
+   "orig_aborts": 7,
+   "fix_mask_s": 411.58,
+   "fix_abort_s": 411.43,
+   "fix_aborts": 7,
+   "delta_s": -64.13,
+   "mismatches": 0
+  },
+  {
+   "file": "Github_hard---o74466.json",
+   "instances": 5,
+   "calls": 681,
+   "orig_mask_s": 427.32,
+   "orig_abort_s": 229.08,
+   "orig_aborts": 2,
+   "fix_mask_s": 223.52,
+   "fix_abort_s": 220.21,
+   "fix_aborts": 2,
+   "delta_s": -203.79,
+   "mismatches": 0
+  },
+  {
+   "file": "Github_medium---o54553.json",
+   "instances": 4,
+   "calls": 216,
+   "orig_mask_s": 326.72,
+   "orig_abort_s": 89.74,
+   "orig_aborts": 1,
+   "fix_mask_s": 184.51,
+   "fix_abort_s": 85.05,
+   "fix_aborts": 1,
+   "delta_s": -142.21,
+   "mismatches": 0
+  },
+  {
+   "file": "Github_medium---o90904.json",
+   "instances": 6,
+   "calls": 317,
+   "orig_mask_s": 146.28,
+   "orig_abort_s": 2.4,
+   "orig_aborts": 2,
+   "fix_mask_s": 13.28,
+   "fix_abort_s": 1.55,
+   "fix_aborts": 2,
+   "delta_s": -133.0,
+   "mismatches": 0
+  },
+  {
+   "file": "JsonSchemaStore---codeship-services.json",
+   "instances": 4,
+   "calls": 61,
+   "orig_mask_s": 260.22,
+   "orig_abort_s": 188.23,
+   "orig_aborts": 3,
+   "fix_mask_s": 203.35,
+   "fix_abort_s": 192.3,
+   "fix_aborts": 3,
+   "delta_s": -56.87,
+   "mismatches": 0
+  }
+ ],
+ "total": {
+  "orig_mask_s": 1876.1,
+  "orig_abort_s": 1161.9,
+  "orig_wall_s": 1876.4,
+  "fix_mask_s": 1273.1,
+  "fix_abort_s": 1147.4,
+  "fix_wall_s": 1273.4,
+  "calls": 1515,
+  "aborts": [
+   19,
+   19
+  ],
+  "mismatched_files": 0,
+  "orig_tbm": {
+   "p50": 0.007,
+   "p75": 830.815,
+   "p90": 946.654,
+   "p99": 57398.151,
+   "share_calls_ge_1s": 0.0926,
+   "share_time_ge_1s": 0.8652
+  },
+  "fix_tbm": {
+   "p50": 0.008,
+   "p75": 1.287,
+   "p90": 30.921,
+   "p99": 58013.229,
+   "share_calls_ge_1s": 0.0326,
+   "share_time_ge_1s": 0.9837
+  },
+  "libraries": [
+   "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+   "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da"
+  ],
+  "expected_compile_limit": [
+   "Github_easy---o58839.json",
+   "Github_hard---o90895.json"
+  ]
+ },
+ "ok": true
+}

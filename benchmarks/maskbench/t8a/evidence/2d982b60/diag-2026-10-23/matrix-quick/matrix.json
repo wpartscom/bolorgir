@@ -1,0 +1,122 @@
+{
+ "scale": "quick",
+ "lib": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/2d982b60/libbolorgir.so.0.1.0",
+ "generated_utc": "2026-10-24T01:22:14Z",
+ "jobs": [
+  {
+   "id": "zig-three-way",
+   "requirement": "Decision 4: Zig unit tests, three-way fast/trie/brute comparison on random vocabularies",
+   "status": "pass",
+   "exit": 0,
+   "duration_s": 0.8,
+   "collected_cases": 0,
+   "tests_passed": 326,
+   "tests_failed": 0,
+   "collect_sample": [],
+   "log": "benchmarks/maskbench/t8a/evidence/2d982b60/diag-2026-10-23/matrix-quick/zig-three-way.log",
+   "tail": [
+    "322/326 witset.test.intInRange: bounds and exclusivity...OK",
+    "323/326 witset.test.acceptsValue: leaf and comb membership...OK",
+    "324/326 witset.test.acceptsValue: open object with required, fallback, prop bounds...OK",
+    "325/326 witset.test.witness: verified members of common shapes...OK",
+    "326/326 witset.test.disjoint: type partition, constants, discriminated objects...OK",
+    "All 326 tests passed."
+   ]
+  },
+  {
+   "id": "fastpath-curated",
+   "requirement": "Decision 4: curated ABI cases over fast path on/off, lazy/adaptive and max_workers {1,2,8} (long tokens, value boundaries, enclosure scope, length limits, Unicode)",
+   "status": "pass",
+   "exit": 0,
+   "duration_s": 0.6,
+   "collected_cases": 13,
+   "tests_passed": 13,
+   "tests_failed": 0,
+   "collect_sample": [
+    "tests/test_mask_fastpath.py::test_length_bounds_residual_edges",
+    "tests/test_mask_fastpath.py::test_tokens_longer_than_every_bound",
+    "tests/test_mask_fastpath.py::test_closing_tokens_continue_into_parent",
+    "tests/test_mask_fastpath.py::test_minlength_close_gate_survives_normal_form",
+    "tests/test_mask_fastpath.py::test_minlength_close_able_positions_share_one_cache_entry"
+   ],
+   "log": "benchmarks/maskbench/t8a/evidence/2d982b60/diag-2026-10-23/matrix-quick/fastpath-curated.log",
+   "tail": [
+    ".............                                                            [100%]",
+    "13 passed in 0.40s"
+   ]
+  },
+  {
+   "id": "fastpath-fuzz",
+   "requirement": "Decision 4: randomized fast-path on/off equality (tests/test_mask_fastpath_fuzz.py)",
+   "status": "pass",
+   "exit": 0,
+   "duration_s": 0.2,
+   "collected_cases": 0,
+   "tests_passed": 1,
+   "tests_failed": 0,
+   "collect_sample": [],
+   "log": "benchmarks/maskbench/t8a/evidence/2d982b60/diag-2026-10-23/matrix-quick/fastpath-fuzz.log",
+   "tail": [
+    ".                                                                        [100%]",
+    "1 passed in 0.10s"
+   ]
+  },
+  {
+   "id": "differential-reference",
+   "requirement": "Decision 4: kernel vs tests/reference.py differential campaign (fast path on/off, cache on/off)",
+   "status": "pass",
+   "exit": 0,
+   "duration_s": 0.3,
+   "collected_cases": 0,
+   "tests_passed": 1,
+   "tests_failed": 0,
+   "collect_sample": [],
+   "log": "benchmarks/maskbench/t8a/evidence/2d982b60/diag-2026-10-23/matrix-quick/differential-reference.log",
+   "tail": [
+    ".                                                                        [100%]",
+    "1 passed in 0.14s"
+   ]
+  },
+  {
+   "id": "cache-onoff",
+   "requirement": "Decision 4: every comparison repeated with the session cache on and off (tests/fuzz/test_fuzz_cache.py)",
+   "status": "pass",
+   "exit": 0,
+   "duration_s": 0.4,
+   "collected_cases": 0,
+   "tests_passed": 1,
+   "tests_failed": 0,
+   "collect_sample": [],
+   "log": "benchmarks/maskbench/t8a/evidence/2d982b60/diag-2026-10-23/matrix-quick/cache-onoff.log",
+   "tail": [
+    ".                                                                        [100%]",
+    "1 passed in 0.27s"
+   ]
+  },
+  {
+   "id": "bench-gate",
+   "requirement": "Decision 4: on/off mask equality gate on the pinned probe states; timings only after it",
+   "status": "pass",
+   "exit": 0,
+   "duration_s": 20.8,
+   "collected_cases": 0,
+   "tests_passed": 0,
+   "tests_failed": 0,
+   "collect_sample": [],
+   "log": "benchmarks/maskbench/t8a/evidence/2d982b60/diag-2026-10-23/matrix-quick/bench-gate.log",
+   "tail": [
+    "warm probe permissive_string_content off/on ...",
+    "warm-ext probe permissive_string_content round 1/1 (off,on) (C extension) ...",
+    "cold probe permissive_string_in_object off/on ...",
+    "warm probe permissive_string_in_object off/on ...",
+    "warm-ext probe permissive_string_in_object round 1/1 (off,on) (C extension) ...",
+    "wrote benchmarks/maskbench/t8a/evidence/2d982b60/diag-2026-10-23/matrix-quick/artifacts/bench_gate.json"
+   ]
+  }
+ ],
+ "warm_acceptance": null,
+ "fuzz_artifacts": [
+  "py_fuzz_cache.json",
+  "py_fuzz_differential.json"
+ ]
+}

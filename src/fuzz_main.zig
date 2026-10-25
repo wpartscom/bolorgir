@@ -91,9 +91,7 @@ fn artifactAndDie(comptime fmt: []const u8, args: anytype, art_name: []const u8,
     failInvariant(fmt, args);
 }
 
-// ---------------------------------------------------------------------------
 // Random input generators
-// ---------------------------------------------------------------------------
 
 const json_garbage_alphabet = "{}[]\",:0123456789truefalsn.-+eE \t\x00\xc3\xa9\xff";
 const string_char_pieces = [_][]const u8{ "a", "b", "x", "0", "1", "\"", "\\", "\n", "\xc3\xa9", " ", "/", "~" };
@@ -330,9 +328,7 @@ fn genGarbage(a: std.mem.Allocator, buf: *std.ArrayList(u8), rng: std.Random) !v
     }
 }
 
-// ---------------------------------------------------------------------------
 // Tokenizer
-// ---------------------------------------------------------------------------
 
 const tok_pool = [_][]const u8{
     "{",     "}",      "[",      "]",    ",",     ":",    "\"", "0",        "1",   "2",
@@ -458,9 +454,7 @@ fn maskBit(words: []const u32, id: u32) bool {
     return (words[id / 32] >> @as(u5, @intCast(id % 32))) & 1 == 1;
 }
 
-// ---------------------------------------------------------------------------
 // Campaign A: compiler
-// ---------------------------------------------------------------------------
 
 fn campaignCompile(rng: std.Random) !void {
     var arena = std.heap.ArenaAllocator.init(page);
@@ -532,9 +526,7 @@ fn campaignCompile(rng: std.Random) !void {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Campaign B: allocator failure injection
-// ---------------------------------------------------------------------------
 
 fn campaignInjection(rng: std.Random) !void {
     var arena = std.heap.ArenaAllocator.init(page);
@@ -611,9 +603,7 @@ fn campaignInjection(rng: std.Random) !void {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Campaign C: accept/mask through the C ABI
-// ---------------------------------------------------------------------------
 
 fn genContextConfig(rng: std.Random, harsh: bool) c_api.ContextConfig {
     var c = std.mem.zeroes(c_api.ContextConfig);
@@ -1057,9 +1047,7 @@ fn campaignWalk(rng: std.Random) !void {
     }
 }
 
-// ---------------------------------------------------------------------------
 // Campaign D: cache parity (lazy / adaptive / precompute), 1 and 4 threads
-// ---------------------------------------------------------------------------
 
 const NCTX = 4;
 
@@ -1294,9 +1282,7 @@ fn campaignCache(rng: std.Random) !void {
     counters.threaded_match = true;
 }
 
-// ---------------------------------------------------------------------------
 // main
-// ---------------------------------------------------------------------------
 
 fn argValue(args: []const [:0]const u8, i: *usize) ?[]const u8 {
     const arg = args[i.*];

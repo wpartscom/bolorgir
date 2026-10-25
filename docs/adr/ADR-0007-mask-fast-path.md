@@ -3,7 +3,11 @@
 Status: accepted (proposed 2026-09-20 as PA deliverable 3, ROADMAP sections
 4.3 / A5 / 6; adopted with the PA phase). Implemented and accepted on
 measurements, see the "Perf" row of the ROADMAP section 9 tracking table and
-docs/RUN_HISTORY.md.
+docs/RUN_HISTORY.md. That acceptance names the fix2 and fix3-final builds.
+The current re-verification is separate: the Decision 4 evidence of the
+`a87e2f71` artifact (2026-10-24) covers the full functional matrix and the
+stored warm acceptance, its CI confirmation and the formal closure decision
+are still open, and the current tree has no Decision 4 evidence of its own.
 Context: the measured problem (ROADMAP section 6) - a first visit of a
 permissive state (string content) costs ~0.6 s at a 128k-token vocabulary, a
 cache hit 1.3 us; the mask DFS in `src/mask.zig` feeds one byte per trie edge
@@ -54,22 +58,46 @@ from the cheapest method whose correctness lemma covers it:
 
   State condition: S is a *uniform string-content state* when every live
   thread has a top frame `.str` with `state == .normal` and `rem == 0`
-  (inside an open string, not mid-escape, not mid-codepoint).
+  (inside an open string, not mid-escape, not mid-codepoint) **and the
+  enclosure is content-independent**: no armed byte tap (`tap_count == 0`)
+  and no combinator frame below the top `.str` frame whose verdict can
+  still depend on the content. The one provable exception is a `oneOf`
+  with exactly one live branch: a branch whose threads all died can never
+  accept the value (threads never revive), so the group verdict is that
+  branch's acceptance and the content decides only the branch's own
+  string language. The branch set is counted over distinct
+  `(inst, branch)` pairs across the live threads, not over threads:
+  alternatives inside one branch and nested activations are not separate
+  branches. `allOf`, `if/then/else` and a `oneOf` with another live
+  branch are conjunctions of votes on the completed value, and the armed
+  captures (`uniqueItems`, `contains`, schema-kind dependencies) re-parse
+  or compare the captured bytes at the element or object close; there
+  `max(R)` is not the intersection bound (`allOf[maxLength 1,
+  maxLength 2]` would admit a two-codepoint token) and the content
+  decides the parent verdict (in `["a","` with `maxLength: 1` the next
+  `a` closes a duplicate element). Those stay in the exact class until a
+  separate lemma covers them. The condition is checked once per state
+  (`contentDependentEnclosure`).
 
   Equivalence lemma: in a uniform string-content state S, a pure-content
   token t is allowed iff `cp(t) <= R(S)`, where `cp(t)` is the code-point
-  count of t and `R(S) = max_len - count` of the top str frame; the
-  resulting state is again a uniform string-content state, identical to S
-  except `count' = count + cp(t)`. Proof sketch: by induction over the code
-  points of t, `strFeed` in `.normal` with `rem == 0` on a byte that is not
-  `"`, `\`, < 0x20 either starts or continues a code point, never leaves
-  `.normal`, and touches the state only through `strIncCount`, which fails
-  exactly when `count == max_len`; frames below the top are never
-  consulted. The induction over steps (token after token) holds because the
-  resulting state is again uniform.
+  count of t and `R(S) = max_len - count` of the top str frame, with the
+  maximum taken over ALTERNATIVE threads only (a lazy `.choice` union;
+  every thread has to accept for itself) and never over combinator
+  branches. The resulting state is again a uniform string-content state,
+  identical to S except `count' = count + cp(t)`. Proof sketch: by
+  induction over the code points of t, `strFeed` in `.normal` with
+  `rem == 0` on a byte that is not `"`, `\`, < 0x20 either starts or
+  continues a code point, never leaves `.normal`, and touches the state
+  only through `strIncCount`, which fails exactly when
+  `count == max_len`; frames below the top are not consulted by the feed,
+  and their verdicts at the value boundary do not depend on the content
+  by the scope condition. The induction over steps (token after token)
+  holds because the resulting state is again uniform.
 
   Testable consequences, all decidable in O(live threads) per state and
-  O(1) per token after precomputation: (i) the uniform-state check;
+  O(1) per token after precomputation: (i) the uniform-state check,
+  which includes the content-independent-enclosure scope check;
   (ii) the per-token class flag; (iii) the mask of the class is
   `content_bits AND len_le[R]` with `len_le` a table of 1 +
   max-cp-length precomputed bitsets; (iv) EOS is excluded because
@@ -173,6 +201,18 @@ Where the tests live:
     parent (`"x",`, `"x"}`, `"x"],"b":`), tokens ending exactly on a
     literal boundary, EOS at `can_end` transitions, tokens straddling two
     constructs;
+  - enclosure scope: `uniqueItems`/`contains` element captures and
+    schema-kind dependency captures, and every combinator kind except a
+    `oneOf` with one live branch, must keep the exact path. The two
+    mandatory reproductions: an array of two unique `maxLength: 1`
+    strings at `["a","` must refuse `a`, and `allOf[maxLength 1,
+    maxLength 2]` right after the opening quote must refuse a
+    two-codepoint token; a `oneOf` of two closed objects is accelerated
+    once the key dispatch leaves one live branch, while the same schema
+    with both branches live, an inner `oneOf` with two live branches and
+    an `allOf` branch must stay exact; nested captures, `oneOf` over
+    overlapping length bounds, and length/Unicode edge cases around them
+    complete the table;
   - length limits: `minLength`/`maxLength` edges (count 0, min-1, min,
     max-1, max), including the case where the closing `"` is refused at
     `count < min_len` while content bytes are still accepted;
@@ -181,12 +221,46 @@ Where the tests live:
     traps, `\uXXXX` escapes split across token boundaries, combining
     sequences.
 - **`tests/fuzz/test_fuzz_differential.py` (extended)**: property-based
-  fast-path on/off equality driven by the existing schema generator,
+  kernel-vs-reference campaign driven by the existing schema generator,
   seeded and deterministic, with the failure artifact protocol of the
-  fuzz suite.
+  fuzz suite. Each generated schema and walk seed is replayed in four
+  configurations - cache off/on (lazy/adaptive) x fast path on/off - and
+  each configuration publishes its own counters and a digest of the
+  executed trace; identical counters and digests across configurations
+  are required, so the same schemas and the same trace sequence are
+  compared in every configuration.
 - **Benchmark gate**: on the pinned MaskBench slices, the recorded run
   includes a fast-path on/off mask-equality pass before any timing number
-  is accepted (same role as the cache on/off equality check).
+  is accepted (same role as the cache on/off equality check). The pass
+  compares **every visited state**, not a sample: each state is keyed by
+  `(file, instance, step)` and carries the full mask, the fill status and
+  the accept return code, and each instance carries its expected validity
+  and observed termination (`exhausted`, `fill:<status>`,
+  `accept:<code>`). A missing/extra state, a different mask, status or
+  accept code, a fill error or a validation mismatch fails the gate and
+  writes the complete comparison (including the full word lists of the
+  divergent masks) to the artifacts directory. The count and a SHA256 of
+  the whole trace are published in `gate.maskbench_states` and
+  `gate.maskbench_trace_sha256`.
+
+  Input consumption is not document acceptance. After the input tokens the
+  gate records the post-input (EOS/termination) mask, `can_end` and
+  `finish`, and compares them between the arms; these terminal checks are
+  counted separately from the timed input states. A document is accepted
+  only when every input token is accepted **and** completion succeeds
+  (`can_end == true`, `finish == BLG_OK`). `can_end == false` with
+  `finish == BLG_ERR_WRONG_STATE` is a correct semantic rejection; a
+  resource or other finish error, a failed `can_end`, or a failed tail fill
+  is a completion error and fails the gate. Completion errors are never
+  folded into expected invalidity: only a semantic rejection/completion
+  outcome is compared with the test's `valid` flag. The two questions are
+  accounted separately: an exception from `can_end`/`finish`, a finish
+  code other than `BLG_OK`/`BLG_ERR_WRONG_STATE`, or a failed tail fill
+  increments `completion_errors` even when the document was already
+  rejected at the input stage, so equal broken arms cannot pass by
+  sharing the fault. A raised exception is recorded by its type and, when
+  present, its numeric `status`; an exception without `status`
+  (`RuntimeError`, `MemoryError`) is still a fault, never `None`.
 
 Coverage targets of the plan: every fast class has at least one curated
 boundary case per proof obligation of its lemma (for string content:
@@ -248,6 +322,124 @@ exclusion), and the randomized harness must generate states with R in
 - All three verdicts require the Decision 4 suite green in CI (fast path
   on and off, cache on and off, `max_workers` in {1, 2, 8}) and the
   canonical-v1 v3 protocol unchanged.
+
+### Warm acceptance protocol (fixed 2026-10-23)
+
+The warm guard needs an aggregation rule fixed before the acceptance
+measurement, otherwise a lucky repeat can stand in for a pass. The rule:
+
+1. **Five repeats** of the C-extension warm probe per probe definition -
+   ten `warm_ext.on` measurements in total (two probes x five);
+2. **2 000 cache hits per repeat**, with 100 % hits mandatory
+   (`observations == cache_hits == fill_wall_ns.count == 2000`); a leg
+   that holds fewer observations than the protocol declares fails even
+   when every one of them was a cache hit;
+3. **Alternating leg order** across repeats: round 1 runs off then on,
+   round 2 on then off, and so on, so neither leg always runs on the same
+   side of the machine's warm-up; a round or leg missing from the report
+   is a failure, not a shorter sample;
+4. **Every one of the ten means** must be finite, nonnegative and
+   <= 1.3 us - the mean of each repeat, not the best repeat and not an
+   average of averages; a `NaN` or negative mean fails acceptance;
+5. **Both library hashes are mandatory**: each child reports the SHA256
+   of the file it actually mapped from `/proc/self/maps` before and after
+   the timed loop, and the run is void if either one is missing or
+   differs from the artifact under test;
+6. **p50 is published separately** and never replaces the mean in the
+   verdict;
+7. **No discards and no extra repeats**: every repeat is reported,
+   failures included, and a failing run is not re-rolled before a passing
+   result - a pass must come from the protocol as fixed here.
+8. **The verdict is an exit status and a JSON field**: a failed protocol
+   sets `status=FAIL`, writes `warm_acceptance.pass=false` and exits
+   non-zero; `matrix_adr0007.py` re-reads that field from the written
+   JSON and fails the row, so a swallowed exit code or a stale report
+   cannot turn it green.
+9. **The measurement conditions are fixed and recorded before the run**:
+   every child is pinned to one CPU (`--warm-cpu` or `BLG_WARM_CPU`; an
+   acceptance without a fixed placement is refused), the CPU model,
+   scaling governor and current/max frequency of the measured CPUs are
+   recorded, and each leg samples the load average, `procs_running` and
+   `/proc/pressure/cpu` immediately before and after the timed loop. Both
+   snapshots are mandatory: a missing or non-finite `loadavg` or
+   `cpu_pressure_some.avg10`, a missing extension version or a missing
+   governor for the pinned CPU fails acceptance, and both the start and
+   end affinity must equal the declared CPU, as must the independently
+   observed `cpu_now`. The governor must not change between the two
+   snapshots, and when an expected policy is declared (`--warm-governor`)
+   both snapshots must match it. The load and pressure must be
+   at or below `--warm-max-load1` and `--warm-max-cpu-pressure`. The mapped
+   library is hashed before and after the loop (a changed hash fails the
+   leg), and `cpu_now` is recorded from `os.sched_getcpu` or, where that is
+   unavailable, from `/proc/self/stat`. A saved JSON is re-judged from
+   its own recorded conditions; data without conditions
+   (`conditions.recorded=false`) can never satisfy the acceptance rows.
+10. **The leg matrix is complete**: every probe, every round and both
+    legs appear exactly once - two probes x five rounds x two legs = 20.
+    A saved JSON can be re-judged offline with
+    `bench_adr0007.py --verify-warm-json <path> --lib <artifact>`; the
+    expected protocol comes from that command line (repeats,
+    observations, threshold, CPU, limits, governor, library hash), not
+    from the file, so a JSON that declares a shorter protocol cannot
+    accept itself. The saved acceptance of 2026-10-24 was re-judged this
+    way and passed every check.
+
+The harness implements this as `bench_adr0007.py --warm-repeats 5` (leg
+order alternating automatically) and writes the verdict into
+`warm_acceptance` of its JSON output; `matrix_adr0007.py` runs it as one
+row of the Decision 4 acceptance matrix with `--warm-cpu` and
+`--warm-governor`, and the row re-reads `warm_acceptance.pass`, the
+protocol parameters (5 repeats, 2000 observations, threshold 1300 ns,
+the fixed CPU), `conditions.ok`, `conditions.complete`, the declared
+governor policy and the library SHA256 from the written JSON. The
+exploratory
+`warm_diag.py` base/candidate pair uses the same fixed-placement rules
+but writes no `warm_acceptance` block and judges no threshold: it is a
+diagnosis, never an acceptance.
+
+The acceptance measurement of 2026-10-24 fixed its conditions before the
+run: CPU 7 pinned, `powersave`, load1 <= 2.0 and CPU pressure
+`some.avg10` <= 0.5. The ten `warm_ext.on` means were 1085 to 1267 ns and
+the run passed. The stored `2d982b60` FAIL was measured under different
+conditions and remains a separate, unchanged record.
+
+The functional rows of Decision 4 were run at full scale on 2026-10-24
+(`--scale full --only` the six correctness rows: 328 Zig tests, 13
+curated cases, 150 fast-path schemas, 600 differential schemas replayed
+in four configurations, 120 cache schemas, and the gate over 564
+MaskBench masks and 24 terminals) and passed. The report keeps the
+partial-run marker; the seventh row is the stored warm acceptance above,
+re-verified offline with the current validator, not a new measurement.
+The combined record with hashes and provenance is
+`benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-c770469-2026-10-24/CONCLUSION.md`.
+This completes the Decision 4 correctness evidence for `a87e2f71`.
+
+Measured TBM results for `a87e2f71`: the 43-file diagnostic slice
+(`diag-2026-10-23/equiv/slice.json`, 684 calls) has p90 0.758 ms, and
+the pinned BFCL gate's on-call TBM p95 is 0.907 ms in one run and
+0.797 ms in the full functional rerun, so p90 of that measured set is
+below 1 ms. The 1.42 ms p90 belongs to `642ba1ae` and is not an
+`a87e2f71` result. These figures cover the measured workloads only; they
+do not extend to the full T8a corpus or the VE latency tail. The ADR's
+go/no-go verdicts still require the Decision 4 suite green in CI.
+
+The matrix's `bench-gate` row runs the benchmark gate without
+`--skip-maskbench` at every scale: the pinned MaskBench trace-equality
+gate is mandatory, and the row's JSON verdict requires a positive
+`gate.maskbench_states`, a positive and complete terminal count, and zero
+fill, input, completion and validation errors. Only the separate warm row
+keeps the MaskBench skip (its focus is the C-extension timing protocol).
+### Verdict freshness (fixed 2026-10-24)
+
+A zero exit code and a readable JSON are not a verdict. The matrix gives
+every row a unique run id (`BLG_RUN_ID`), the harness records it in its
+output, and `check_verdict` requires the id, the expected `status` and
+the row's extra checks (zero error counters, warm protocol values,
+`conditions.ok` and the library SHA256) from the file written by that
+invocation. A retained JSON from an earlier run therefore cannot
+satisfy a row, and a benchmark that prints `{"status": "SKIP"}` and
+exits 0 (the `bench_common.skip` convention for a missing dependency) is
+explicitly rejected instead of being read as a pass.
 
 ## Consequences
 

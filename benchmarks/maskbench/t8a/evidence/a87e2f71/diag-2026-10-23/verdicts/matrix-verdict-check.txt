@@ -1,0 +1,3 @@
+warm replay saved-data JSON (pass=false) -> fail | verdict {'ok': False, 'detail': 'warm_acceptance.pass = False', 'json': '/tmp/blg-warm-replay-out'}
+previous bench gate JSON (skip-maskbench era) -> fail | verdict {'ok': False, 'detail': "KeyError: 'maskbench_states'", 'json': 'benchmarks/maskbench/t8a/evidence/2d982b60/diag-2026-10-23/matrix-quick/artifacts/bench_gate.json'}
+this run bench gate JSON (maskbench_states=425) -> pass | verdict {'ok': True, 'detail': 'gate.maskbench_states = 425', 'json': '/tmp/matrix-verdict-check2/gate-ok.json'}

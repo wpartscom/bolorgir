@@ -3,6 +3,10 @@ zig-cache/
 .zig-cache/
 zig-out/
 
+# Full-corpus
+t8a_ctl.sh
+readme.txt
+
 # Python
 __pycache__/
 *.py[cod]
@@ -57,6 +61,8 @@ python/bolorgir/_core.abi3.so
 
 # Internal technical assignments (not published with the repository)
 /TZ/
+
+benchmarks/maskbench/t8a/evidence/**/triage.md
 
 # Downloaded external corpus (pinned revision, see benchmarks/README.md)
 benchmarks/external/

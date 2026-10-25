@@ -98,9 +98,7 @@ def _tree_doc(depth: int) -> str:
     return '{"left":%s}' % _tree_doc(depth - 1)
 
 
-# ---------------------------------------------------------------------------
 # Recursive linked lists / trees within the limit
-# ---------------------------------------------------------------------------
 
 def test_recursive_linked_list(byte_ctx):
     ok = ['{"v":1}', _list_doc(1), _list_doc(3), _list_doc(UNROLL)]
@@ -172,9 +170,7 @@ def test_recursion_exact_limit_boundary(byte_ctx):
     _check(byte_ctx, TREE, [_tree_doc(UNROLL)], [_tree_doc(UNROLL + 1)])
 
 
-# ---------------------------------------------------------------------------
 # Limit behavior is mask-visible (ADR-0005: no dead prefixes)
-# ---------------------------------------------------------------------------
 
 def _first_token_mask(ctx, grammar, prefix: bytes, tok) -> set:
     """Token ids admitted by the mask after feeding `prefix`."""
@@ -249,9 +245,7 @@ def test_recursive_mask_every_step_completable(byte_ctx, byte_tok):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # Unproductive recursion and other refusals
-# ---------------------------------------------------------------------------
 
 def test_unproductive_cycles_refuse(byte_ctx):
     # A $ref cycle with no base case is the empty language (ADR-0006 D1):
@@ -279,9 +273,7 @@ def test_canonical_v1_keeps_refusing_cycles(byte_ctx):
              "INVALID_SCHEMA", profile=b"canonical-v1")
 
 
-# ---------------------------------------------------------------------------
 # URI-fragment percent-decoding (RFC 6901 section 6)
-# ---------------------------------------------------------------------------
 
 def test_ref_percent_decoding(byte_ctx):
     _check(byte_ctx,

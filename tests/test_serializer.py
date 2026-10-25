@@ -69,9 +69,7 @@ OPEN_SCHEMA = {
 }
 
 
-# ---------------------------------------------------------------------------
 # Section 5 verified --compact examples
-# ---------------------------------------------------------------------------
 
 def test_compact_keeps_data_order_but_serializer_reorders():
     # {"b": 2, "a": 1} --compact -> {"b":2,"a":1} (data order kept);
@@ -110,9 +108,7 @@ def test_compact_output_is_byte_language():
     assert ok('{"a":1,"b":2}', AB_SCHEMA) == '{"a":1,"b":2}'
 
 
-# ---------------------------------------------------------------------------
 # Key order (4.3)
-# ---------------------------------------------------------------------------
 
 def test_declared_keys_schema_order_skipped_optional():
     schema = {
@@ -244,9 +240,7 @@ def test_values_of_wrong_type_round_trip():
     assert ok('[1, 2]', AB_SCHEMA) == '[1,2]'
 
 
-# ---------------------------------------------------------------------------
 # Numbers (4.4 / section 6: values untouched)
-# ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("lexeme", [
     "1.0", "1e2", "1E2", "1e+2", "-0", "-0.0", "100.00", "0.001",
@@ -271,9 +265,7 @@ def test_object_input_scalars():
     assert ok(-0.0, True) == "-0.0"
 
 
-# ---------------------------------------------------------------------------
 # Section 7: the serialization-incompatible bucket
-# ---------------------------------------------------------------------------
 
 def test_bucket_duplicate_key_with_pointer():
     status = incompatible('{"a": 1, "b": {"c": 1, "c": 2}}', True)
@@ -314,9 +306,7 @@ def test_bucket_marker_attribute_for_harness():
     assert "/p" in str(exc)
 
 
-# ---------------------------------------------------------------------------
 # Round-trip: output parses back to the same value (2)
-# ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("instance,schema", [
     ('{"b": 2.5, "a": [1e2, -0, "\\u00e9/\\u0001"], "u": {"z": null}}', OPEN_SCHEMA),
@@ -330,9 +320,7 @@ def test_value_round_trip(instance, schema):
     assert " " not in out  # 4.1: no whitespace outside strings
 
 
-# ---------------------------------------------------------------------------
 # Explicit input kinds: serialize_json_text vs serialize_value (R4)
-# ---------------------------------------------------------------------------
 
 @pytest.mark.parametrize("value", [
     "hello", "1", "true", "[1]", '"x"', "", "null", "{}", '{"a": 1}',

@@ -31,9 +31,7 @@
 _Static_assert(sizeof(blg_token_entry) == 24, "blg_token_entry layout");
 _Static_assert(BLG_ERROR_MESSAGE_CAP == 256, "error cap");
 
-/* ------------------------------------------------------------------ */
 /* Exceptions                                                         */
-/* ------------------------------------------------------------------ */
 
 static PyObject *ExcBase; /* ZigConstraintsError */
 static PyObject *ExcTable[14]; /* index = blg_status; [0] unused */
@@ -81,9 +79,7 @@ static void init_zg_error(blg_error *err) {
     err->schema_offset = UINT32_MAX;
 }
 
-/* ------------------------------------------------------------------ */
 /* Helper: uint32 list from a Python sequence                          */
-/* ------------------------------------------------------------------ */
 
 static PyObject *fast_item(PyObject *fast, Py_ssize_t i) {
     /* borrowed ref; PySequence_Fast returned a list or tuple */
@@ -116,9 +112,7 @@ static uint32_t *seq_to_u32(PyObject *obj, size_t *out_n) {
     return buf;
 }
 
-/* ------------------------------------------------------------------ */
 /* Context                                                             */
-/* ------------------------------------------------------------------ */
 
 typedef struct {
     PyObject_HEAD
@@ -510,9 +504,7 @@ static PyType_Spec Context_spec = {
     Context_slots
 };
 
-/* ------------------------------------------------------------------ */
 /* Grammar                                                             */
-/* ------------------------------------------------------------------ */
 
 static void Grammar_dealloc(GrammarObject *self) {
     if (self->grammar) {
@@ -605,9 +597,7 @@ static PyType_Spec Grammar_spec = {
     Grammar_slots
 };
 
-/* ------------------------------------------------------------------ */
 /* Session                                                             */
-/* ------------------------------------------------------------------ */
 
 /* Serialization macro: the GIL is released BEFORE the blocking lock
  * acquire so it is not held while waiting on another thread. The session
@@ -903,9 +893,7 @@ static PyType_Spec Session_spec = {
     Session_slots
 };
 
-/* ------------------------------------------------------------------ */
 /* Module functions                                                    */
-/* ------------------------------------------------------------------ */
 
 static PyObject *mod_abi_version(PyObject *Py_UNUSED(m), PyObject *Py_UNUSED(ign)) {
     return PyLong_FromUnsignedLong(blg_abi_version());
@@ -1084,9 +1072,7 @@ static PyMethodDef module_methods[] = {
     {NULL}
 };
 
-/* ------------------------------------------------------------------ */
 /* Module init                                                         */
-/* ------------------------------------------------------------------ */
 
 static struct PyModuleDef moduledef = {
     PyModuleDef_HEAD_INIT,

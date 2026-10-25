@@ -101,9 +101,7 @@ def check_value(ctx, schema, doc: str):
         f"oracle={oracle}")
 
 
-# ---------------------------------------------------------------------------
 # A2: additionalProperties scopes to its own allOf branch
-# ---------------------------------------------------------------------------
 
 ALLOF_CLOSED_BRANCH = {"allOf": [
     {"type": "object", "properties": {"a": {"type": "integer"}},
@@ -127,9 +125,7 @@ def test_a2_allof_closed_branch_intersection_is_empty(ctx):
         check_value(ctx, ALLOF_CLOSED_BRANCH, doc)
 
 
-# ---------------------------------------------------------------------------
 # A6: value equality is structural and typed
-# ---------------------------------------------------------------------------
 
 def test_a6_unique_items_boolean_differs_from_number(ctx):
     schema = {"uniqueItems": True}
@@ -147,9 +143,7 @@ def test_a6_length_keyword_inapplicable_to_non_strings(ctx):
     check_value(ctx, schema, '"a"')
 
 
-# ---------------------------------------------------------------------------
 # A7: the $ref sibling rule is per-dialect
-# ---------------------------------------------------------------------------
 
 def test_a7_ref_sibling_maxlength_ignored_in_draft7(ctx):
     schema = {"$schema": D7,

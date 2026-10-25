@@ -71,5 +71,5 @@ The abi3 floor moved from 3.10 to 3.12: `Py_LIMITED_API=0x030C0000`, wheel
 tag `cp312-abi3`, `requires-python >= 3.12`. Python 3.10 reached EOL in
 October 2026, 3.11 was dropped with it, and current numpy releases require
 3.12+. The decision above (Limited API, one abi3 wheel, regular GIL) is
-unchanged. Historical note: the preview 0.2.0rc1 wheel that remains
-published is `cp310-abi3`.
+unchanged. Historical note: the preview 0.2.0rc1 wheel, withdrawn on
+2026-10-11, was `cp310-abi3`.

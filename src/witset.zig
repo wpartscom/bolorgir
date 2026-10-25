@@ -311,9 +311,7 @@ pub fn numInRange(a: std.mem.Allocator, nr: grammar.NumRange) !?grammar.NumConst
     return null;
 }
 
-// ---------------------------------------------------------------------------
 // Canonical spelling / literal parsing
-// ---------------------------------------------------------------------------
 
 /// The canonical quoted spelling of a decoded string (the schema compiler's
 /// escape table: \" \\ \b \t \n \f \r, \u00XX for other C0 controls).
@@ -518,9 +516,7 @@ fn countCp(s: []const u8) u32 {
     return n;
 }
 
-// ---------------------------------------------------------------------------
 // acceptsValue: exact membership of a value in a node's language
-// ---------------------------------------------------------------------------
 
 pub fn acceptsValue(g: View, a: std.mem.Allocator, node: grammar.NodeId, v: Val) Tri {
     return acceptsDepth(g, a, node, v, 0);
@@ -817,9 +813,7 @@ fn acceptsRepeat(g: View, a: std.mem.Allocator, r: *const grammar.Repeat, v: Val
     return res;
 }
 
-// ---------------------------------------------------------------------------
 // witness: construct a verified member of a node's language
-// ---------------------------------------------------------------------------
 
 /// Best-effort construction of a value in the node's language. The
 /// construction is heuristic; every candidate is verified with
@@ -1566,9 +1560,7 @@ fn witnessRepeat(g: View, a: std.mem.Allocator, r: *const grammar.Repeat, depth:
     return Val{ .arr = els.items };
 }
 
-// ---------------------------------------------------------------------------
 // disjoint: exact disjointness proofs
-// ---------------------------------------------------------------------------
 
 /// Exact disjointness of two nodes' languages. yes = provably no common
 /// value, no = a common value is exhibited (single-value nodes) or the
@@ -1794,9 +1786,7 @@ fn strWindow(g: View, node: grammar.NodeId) ?StrWin {
     }
 }
 
-// ---------------------------------------------------------------------------
 // tests
-// ---------------------------------------------------------------------------
 
 const testing = std.testing;
 const schema = @import("schema.zig");

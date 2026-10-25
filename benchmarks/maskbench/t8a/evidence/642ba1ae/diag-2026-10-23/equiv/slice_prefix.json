@@ -1,0 +1,419 @@
+{
+ "files": 43,
+ "mismatched_files": 0,
+ "errors": [],
+ "capped": [],
+ "wall_s": 0.6,
+ "mask_s": 0.4,
+ "abort_s": 0.0,
+ "aborts": 0,
+ "calls": 684,
+ "tbm_ms": {
+  "p50": 0.005,
+  "p75": 0.118,
+  "p90": 1.416,
+  "p99": 8.522,
+  "share_calls_ge_1s": 0.0,
+  "share_time_ge_1s": 0.0
+ },
+ "per_file": [
+  {
+   "file": "BFCL_java_0.json",
+   "instances": 1,
+   "calls": 16,
+   "mask_us": 54870,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "BFCL_parallel_171.json",
+   "instances": 1,
+   "calls": 30,
+   "mask_us": 6123,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "BFCL_parallel_56.json",
+   "instances": 1,
+   "calls": 42,
+   "mask_us": 8668,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "BFCL_simple_361.json",
+   "instances": 1,
+   "calls": 21,
+   "mask_us": 7037,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_easy---o5142.json",
+   "instances": 4,
+   "calls": 42,
+   "mask_us": 10461,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_easy---o58863.json",
+   "instances": 4,
+   "calls": 34,
+   "mask_us": 33330,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_easy---o62650.json",
+   "instances": 3,
+   "calls": 44,
+   "mask_us": 13623,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_hard---o21276.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_hard---o21288.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_hard---o50668.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_medium---o71298.json",
+   "instances": 2,
+   "calls": 30,
+   "mask_us": 15730,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_medium---o83771.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_medium---o89218.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_trivial---o41679.json",
+   "instances": 3,
+   "calls": 18,
+   "mask_us": 31806,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_trivial---o75109.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_trivial---o9824.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_ultra---o21437.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_ultra---o54621.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Github_ultra---o91126.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Glaiveai2K---calculate_area_6fd20e8d.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Glaiveai2K---calculate_area_8db9d7ff.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Glaiveai2K---create_calendar_event_91d51e42.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Handwritten---dep5.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Handwritten---itemscontains2.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Handwritten---oneofanyofitc7.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "JME_17.json",
+   "instances": 1,
+   "calls": 13,
+   "mask_us": 37163,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "JsonSchemaStore---csscomb.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "JsonSchemaStore---entity.beef-5.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "JsonSchemaStore---entity.beef.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Kubernetes---kb_1112_Normalized.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Kubernetes---kb_337_Normalized.json",
+   "instances": 6,
+   "calls": 65,
+   "mask_us": 28253,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Kubernetes---kb_359_Normalized.json",
+   "instances": 3,
+   "calls": 33,
+   "mask_us": 26046,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "MCPspec---ListPromptsRequest.json",
+   "instances": 1,
+   "calls": 11,
+   "mask_us": 27622,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "MCPspec---ServerNotification.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Snowplow---sp_233_Normalized.json",
+   "instances": 6,
+   "calls": 141,
+   "mask_us": 57985,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Snowplow---sp_349_Normalized.json",
+   "instances": 5,
+   "calls": 110,
+   "mask_us": 14170,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Snowplow---sp_57_Normalized.json",
+   "instances": 3,
+   "calls": 22,
+   "mask_us": 42522,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Synthesized---draft2019_09_nonvalid_maximum_id4_subschema1_not_2.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Synthesized---draft2019_09_nonvalid_multipleOf_id3_subschema1_not_2.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "Synthesized---draft2019_09_valid_const_id2_subschema1_not_2.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "WashingtonPost---wp_63_Normalized.json",
+   "instances": 0,
+   "calls": 0,
+   "mask_us": 0,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "WashingtonPost---wp_82_Normalized.json",
+   "instances": 3,
+   "calls": 6,
+   "mask_us": 5297,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  },
+  {
+   "file": "WashingtonPost---wp_87_Normalized.json",
+   "instances": 3,
+   "calls": 6,
+   "mask_us": 6690,
+   "abort_us": 0,
+   "aborts": 0,
+   "mismatches": []
+  }
+ ],
+ "library": {
+  "realpath": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/642ba1ae/libbolorgir.so.0.1.0",
+  "sha256": "642ba1aea60e54766eace4120cbed41e7d788d24c326a065a9741a03247a7da4",
+  "records": 2,
+  "phases": [
+   "before",
+   "after"
+  ],
+  "first_utc": "2026-10-23T00:50:29Z",
+  "last_utc": "2026-10-23T00:55:08Z"
+ }
+}

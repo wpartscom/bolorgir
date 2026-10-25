@@ -57,9 +57,7 @@ def zt():
     return torch, ConstraintLogitsProcessor
 
 
-# ----------------------------------------------------------------------
 # B-1: padded lm_head (scores.shape[-1] > engine vocab)
-# ----------------------------------------------------------------------
 
 @needs_core_masks
 def test_padded_lm_head_tail_masked(zt):
@@ -106,9 +104,7 @@ def test_narrower_than_vocab_logits_rejected(zt):
         c.close()
 
 
-# ----------------------------------------------------------------------
 # D-1 (eighth run): fast forbid path of mask unpacking
-# ----------------------------------------------------------------------
 
 @needs_core_masks
 def test_unpack_forbid_matches_unpack_inverted(zt):
@@ -135,9 +131,7 @@ def test_unpack_forbid_matches_unpack_inverted(zt):
         c.close()
 
 
-# ----------------------------------------------------------------------
 # B-3: early EOS of one batch row; HF pads never reach accept_token
-# ----------------------------------------------------------------------
 
 @needs_core_masks
 def test_batch_early_eos_row_skips_hf_padding(zt):
@@ -180,9 +174,7 @@ def test_batch_early_eos_row_skips_hf_padding(zt):
         c1.close()
 
 
-# ----------------------------------------------------------------------
 # B-2: __exit__ with an active exception does not mask it with a cleanup error
-# ----------------------------------------------------------------------
 
 def test_engine_exit_does_not_mask_active_exception():
     with pytest.raises(ValueError, match="boom"):

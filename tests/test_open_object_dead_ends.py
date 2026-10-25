@@ -1,61 +1,29 @@
-"""Open-object dead ends of the T3 acceptance of 50cbd80e (2026-10-08).
+"""Open-object dead ends in the completion certificates (ADR-0005).
 
-52 of the 140 byte-tokenizer passes of seven repository schemas ended in
-BLG_ERR_DEAD_END: the mask admitted a key whose closing quote the dispatch
-then refused. The exact open-object certificates of the completion filter
-(src/complete.zig, ADR-0005) were wrong in two places:
-
-- A: a patternProperties key was counted as a fresh completion whenever
-  the pattern could still match ("the matching continuations are
-  infinite"). A finite pattern language (`^line[1-3]$`, `^comment[1-9]$`,
-  `^\\$schema$`) runs out once its keys are seen, and dispatch refuses a
-  duplicate, so `"line2` after a seen `line2` had no continuation.
-- B1: a missing dependency name declared after a pending required prop was
-  declared unreachable (the dispatch window of the next key was used for
-  eventual reachability): `favoriteTopic` -> `tags` behind the required
-  `firstName` closed the key `"favoriteTopic` with an empty mask.
-- B2: the dependencies a declared key fires by its own dispatch were not
-  checked while that key was spelled: a trigger whose dependency was
-  already skipped in schema order (`memswap_limit` -> `mem_limit`) was
-  admitted and died at its closing quote.
-
-The review of that fix found the same certificates wrong on the
-fallback side and along dependencies:
-
-- C1: an undeclared key that the key pattern does not match (the fallback
-  value) was a witness only when the empty key was fresh or some extension
-  provably left the pattern; a finite non-matching remnant (`""` and `"a"`
-  beside `^([\\s\\S]{2,}|[^a])$`) or a literal pattern beside a declared
-  `""` gave "no key", so the comma after `{"":0` was masked. Both sides
-  are now counted exactly against the taken keys.
-- C2: a name a dependency entry can never satisfy any more (a declared
-  name behind the skip, an empty value, recursively along a chain of
-  triggers) doomed the keys that fire it only one level deep and not on
-  the mid-code-point path; a required name whose own dependency was
-  skipped did not doom the object at all. In an open object nothing ran
-  the filter (grammar needsReachability), so such prefixes were typable
-  forever and never closed.
-
-The second review found the count bound unchecked:
-
-- D: in an open object with `maxProperties` nothing ran the filter, so
-  after `{"x":1` under `maxProperties: 1` the comma was admitted and the
-  next key could never close (false alive). Routed to the filter, a key
-  typed while the remaining slots all belong to owed names (`required`,
-  dependency names) had no dead rule and the search could not exhaust
-  the key spellings (RESOURCE_LIMIT). The count certificate now counts
+- A: a patternProperties key counted as complete while the pattern still
+  matches ("infinite continuations"). A finite pattern language
+  (`^line[1-3]$`) runs out once its keys are seen and dispatch refuses a
+  duplicate.
+- B1: a dependency after pending required properties remains reachable
+  (`tags` after the required `firstName`; the key `"favoriteTopic` was
+  masked).
+- B2: dependencies a declared key fires by its own dispatch, skipped
+  while the key was spelled (`memswap_limit` -> `mem_limit`).
+- C1: an undeclared key outside the key pattern (the fallback value) with
+  a finite non-matching remnant (`""`/`"a"` beside `^([\\s\\S]{2,}|[^a])$`).
+- C2: a dependency entry that can never be satisfied (a declared name
+  behind the skip, an empty value, a trigger chain).
+- D: count bounds in an open object: after `{"x":1` under
+  `maxProperties: 1` the comma was admitted; the count certificate counts
   the owed names (closed under the dependencies they fire) and the
-  in-flight key exactly; the masks are checked from the document start.
+  in-flight key exactly.
 
 Each case pins the exact mask after a prefix (or the bytes it must not
-admit); walks over the masks must never dead-end and end in documents the
-independent validator accepts. The independent check is
-completion_reference: a byte the engine masks must have no completion
-witness among its bounded, validator-judged candidates, and the walks
-record how many of their steps such a witness confirms. The comparison
-with the bounded search (a `maxProperties` gate) is a consistency check
-only: the gated path still asks the same certificates for dead verdicts.
-The module is skipped until the core is built.
+admit); walks over the masks must not dead-end and must end in documents
+the independent validator accepts. completion_reference checks that a
+masked byte has no completion witness among its bounded, validator-judged
+candidates. The bounded-search comparison (a `maxProperties` gate) is a
+consistency check only. The module is skipped until the core is built.
 """
 
 import json
@@ -158,7 +126,7 @@ DEP_CYCLE = {"$schema": D4, "type": "object", "properties": {"a": S, "b": S},
              "dependencies": {"a": ["b"], "b": ["a"]}, "additionalProperties": False}
 # D: count bounds.
 MAX0 = {"type": "object", "maxProperties": 0}
-MAX1 = {"type": "object", "maxProperties": 1}  # the review's example
+MAX1 = {"type": "object", "maxProperties": 1}  # count example
 MAX3 = {"type": "object", "maxProperties": 3, "additionalProperties": I}
 MAX1_REQUIRED = {"type": "object", "maxProperties": 1, "required": ["a"],
                  "additionalProperties": I}
@@ -394,8 +362,8 @@ def test_reference_witnesses_the_review_counterexamples():
     assert cref.Reference(REQUIRED_OWN_DEP).witness(b'{"x"')[0] == "none"
     assert cref.Reference(DEP_CHAIN).witness(b'{"y":"",')[0] == "none"
     assert cref.Reference(DEP_CHAIN).witness(b'{"y":""}')[0] == "found"
-    # D: the review's maxProperties example - the comma after the only
-    # allowed member has no completion; the close has one.
+    # D: the maxProperties example - the comma after the only allowed
+    # member has no completion; the close has one.
     assert cref.Reference(MAX1).witness(b'{"x":1}')[0] == "found"
     assert cref.Reference(MAX1).witness(b'{"x":1,')[0] == "none"
     assert cref.Reference(MAX1_REQUIRED).witness(b'{"a')[0] == "found"

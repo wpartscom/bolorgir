@@ -1,0 +1,8 @@
+$ /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/local/t8a-work-9a5baf3e/venv-pinned/bin/python -m pytest tests/fuzz/test_fuzz_differential.py -q
+
+.                                                                        [100%]
+1 passed in 7.09s
+
+---- stderr ----
+
+---- exit 0, 7.2 s ----

@@ -1,0 +1,14 @@
+Command: mask_equiv.py --run <w12>/out/blg-spec-v1 --files <equiv>/ve_mask_limit_list.txt --allow-missing-stream --out /tmp/ve_meter_k1b.json
+Library: 7eb8ed0160e210e9cf6f797537c305557f984096bc2fc96d450bf1a00f0e3be0 (pkg-k1b, before and after)
+mask_equiv.py exit code: 1 - only the two expected corpus compile limits
+(Github_easy---o58839.json, Github_hard---o90895.json) are reported as errors;
+the strict comparison below is the gate and exits 0.
+
+files 6, calls 1515, mask 1545.7 s (aborts 19: 1155.6 s), wall 1546.0 s
+TBM ms: {"p50": 0.009, "p75": 12.974, "p90": 89.263, "p99": 58355.527,
+         "share_calls_ge_1s": 0.0769, "share_time_ge_1s": 0.9833}
+mismatched files: 0, errors: 2, capped: 0
+
+compare_ve_meters.py ORIG(9a5baf3e) vs FIX(7eb8ed01): VERDICT all checks
+passed, exit code 0; see ve_meter_compare_k1b.md for the 15 checks and
+ve_meter_compare_k1b.json for the machine-readable record.

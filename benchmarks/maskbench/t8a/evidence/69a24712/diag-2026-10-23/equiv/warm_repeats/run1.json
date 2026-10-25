@@ -1,0 +1,279 @@
+{
+ "status": "OK",
+ "case": "adr0007_mask_fast_path",
+ "lib": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/69a24712/libbolorgir.so.0.1.0",
+ "environment": {
+  "date_utc": "2026-10-23T17:26:11Z"
+ },
+ "vocab_size": 128256,
+ "gate": {
+  "probe_states": 4,
+  "status": "PASS"
+ },
+ "probes": {
+  "permissive_string_content": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 3,
+      "min": 15776940,
+      "p50": 15960868,
+      "p95": 16101141,
+      "p99": 16101141,
+      "max": 16101141,
+      "mean": 15946316.333333334
+     },
+     "core_ns": {
+      "count": 3,
+      "min": 15582297,
+      "p50": 15750178,
+      "p95": 15905548,
+      "p99": 15905548,
+      "max": 15905548,
+      "mean": 15746007.666666666
+     },
+     "work_ops": {
+      "count": 3,
+      "min": 383647,
+      "p50": 383647,
+      "p95": 383647,
+      "p99": 383647,
+      "max": 383647,
+      "mean": 383647.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 3,
+      "min": 4205740,
+      "p50": 4278029,
+      "p95": 4798073,
+      "p99": 4798073,
+      "max": 4798073,
+      "mean": 4427280.666666667
+     },
+     "core_ns": {
+      "count": 3,
+      "min": 4023200,
+      "p50": 4047227,
+      "p95": 4589015,
+      "p99": 4589015,
+      "max": 4589015,
+      "mean": 4219814.0
+     },
+     "work_ops": {
+      "count": 3,
+      "min": 20744,
+      "p50": 20744,
+      "p95": 20744,
+      "p99": 20744,
+      "max": 20744,
+      "mean": 20744.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1957,
+      "p50": 2177,
+      "p95": 2409,
+      "p99": 3282,
+      "max": 15027,
+      "mean": 2228.2155
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 2031,
+      "p50": 2264,
+      "p95": 2482,
+      "p99": 3371,
+      "max": 26235,
+      "mean": 2332.921
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/69a24712/libbolorgir.so.0.1.0",
+      "sha256": "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da"
+     },
+     "expected_sha256": "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da",
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1048,
+      "p50": 1167,
+      "p95": 1264,
+      "p99": 1629,
+      "max": 26352,
+      "mean": 1204.6205
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/69a24712/libbolorgir.so.0.1.0",
+      "sha256": "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da"
+     },
+     "expected_sha256": "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da",
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1203,
+      "p50": 1287,
+      "p95": 1379,
+      "p99": 1696,
+      "max": 23904,
+      "mean": 1327.326
+     }
+    }
+   }
+  },
+  "permissive_string_in_object": {
+   "cold": {
+    "off": {
+     "fill_wall_ns": {
+      "count": 3,
+      "min": 16857066,
+      "p50": 16912698,
+      "p95": 18087313,
+      "p99": 18087313,
+      "max": 18087313,
+      "mean": 17285692.333333332
+     },
+     "core_ns": {
+      "count": 3,
+      "min": 16653345,
+      "p50": 16681723,
+      "p95": 17855659,
+      "p99": 17855659,
+      "max": 17855659,
+      "mean": 17063575.666666668
+     },
+     "work_ops": {
+      "count": 3,
+      "min": 383662,
+      "p50": 383662,
+      "p95": 383662,
+      "p99": 383662,
+      "max": 383662,
+      "mean": 383662.0
+     }
+    },
+    "on": {
+     "fill_wall_ns": {
+      "count": 3,
+      "min": 4291650,
+      "p50": 4709040,
+      "p95": 4794810,
+      "p99": 4794810,
+      "max": 4794810,
+      "mean": 4598500.0
+     },
+     "core_ns": {
+      "count": 3,
+      "min": 4089106,
+      "p50": 4508333,
+      "p95": 4576025,
+      "p99": 4576025,
+      "max": 4576025,
+      "mean": 4391154.666666667
+     },
+     "work_ops": {
+      "count": 3,
+      "min": 20759,
+      "p50": 20759,
+      "p95": 20759,
+      "p99": 20759,
+      "max": 20759,
+      "mean": 20759.0
+     }
+    }
+   },
+   "warm": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1919,
+      "p50": 2125,
+      "p95": 2312,
+      "p99": 3335,
+      "max": 21306,
+      "mean": 2188.748
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1832,
+      "p50": 2028,
+      "p95": 2218,
+      "p99": 2478,
+      "max": 13090,
+      "mean": 2069.647
+     }
+    }
+   },
+   "warm_ext": {
+    "off": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/69a24712/libbolorgir.so.0.1.0",
+      "sha256": "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da"
+     },
+     "expected_sha256": "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da",
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 998,
+      "p50": 1100,
+      "p95": 1208,
+      "p99": 1289,
+      "max": 18794,
+      "mean": 1122.367
+     }
+    },
+    "on": {
+     "observations": 2000,
+     "cache_hits": 2000,
+     "all_hits": true,
+     "loaded": {
+      "path": "/home/gm/\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u0441\u0442\u043e\u043b/\u0441\u0430\u0439\u0442\u044b/LLM_trainer/zig/benchmarks/local/t8a-checkpoints/69a24712/libbolorgir.so.0.1.0",
+      "sha256": "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da"
+     },
+     "expected_sha256": "69a2471245699536e2b95d5b67f6c1070e0b8891542f0ef104b8f045daf426da",
+     "fill_wall_ns": {
+      "count": 2000,
+      "min": 1053,
+      "p50": 1159,
+      "p95": 1232,
+      "p99": 1501,
+      "max": 20635,
+      "mean": 1195.1615
+     }
+    }
+   }
+  }
+ }
+}

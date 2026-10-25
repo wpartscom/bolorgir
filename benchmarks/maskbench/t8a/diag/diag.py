@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """diag.py ROOT RUN_DIR FILE OUT_DIR: one corpus file of a T8a run again,
 alone, under the run's protocol, with a phase journal and the memory of
-the process - the diagnosis of a file that timed out (reviewer,
-2026-10-10: phases, instance and token, mask times, peak memory; the
-historical outcomes are not changed).
+the process - the diagnosis of a file that timed out: phases, instance
+and token, mask times, peak memory. Historical outcomes are not changed.
 
   ROOT     the tree the run was started from (benchmarks/maskbench/t8a
            and the MaskBench checkout under benchmarks/external)

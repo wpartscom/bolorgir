@@ -65,9 +65,7 @@ def _refusal(ctx, schema, status, profile=b"spec-v1", registry=None):
     return str(ei.value)
 
 
-# ---------------------------------------------------------------------------
 # content* keywords are annotations (2020-12 Validation section 8)
-# ---------------------------------------------------------------------------
 
 def test_content_keywords_are_annotations(byte_ctx):
     _check(byte_ctx, {"contentEncoding": "base64"},
@@ -86,9 +84,7 @@ def test_content_keywords_are_annotations(byte_ctx):
              profile=b"canonical-v1")
 
 
-# ---------------------------------------------------------------------------
 # RFC 3986 relative-URI resolution and in-document $id resources
-# ---------------------------------------------------------------------------
 
 def test_relative_ref_into_indocument_resource(byte_ctx):
     # anchor.json 'same $anchor with different base uri': the anchor of the
@@ -147,9 +143,7 @@ def test_registry_doc_nested_id_resource(byte_ctx):
            ['"s"'], ["3"], registry=json.dumps(registry).encode())
 
 
-# ---------------------------------------------------------------------------
 # $dynamicRef / $dynamicAnchor (2020-12)
-# ---------------------------------------------------------------------------
 
 def test_dynamic_ref_same_resource_behaves_like_anchor_ref(byte_ctx):
     schema = {"$id": "https://ex.com/root", "type": "array",
@@ -267,9 +261,7 @@ def test_dynamic_ref_refusals(byte_ctx):
     _check(byte_ctx, {"$schema": V19, "$dynamicRef": "#x"}, ["1"], [])
 
 
-# ---------------------------------------------------------------------------
 # $recursiveRef / $recursiveAnchor (2019-09)
-# ---------------------------------------------------------------------------
 
 def test_recursive_ref_static(byte_ctx):
     # Without $recursiveAnchor the '#' target is the current resource root.

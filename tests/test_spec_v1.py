@@ -64,9 +64,7 @@ def _refusal(ctx, schema, status, profile=b"spec-v1"):
     return str(ei.value)
 
 
-# ---------------------------------------------------------------------------
 # Numbers by value (semantics-spec-v1 4.4)
-# ---------------------------------------------------------------------------
 
 def test_integer_is_value_based(byte_ctx):
     _check(byte_ctx, {"type": "integer"},
@@ -101,9 +99,7 @@ def test_const_fraction_by_value(byte_ctx):
            ["1.4", "1.51", "2"])
 
 
-# ---------------------------------------------------------------------------
 # Structural enum/const
-# ---------------------------------------------------------------------------
 
 def test_enum_dedups_equal_values(byte_ctx):
     _check(byte_ctx, {"enum": [1, 1.0, "a"]}, ["1", "1.0", '"a"'], ['"b"', "2"])
@@ -149,9 +145,7 @@ def test_type_list_validation(byte_ctx):
     _refusal(byte_ctx, {"type": [1]}, "INVALID_SCHEMA")
 
 
-# ---------------------------------------------------------------------------
 # Open objects (semantics-spec-v1 4.3) and quick wins
-# ---------------------------------------------------------------------------
 
 def test_open_object_interleave_and_uniqueness(byte_ctx):
     schema = {"type": "object",
@@ -229,9 +223,7 @@ def test_anyjson_arrays_many_elements(byte_ctx):
            ["[1,2,3,4,5,6]"])
 
 
-# ---------------------------------------------------------------------------
 # Extended local $ref (dialect-matrix section 3)
-# ---------------------------------------------------------------------------
 
 def test_ref_multi_segment_pointer(byte_ctx):
     schema = {"$defs": {"a": {"type": "object",
@@ -312,9 +304,7 @@ def test_ref_to_false(byte_ctx):
            ["{}"], ['{"a":1}'])
 
 
-# ---------------------------------------------------------------------------
 # Dialect normalization (dialect-matrix sections 1-2)
-# ---------------------------------------------------------------------------
 
 def test_dialect_detection_forms(byte_ctx):
     for uri in (D4, D6 + "#", D7.replace("http://", "https://"), V19, V20):
@@ -415,9 +405,7 @@ def test_vocabulary_rule(byte_ctx):
              "UNSUPPORTED_FEATURE")
 
 
-# ---------------------------------------------------------------------------
 # canonical-v1 stays frozen on the spec-v1 surface
-# ---------------------------------------------------------------------------
 
 def test_canonical_untouched(byte_ctx):
     canon = b"canonical-v1"

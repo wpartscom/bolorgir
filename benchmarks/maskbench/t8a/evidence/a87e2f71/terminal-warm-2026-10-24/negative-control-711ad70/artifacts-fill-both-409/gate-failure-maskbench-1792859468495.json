@@ -1,0 +1,67 @@
+{
+ "file": "(all)",
+ "case": {
+  "states_compared": 410,
+  "instances": 1
+ },
+ "divergences": [
+  {
+   "kind": "validation",
+   "arm": "off",
+   "mismatches": [
+    [
+     "case",
+     1,
+     true,
+     false,
+     "fill:5"
+    ]
+   ]
+  },
+  {
+   "kind": "validation",
+   "arm": "on",
+   "mismatches": [
+    [
+     "case",
+     1,
+     true,
+     false,
+     "fill:5"
+    ]
+   ]
+  },
+  {
+   "kind": "fill",
+   "arm": "off",
+   "count": 1
+  },
+  {
+   "kind": "fill",
+   "arm": "on",
+   "count": 1
+  }
+ ],
+ "truncated": false,
+ "stats_off": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 409,
+  "fill_errors": 1,
+  "accept_errors": 0,
+  "validation_error": 1
+ },
+ "stats_on": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 409,
+  "fill_errors": 1,
+  "accept_errors": 0,
+  "validation_error": 1
+ },
+ "trace_sha256": "5545f81d1d437486f2c1922d558d281b67efb02f8205175485abec484eed2e39"
+}

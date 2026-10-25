@@ -1,0 +1,8 @@
+$ /usr/bin/python3 -B /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/maskbench/t8a/evidence/a87e2f71/gate-hardening-2026-10-24/selfcheck/stale/skip.py /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/bench_adr0007.py /home/gm/Рабочий стол/сайты/LLM_trainer/zig/benchmarks/maskbench/t8a/evidence/a87e2f71/gate-hardening-2026-10-24/selfcheck/stale/bench_gate.json
+
+{"status": "SKIP", "reason": "synthetic missing dependency"}
+
+---- stderr ----
+
+---- exit 0, 0.0 s ----
+---- verdict FAIL run_id = None (expected 'bench-gate-26670-1792858303169897769'); ok status = 'OK' (expected 'OK'); ok gate.maskbench_states = 425; FAIL gate.maskbench_fill_errors: KeyError: 'maskbench_fill_errors'; FAIL gate.maskbench_validation_errors: KeyError: 'maskbench_validation_errors' (ok=False) ----

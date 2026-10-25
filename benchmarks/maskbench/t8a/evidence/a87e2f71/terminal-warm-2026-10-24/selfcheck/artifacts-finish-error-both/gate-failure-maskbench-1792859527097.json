@@ -1,0 +1,49 @@
+{
+ "file": "(all)",
+ "case": {
+  "states_compared": 410,
+  "instances": 1
+ },
+ "divergences": [
+  {
+   "kind": "completion",
+   "arm": "off",
+   "count": 1
+  },
+  {
+   "kind": "completion",
+   "arm": "on",
+   "count": 1
+  }
+ ],
+ "truncated": false,
+ "stats_off": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 410,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "terminal_masks": 1,
+  "terminal_fill_errors": 0,
+  "input_errors": 0,
+  "completion_errors": 1,
+  "validation_error": 0
+ },
+ "stats_on": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 410,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "terminal_masks": 1,
+  "terminal_fill_errors": 0,
+  "input_errors": 0,
+  "completion_errors": 1,
+  "validation_error": 0
+ },
+ "trace_sha256": "86adebc1c9b8ee95b88ec5fc6c85673b37a25342c07369e8662056a942a66e68"
+}

@@ -63,10 +63,6 @@ def _refusal(ctx, schema, status, profile=b"spec-v1"):
     return str(ei.value)
 
 
-# ---------------------------------------------------------------------------
-# anyOf: a plain union
-# ---------------------------------------------------------------------------
-
 def test_anyof_union(byte_ctx):
     schema = {"anyOf": [{"type": "string"}, {"type": "integer"}]}
     _check(byte_ctx, schema,
@@ -85,9 +81,7 @@ def test_anyof_refusals(byte_ctx):
     _refusal(byte_ctx, {"anyOf": {"type": "integer"}}, "INVALID_SCHEMA")
 
 
-# ---------------------------------------------------------------------------
 # oneOf: exactly one branch accepts
-# ---------------------------------------------------------------------------
 
 def test_oneof_number_vs_integer(byte_ctx):
     schema = {"oneOf": [{"type": "number"}, {"type": "integer"}]}
@@ -107,9 +101,7 @@ def test_oneof_refusals(byte_ctx):
     _refusal(byte_ctx, {"oneOf": [False]}, "UNSATISFIABLE_CONSTRAINT")
 
 
-# ---------------------------------------------------------------------------
 # allOf: every branch accepts
-# ---------------------------------------------------------------------------
 
 def test_allof_intersection(byte_ctx):
     schema = {"allOf": [{"type": "integer"}, {"const": 5}]}
@@ -134,10 +126,6 @@ def test_allof_sweep_mid_array(byte_ctx):
            ["[5,5]", "[]", "[5.0]"],
            ["[5,6]", "[6]", '["5"]'])
 
-
-# ---------------------------------------------------------------------------
-# if/then/else
-# ---------------------------------------------------------------------------
 
 def test_if_then_else(byte_ctx):
     schema = {"if": {"const": 0}, "then": {"const": 1}, "else": {"type": "number"}}
@@ -167,9 +155,7 @@ def test_then_without_if_is_inert(byte_ctx):
     _check(byte_ctx, {"then": {"const": 1}}, ["1", "2", '"x"'], [])
 
 
-# ---------------------------------------------------------------------------
 # not
-# ---------------------------------------------------------------------------
 
 def test_not_type_integer(byte_ctx):
     schema = {"not": {"type": "integer"}}
@@ -237,9 +223,7 @@ def test_not_refusals_carry_pointer(byte_ctx):
              "UNSUPPORTED_FEATURE")
 
 
-# ---------------------------------------------------------------------------
 # Nesting and partial documents
-# ---------------------------------------------------------------------------
 
 def test_nested_combinators(byte_ctx):
     schema = {"oneOf": [
@@ -306,9 +290,7 @@ def test_str_excl_mask_excludes_forbidden_close(byte_ctx):
         zg.grammar_release(g)
 
 
-# ---------------------------------------------------------------------------
 # Value verdicts ignore declared-key order
-# ---------------------------------------------------------------------------
 
 # A oneOf branch, an `if` condition and a contains subschema under a finite
 # maxContains decide on the value. A branch whose declared keys arrive out
@@ -382,9 +364,7 @@ def test_value_verdicts_ignore_key_order(byte_tok, mode, fast):
         assert ctx.destroy() == zg.BLG_OK
 
 
-# ---------------------------------------------------------------------------
 # canonical-v1 is frozen; $ref siblings refuse
-# ---------------------------------------------------------------------------
 
 def test_canonical_v1_still_refuses_combinators(byte_ctx):
     for kw in ({"anyOf": [{"type": "string"}]},

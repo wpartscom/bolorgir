@@ -50,9 +50,7 @@ def check_status(code, where):
     assert isinstance(code, int) and 0 <= code <= 13, f"{where}: status {code} out of range"
 
 
-# ---------------------------------------------------------------------------
 # Builders of valid objects (real buffers)
-# ---------------------------------------------------------------------------
 
 SPEC = fc.make_fuzz_tokenizer()
 
@@ -103,9 +101,7 @@ def valid_request(data: bytes):
     return req, buf
 
 
-# ---------------------------------------------------------------------------
 # Scenarios
-# ---------------------------------------------------------------------------
 
 def sc_config(rng, counters):
     desc, keep = valid_desc()

@@ -1,0 +1,93 @@
+{
+ "file": "(all)",
+ "case": {
+  "states_compared": 410,
+  "instances": 1
+ },
+ "divergences": [
+  {
+   "kind": "instance",
+   "off": [
+    "case",
+    1,
+    true,
+    true,
+    true,
+    "completed"
+   ],
+   "on": [
+    "case",
+    1,
+    true,
+    true,
+    false,
+    "rejected:finish:11"
+   ]
+  },
+  {
+   "kind": "validation",
+   "arm": "on",
+   "mismatches": [
+    [
+     "case",
+     1,
+     true,
+     true,
+     false,
+     "rejected:finish:11"
+    ]
+   ]
+  },
+  {
+   "kind": "terminal",
+   "case": [
+    "case",
+    1
+   ],
+   "off": {
+    "tail_status": 0,
+    "can_end": true,
+    "can_end_error": null,
+    "finish": 0,
+    "finish_error": null
+   },
+   "on": {
+    "tail_status": 0,
+    "can_end": false,
+    "can_end_error": null,
+    "finish": 11,
+    "finish_error": null
+   }
+  }
+ ],
+ "truncated": false,
+ "stats_off": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 410,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "terminal_masks": 1,
+  "terminal_fill_errors": 0,
+  "input_errors": 0,
+  "completion_errors": 0,
+  "validation_error": 0
+ },
+ "stats_on": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 410,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "terminal_masks": 1,
+  "terminal_fill_errors": 0,
+  "input_errors": 0,
+  "completion_errors": 0,
+  "validation_error": 1
+ },
+ "trace_sha256": "64605f5bdcf32d7abee169d06cc65712e16c221079436113a8b946bcbc626353"
+}

@@ -67,9 +67,7 @@ def _refusal(ctx, schema, status, profile=b"spec-v1"):
     return str(ei.value)
 
 
-# ---------------------------------------------------------------------------
 # additionalProperties as a schema
-# ---------------------------------------------------------------------------
 
 def test_additional_properties_schema(byte_ctx):
     schema = {"type": "object",
@@ -98,9 +96,7 @@ def test_additional_properties_true_is_open(byte_ctx):
            ['{"a":1,"b":[true]}', "{}"], [])
 
 
-# ---------------------------------------------------------------------------
 # patternProperties: literal-substring subset, regex refuses
-# ---------------------------------------------------------------------------
 
 def test_pattern_properties_literal(byte_ctx):
     schema = {"patternProperties": {"foo": {"type": "integer"}}}
@@ -149,9 +145,7 @@ def test_pattern_properties_refusals(byte_ctx):
     _refusal(byte_ctx, {"patternProperties": {"(?=x)a": {}}}, "UNSUPPORTED_FEATURE")
 
 
-# ---------------------------------------------------------------------------
 # propertyNames
-# ---------------------------------------------------------------------------
 
 def test_property_names_length(byte_ctx):
     _check(byte_ctx, {"propertyNames": {"maxLength": 3}},
@@ -181,9 +175,7 @@ def test_property_names_enum(byte_ctx):
            ['{"a":1}', '{"a":1,"b":2}'], ['{"c":1}'])
 
 
-# ---------------------------------------------------------------------------
 # min/maxProperties
-# ---------------------------------------------------------------------------
 
 def test_min_properties(byte_ctx):
     _check(byte_ctx, {"minProperties": 2},
@@ -214,9 +206,7 @@ def test_min_max_properties_value_based_bounds(byte_ctx):
              "UNSATISFIABLE")
 
 
-# ---------------------------------------------------------------------------
 # dependencies / dependentRequired / dependentSchemas
-# ---------------------------------------------------------------------------
 
 def test_dependent_required(byte_ctx):
     schema = {"dependentRequired": {"a": ["b", "c"]}}
@@ -266,9 +256,7 @@ def test_dependencies_closed_object_reduction(byte_ctx):
     _check(byte_ctx, schema, ["{}"], ['{"a":1}'])
 
 
-# ---------------------------------------------------------------------------
 # Tuple items / additionalItems / prefixItems
-# ---------------------------------------------------------------------------
 
 def test_tuple_items_draft07(byte_ctx):
     schema = {"$schema": D7, "items": [{"type": "string"}, {"type": "integer"}]}
@@ -318,9 +306,7 @@ def test_tuple_with_min_max_items(byte_ctx):
     _check(byte_ctx, schema, ['["a"]', '["a",9]'], ["[]", '["a",1,2]'])
 
 
-# ---------------------------------------------------------------------------
 # contains / minContains / maxContains
-# ---------------------------------------------------------------------------
 
 def test_contains_basic(byte_ctx):
     _check(byte_ctx, {"contains": {"type": "integer"}},
@@ -373,9 +359,7 @@ def test_contains_complex_schema(byte_ctx):
            ['[{"x":"s"}]', '[{"y":1}]', "[]"])
 
 
-# ---------------------------------------------------------------------------
 # uniqueItems
-# ---------------------------------------------------------------------------
 
 def test_unique_items_scalars(byte_ctx):
     _check(byte_ctx, {"uniqueItems": True},
@@ -408,9 +392,7 @@ def test_unique_items_form(byte_ctx):
     _refusal(byte_ctx, {"type": "array", "uniqueItems": "yes"}, "INVALID_SCHEMA")
 
 
-# ---------------------------------------------------------------------------
 # Dialect scoping of the P2 keywords
-# ---------------------------------------------------------------------------
 
 def test_p2_keywords_ignored_outside_their_dialect(byte_ctx):
     # propertyNames/contains are draft-06+: unknown in draft-04.
@@ -437,9 +419,7 @@ def test_dependent_required_2019_09(byte_ctx):
            ["{}", '{"a":1,"b":2}'], ['{"a":1}'])
 
 
-# ---------------------------------------------------------------------------
 # canonical-v1 stays frozen
-# ---------------------------------------------------------------------------
 
 def test_canonical_still_refuses_p2(byte_ctx):
     canon = b"canonical-v1"
@@ -455,9 +435,7 @@ def test_canonical_still_refuses_p2(byte_ctx):
              profile=canon)
 
 
-# ---------------------------------------------------------------------------
 # $ref interaction
-# ---------------------------------------------------------------------------
 
 def test_p2_keywords_next_to_ref(byte_ctx):
     # draft-07 ignores siblings of $ref; 2019-09+ conjoins them (P6b).

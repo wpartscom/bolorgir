@@ -1,0 +1,12 @@
+{
+ "about": "T2c classes of Bolorgir errors in T8a on the core 9a5baf3e for the PARALLEL protocol run (threads 12). Prepared 2026-10-15 as the scaffold of the run in the work dir benchmarks/local/t8a-work-9a5baf3e-w12: the owner chose the parallel variant after the serial run of benchmarks/local/t8a-work-9a5baf3e was stopped on 2026-10-15 (pilots under benchmarks/local/t8a-pilot-9a5baf3e). No class is carried over from the serial file evidence/9a5baf3e/t2c.json or from 6e62e0d1: the classes for this run will be prepared only from the outcomes measured in the first full run of the parallel work dir and decided by the owner. The serial diagnoses remain the basis of the diagnosis for repeated files, but every class must be re-confirmed against the parallel run's outcomes; the parallel protocol can turn serial-borderline files into timeouts (measured in the 2026-10-15 pilots: at 12 workers 9 of 40 serial-comparable files flipped a result to a timeout). Until the decisions the entries are empty: every Bolorgir error of this run stays open and needs a separate decision, the timeouts included.",
+ "core_sha256": "9a5baf3e373ac9a7a048b6a2b9bffda2c1e1e3d2f62b4cc62e70785cc3490c41",
+ "decided": "pending: no class decided for the parallel protocol yet",
+ "verification": "before the final acceptance every wrong instance of the run is enumerated (diag/wrong_instances.py --require-complete) and compared with the approved instance lists of the entries; an instance not in the list of its entry is not covered by the class and needs a separate decision",
+ "protocol": {"threads": 12, "time_limit": 900, "mem_limit": 40,
+  "profile": "spec-v1", "serializer": "bolorgir", "compact": true,
+  "smoke_files": 0,
+  "tokenizer_revision": "a2856192dd7c25b842431f39c179a6c2c2f627d1",
+  "wheel_sha256": "b5635a7ed70cec7b4f92f952272ef1cd9fb0929f9c4a8e7d874d536d083d2e2d"},
+ "entries": {}
+}

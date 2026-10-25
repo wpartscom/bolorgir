@@ -1,0 +1,1 @@
+warm verify: PASS (10 legs, means 1190.5, 1218.3, 1214.7, 1188.4, 1267.5, 1126.7, 1264.1, 1254.7, 1167.2, 1085.0 ns; benchmarks/maskbench/t8a/evidence/a87e2f71/terminal-warm-2026-10-24/warm-acceptance/artifacts/warm_acceptance.json)

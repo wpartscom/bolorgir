@@ -33,6 +33,10 @@ file in the same change.
 | `src/literals.zig` | Literal-set (FR-3) compiler. |
 | `src/grammar.zig` | Grammar IR (§2). |
 | `src/pattern.zig` | ECMA-262 regex subset compiled to a DFA over Unicode scalar values (`pattern`, regex `patternProperties`). |
+| `src/regex.zig` | Standalone regex constraint over the whole text (ADR-0015). |
+| `src/structtag.zig` | Structural-tag tool-call framing (ADR-0016). |
+| `src/probe.zig` | Compile-time generatability probe (ADR-0012). |
+| `src/diag.zig` | Mask-path diagnostic counters, not part of the ABI. |
 | `src/parser.zig` | Incremental parser (§3). |
 | `src/mask.zig` | Mask builder: vocabulary trie walk and the fast path (§4). |
 | `src/complete.zig` | Completion-reachability filter: certificates and bounded search (§4). |

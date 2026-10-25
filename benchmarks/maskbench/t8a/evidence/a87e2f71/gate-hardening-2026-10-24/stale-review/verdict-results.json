@@ -1,0 +1,35 @@
+{
+  "id": "bench-gate",
+  "requirement": "dependency SKIP with retained output from earlier run",
+  "run_id": "bench-gate-26147-1792858287400526792",
+  "status": "fail",
+  "exit": 0,
+  "duration_s": 0.0,
+  "skipped": "bolorgir package is not installed: the core is not built yet",
+  "collected_cases": 0,
+  "tests_passed": 0,
+  "tests_failed": 0,
+  "verdict": {
+    "ok": false,
+    "detail": "FAIL run_id = None (expected 'bench-gate-26147-1792858287400526792'); ok gate.maskbench_states = 425",
+    "checks": [
+      {
+        "check": "run_id",
+        "ok": false,
+        "detail": "run_id = None (expected 'bench-gate-26147-1792858287400526792')"
+      },
+      {
+        "check": "gate.maskbench_states",
+        "ok": true,
+        "detail": "gate.maskbench_states = 425"
+      }
+    ],
+    "json": "/tmp/review-verdicts-final/stale-json/bench_gate.json"
+  },
+  "collect_sample": [],
+  "log": "../../../../../../tmp/review-verdicts-final/stale-json/bench-gate.log",
+  "tail": [
+    "{\"status\": \"SKIP\", \"reason\": \"bolorgir package is not installed: the core is not built yet\"}"
+  ],
+  "old_json_unchanged": true
+}

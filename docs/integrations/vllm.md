@@ -9,17 +9,22 @@ design decisions and the support matrix are in
 
 > Status: the backend is implemented and functionally checked on CPU
 > (request compilation, masks, terminals, rollback, structural tags,
-> the backend trace), including on the tokenizer of the pinned model,
-> and the GPU stage of the T10 checks has run the server-side scenarios
-> on the pinned stack for both speculative configurations (request
-> matrix, extra harness, trace qualifications, controlled resource-limit
-> scenarios; local run logs, not tracked). The review of the first GPU
-> evidence was closed by the round-7 runs: the limit scenarios, the
-> forbidden-candidate probe, the batch row reorder with the mask replay
-> and the run5 manifests with the EngineCore maps records are in place.
-> The comparison report against XGrammar and the fresh acceptance remain
-> outstanding, and each row of the matrix marks "verified", "explicitly
-> refused" or "not verified".
+> the backend trace), including on the tokenizer of the pinned model.
+> The GPU stage of the T10 checks ran the server-side scenarios on the
+> pinned stack for both speculative configurations (request matrix,
+> extra harness, trace qualifications, controlled resource-limit
+> scenarios; local run logs, not tracked) against the candidate core
+> `9a5baf3e...` on 2026-10-12. The review of the first GPU evidence was
+> closed by the round-7 runs: the limit scenarios, the forbidden-candidate
+> probe, the batch row reorder with the mask replay and the run5 manifests
+> with the EngineCore maps records are in place. The XGrammar comparison
+> was published on 2026-10-13
+> ([REPORT-v2.md](../../benchmarks/reports/20261013_xgrammar-compare-a3/compact/REPORT-v2.md));
+> it is a same-language comparison of one measured session set, not a
+> mask-cost proof. The GPU stage and the comparison name that stack and
+> build only: no GPU check or comparison has run on the current tree, and
+> its fresh R6 verdict and T8a run remain outstanding. Each row of the
+> matrix marks "verified", "explicitly refused" or "not verified".
 
 ## Pinned stack
 

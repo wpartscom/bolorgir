@@ -47,9 +47,7 @@ SPECIAL = 257
 X = ord("x")
 
 
-# ---------------------------------------------------------------------------
 # Tokenizers and bitmask stand-ins
-# ---------------------------------------------------------------------------
 
 def _byte_bundle() -> bolorgir.TokenizerBundle:
     tokens = [bytes([i]) for i in range(256)]
@@ -112,9 +110,7 @@ def accept_bytes(grammar, text: bytes, request_id: str = "r0") -> bool:
     return grammar.accept_tokens(request_id, list(text))
 
 
-# ---------------------------------------------------------------------------
 # Structural tags (ADR-0016): the pinned agent-path spec shapes
-# ---------------------------------------------------------------------------
 
 SET_CODE_PARAMS = {
     "type": "object",
@@ -154,9 +150,7 @@ def required_structural_tag(name: str = "set_code", params=None, **fmt):
     return spec
 
 
-# ---------------------------------------------------------------------------
 # Interface and artifact identity
-# ---------------------------------------------------------------------------
 
 def test_interface_matches_the_pinned_vllm_source():
     if not VLLM_SRC:
@@ -222,9 +216,7 @@ def test_tracked_patch_identity_and_targets():
     assert "external_req_id=request.external_req_id" in text
 
 
-# ---------------------------------------------------------------------------
 # Request validation and explicit refusals
-# ---------------------------------------------------------------------------
 
 def _params(**kw):
     base = dict(json=None, regex=None, choice=None, grammar=None,
@@ -293,10 +285,6 @@ def test_backend_refuses_model_vocab_smaller_than_tokenizer(monkeypatch):
     with pytest.raises(bv.BolorgirBackendError):
         bv.BolorgirBackend(cfg, tokenizer=object(), vocab_size=bundle.vocab_size - 1)
 
-
-# ---------------------------------------------------------------------------
-# JSON Schema: masks, completion, a controlled forbidden candidate
-# ---------------------------------------------------------------------------
 
 def test_json_schema_mask_completion_and_forbidden_candidate(monkeypatch):
     backend, grammar = json_backend(
@@ -396,10 +384,6 @@ def test_regex_refusal_is_a_request_error(monkeypatch):
         backend.compile_grammar(bv.StructuredOutputOptions.REGEX, "a(?=b)")
     backend.destroy()
 
-
-# ---------------------------------------------------------------------------
-# Terminal tokens (EOS and the request stop set)
-# ---------------------------------------------------------------------------
 
 def test_stop_tokens_replace_the_terminal_set(monkeypatch):
     backend = make_backend(monkeypatch)
@@ -504,9 +488,7 @@ def test_terminal_override_keeps_valid_drafts_working(monkeypatch):
     backend.destroy()
 
 
-# ---------------------------------------------------------------------------
 # Structural tags (ADR-0016): the pinned hermes agent path
-# ---------------------------------------------------------------------------
 
 def test_structural_tag_triggered_flow(monkeypatch):
     backend = make_backend(monkeypatch)
@@ -662,9 +644,7 @@ def test_structural_tag_unsupported_variant_is_a_request_error(monkeypatch):
     backend.destroy()
 
 
-# ---------------------------------------------------------------------------
 # Backend trace (blg-agent-trace/2, benchmarks/agent_eval/PLAN.md)
-# ---------------------------------------------------------------------------
 
 def _load_qualify():
     """The A1 qualification collector, imported by path like the tests of
@@ -1102,9 +1082,7 @@ def test_tracing_is_off_without_the_environment(monkeypatch):
     backend.destroy()
 
 
-# ---------------------------------------------------------------------------
 # Rollback and draft validation (speculative decoding)
-# ---------------------------------------------------------------------------
 
 def test_rollback_restores_the_mask_and_validate_keeps_the_state(monkeypatch):
     backend = make_backend(monkeypatch, num_spec_tokens=3)
@@ -1143,9 +1121,7 @@ def test_rollback_restores_the_mask_and_validate_keeps_the_state(monkeypatch):
     backend.destroy()
 
 
-# ---------------------------------------------------------------------------
 # Failure policy, vocabulary padding, reset
-# ---------------------------------------------------------------------------
 
 def test_a_runtime_failure_fails_only_this_request(monkeypatch):
     backend = make_backend(monkeypatch)
@@ -1208,9 +1184,7 @@ def test_allocate_token_bitmask_with_torch(monkeypatch):
     backend.destroy()
 
 
-# ---------------------------------------------------------------------------
 # The real HF tokenizer bridge
-# ---------------------------------------------------------------------------
 
 def _hf_byte_tokenizer():
     pytest.importorskip("tokenizers")

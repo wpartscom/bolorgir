@@ -65,9 +65,7 @@ def _refusal(ctx, schema, status, profile=b"spec-v1"):
     return str(ei.value)
 
 
-# ---------------------------------------------------------------------------
 # Fold path: no conditional applicators
-# ---------------------------------------------------------------------------
 
 def test_unevaluated_properties_fold(byte_ctx):
     schema = {"$schema": V20, "type": "object",
@@ -124,9 +122,7 @@ def test_unevaluated_boolean_subschemas(byte_ctx):
            ['[]', '[1,2]', '{}'], [])
 
 
-# ---------------------------------------------------------------------------
 # Scenario path: conditional applicators
-# ---------------------------------------------------------------------------
 
 def test_unevaluated_properties_any_of(byte_ctx):
     # JSON-Schema-Test-Suite unevaluatedProperties.json case 10.
@@ -235,9 +231,7 @@ def test_unevaluated_nested_subschema(byte_ctx):
            ['{"foo":{"bar":"test","faz":"test"}}', '{"foo":{"bar":1}}'])
 
 
-# ---------------------------------------------------------------------------
 # Dialect gate
-# ---------------------------------------------------------------------------
 
 def test_unevaluated_ignored_in_draft07(byte_ctx):
     # Unknown keyword in draft-07: ignored, extra keys/elements pass.
@@ -253,9 +247,7 @@ def test_unevaluated_refused_in_canonical(byte_ctx):
              "UNSUPPORTED_FEATURE", profile=b"canonical-v1")
 
 
-# ---------------------------------------------------------------------------
 # Documented refusals (ADR-0009)
-# ---------------------------------------------------------------------------
 
 def test_refusal_nested_combinator_branch(byte_ctx):
     # Suite case 32: dynamic evaluation inside nested refs. The runtime

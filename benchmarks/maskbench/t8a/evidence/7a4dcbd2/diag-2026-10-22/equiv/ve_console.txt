@@ -1,0 +1,24 @@
+Command: mask_equiv.py --run <w12>/out/blg-spec-v1 --files <equiv>/ve_mask_limit_list.txt --allow-missing-stream --out /tmp/ve_meter_k1.json
+Library: 7a4dcbd2e9212f02f19f9e2e09dade39502955111422b7b5712605c373a0dc80 (pkg-k1, before and after)
+Exit code: 1
+
+files 6, calls 1147, mask 1284.3 s (aborts 21: 950.2 s), wall 1284.5 s
+TBM ms: {"p50": 0.015, "p75": 13.122, "p90": 92.102, "p99": 60484.369,
+         "share_calls_ge_1s": 0.0848, "share_time_ge_1s": 0.9864}
+mismatched files: 1, errors: 3, capped: 0
+  MISMATCH Github_hard---o74466.json - 12 field-mismatch records on 5 instances (0-4)
+    [{'i': 0, 'field': 'consumed', 'run': 148, 'candidate': 69},
+     {'i': 0, 'field': 'abort_at', 'run': 148,
+      'candidate': {'phase': 'commit_token', 'at': 69,
+                    'error': 'InvalidTokenError', 'us': 15618}},
+     {'i': 1, 'field': 'consumed', 'run': 130, 'candidate': 69},
+     {'i': 1, 'field': 'rejected_at', 'run': 130, 'candidate': None},
+     {'i': 1, 'field': 'abort_at', 'run': 130,
+      'candidate': {'phase': 'commit_token', 'at': 69,
+                    'error': 'InvalidTokenError', 'us': 8}}, ...]
+  MISMATCH Github_easy---o58839.json - compile failed: ResourceLimitError('grammar exceeds node budget of 100000')
+  MISMATCH Github_hard---o90895.json - compile failed: ResourceLimitError('grammar exceeds node budget of 100000')
+
+Cause: the any_nodes bitset was allocated after Builder.finish and aliased
+pat_len. The fixed artifact is 7eb8ed01...3be0; this result is kept as the
+failed candidate's record.

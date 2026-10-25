@@ -27,9 +27,7 @@ from exact_numbers import Num, exact_dialects, exact_validator
 CLOSING_BYTES = (b'"', b"}", b"]")
 
 
-# ---------------------------------------------------------------------------
 # Reference validator
-# ---------------------------------------------------------------------------
 
 class _EcmaRe:
     """Stand-in for the `re` module inside jsonschema: `search` runs the
@@ -122,9 +120,7 @@ def make_reference_validator(schema_text):
         return None, f"{type(e).__name__}: {e}"
 
 
-# ---------------------------------------------------------------------------
 # Documented reference deviations (class D of the semantic triage)
-# ---------------------------------------------------------------------------
 
 def is_draft04(schema):
     """Some (sub)schema declares draft-04."""
@@ -195,9 +191,7 @@ def is_known_deviation(kind, schema_text, document):
     return check(schema_text, document)
 
 
-# ---------------------------------------------------------------------------
 # Mask access
-# ---------------------------------------------------------------------------
 
 class Vocab:
     """Per-tokenizer arrays: mask decoding, the closing-token bias and
@@ -286,9 +280,7 @@ def status_name(status):
         if status != blg.BLG_OK else "BLG_OK"
 
 
-# ---------------------------------------------------------------------------
 # One pass
-# ---------------------------------------------------------------------------
 
 def run_pass(ctx, grammar, vocab, rng, *, seed, validator, policy="biased",
              hints=(), max_steps=2048, max_seconds=10.0, eos_after=24,

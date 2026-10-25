@@ -62,9 +62,7 @@ def _refusal(ctx, schema, status, profile=b"spec-v1"):
     return str(ei.value)
 
 
-# ---------------------------------------------------------------------------
 # pattern: search semantics, anchors, classes, quantifiers
-# ---------------------------------------------------------------------------
 
 def test_pattern_unanchored_search(byte_ctx):
     # JSON Schema `pattern` is an unanchored search: the match may sit
@@ -196,9 +194,7 @@ def test_pattern_inside_combinators(byte_ctx):
            ['"bc"'])
 
 
-# ---------------------------------------------------------------------------
 # patternProperties: full regex (P4)
-# ---------------------------------------------------------------------------
 
 def test_pattern_properties_regex(byte_ctx):
     schema = {"type": "object",
@@ -260,9 +256,7 @@ def test_pattern_properties_still_refusals(byte_ctx):
              "UNSUPPORTED_FEATURE")
 
 
-# ---------------------------------------------------------------------------
 # refusals: pointer-exact
-# ---------------------------------------------------------------------------
 
 def test_pattern_refusals_carry_the_pointer(byte_ctx):
     msg = _refusal(byte_ctx, {"type": "string", "pattern": "(?=a)b"},

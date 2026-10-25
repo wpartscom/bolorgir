@@ -1,0 +1,9 @@
+{
+  "pending_file": 1,
+  "aborted": {
+    "phase": "reset",
+    "at": 0,
+    "error": "ResourceLimitError",
+    "instance": 0
+  }
+}

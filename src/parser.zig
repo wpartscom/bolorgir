@@ -432,6 +432,31 @@ pub fn retainState(side: *Side, st: *const State) void {
     for (st.threads[0..st.n]) |*t| retainThread(side, t);
 }
 
+/// Copies the live part of a state: the thread count, the bound, and for
+/// every live thread its length, tap count and frames[0..len]. The unused
+/// fixed-size slots are left untouched - a full `dst.* = src.*` would copy
+/// `MAX_THREADS_CAP x MAX_DEPTH_CAP` frames (about 256 KiB) per byte of the
+/// mask walk. The destination owns no chunk references of its own.
+pub fn copyState(dst: *State, src: *const State) void {
+    dst.n = src.n;
+    dst.max_threads = src.max_threads;
+    for (src.threads[0..src.n], 0..) |*t, i| copyThread(&dst.threads[i], t);
+}
+
+/// Moves the live part of `src` into `dst` and leaves `src` empty. Chunk
+/// references travel with the threads: no retain, no release.
+pub fn moveState(dst: *State, src: *State) void {
+    copyState(dst, src);
+    src.n = 0;
+}
+
+/// Retaining compact copy: the destination takes its own chunk references
+/// so the source can stay alive (mask materialization, walk entry).
+pub fn copyStateRetain(side: *Side, dst: *State, src: *const State) void {
+    copyState(dst, src);
+    retainState(side, dst);
+}
+
 /// Compact copy of the live part of a State (ADR-0014): per thread its
 /// length and tap count, and the frames 0..len of all threads in one
 /// array. A snapshot holds its own chunk references.
@@ -3767,18 +3792,24 @@ fn dedupThreads(g: *const grammar.Grammar, side: *Side, work: *State) void {
 }
 
 pub fn initState(g: *const grammar.Grammar, max_threads: u16, side: *Side) Error!State {
-    if (max_threads == 0 or max_threads > MAX_THREADS_CAP) return error.ResourceLimit;
     var st: State = undefined;
-    st.n = 1;
-    st.max_threads = max_threads;
-    st.threads[0].len = 0;
-    st.threads[0].tap_count = 0;
-    try pushNode(g, side, &st, 0, g.root);
-    if (st.n > max_threads) {
-        releaseState(side, &st);
+    try initStateInto(&st, g, max_threads, side);
+    return st;
+}
+
+/// Initializes the live part of `dst` in place (a full struct assignment
+/// would copy `MAX_THREADS_CAP x MAX_DEPTH_CAP` frames).
+pub fn initStateInto(dst: *State, g: *const grammar.Grammar, max_threads: u16, side: *Side) Error!void {
+    if (max_threads == 0 or max_threads > MAX_THREADS_CAP) return error.ResourceLimit;
+    dst.n = 1;
+    dst.max_threads = max_threads;
+    dst.threads[0].len = 0;
+    dst.threads[0].tap_count = 0;
+    try pushNode(g, side, dst, 0, g.root);
+    if (dst.n > max_threads) {
+        releaseState(side, dst);
         return error.ResourceLimit;
     }
-    return st;
 }
 
 /// Feeds `bytes` to every live thread of `in` and collects the survivors
@@ -3825,6 +3856,39 @@ pub fn feedBytes(g: *const grammar.Grammar, side: *Side, in: *const State, bytes
     // The survivors moved to `out`; `work` relinquishes them.
     work.n = 0;
     if (out.n == 0) return error.Parse;
+}
+
+/// State after feeding `len` bytes of ASCII string content (0x20..0x7F
+/// except '"' and '\\') to a uniform string state. Every live thread's top
+/// frame is a `.str` in `.normal` with `rem == 0`, so each byte increments
+/// its count by one and touches nothing else: state, rem, lo/hi and every
+/// frame below stay as they are. A thread whose count would pass the node's
+/// maxLength dies at the byte that crosses it, exactly as strFeed refuses
+/// new content at count >= maxLength; minLength gates only the closing
+/// quote and does not remove a thread here. Parent frames are untouched
+/// because the fast path's enclosure check rejects an armed tap or a
+/// conjoining combinator that would observe the content.
+///
+/// This is the state-equivalence lemma for skipping a prefix: the result
+/// depends on the prefix LENGTH, not on its bytes. `out` owns fresh chunk
+/// references (release with releaseState); returns false when no thread
+/// survives, i.e. feeding the prefix would end in a Parse.
+pub fn stringContentPrefix(g: *const grammar.Grammar, side: *Side, st: *const State, len: u32, out: *State) bool {
+    out.n = 0;
+    out.max_threads = st.max_threads;
+    for (st.threads[0..st.n]) |*t| {
+        if (t.len == 0) continue;
+        std.debug.assert(t.frames[t.len - 1] == .str);
+        const sf = &t.frames[t.len - 1].str;
+        std.debug.assert(sf.state == .normal and sf.rem == 0);
+        const sc = g.node(sf.node).str;
+        if (@as(u64, sf.count) + len > sc.max_len) continue;
+        copyThread(&out.threads[out.n], t);
+        out.threads[out.n].frames[t.len - 1].str.count = sf.count + len;
+        retainThread(side, &out.threads[out.n]);
+        out.n += 1;
+    }
+    return out.n != 0;
 }
 
 pub fn canEnd(g: *const grammar.Grammar, st: *const State) bool {

@@ -1,0 +1,86 @@
+diff --git a/src/complete.zig b/src/complete.zig
+index 2934b11..27deb73 100644
+--- a/src/complete.zig
++++ b/src/complete.zig
+@@ -51,6 +51,26 @@ const pattern = @import("pattern.zig");
+ const tokenizer = @import("tokenizer.zig");
+ const work_mod = @import("work.zig");
+ 
++// PROBE (temporary, saved as evidence/probe-search-2026-10-23/
++// probe_certificate_keys.patch). Repurposed counters and their native
++// events on the same calls (ordinary profile, per row):
++//   content_word_loop = stateAlive ns          (native 0)
++//   refuse_byte_incomplete = key builds        (native 0)
++//   refuse_content_dep = repeated keys         (native 0)
++//   alive_dead = certify calls                 (native dead terminal checks)
++//   refuse_name_state = certify ns             (native 1 per fill call)
++//   trie_terminals = key build ns              (native 1 per checked terminal)
++const io_mod = @import("io.zig");
++const pdiag = @import("diag.zig");
++fn probeNow() std.Io.Clock.Timestamp {
++    return std.Io.Clock.Timestamp.now(io_mod.io(), .awake);
++}
++fn probeNs(t0: std.Io.Clock.Timestamp) u64 {
++    const d = t0.untilNow(io_mod.io());
++    const ns = d.raw.nanoseconds;
++    return if (ns > 0) @intCast(ns) else 0;
++}
++
+ pub const Error = error{ OutOfMemory, ResourceLimit, Cancelled };
+ 
+ /// Depth guard: a completion of a finite literal language is bounded by
+@@ -190,6 +210,9 @@ pub const Cache = struct {
+     /// finite-literal path fails loudly exactly as for its depth cap.
+     max_states: usize = 256,
+ 
++    /// PROBE: full state keys already certified in this fill.
++    probe_seen: std.AutoHashMapUnmanaged(u64, void) = .{},
++
+     pub fn init(a: std.mem.Allocator) Cache {
+         return .{ .a = a };
+     }
+@@ -198,6 +221,7 @@ pub const Cache = struct {
+         var it = self.map.keyIterator();
+         while (it.next()) |k| self.a.free(k.*);
+         self.map.deinit(self.a);
++        self.probe_seen.deinit(self.a); // PROBE
+         if (self.side) |sd| for (self.states.items) |sp| parser.releaseState(sd, sp);
+         for (self.states.items) |s| self.a.destroy(s);
+         self.states.deinit(self.a);
+@@ -219,6 +243,7 @@ pub const Cache = struct {
+         var it = self.map.keyIterator();
+         while (it.next()) |k| self.a.free(k.*);
+         self.map.clearRetainingCapacity();
++        self.probe_seen.clearRetainingCapacity(); // PROBE
+         if (self.side) |sd| for (self.states.items) |sp| parser.releaseState(sd, sp);
+     }
+ 
+@@ -292,6 +317,8 @@ pub fn stateAlive(
+     w: *work_mod.Work,
+     side: *parser.Side,
+ ) Error!bool {
++    const sa_t0 = probeNow(); // PROBE
++    defer pdiag.incr(&pdiag.c.content_word_loop, probeNs(sa_t0)); // PROBE
+     cache.side = side;
+     cache.max_threads = st.max_threads;
+     defer cache.releaseScratch();
+@@ -324,7 +351,18 @@ pub fn stateAlive(
+     // Top-level certification with the simulation certificate enabled
+     // (in_search is false here): a concrete completing suffix settles the
+     // state before any search tier runs.
+-    switch (certifyState(g, st, side)) {
++    const kb_t0 = probeNow(); // PROBE
++    const kb = try cache.keyOf(st); // PROBE
++    const kh = std.hash.Wyhash.hash(0, kb); // PROBE
++    pdiag.incr(&pdiag.c.trie_terminals, probeNs(kb_t0)); // PROBE: key ns
++    pdiag.incr(&pdiag.c.refuse_byte_incomplete, 1); // PROBE: key builds
++    const gop = try cache.probe_seen.getOrPut(cache.a, kh); // PROBE
++    if (gop.found_existing) pdiag.incr(&pdiag.c.refuse_content_dep, 1); // PROBE
++    const cert_t0 = probeNow(); // PROBE
++    const cert = certifyState(g, st, side); // PROBE
++    pdiag.incr(&pdiag.c.refuse_name_state, probeNs(cert_t0)); // PROBE: cert ns
++    pdiag.incr(&pdiag.c.alive_dead, 1); // PROBE: certify calls
++    switch (cert) {
+         .alive => return true,
+         .dead => return false,
+         .undecided => {},

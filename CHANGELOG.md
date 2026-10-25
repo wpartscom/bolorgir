@@ -74,6 +74,184 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Mask builders: the optional-memory rule now covers every builder that
+  uses the completion certificate cache, not only `fillMask`. `fillMaskFast`
+  certifies its initial state before `fillMaskExactPruned` allocates its
+  state pool, and `c_api.zig` calls it directly; the structural-tag builder
+  owns a separate `Pool` and is also called directly. Both are wrapped like
+  the exact walk: on `OutOfMemory` with certificate memory held, drop the
+  cache, restore the per-fill budget and work counter, and retry once. The
+  structural-tag cache clears entries per content variant while keeping a
+  release in force (`Cache.resetForVariant`). The reviewer's fast-path
+  fixture (K1 key state, cache-off peak 1 313 938 B, cache-on peak
+  1 314 402 B) and a structural-tag fixture with 64 retained certificates
+  both returned `OutOfMemory` at the cache-off limit before the change;
+  the new regressions fail if either retry is removed.
+- Benchmarks: a failed warm acceptance is now a failed run, not a report.
+  `bench_adr0007.py` marks the JSON `status=FAIL`, publishes the protocol
+  problems and exits 1; `matrix_adr0007.py` re-reads
+  `warm_acceptance.pass` from the written JSON and fails the row on a
+  missing or false verdict. The `bench-gate` row no longer passes
+  `--skip-maskbench` at any scale: it runs the pinned MaskBench
+  trace-equality slice and its JSON verdict requires a positive
+  `gate.maskbench_states`; only the separate warm row keeps the skip. The
+  stored warm measurement itself is unchanged and remains FAIL for that
+  artifact (`2d982b60`, recorded before the harness fix); the later
+  stored measurement of `a87e2f71` passed on its own artifact (see the
+  "Warm acceptance result" entry below).
+- Benchmark gate coverage: the MaskBench pass no longer samples states.
+  Every visited mask is recorded and compared by `(file, instance, step)`
+  together with its fill status, the accept return code and the instance
+  termination (`exhausted` / `fill:<status>` / `accept:<code>`); a missing
+  or extra state, a mask/status/accept divergence, a fill error or a
+  validity mismatch fails the gate and writes the complete comparison
+  (full word lists of the divergent masks) to the artifacts directory.
+  The JSON publishes `maskbench_states`, `maskbench_instances`, the
+  zero fill/validation counters and `maskbench_trace_sha256`. The
+  reviewer's synthetic faults at step 401 (a state the old sampler
+  skipped) and at step 409 (fill and accept failures) now fail; the
+  self-check `benchmarks/maskbench/t8a/gate_selfcheck.py` reproduces them
+  and fails on the pre-fix code (3/31 checks vs 31/31).
+- Matrix verdict freshness: every row with a JSON verdict gets a unique
+  `BLG_RUN_ID`; the benchmark records it, and `check_verdict` requires the
+  run id, the expected `status`, zero error counters, the warm protocol
+  values, `conditions.ok` and the library SHA256 from the written file.
+  A retained JSON from an earlier run cannot satisfy a row, and a job
+  that prints `{"status": "SKIP"}` and exits 0 (the missing-dependency
+  convention) is explicitly rejected. The reviewer's stale-output test
+  now produces `fail` with the SKIP reason recorded and the old file
+  untouched.
+- Warm measurement conditions: each warm child is pinned to one CPU
+  (`--warm-cpu` / `BLG_WARM_CPU`; acceptance refuses to run without it),
+  and every leg records the CPU model, governor, current/max frequency,
+  load average, `procs_running`, `/proc/pressure/cpu`, the extension
+  version and the mapped library SHA256 before and after the timed loop.
+  The acceptance fails on a placement mismatch, a load above
+  `--warm-max-load1` or a CPU pressure above
+  `--warm-max-cpu-pressure`; a saved-data replay is marked
+  `conditions.recorded=false` and cannot pass. The new exploratory
+  `benchmarks/maskbench/t8a/warm_diag.py` runs a balanced base/candidate
+  pair under the same fixed conditions but writes no acceptance verdict.
+- Terminal completion: consuming every input token is no longer treated
+  as acceptance. The MaskBench gate records the post-input (EOS) mask,
+  `can_end` and `finish` for every instance, compares them between the
+  arms and counts them separately from the timed input states. A document
+  is accepted only when token consumption and completion both succeed;
+  `can_end == false` with `finish == BLG_ERR_WRONG_STATE` is a correct
+  semantic rejection, while a resource/other finish error, a failed
+  `can_end` or a failed tail fill is a completion error and is never
+  folded into expected invalidity. The real `a87e2f71` slice compares
+  564 input masks and 24 terminal states with zero errors; the
+  enum/integer case that consumes `1` but cannot end is recorded as
+  `rejected:finish:11` with no false validation error.
+- Warm conditions fail closed: both start and end snapshots are
+  mandatory, `loadavg` and `cpu_pressure_some.avg10` must be finite
+  numbers, both affinities must equal the pinned CPU, and the mapped
+  library is hashed again after the loop. `cpu_now` falls back to
+  `/proc/self/stat` when `os.sched_getcpu` is unavailable. Missing load,
+  a changed end affinity, a changed after-loop hash or an incomplete
+  condition block invalidates acceptance; the matrix requires
+  `conditions.ok` and `conditions.complete` and the declared limits.
+  The new self-check reproduces the control, missing-load and
+  end-affinity cases (54/54; 27/54 on `711ad70`).
+- Warm acceptance result: one new 5 x 2000 measurement of `a87e2f71`
+  under conditions fixed before the run (CPU 7, `powersave`,
+  load1 <= 2.0, CPU pressure avg10 <= 0.5) passed with ten `on` means
+  of 1085-1267 ns and p50 1052-1236 ns. The stored `2d982b60` FAIL is
+  unchanged, no extra attempt was made, and at the time of that run the
+  full-scale matrix was still outstanding. On 2026-10-24 it ran for
+  `a87e2f71` (six of the seven matrix rows at full scale plus the stored
+  warm acceptance;
+  `benchmarks/maskbench/t8a/evidence/a87e2f71/full-functional-c770469-2026-10-24/CONCLUSION.md`),
+  with the CI confirmation of the suite and the formal closure decision
+  still open; the numbers above belong to that artifact only.
+- Completion faults after a rejection: `maskbench_traces` counts terminal
+  execution faults independently of the semantic outcome. A `finish`
+  resource error or a `can_end` exception after an expected
+  `BLG_ERR_INVALID_TOKEN` rejection used to leave `completion_errors=0`
+  and pass both the gate and the matrix; both now fail (the message names
+  `completion`), while a clean rejection with a normal terminal check
+  still passes. The self-check adds `reject-then-finish-error`,
+  `reject-then-can-end-error` and the `reject-clean` control.
+- Terminal exception diagnostics: a raised `can_end`/`finish` is recorded
+  by exception type and, when present, its numeric `status`. An exception
+  without `status` (`RuntimeError`, `MemoryError`) used to leave the
+  recorded error `None` and, after a rejection, was hidden; it is now
+  counted as a completion fault. The self-check adds statusless
+  `RuntimeError` and `MemoryError` can_end cases, a statusless finish case
+  and a direct check of the recorder (91/91; the reviewer's cases fail
+  here and passed on `1f819bc`).
+- Warm data fail closed: acceptance requires both the before- and
+  after-loop library hashes, a finite nonnegative mean and p50, exact
+  `observations == cache_hits == fill_wall_ns.count` per leg (2000), the
+  complete 20-leg matrix (two probes x five rounds x two legs), and an
+  unchanged governor at both snapshots matching `--warm-governor`. A leg
+  with one observation, a missing `loaded_end`, a `NaN` mean or an end
+  governor outside the declared policy no longer passes. The new
+  `--verify-warm-json` re-judges a saved JSON with the expected protocol
+  taken from the command line, not from the file.
+- Saved warm acceptance: the 2026-10-24 acceptance JSON re-verified
+  offline with the corrected validator (10 legs, means 1085-1267 ns, both
+  hashes `a87e2f71`, `powersave`, conditions complete, no new timed run);
+  the same JSON with a missing after-loop hash, a `NaN` mean or one
+  counted hit fails. The earlier evidence README's `[2]` tail-mask
+  description is corrected: the word enables token id 1 (the digit `0`)
+  and excludes EOS.
+- ADR-0007 Decision 4 evidence: the six functional rows ran at full scale
+  on `a87e2f71` with `--only` (328 Zig tests, 13 curated cases, 150
+  fast-path schemas, 600 differential schemas replayed in four
+  configurations, 120 cache schemas, gate 564 masks + 24 terminals, trace
+  `2ab0c918`): all pass, and the report keeps the partial-run marker. The
+  differential campaign replays each generated schema and walk seed with
+  cache off/on x fast path on/off and requires identical
+  per-configuration counters and trace digests (600 schemas, 593 walks,
+  5 412 mask comparisons per configuration, digest `11133709` in all
+  four). The seventh row is the stored 2026-10-24 warm acceptance,
+  re-verified offline, not a new measurement. The combined record with
+  hashes and provenance is
+  `evidence/a87e2f71/full-functional-c770469-2026-10-24/CONCLUSION.md`.
+  TBM on `a87e2f71`: the 43-file diagnostic slice has p90 0.758 ms, and
+  the pinned BFCL gate's on-call p95 is 0.907 ms (earlier run) and
+  0.797 ms (full functional rerun), so p90 of those measured sets is
+  below 1 ms; the earlier 1.42 ms p90 belongs to `642ba1ae`.
+- ADR-0007 warm harness: the C-extension leg now preloads the exact library
+  under test through a space-free temporary directory (a directory holding
+  only `libbolorgir.so.0.1.0` does not satisfy the `libbolorgir.so.0`
+  SONAME the extension asks for, so the leg could silently time whichever
+  library the extension's RUNPATH found), passes its SHA256 in
+  `BLG_EXPECT_LIB_SHA256`, reads the mapped file from `/proc/self/maps` in
+  each child, and fails the leg on a mismatch. The reported warm numbers
+  are re-measured under that check.
+- Mask profile tooling: `slice_calls.py` records the fill and the commit
+  separately (`fill_us`, `commit_us`, `tbm_fill_ms`, `tbm_commit_ms`). On
+  the 43-file slice the commit p90 is 0.003 ms, so the TBM p90 is the fill;
+  the probe package `benchmarks/maskbench/t8a/evidence/probe-p90-2026-10-23/`
+  attributes the remaining p90 to the per-edge state machine of the exact
+  suffix (1.24 ms walk of a 1.49 ms fill) rather than to the trie iteration
+  count, which a temporary exact-children index proved to cost only a few
+  nanoseconds per pruned edge and was withdrawn.
+- Mask fast path: ASCII content prefixes of exact-class string tokens are
+  skipped instead of fed one byte at a time. The state after `n` ASCII
+  content bytes of a uniform `.str` state depends only on `n`: every live
+  thread's string count advances by `n`, and a thread whose count would pass
+  its own `maxLength` dies at the crossing byte (`minLength` gates only the
+  closing quote). The walk materializes that state once, at the first
+  special byte (quote, backslash, control, UTF-8 lead or invalid byte), and
+  feeds the suffix exactly, keeping Parse pruning and the completion filter.
+  Property names (lemma K1) keep the plain walk: the full key bytes choose
+  the value schema and the duplicate check. K1 also needs the key chunk, so
+  the skip is enabled for the string lemma only. Masks stay bit for bit
+  equal, covered by the three-way differential over random vocabularies with
+  quotes, escapes, controls, valid, truncated and trapped UTF-8 at every
+  prefix length up to and past `maxLength`, by a per-thread `maxLength` unit
+  test and by the ABI case `anyof-prefix-maxlength` (a `maxLength: 0`
+  alternative must not close `ab"`). Measured on the pinned artifact: the
+  43-file slice 0.9 s -> 0.4 s, p90 5.933 -> 1.416 ms, p99 14.181 -> 8.522
+  ms, the `string` group 4.93 -> 1.35 ms; the six mask-limit files of the VE
+  replay 1 876.1 -> 1 490.4 s, calls without a refusal 714.2 -> 386.5 s, all
+  15 strict checks against the run's wheel pass. On that artifact
+  (`642ba1ae`) the slice p90 was 1.42 ms against the 1 ms target; later
+  `a87e2f71` measurements are below it (see the Decision 4 bullet above).
 - README: the withdrawn `0.2.0rc1` links are replaced by the source install
   of the development line, and the preview status separates the rc1 verdict
   (which names the earlier core) from the current candidate.
@@ -81,9 +259,99 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the mask and `accept_tokens` (a stop token is approved exactly at a
   completing state and cuts the draft elsewhere), and a refused
   `rollback` leaves `is_terminated` and the session as they were.
+- Mask fast path: the exact walk keeps a per-fill certificate cache for
+  the completion filter's top-level `stateAlive` call. Only proved
+  `alive`/`dead` verdicts are stored; `undecided`, refusals and bounded
+  search results keep their old path. The map is cleared with the DFS memo
+  at every `fill`, holds owned copies of the full `Cache.keyOf` key, and a
+  full map or a failed insert falls through to ordinary certification.
+  The cache is optional memory and is released under budget pressure: it
+  is dropped before the first search of a fill (keys, table and the
+  key-building buffer, cache off for the rest of that fill), and a
+  certification that degraded to `undecided` on an allocation failure is
+  re-proven once with the cache freed - keyed on held capacity, so an
+  empty-but-allocated table is reclaimed too. Stored keys, the key buffer
+  and a retained table each reproduced `ResourceLimit` for a call that
+  settles alive without the cache at the same session limit; four
+  regression tests pin those cases. On the 43-file slice the mask step
+  falls 0.273 s -> 0.22 s and p99 8.29/8.18/9.07 ms -> 4.25/4.11/4.27 ms
+  in an interleaved A/B against `dc415942` while p90 stays where it was;
+  `mask_equiv` reports 0 mismatches, the name-state cases keep
+  `failures: []`, and `zig build test` covers the hit, reset, cap,
+  grammar-change, memory-release and mask-level A/B paths.
+- Unit tests: the test build compiles `test_hooks` in regardless of the
+  release option (`build.zig` gives the test module its own
+  `build_options`), so the switch-based differentials cannot silently
+  compare a build against itself. The filter's cache differential now
+  asserts that the hook is live, that the cache path ran in the on leg and
+  not at all in the off leg, and that the masks are equal.
+- Mask fast path: the certificate cache is also released when a required
+  allocation outside the completion filter fails. `fillMask` retries a
+  fill once with the cache freed (its state pool, the parser chunks and
+  the name copies of `openKeyAppend` share the session budget with the
+  cache and can fail between certifications), and the accept and
+  draft-validation paths release the cache before feeding the parser. The
+  reviewer's full-mask fixture - an open object whose undeclared values
+  are `^a*$` strings, a 1 024-byte name token and a 1 317 199-byte limit -
+  failed with `OutOfMemory` on the cache-on arm and now returns the same
+  full mask as the cache-off arm; the regression test fails if the retry
+  is removed.
+- Benchmarks: `bench_adr0007.py --warm-repeats N` runs complete off/on
+  rounds with the leg order alternating, and writes a `warm_acceptance`
+  verdict implementing the protocol fixed in ADR-0007 (five repeats x
+  2 000 hits per probe, all ten `warm_ext.on` means <= 1.3 us, library
+  hash and 100 % hits mandatory, p50 published separately). The gate
+  writes a failing mask to a JSON artifact before it exits.
+  `matrix_adr0007.py` runs the ADR-0007 Decision 4 suites (Zig three-way
+  tests, curated fast-path ABI cases, fast-path fuzz, kernel-reference
+  differential, cache on/off, benchmark gate, warm acceptance) at
+  `--scale quick|full` and reports a pass/fail matrix.
 
 ### Fixed
 
+- Mask walks: the exact walk assigned the whole fixed-size parser `State`
+  (128 threads x 64 frames, 262 660 bytes) at the walk entry, at the prefix
+  materialization and on every successful single-edge feed; measured on the
+  slice, the spare swap alone copied 262 KB 148 times per string mask,
+  5.3 us each. The walks now copy only the live part (`copyState`,
+  `moveState`, `copyStateRetain`, `initStateInto`), and the structural-tag
+  walk uses the same helpers (`feedByteInto` had the same defect). Chunk
+  ownership is unchanged. The 43-file slice falls from 0.4-0.5 s to 0.273 s,
+  fill p90 from 1.60 to 0.61 ms (commit p90 0.002 ms), p99 from 8.7 to
+  7.9 ms; the library is 263 KB smaller. Masks stay bit for bit equal (the
+  differential, ABI and name-state suites). ADR-0007's TBM p90 target
+  (<= 1 ms) is met on the 43-file slice (0.61 ms); the six mask-limit files
+  of the VE replay fall from 946.7 ms (run wheel) and 83.7 ms to 49.6 ms
+  and stay above 1 ms there - that corpus's p90 is the filtered string and
+  name states, whose cost is the completion filter, a separate target.
+- Mask fast path: the string-content acceleration is restricted to
+  content-independent enclosures. It was applied to any uniform string
+  state, which let two masks through that admit a dead continuation: a
+  duplicate element under `uniqueItems` (the parent compares the captured
+  element bytes) and a value over the shorter `allOf` length bound (the
+  branch threads are a conjunction, so the maximum residual is not the
+  bound). States with an armed element/object capture or a combinator frame
+  under the string frame stay on the exact walk, with one proved exception:
+  a `oneOf` with exactly one live branch, where a dead branch can never
+  accept the value, so the group verdict is that branch's acceptance and the
+  content decides only its own string language. The branch set is checked
+  per activation over distinct `(instance, branch)` pairs. Masks are again
+  bit-identical with the fast path on and off, now covered by a dedicated
+  ABI test over both reproducers, nested constraints, length boundaries,
+  Unicode, separator-crossing tokens and the `oneOf` shapes. The
+  semantics-changing `BLG_MASK_NO_FILTER` ablation is removed, the
+  diagnostic counters are atomic (they were incremented from several
+  threads with a plain `+=`), and `-Ddiag_counters=false` compiles the
+  increments out for a packaging build. Measured with the corrected meter:
+  the 43-file slice 15.9 s -> 13.5 s (p90 6.07 ms, unchanged tail), and the
+  six mask-limit files of the VE replay 1 621.3 s against 1 876.1 s on the
+  run's wheel, refusals included, with the same 1 515 calls and 19 refusals.
+- T8a paired runner: a refusal that escapes `reset`, `compute_mask` or
+  `commit_token` is recorded instead of vanishing. The pending marker is
+  rewritten with the phase, the instance index and the exception class, the
+  file keeps its crash class, and `process_file` no longer lets the exception
+  escape the per-file loop. The `ui5` reset crash now replays as
+  `{"phase":"reset","at":0,"error":"ResourceLimitError","instance":0}`.
 - Structural tags: a started (partial) begin literal no longer leaves the
   document endable. `tags_with_separator` rejected EOS at every partial
   begin only after the full literal; now the first byte that advances any

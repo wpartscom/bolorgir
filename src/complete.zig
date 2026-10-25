@@ -83,8 +83,15 @@ pub const TestOverrides = struct {
     tier_budget: u64 = 0,
     unknown_kind: ?std.meta.Tag(parser.Frame) = null,
     unknown_key: u64 = 0,
+    /// Test builds only: bypass the per-fill certificate cache so a
+    /// differential can compare masks with the cache on and off.
+    cert_cache_off: bool = false,
 };
 pub var test_overrides: TestOverrides = .{};
+
+pub fn certCacheOff() bool {
+    return test_hooks_enabled and test_overrides.cert_cache_off;
+}
 
 pub fn fillBudget() u64 {
     if (test_hooks_enabled and test_overrides.fill_budget != 0) return test_overrides.fill_budget;
@@ -138,6 +145,10 @@ const Status = enum(u8) { in_progress, dead, alive };
 /// remaining depth does not exceed `rem`; deeper searches re-prove it.
 const Entry = struct { status: Status, rem: u32 };
 
+/// Proven verdict of the top-level certification (`Cert`), stored in the
+/// per-fill certificate cache. `undecided` is never stored.
+pub const CertVerdict = enum { alive, dead };
+
 /// Session-owned memo: state key -> alive/dead, plus reused scratch states
 /// for the depth-first search (one state per depth, reused across
 /// sibling branches).
@@ -190,6 +201,29 @@ pub const Cache = struct {
     /// finite-literal path fails loudly exactly as for its depth cap.
     max_states: usize = 256,
 
+    /// Proven top-level certifications of the current fill, keyed by the
+    /// full state key (`keyOf`: state image plus the chunk-content blob).
+    /// Only `alive`/`dead` verdicts of the top-level certification enter;
+    /// `undecided`, errors and bounded-search results keep the ordinary
+    /// path, so a hit answers exactly as the certificate would. The cache
+    /// lives for one fill and is cleared by `reset`. The cache is optional
+    /// memory: it is released (`dropCerts`) before the first search of the
+    /// fill and whenever a certification had to degrade on an allocation
+    /// failure, so its bytes never press required scratch out of the
+    /// budget and therefore never change an outcome.
+    cert_map: std.StringHashMapUnmanaged(CertVerdict) = .{},
+    /// Entry bound of `cert_map`; keys are owned copies and charge the
+    /// context temp budget.
+    cert_cap: usize = 1 << 12,
+    /// Hits served from `cert_map` (diagnostics and tests).
+    cert_hits: u64 = 0,
+    /// Lookups attempted against `cert_map` (diagnostics and tests: a
+    /// nonzero count proves the cache path ran at all).
+    cert_lookups: u64 = 0,
+    /// Set once the fill has released the cache (see `dropCerts`): the
+    /// rest of the fill runs exactly as with the cache off.
+    cert_muted: bool = false,
+
     pub fn init(a: std.mem.Allocator) Cache {
         return .{ .a = a };
     }
@@ -198,6 +232,9 @@ pub const Cache = struct {
         var it = self.map.keyIterator();
         while (it.next()) |k| self.a.free(k.*);
         self.map.deinit(self.a);
+        var cit = self.cert_map.keyIterator();
+        while (cit.next()) |k| self.a.free(k.*);
+        self.cert_map.deinit(self.a);
         if (self.side) |sd| for (self.states.items) |sp| parser.releaseState(sd, sp);
         for (self.states.items) |s| self.a.destroy(s);
         self.states.deinit(self.a);
@@ -216,10 +253,68 @@ pub const Cache = struct {
     /// cache must not be shared between different (grammar, tokenizer)
     /// pairs; callers that do (tests) reset it first.
     pub fn reset(self: *Cache) void {
+        self.clearEntries();
+        self.cert_muted = false;
+    }
+
+    /// Clears the memo and the cached verdicts but keeps a release in
+    /// force: a fill that gave the optional certificate memory back keeps
+    /// it off until the next top-level `reset`, even when it switches to
+    /// another content variant mid-walk. Cleared entries are recomputed;
+    /// the retained buffers stay charged, so a later required allocation
+    /// can still trigger the caller's release-and-retry rule.
+    pub fn resetForVariant(self: *Cache) void {
+        self.clearEntries();
+    }
+
+    fn clearEntries(self: *Cache) void {
         var it = self.map.keyIterator();
         while (it.next()) |k| self.a.free(k.*);
         self.map.clearRetainingCapacity();
+        // Entries go, capacity stays: the table is reused like the memo,
+        // and `dropCerts` gives the same bytes back if a proof or a search
+        // needs them inside the fill (the release rule keys on capacity,
+        // not on the entry count).
+        var cit = self.cert_map.keyIterator();
+        while (cit.next()) |k| self.a.free(k.*);
+        self.cert_map.clearRetainingCapacity();
         if (self.side) |sd| for (self.states.items) |sp| parser.releaseState(sd, sp);
+    }
+
+    /// True while any optional certificate memory is held: stored keys, the
+    /// map table (also when every entry has been removed) or the buffer
+    /// `keyOf` builds the lookup key in. The release rule keys on this, not
+    /// on the entry count: an empty table still charges the budget.
+    fn certHoldsMemory(self: *const Cache) bool {
+        return self.cert_map.capacity() != 0 or self.key_buf.capacity != 0;
+    }
+
+    /// Public view of `certHoldsMemory` for callers whose own allocations
+    /// can fail outside the filter (the mask walk and its parser feeds).
+    pub fn holdsOptional(self: *const Cache) bool {
+        return self.certHoldsMemory();
+    }
+
+    /// Releases every optional byte and keeps the cache off until the next
+    /// `reset`. The filter's release rules cannot see an allocation failure
+    /// that happens between certifications; callers that hit one call this
+    /// and retry.
+    pub fn releaseOptional(self: *Cache) void {
+        self.dropCerts();
+    }
+
+    /// Gives every byte the certificate cache holds back and keeps it off
+    /// for the rest of the fill. The cache is optional memory: whatever
+    /// the allocator could not grant to a proof or to the search scratch
+    /// must not be sitting in `cert_map` or `key_buf`.
+    fn dropCerts(self: *Cache) void {
+        var it = self.cert_map.keyIterator();
+        while (it.next()) |k| self.a.free(k.*);
+        self.cert_map.deinit(self.a);
+        self.cert_map = .{};
+        self.key_buf.deinit(self.a);
+        self.key_buf = .empty;
+        self.cert_muted = true;
     }
 
     /// Drops every pooled scratch state's chunk references. A pooled
@@ -249,6 +344,24 @@ pub const Cache = struct {
         return self.states.items[depth];
     }
 
+    /// Stores a proven top-level certificate under an owned copy of the
+    /// full key. A full cache or a failed allocation is not an error: the
+    /// caller falls back to a normal certification next time.
+    fn certPut(self: *Cache, key: []const u8, v: CertVerdict) void {
+        if (self.cert_muted) return;
+        if (self.cert_map.count() >= self.cert_cap) return;
+        const gop = self.cert_map.getOrPut(self.a, key) catch return;
+        if (gop.found_existing) {
+            gop.value_ptr.* = v;
+            return;
+        }
+        gop.key_ptr.* = self.a.dupe(u8, key) catch {
+            _ = self.cert_map.remove(key);
+            return;
+        };
+        gop.value_ptr.* = v;
+    }
+
     fn keyOf(self: *Cache, st: *const parser.State) ![]const u8 {
         const len = parser.stateKeyLen(st);
         // The state image stores chunk handles as raw ids and Side.create
@@ -268,6 +381,23 @@ pub const Cache = struct {
         return self.key_buf.items;
     }
 };
+
+/// Top-level certification with the optional-memory rule: while the
+/// certificate cache holds bytes, a proof that had to degrade to
+/// `undecided` on an allocation failure (`cert_oom`) gets the cache
+/// released and is re-proven once. Certification is deterministic and the
+/// cache only changes what the allocator has to give, so the second attempt
+/// is exactly the one a cache-off caller would have run.
+fn certifyTop(g: *const grammar.Grammar, st: *const parser.State, cache: *Cache, side: *parser.Side) Cert {
+    cert_oom = false;
+    var cert = certifyState(g, st, side);
+    if (cert == .undecided and cert_oom and !cache.cert_muted and cache.certHoldsMemory()) {
+        cache.dropCerts();
+        cert_oom = false;
+        cert = certifyState(g, st, side);
+    }
+    return cert;
+}
 
 /// True when some sequence of ordinary (non-EOS, non-special, non-empty)
 /// tokens from `st` reaches a state where can_end holds, i.e. a completed
@@ -304,7 +434,7 @@ pub fn stateAlive(
         // settle what it can for free and reserve ResourceLimit - which the
         // callers now propagate, failing the mask call (ADR-0005 D3) - for
         // the genuinely undecided.
-        return switch (certifyState(g, st, side)) {
+        return switch (certifyTop(g, st, cache, side)) {
             .alive => true,
             .dead => false,
             .undecided => {
@@ -323,12 +453,40 @@ pub fn stateAlive(
     var budget: u64 = if (test_hooks_enabled and test_overrides.tier_budget != 0) test_overrides.tier_budget else 1 << 5;
     // Top-level certification with the simulation certificate enabled
     // (in_search is false here): a concrete completing suffix settles the
-    // state before any search tier runs.
-    switch (certifyState(g, st, side)) {
-        .alive => return true,
-        .dead => return false,
+    // state before any search tier runs. Proven verdicts are reused from
+    // the per-fill certificate cache; `Cache.keyOf` is built once, a hit
+    // answers directly and a miss stores an owned copy.
+    var cert_key: ?[]const u8 = null;
+    if (!cache.cert_muted and !certCacheOff()) {
+        if (cache.keyOf(st)) |kb| {
+            cache.cert_lookups += 1;
+            if (cache.cert_map.get(kb)) |v| {
+                cache.cert_hits += 1;
+                return v == .alive;
+            }
+            cert_key = kb;
+        } else |_| {}
+    }
+    const cert = certifyTop(g, st, cache, side);
+    if (cache.cert_muted) cert_key = null; // the key buffer is gone
+    switch (cert) {
+        .alive => {
+            if (cert_key) |kb| cache.certPut(kb, .alive);
+            return true;
+        },
+        .dead => {
+            if (cert_key) |kb| cache.certPut(kb, .dead);
+            return false;
+        },
         .undecided => {},
     }
+    // The state needs the search: its scratch pool and memo are required
+    // memory, the certificate cache is not, so the cache is given back
+    // before the first search allocation can compete with it. The rest of
+    // the fill then runs exactly as with the cache off - in particular the
+    // slice, where certification settles every filtered call and the search
+    // never runs, keeps the whole benefit.
+    cache.dropCerts();
     und_hist[@backingInt(UndReason.search_entered)] += 1;
     in_search = true;
     defer in_search = false;
@@ -840,6 +998,14 @@ threadlocal var und_pend: [UND_REASONS]u64 = @splat(0);
 /// search node.
 threadlocal var in_search: bool = false;
 
+/// Set when a certification scratch allocation fails and the proof has to
+/// degrade to `undecided` (mid-escape scratch, pattern work arrays, doom
+/// marks, the nameable-prefix buffer). The top-level certification
+/// consumes it: while the optional certificate cache holds memory, a proof
+/// degraded this way is retried once with the cache released, so cached
+/// bytes can never turn a decided verdict into an undecided one.
+threadlocal var cert_oom: bool = false;
+
 fn note(r: UndReason) void {
     if (und_rec) und_pend[@backingInt(r)] += 1;
 }
@@ -938,7 +1104,10 @@ fn escapeOffset(st: *const parser.State) ?usize {
 /// Mid escape the state is alive iff the state after one of the finitely
 /// many escape endings is, and dead iff every ending is refused or dead.
 fn certifyMidEscape(g: *const grammar.Grammar, st: *const parser.State, side: *parser.Side, k: usize) Cert {
-    const bufs = side.a.alloc(parser.State, 2) catch return .undecided;
+    const bufs = side.a.alloc(parser.State, 2) catch {
+        cert_oom = true;
+        return .undecided;
+    };
     defer side.a.free(bufs);
     var undecided = false;
     for (ESCAPE_TAILS, 0..) |tail, i| {
@@ -3021,12 +3190,21 @@ fn dfaKeyCount(a: std.mem.Allocator, pd: *const pattern.Dfa, descr: *const patte
     const n = pd.states.len;
     const IN_R: u8 = 1;
     const IN_P: u8 = 2;
-    const flags = a.alloc(u8, n) catch return null;
+    const flags = a.alloc(u8, n) catch {
+        cert_oom = true;
+        return null;
+    };
     defer a.free(flags);
     @memset(flags, 0);
-    const order = a.alloc(u32, n) catch return null;
+    const order = a.alloc(u32, n) catch {
+        cert_oom = true;
+        return null;
+    };
     defer a.free(order);
-    const paths = a.alloc(u64, n) catch return null;
+    const paths = a.alloc(u64, n) catch {
+        cert_oom = true;
+        return null;
+    };
     defer a.free(paths);
     @memset(paths, 0);
     var len: usize = 0;
@@ -3061,7 +3239,10 @@ fn dfaKeyCount(a: std.mem.Allocator, pd: *const pattern.Dfa, descr: *const patte
         len = 1;
     }
     // R, breadth first over live transitions; reverse edge counts.
-    const rstart = a.alloc(u32, n + 1) catch return null;
+    const rstart = a.alloc(u32, n + 1) catch {
+        cert_oom = true;
+        return null;
+    };
     defer a.free(rstart);
     @memset(rstart, 0);
     var i: usize = 0;
@@ -3086,9 +3267,15 @@ fn dfaKeyCount(a: std.mem.Allocator, pd: *const pattern.Dfa, descr: *const patte
         if (miss and next <= 0x10FFFF and scalarWidth(next, 0x10FFFF) > 0) return cap;
     }
     for (0..n) |k| rstart[k + 1] += rstart[k];
-    const redge = a.alloc(u32, rstart[n]) catch return null;
+    const redge = a.alloc(u32, rstart[n]) catch {
+        cert_oom = true;
+        return null;
+    };
     defer a.free(redge);
-    const fill = a.alloc(u32, n) catch return null;
+    const fill = a.alloc(u32, n) catch {
+        cert_oom = true;
+        return null;
+    };
     defer a.free(fill);
     @memcpy(fill, rstart[0..n]);
     for (order[0..len]) |s| {
@@ -3191,6 +3378,7 @@ const Doom = struct {
         var d: Doom = .{ .g = g, .side = side, .of = of, .on = on, .k = k, .x = x, .loose = loose };
         d.marks = side.a.alloc(bool, on.deps.len) catch {
             d.oom = true;
+            cert_oom = true;
             return d;
         };
         @memset(d.marks, false);
@@ -3597,7 +3785,10 @@ fn certOpenObj(g: *const grammar.Grammar, side: *parser.Side, of: *const parser.
 /// Some completion of the raw key prefix kb may pass propertyNames: its
 /// string parser accepts the quoted prefix (unknown counts as yes).
 fn keyPrefixNameable(g: *const grammar.Grammar, side: *parser.Side, pn: grammar.NodeId, kb: []const u8) bool {
-    const buf = side.a.alloc(u8, kb.len + 1) catch return true;
+    const buf = side.a.alloc(u8, kb.len + 1) catch {
+        cert_oom = true;
+        return true;
+    };
     defer side.a.free(buf);
     buf[0] = '"';
     @memcpy(buf[1..], kb);
@@ -4664,6 +4855,265 @@ test "complete: dead-end state is not alive, [ab, a, eos] vs literal ab" {
     try testing.expect(try stateAlive(&g, &tk, &st_ab, &cache, &w, &side)); // interrupted: can_end
 }
 
+fn specGrammar(schema_json: []const u8) !grammar.Grammar {
+    const schema_mod = @import("schema.zig");
+    var diag: schema_mod.Diagnostic = .{};
+    var w = work_mod.Work{};
+    return schema_mod.compile(testing.allocator, schema_json, 64, &diag, &w, false, .spec_v1, &.{});
+}
+
+test "complete: certificate cache hits, resets per fill, falls back when full" {
+    const alloc = testing.allocator;
+    var g = try specGrammar("{\"type\":\"string\",\"pattern\":\"^ab*$\"}");
+    defer g.deinit();
+    try testing.expect(g.needs_reachability);
+    var tk = try makeTok(alloc, 4, &.{ "\"a", "b", "\"", "" }, &.{3}, &.{});
+    defer tk.deinit();
+    var cache = Cache.init(alloc);
+    defer cache.deinit();
+    var w = work_mod.Work{};
+    var side = parser.Side{ .a = undefined };
+    // The string-content state after the opening quote certifies alive.
+    var st0 = try parser.initState(&g, 4, &side);
+    var st: parser.State = undefined;
+    var work: parser.State = undefined;
+    try parser.feedBytes(&g, &side, &st0, "\"", &st, &work);
+    const v1 = try stateAlive(&g, &tk, &st, &cache, &w, &side);
+    try testing.expect(v1);
+    const hits1 = cache.cert_hits;
+    try testing.expectEqual(v1, try stateAlive(&g, &tk, &st, &cache, &w, &side));
+    try testing.expect(cache.cert_hits > hits1); // second call served by the cache
+    // reset() clears the per-fill cache: the next call certifies again.
+    cache.reset();
+    const hits2 = cache.cert_hits;
+    _ = try stateAlive(&g, &tk, &st, &cache, &w, &side);
+    try testing.expectEqual(hits2, cache.cert_hits);
+    // A full cache is not an error: certification continues normally.
+    cache.cert_cap = 0;
+    cache.reset();
+    try testing.expectEqual(v1, try stateAlive(&g, &tk, &st, &cache, &w, &side));
+    // A grammar change after reset must not answer from the old map.
+    cache.cert_cap = 1 << 12;
+    cache.reset();
+    var g2 = try specGrammar("{\"type\":\"string\",\"pattern\":\"^xy*$\"}");
+    defer g2.deinit();
+    try testing.expect(g2.needs_reachability);
+    var st0b = try parser.initState(&g2, 4, &side);
+    var stb: parser.State = undefined;
+    try parser.feedBytes(&g2, &side, &st0b, "\"", &stb, &work);
+    const hits3 = cache.cert_hits;
+    try testing.expect(try stateAlive(&g2, &tk, &stb, &cache, &w, &side));
+    try testing.expectEqual(hits3, cache.cert_hits); // no hit from the old grammar
+}
+
+const ReviewLeg = struct { ok: bool, failed: bool, peak: u64, hits: u64, entries: usize };
+
+/// One fill's worth of `stateAlive` calls on a oneOf residual fixture
+/// under an `Accounting` byte limit, cache off and on. The first call
+/// certifies the `"c` state alive (the cache stores it), the second one is
+/// undecided and needs the search scratch.
+fn reviewCert(limit: u64, off: bool) !ReviewLeg {
+    const alloc_mod = @import("alloc.zig");
+    const alloc = testing.allocator;
+    var arena = Arena.init(alloc);
+    var b = grammar.Builder.init(arena.allocator());
+    var lits1 = [_]grammar.Literal{ try b.addLiteral("\"ab\""), try b.addLiteral("\"c\"") };
+    const n1 = try b.addNode(.{ .lit_trie = try b.buildTrie(&lits1) });
+    var lits2 = [_]grammar.Literal{ try b.addLiteral("\"ab\""), try b.addLiteral("\"d\"") };
+    const n2 = try b.addNode(.{ .lit_trie = try b.buildTrie(&lits2) });
+    const root = try b.addNode(.{ .comb = .{ .kind = .oneof, .branches = try b.copyNodeIds(&.{ n1, n2 }) } });
+    var g = try b.finish(arena, .json_schema, root, .{});
+    defer g.deinit();
+    var tk = try makeTok(alloc, 4, &.{ "\"ab\"", "\"c\"", "\"d\"", "" }, &.{3}, &.{});
+    defer tk.deinit();
+    var acc = alloc_mod.Accounting.init(alloc, limit);
+    var side = parser.Side.init(acc.allocator(.session));
+    defer side.deinit();
+    var cache = Cache.init(acc.allocator(.temp));
+    defer cache.deinit();
+    var w = work_mod.Work{};
+    test_overrides.cert_cache_off = off;
+    defer test_overrides.cert_cache_off = false;
+    var st = try parser.initState(&g, 8, &side);
+    defer parser.releaseState(&side, &st);
+    try testing.expectEqual(Cert.undecided, certifyState(&g, &st, &side));
+    var sc: parser.State = undefined;
+    var work: parser.State = undefined;
+    try parser.feedBytes(&g, &side, &st, "\"c", &sc, &work);
+    defer parser.releaseState(&side, &sc);
+    try testing.expect(try stateAlive(&g, &tk, &sc, &cache, &w, &side));
+    const outcome = stateAlive(&g, &tk, &st, &cache, &w, &side);
+    if (outcome) |ok| {
+        // The fill needed the search, so the cache must be empty for the
+        // rest of it: re-certifying the alive state stores nothing.
+        try testing.expect(try stateAlive(&g, &tk, &sc, &cache, &w, &side));
+        return .{ .ok = ok, .failed = false, .peak = acc.totalPeak(), .hits = cache.cert_hits, .entries = cache.cert_map.count() };
+    } else |_| {
+        return .{ .ok = false, .failed = true, .peak = acc.totalPeak(), .hits = cache.cert_hits, .entries = cache.cert_map.count() };
+    }
+}
+
+test "complete: certificate cache never takes memory from the search" {
+    const unlimited_off = try reviewCert(std.math.maxInt(u64), true);
+    const unlimited_on = try reviewCert(std.math.maxInt(u64), false);
+    try testing.expect(unlimited_off.ok and !unlimited_off.failed);
+    try testing.expect(unlimited_on.ok and !unlimited_on.failed);
+    // The limit is the cache-off leg's own peak: the cache-on leg must
+    // settle the same way, because the optional cache memory is given back
+    // before the search allocates (it used to end in ResourceLimit here).
+    const limited_off = try reviewCert(unlimited_off.peak, true);
+    const limited_on = try reviewCert(unlimited_off.peak, false);
+    try testing.expect(limited_off.ok and !limited_off.failed);
+    try testing.expect(limited_on.ok and !limited_on.failed);
+    // Once the fill has searched, the cache holds nothing at all.
+    try testing.expectEqual(@as(usize, 0), limited_on.entries);
+    try testing.expectEqual(@as(usize, 0), unlimited_on.entries);
+}
+
+/// Mid-escape certification of a pattern string: proves the second release
+/// rule, which the budget-0 branch shares through `certifyTop`. The proof
+/// needs a two-state scratch; with a certificate key held at the proof's
+/// own peak the scratch does not fit, so the proof degrades - and must be
+/// re-proven with the cache released instead of answering `undecided`.
+fn escapeCert(limit: u64, key_bytes: ?[]const u8) !struct { cert: Cert, peak: u64, muted: bool, entries: usize } {
+    const alloc_mod = @import("alloc.zig");
+    const alloc = testing.allocator;
+    var g = try specGrammar("{\"type\":\"string\",\"pattern\":\"^[\\\\s\\\\S]*$\"}");
+    defer g.deinit();
+    try testing.expect(g.needs_reachability);
+    var acc = alloc_mod.Accounting.init(alloc, limit);
+    var side = parser.Side.init(acc.allocator(.session));
+    defer side.deinit();
+    var cache = Cache.init(acc.allocator(.temp));
+    defer cache.deinit();
+    if (key_bytes) |kb| cache.certPut(kb, .alive);
+    var st0 = try parser.initState(&g, 4, &side);
+    var st: parser.State = undefined;
+    var work: parser.State = undefined;
+    try parser.feedBytes(&g, &side, &st0, "\"\\", &st, &work);
+    defer parser.releaseState(&side, &st);
+    const cert = certifyTop(&g, &st, &cache, &side);
+    return .{ .cert = cert, .peak = acc.totalPeak(), .muted = cache.cert_muted, .entries = cache.cert_map.count() };
+}
+
+test "complete: a proof degraded by cache memory is re-proven without it" {
+    const plain = try escapeCert(std.math.maxInt(u64), null);
+    try testing.expectEqual(Cert.alive, plain.cert);
+    const with_key = try escapeCert(std.math.maxInt(u64), "certificate-key");
+    try testing.expectEqual(Cert.alive, with_key.cert);
+    try testing.expect(with_key.peak > plain.peak); // the key really occupies room
+    // At the proof's own peak the key leaves no room for the two-state
+    // scratch: the degraded proof must drop the cache and answer as a
+    // cache-off caller would.
+    const tight = try escapeCert(plain.peak, "certificate-key");
+    try testing.expectEqual(Cert.alive, tight.cert); // undecided before the fix
+    try testing.expect(tight.muted); // the release happened
+    try testing.expectEqual(@as(usize, 0), tight.entries);
+}
+
+const FirstLeg = struct { ok: bool, failed: bool, peak: u64, key_cap: usize, muted: bool };
+
+/// First case: the very first `stateAlive` on a reachable mid-escape
+/// state. `keyOf` grows the key buffer before the proof runs, so the map is
+/// still empty when the proof degrades.
+fn firstCert(limit: u64, off: bool) !FirstLeg {
+    const alloc_mod = @import("alloc.zig");
+    const alloc = testing.allocator;
+    var g = try specGrammar("{\"type\":\"string\",\"pattern\":\"^[\\\\s\\\\S]*$\"}");
+    defer g.deinit();
+    var tk = try makeTok(alloc, 3, &.{ "n\"", "\"", "" }, &.{2}, &.{});
+    defer tk.deinit();
+    var acc = alloc_mod.Accounting.init(alloc, limit);
+    var side = parser.Side.init(acc.allocator(.session));
+    defer side.deinit();
+    var cache = Cache.init(acc.allocator(.temp));
+    defer cache.deinit();
+    var st0 = try parser.initState(&g, 4, &side);
+    defer parser.releaseState(&side, &st0);
+    var st: parser.State = undefined;
+    var work: parser.State = undefined;
+    try parser.feedBytes(&g, &side, &st0, "\"\\", &st, &work);
+    defer parser.releaseState(&side, &st);
+    test_overrides.cert_cache_off = off;
+    defer test_overrides.cert_cache_off = false;
+    var w = work_mod.Work{};
+    const result = stateAlive(&g, &tk, &st, &cache, &w, &side);
+    if (result) |ok| {
+        return .{ .ok = ok, .failed = false, .peak = acc.totalPeak(), .key_cap = cache.key_buf.capacity, .muted = cache.cert_muted };
+    } else |_| {
+        return .{ .ok = false, .failed = true, .peak = acc.totalPeak(), .key_cap = cache.key_buf.capacity, .muted = cache.cert_muted };
+    }
+}
+
+test "complete: the certificate key buffer does not starve the first proof" {
+    const plain = try firstCert(std.math.maxInt(u64), true);
+    const on = try firstCert(std.math.maxInt(u64), false);
+    try testing.expect(plain.ok and !plain.failed);
+    try testing.expect(on.ok and !on.failed);
+    try testing.expect(on.peak > plain.peak); // keyOf really allocated
+    // Same limit as the cache-off peak: the key buffer must be given back
+    // with the (still empty) map when the proof asks for its scratch.
+    const tight_off = try firstCert(plain.peak, true);
+    const tight_on = try firstCert(plain.peak, false);
+    try testing.expect(tight_off.ok and !tight_off.failed);
+    try testing.expect(tight_on.ok and !tight_on.failed); // ResourceLimit before the fix
+    try testing.expectEqual(@as(usize, 0), tight_on.key_cap); // released
+}
+
+const ResetLeg = struct { cert: Cert, peak: u64, table_cap: usize, table_count: usize, key_cap: usize, muted: bool };
+
+/// Second case: `certPut` then `reset` leaves an empty table behind; the
+/// proof that follows must not pay for it.
+fn resetProof(limit: u64, retain: bool) !ResetLeg {
+    const alloc_mod = @import("alloc.zig");
+    const alloc = testing.allocator;
+    var g = try specGrammar("{\"type\":\"string\",\"pattern\":\"^[\\\\s\\\\S]*$\"}");
+    defer g.deinit();
+    var acc = alloc_mod.Accounting.init(alloc, limit);
+    var side = parser.Side.init(acc.allocator(.session));
+    defer side.deinit();
+    var cache = Cache.init(acc.allocator(.temp));
+    defer cache.deinit();
+    if (retain) {
+        cache.certPut("certificate-key", .alive);
+        cache.reset();
+    }
+    var st0 = try parser.initState(&g, 4, &side);
+    defer parser.releaseState(&side, &st0);
+    var st: parser.State = undefined;
+    var work: parser.State = undefined;
+    try parser.feedBytes(&g, &side, &st0, "\"\\", &st, &work);
+    defer parser.releaseState(&side, &st);
+    const cert = certifyTop(&g, &st, &cache, &side);
+    return .{
+        .cert = cert,
+        .peak = acc.totalPeak(),
+        .table_cap = cache.cert_map.capacity(),
+        .table_count = cache.cert_map.count(),
+        .key_cap = cache.key_buf.capacity,
+        .muted = cache.cert_muted,
+    };
+}
+
+test "complete: reset frees the certificate table instead of keeping it" {
+    const plain = try resetProof(std.math.maxInt(u64), false);
+    const retained = try resetProof(std.math.maxInt(u64), true);
+    try testing.expectEqual(Cert.alive, plain.cert);
+    try testing.expectEqual(Cert.alive, retained.cert);
+    // `reset` drops the entries but reuses the table, so the capacity is
+    // still charged when the next proof runs - the release rule must see
+    // it (an entry-count test would not).
+    try testing.expect(retained.table_cap > 0);
+    try testing.expectEqual(@as(usize, 0), retained.table_count);
+    // At the plain proof's peak that capacity leaves no room for the
+    // two-state scratch: the proof releases the table and re-proves.
+    const tight = try resetProof(plain.peak, true);
+    try testing.expectEqual(Cert.alive, tight.cert); // undecided before the fix
+    try testing.expect(tight.muted); // the release happened
+    try testing.expectEqual(@as(usize, 0), tight.table_cap);
+    try testing.expectEqual(@as(usize, 0), tight.key_cap);
+}
+
 test "complete: byte-complete vocabulary is detected" {
     const alloc = testing.allocator;
     const entries = try alloc.alloc(tokenizer.Entry, 257);
@@ -5045,19 +5495,17 @@ fn countedObjGrammar(alloc: std.mem.Allocator, extra: []const []const u8, max: u
 }
 
 test "complete: maxProperties counts the owed names and the in-flight key" {
-    // Second review of the release-line fix: with maxProperties keys seen
-    // the comma was admitted and the next key could never close (no filter
-    // ran for the node); routed to the filter, a key typed while every
-    // remaining slot belongs to an owed name had no dead rule and the
-    // search could not exhaust its spellings (RESOURCE_LIMIT). `closed`:
-    // alive in closed form (countAlive), without the simulation certificate
-    // - every token of a key or a nested value is checked on such a node.
+    // With maxProperties keys seen, the comma was admitted and the next key
+    // could never close; a key typed while every remaining slot belongs to
+    // an owed name had no dead rule (RESOURCE_LIMIT). `closed`: alive in
+    // closed form (countAlive); every token of a key or nested value is
+    // checked on such a node.
     const alloc = testing.allocator;
     var side = parser.Side.init(alloc);
     defer side.deinit();
     const Case = struct { extra: []const []const u8, max: u32, prefix: []const u8, cert: Cert, closed: bool = false };
     const cases = [_]Case{
-        // The review's example: the comma after the only allowed member.
+        // Comma after the only allowed member.
         .{ .extra = &.{}, .max = 1, .prefix = "{\"x\":1", .cert = .alive, .closed = true },
         .{ .extra = &.{}, .max = 1, .prefix = "{\"x\":1,", .cert = .dead },
         .{ .extra = &.{}, .max = 1, .prefix = "{\"x\":1}", .cert = .alive, .closed = true },
@@ -5234,10 +5682,10 @@ test "complete r1: oneof vote-link residual doom (pattern overlap)" {
 }
 
 test "complete: pattern key completions are counted exactly on both dispatch sides" {
-    // T3 acceptance of 50cbd80e: a finite patternProperties language was
-    // taken for an infinite one, so a duplicate key was admitted and died
-    // at its closing quote (DEAD_END). The non-matching side can be finite
-    // too: the remnant of a near-universal pattern (review of the fix).
+    // A finite patternProperties language was taken for an infinite one, so
+    // a duplicate key was admitted and died at its closing quote (DEAD_END).
+    // The non-matching side can be finite too: the remnant of a
+    // near-universal pattern.
     var arena = std.heap.ArenaAllocator.init(testing.allocator);
     defer arena.deinit();
     const aa = arena.allocator();

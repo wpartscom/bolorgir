@@ -1,0 +1,499 @@
+[
+  {
+    "case": "control",
+    "kind": "synthetic gate fault",
+    "exit": 0,
+    "gate": {
+      "probe_states": 4,
+      "status": "PASS",
+      "maskbench_states": 2,
+      "maskbench_instances": 1,
+      "maskbench_terminal_states": 1,
+      "maskbench_terminal_complete": true,
+      "maskbench_fill_errors": 0,
+      "maskbench_terminal_fill_errors": 0,
+      "maskbench_input_errors": 0,
+      "maskbench_completion_errors": 0,
+      "maskbench_accept_errors": 0,
+      "maskbench_validation_errors": 0,
+      "maskbench_trace_sha256": "7f6ea00f7de9c6a8abae3edc551a495a8e05f5b17f8f22365e1df9d1a29aebaa"
+    },
+    "matrix_ok": true,
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "fill",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "fill",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ]
+    ]
+  },
+  {
+    "case": "cannot-end",
+    "kind": "synthetic gate fault",
+    "exit": "GATE FAILURE: maskbench gate failed (instance x1, terminal x1, validation x1; 2 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "gate": null,
+    "matrix_ok": false,
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "fill",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "fill",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ]
+    ]
+  },
+  {
+    "case": "tail-mask",
+    "kind": "synthetic gate fault",
+    "exit": "GATE FAILURE: maskbench gate failed (terminal x1; 2 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "gate": null,
+    "matrix_ok": false,
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "fill",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "fill",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ]
+    ]
+  },
+  {
+    "case": "finish-resource",
+    "kind": "synthetic gate fault",
+    "exit": "GATE FAILURE: maskbench gate failed (completion x2; 2 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "gate": null,
+    "matrix_ok": false,
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "fill",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "fill",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ]
+    ]
+  },
+  {
+    "case": "reject-control",
+    "kind": "synthetic gate fault",
+    "exit": 0,
+    "gate": {
+      "probe_states": 4,
+      "status": "PASS",
+      "maskbench_states": 1,
+      "maskbench_instances": 1,
+      "maskbench_terminal_states": 1,
+      "maskbench_terminal_complete": true,
+      "maskbench_fill_errors": 0,
+      "maskbench_terminal_fill_errors": 0,
+      "maskbench_input_errors": 0,
+      "maskbench_completion_errors": 0,
+      "maskbench_accept_errors": 2,
+      "maskbench_validation_errors": 0,
+      "maskbench_trace_sha256": "d0575253a2e2bf156be6a633e7b8a8a32e18aa485b487f84fa298169eef21bda"
+    },
+    "matrix_ok": true,
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "can_end",
+        2,
+        1
+      ],
+      [
+        "can_end",
+        2,
+        1
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "can_end",
+        0,
+        1
+      ],
+      [
+        "can_end",
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "case": "reject-finish-resource",
+    "kind": "synthetic gate fault",
+    "exit": "GATE FAILURE: maskbench gate failed (completion x2; 1 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "gate": null,
+    "matrix_ok": false,
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "can_end",
+        2,
+        1
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "can_end",
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "case": "reject-can-end-error",
+    "kind": "synthetic gate fault",
+    "exit": "GATE FAILURE: maskbench gate failed (completion x2; 1 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "gate": null,
+    "matrix_ok": false,
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "can_end",
+        2,
+        1
+      ],
+      [
+        "can_end",
+        2,
+        1
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "can_end",
+        0,
+        1
+      ],
+      [
+        "can_end",
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "case": "reject-can-end-no-status",
+    "kind": "synthetic gate fault",
+    "exit": 0,
+    "gate": {
+      "probe_states": 4,
+      "status": "PASS",
+      "maskbench_states": 1,
+      "maskbench_instances": 1,
+      "maskbench_terminal_states": 1,
+      "maskbench_terminal_complete": true,
+      "maskbench_fill_errors": 0,
+      "maskbench_terminal_fill_errors": 0,
+      "maskbench_input_errors": 0,
+      "maskbench_completion_errors": 0,
+      "maskbench_accept_errors": 2,
+      "maskbench_validation_errors": 0,
+      "maskbench_trace_sha256": "d1ae6d12f39ec1108127b1da43609d6fd594a7474628ed87c57a69b97e35a2d6"
+    },
+    "matrix_ok": true,
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "can_end",
+        2,
+        1
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "can_end",
+        0,
+        1
+      ]
+    ]
+  },
+  {
+    "case": "reject-can-end-memory-error",
+    "kind": "synthetic gate fault",
+    "exit": 0,
+    "gate": {
+      "probe_states": 4,
+      "status": "PASS",
+      "maskbench_states": 1,
+      "maskbench_instances": 1,
+      "maskbench_terminal_states": 1,
+      "maskbench_terminal_complete": true,
+      "maskbench_fill_errors": 0,
+      "maskbench_terminal_fill_errors": 0,
+      "maskbench_input_errors": 0,
+      "maskbench_completion_errors": 0,
+      "maskbench_accept_errors": 2,
+      "maskbench_validation_errors": 0,
+      "maskbench_trace_sha256": "d1ae6d12f39ec1108127b1da43609d6fd594a7474628ed87c57a69b97e35a2d6"
+    },
+    "matrix_ok": true,
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "can_end",
+        2,
+        1
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "can_end",
+        0,
+        1
+      ]
+    ]
+  }
+]

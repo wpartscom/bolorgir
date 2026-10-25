@@ -16,6 +16,7 @@ const probe = @import("probe.zig");
 const io_mod = @import("io.zig");
 const regex = @import("regex.zig");
 const structtag = @import("structtag.zig");
+const mask_diag = @import("diag.zig");
 
 pub const ABI_VERSION: u32 = 1;
 pub const ERROR_MESSAGE_CAP = 256;
@@ -1803,6 +1804,10 @@ fn acceptTokenInner(s: *Session, token_id: u32, err: ?*ZgError) Status {
     if (s.gh.g.regex) |rp| return acceptRegex(s, rp, token_id, err);
     if (s.gh.g.structtag) |sp| return acceptStructTag(s, sp, token_id, err);
 
+    // The certificate cache is optional memory and lives for a mask fill:
+    // the feed below copies name content and can need the same budget, and
+    // nothing before that allocation would release the cache.
+    s.mask_buf.completion.releaseOptional();
     var timer = startTimer();
     if (tok.is_eos[token_id]) {
         if (!parser.canEnd(&s.gh.g, curState(s)))
@@ -1882,6 +1887,9 @@ fn acceptStructTag(s: *Session, sp: *const structtag.Program, token_id: u32, err
     const ctx = s.ctx;
     var timer = startTimer();
     const slots = s.tag.?;
+    // Same rule as the JSON accept: the tag feed allocates, the certificate
+    // cache is optional, so it is given back before the feed.
+    s.tag_pool.completion.releaseOptional();
     if (ctx.tok.is_eos[token_id]) {
         if (!structtag.canEnd(&slots[s.tag_cur]))
             return fail(err, .invalid_token, "EOS not allowed before the structural tag can end");
@@ -2056,6 +2064,7 @@ pub export fn blg_validate_tokens(
         // Two temp states ping-pong through the token chain; the session
         // slots are not touched and the logical state stays as it is.
         const ta = ctx.accounting.allocator(.temp);
+        s.tag_pool.completion.releaseOptional();
         const tmp = ta.alloc(structtag.State, 2) catch return .resource_limit;
         tmp[0] = s.tag.?[s.tag_cur];
         if (tmp[0].small.phase == .json and !tmp[0].small.json_dead)
@@ -2101,6 +2110,9 @@ pub export fn blg_validate_tokens(
         return .ok;
     }
     const ta = ctx.accounting.allocator(.temp);
+    // Before the first required allocation of this call: the cache is
+    // optional memory and the states below are not.
+    s.mask_buf.completion.releaseOptional();
     const extra = ta.create(parser.State) catch return .resource_limit;
     extra.n = 0;
     const bufs = [2]*parser.State{ scratchState(s), extra };
@@ -2350,6 +2362,21 @@ fn makeConfig(mode: u32) ContextConfig {
 
 fn maskBit(words: []const u32, t: u32) bool {
     return (words[t / 32] >> @as(u5, @intCast(t % 32))) & 1 == 1;
+}
+
+/// Diagnostic counters of the mask paths (src/diag.zig). Not part of the
+/// ABI contract: they exist for the diagnosis of the mask cost and carry no
+/// semantic meaning.
+pub export fn blg_diag_reset() callconv(.c) void {
+    mask_diag.reset();
+}
+
+/// Copies the counters in `mask_diag.order` order; returns the number written.
+pub export fn blg_diag_counters(out: [*]u64, cap: usize) callconv(.c) usize {
+    const v = mask_diag.values();
+    const n = @min(cap, v.len);
+    for (v[0..n], 0..) |x, i| out[i] = x;
+    return n;
 }
 
 test "abi: version, context lifecycle, stats" {
@@ -3948,6 +3975,59 @@ fn buildByteCompleteDesc(entries: *[261]TokenEntry, blob: *[1024]u8, bufs: *[256
     return buildDesc(&tokens, &eos, &special, entries, blob);
 }
 
+fn buildReviewDesc(entries: *[267]TokenEntry, blob: *[1024]u8, bufs: *[256][1]u8) TokenizerDesc {
+    // Boundary-crossing vocabulary. ids: byte b -> id b (byte-complete);
+    // 256 "ab"; 257 "aa"; 258 "bb";
+    // 259 "é"; 260 "aé"; 261 "a\","; 262 "\",\""; 263 "ab\""; 264 "aa\",";
+    // 265 eos ""; 266 special "<pad>".
+    var tokens: [267][]const u8 = undefined;
+    for (0..256) |b| {
+        bufs[b][0] = @intCast(b);
+        tokens[b] = bufs[b][0..1];
+    }
+    tokens[256] = "ab";
+    tokens[257] = "aa";
+    tokens[258] = "bb";
+    tokens[259] = "\xc3\xa9";
+    tokens[260] = "a\xc3\xa9";
+    tokens[261] = "a\",";
+    tokens[262] = "\",\"";
+    tokens[263] = "ab\"";
+    tokens[264] = "aa\",";
+    tokens[265] = "";
+    tokens[266] = "<pad>";
+    const eos = [_]u32{265};
+    const special = [_]u32{266};
+    return buildDesc(&tokens, &eos, &special, entries, blob);
+}
+
+fn buildNameDesc(entries: *[267]TokenEntry, blob: *[1024]u8, bufs: *[256][1]u8) TokenizerDesc {
+    // Property-name vocabulary: byte-complete, plus name-content pieces and
+    // tokens that cross the closing quote and the colon.
+    // ids: byte b -> id b; 256 "ab"; 257 "aa"; 258 "bb"; 259 "é";
+    // 260 "a\":"; 261 "\":"; 262 "x\":"; 263 "a\""; 264 "ab\"";
+    // 265 eos ""; 266 special "<pad>".
+    var tokens: [267][]const u8 = undefined;
+    for (0..256) |b| {
+        bufs[b][0] = @intCast(b);
+        tokens[b] = bufs[b][0..1];
+    }
+    tokens[256] = "ab";
+    tokens[257] = "aa";
+    tokens[258] = "bb";
+    tokens[259] = "\xc3\xa9";
+    tokens[260] = "a\":";
+    tokens[261] = "\":";
+    tokens[262] = "x\":";
+    tokens[263] = "a\"";
+    tokens[264] = "ab\"";
+    tokens[265] = "";
+    tokens[266] = "<pad>";
+    const eos = [_]u32{265};
+    const special = [_]u32{266};
+    return buildDesc(&tokens, &eos, &special, entries, blob);
+}
+
 test "abi: mask_fast_path / max_workers config validation and legacy sizes" {
     var entries: [261]TokenEntry = undefined;
     var blob: [1024]u8 = undefined;
@@ -3985,13 +4065,17 @@ test "abi: mask_fast_path / max_workers config validation and legacy sizes" {
 // Fill the mask of the string-content state (after feeding prefix) with the
 // given config flags; returns the session too so the caller can continue.
 fn maskAtStringState(cfg: *ContextConfig, desc: *const TokenizerDesc, schema_json: []const u8, prefix: []const u8, words: []u32, work_ops: *u64) !void {
+    return maskAtPrefixProfile(cfg, desc, "canonical-v1", schema_json, prefix, words, work_ops);
+}
+
+fn maskAtPrefixProfile(cfg: *ContextConfig, desc: *const TokenizerDesc, profile: [*:0]const u8, schema_json: []const u8, prefix: []const u8, words: []u32, work_ops: *u64) !void {
     var err = makeTestError();
     var ctx: ?*Context = null;
     try std.testing.expectEqual(Status.ok, blg_context_create(cfg, desc, &ctx, &err));
     var req: CompileRequest = .{
         .struct_size = @sizeOf(CompileRequest),
         .kind = 0,
-        .profile = "canonical-v1",
+        .profile = profile,
         .data = schema_json.ptr,
         .data_len = schema_json.len,
     };
@@ -4042,6 +4126,507 @@ test "abi: fast path on/off bit-for-bit, fewer charged ops" {
             try std.testing.expect(maskBit(&w_on, 'a'));
             try std.testing.expect(!maskBit(&w_on, 0x01));
             try std.testing.expect(!maskBit(&w_on, 259));
+        }
+    }
+}
+
+test "abi: fast path on/off bit-for-bit under needs_reachability" {
+    // The relaxation under test: a uniform string-content state is decided
+    // by the lemma even when the grammar needs the completion filter. The
+    // schema forces needs_reachability through the bounded number sibling
+    // while property "a" stays a plain (uniform) string.
+    var entries: [261]TokenEntry = undefined;
+    var blob: [1024]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildByteCompleteDesc(&entries, &blob, &bufs);
+    const schema_json =
+        "{\"type\":\"object\",\"properties\":{" ++
+        "\"a\":{\"type\":\"string\"}," ++
+        "\"b\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":5}}," ++
+        "\"required\":[\"a\"]}";
+
+    for ([_]u32{ 0, 1 }) |mode| {
+        var on = makeConfig(mode);
+        on.work_limit_ops = 1 << 60;
+        var off = makeConfig(mode);
+        off.work_limit_ops = 1 << 60;
+        off.mask_fast_path = MASK_FAST_PATH_OFF;
+
+        for ([_][]const u8{ "{\"a\":\"", "{\"a\":\"ab" }) |prefix| {
+            var w_on: [9]u32 = @splat(0);
+            var w_off: [9]u32 = @splat(0);
+            var ops_on: u64 = 0;
+            var ops_off: u64 = 0;
+            mask_diag.reset();
+            try maskAtPrefixProfile(&on, &desc, "spec-v1", schema_json, prefix, &w_on, &ops_on);
+            try std.testing.expect(mask_diag.c.fast_used.load(.monotonic) > 0); // the fast path ran
+            try maskAtPrefixProfile(&off, &desc, "spec-v1", schema_json, prefix, &w_off, &ops_off);
+            try std.testing.expectEqualSlices(u32, &w_off, &w_on);
+            // Sanity on the shared bits: content allowed, control byte not,
+            // the closing quote allowed, eos never (a str frame cannot end).
+            try std.testing.expect(maskBit(&w_on, 'a'));
+            try std.testing.expect(!maskBit(&w_on, 0x01));
+            try std.testing.expect(maskBit(&w_on, '"'));
+            try std.testing.expect(!maskBit(&w_on, 259));
+        }
+    }
+}
+
+/// One schema/prefix probe of the fast-path scope test: bit-for-bit mask
+/// equality between the fast and exact paths, plus the expected path
+/// selection. `forbidden` ids are ground truth the exact path must refuse.
+const FastScopeCase = struct {
+    name: []const u8,
+    schema: []const u8,
+    prefix: []const u8,
+    /// The enclosure makes the typed content part of a parent verdict
+    /// (combinator branches or an armed element/object capture): the fast
+    /// path must refuse and the exact walk must decide.
+    content_dep: bool,
+    forbidden: []const u32 = &.{},
+    must_allow: []const u32 = &.{},
+};
+
+test "abi: fast path scope - content-dependent enclosures and boundary tokens" {
+    var entries: [267]TokenEntry = undefined;
+    var blob: [1024]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildReviewDesc(&entries, &blob, &bufs);
+
+    const cases = [_]FastScopeCase{
+        // uniqueItems compares the element content at the element close;
+        // allOf is a conjunction, so the maxLength-1 branch refuses any
+        // token of two codepoints even though the maxLength-2 branch
+        // accepts it.
+        .{
+            .name = "uniqueItems-duplicate-element",
+            .schema = "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":1}," ++
+                "\"uniqueItems\":true,\"minItems\":2,\"maxItems\":2}",
+            .prefix = "[\"a\",\"",
+            .content_dep = true,
+            .forbidden = &.{'a'},
+            .must_allow = &.{'b'},
+        },
+        .{
+            .name = "allOf-length-conjunction",
+            .schema = "{\"allOf\":[{\"type\":\"string\",\"maxLength\":1}," ++
+                "{\"type\":\"string\",\"maxLength\":2}]}",
+            .prefix = "\"",
+            .content_dep = true,
+            .forbidden = &.{ 256, 257, 258 },
+            .must_allow = &.{'a'},
+        },
+        // Nested: uniqueItems inside uniqueItems (two armed taps).
+        .{
+            .name = "uniqueItems-nested",
+            .schema = "{\"type\":\"array\",\"items\":{\"type\":\"array\",\"items\":" ++
+                "{\"type\":\"string\",\"maxLength\":1},\"uniqueItems\":true," ++
+                "\"minItems\":2,\"maxItems\":2},\"minItems\":1,\"maxItems\":1}",
+            .prefix = "[[\"a\",\"",
+            .content_dep = true,
+            .forbidden = &.{'a'},
+        },
+        // uniqueItems over objects: the string is nested below the captured
+        // element, so the tap is still armed when it is typed.
+        .{
+            .name = "uniqueItems-over-object",
+            .schema = "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":" ++
+                "{\"k\":{\"type\":\"string\",\"maxLength\":1}},\"required\":[\"k\"]," ++
+                "\"additionalProperties\":false},\"uniqueItems\":true,\"minItems\":2,\"maxItems\":2}",
+            .prefix = "[{\"k\":\"a\"},{\"k\":\"",
+            .content_dep = true,
+            .forbidden = &.{'a'},
+        },
+        // oneOf votes exactly-one at the boundary: the empty string is
+        // accepted by both length branches, so the closing quote is refused
+        // right after the opening one (while 'a' stays legal: the longer
+        // branch can still take a second codepoint and win the vote alone).
+        .{
+            .name = "oneOf-overlapping-lengths",
+            .schema = "{\"oneOf\":[{\"type\":\"string\",\"maxLength\":1}," ++
+                "{\"type\":\"string\",\"maxLength\":2}]}",
+            .prefix = "\"",
+            .content_dep = true,
+            .forbidden = &.{'"'},
+        },
+        // The provable oneOf shape: only the dog branch is alive after the
+        // key dispatch, so the group verdict is that branch's acceptance and
+        // the string content can only decide its own language. Tokens that
+        // close the value and add a comma are refused by the object itself.
+        .{
+            .name = "oneOf-single-live-branch",
+            .schema = "{\"oneOf\":[{\"type\":\"object\",\"properties\":{\"dog\":" ++
+                "{\"type\":\"string\"}},\"required\":[\"dog\"],\"additionalProperties\":false}," ++
+                "{\"type\":\"object\",\"properties\":{\"cat\":{\"type\":\"string\"}}," ++
+                "\"required\":[\"cat\"],\"additionalProperties\":false}]}",
+            .prefix = "{\"dog\":\"",
+            .content_dep = false,
+            .forbidden = &.{ 261, 262, 264 }, // close + comma: the dog object has no next key
+            .must_allow = &.{ '"', 'a', 263 }, // close, content, and "ab\"" (close at token end)
+        },
+        // The same shape with both branches still live: the content can make
+        // both accept (two votes) or kill one, so the exact path decides.
+        .{
+            .name = "oneOf-two-live-branches",
+            .schema = "{\"oneOf\":[{\"type\":\"object\",\"properties\":{\"k\":" ++
+                "{\"type\":\"string\",\"maxLength\":1}},\"required\":[\"k\"]," ++
+                "\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"k\":" ++
+                "{\"type\":\"string\",\"maxLength\":2}},\"required\":[\"k\"]," ++
+                "\"additionalProperties\":false}]}",
+            .prefix = "{\"k\":\"",
+            .content_dep = true,
+            .forbidden = &.{'"'},
+            .must_allow = &.{'a'},
+        },
+        // Outer oneOf has one live branch, the inner oneOf has two: the
+        // inner conjunction keeps the state on the exact path.
+        .{
+            .name = "oneOf-inner-two-live",
+            .schema = "{\"oneOf\":[{\"type\":\"object\",\"properties\":{\"dog\":" ++
+                "{\"oneOf\":[{\"type\":\"string\",\"maxLength\":1}," ++
+                "{\"type\":\"string\",\"maxLength\":2}]}},\"required\":[\"dog\"]," ++
+                "\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"cat\":" ++
+                "{\"type\":\"string\"}},\"required\":[\"cat\"],\"additionalProperties\":false}]}",
+            .prefix = "{\"dog\":\"",
+            .content_dep = true,
+            .forbidden = &.{'"'},
+            .must_allow = &.{'a'},
+        },
+        // Outer oneOf has one live branch, the branch value is an allOf: a
+        // conjunction is never accelerated, one live branch or not.
+        .{
+            .name = "oneOf-with-allOf-branch",
+            .schema = "{\"oneOf\":[{\"type\":\"object\",\"properties\":{\"dog\":" ++
+                "{\"allOf\":[{\"type\":\"string\",\"maxLength\":1}," ++
+                "{\"type\":\"string\",\"maxLength\":2}]}},\"required\":[\"dog\"]," ++
+                "\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"cat\":" ++
+                "{\"type\":\"string\"}},\"required\":[\"cat\"],\"additionalProperties\":false}]}",
+            .prefix = "{\"dog\":\"",
+            .content_dep = true,
+            .forbidden = &.{ 256, 257, 258 },
+            .must_allow = &.{'a'},
+        },
+        // Length boundaries on a content-independent state: the fast path
+        // stays on; the close gate and the residual decide the bits.
+        .{
+            .name = "length-min-boundary",
+            .schema = "{\"type\":\"string\",\"minLength\":2,\"maxLength\":3}",
+            .prefix = "\"",
+            .content_dep = false,
+            .forbidden = &.{'"'},
+            .must_allow = &.{'a'},
+        },
+        // Two alternative strings; the ASCII prefix of an exact token must
+        // advance each thread on its own and drop the maxLength-0 thread.
+        // "ab\"" would otherwise close through that thread (the close checks
+        // minLength, not maxLength) and be allowed; the minLength-3 thread
+        // refuses it, so the token must be absent.
+        .{
+            .name = "anyof-prefix-maxlength",
+            .schema = "{\"anyOf\":[{\"type\":\"string\",\"maxLength\":0}," ++
+                "{\"type\":\"string\",\"minLength\":3,\"maxLength\":5}]}",
+            .prefix = "\"",
+            .content_dep = false,
+            .forbidden = &.{263}, // "ab\""
+            .must_allow = &.{ '"', 'a' },
+        },
+        .{
+            .name = "length-max-boundary",
+            .schema = "{\"type\":\"string\",\"minLength\":2,\"maxLength\":3}",
+            .prefix = "\"abc",
+            .content_dep = false,
+            .forbidden = &.{ 'a', 256, 257, 258, 259, 260 },
+        },
+        // Unicode: é is one codepoint, aé two; the residual counts
+        // codepoints, not bytes.
+        .{
+            .name = "unicode-max-length-2",
+            .schema = "{\"type\":\"string\",\"minLength\":1,\"maxLength\":2}",
+            .prefix = "\"\xc3\xa9",
+            .content_dep = false,
+            .forbidden = &.{256}, // "ab" is two codepoints, R = 1
+            .must_allow = &.{259}, // é is one codepoint
+        },
+        // Tokens crossing the string/separator boundary: decided by the
+        // pruned exact walk, bit-for-bit.
+        .{
+            .name = "boundary-crossing-tokens",
+            .schema = "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":1}," ++
+                "\"minItems\":1,\"maxItems\":3}",
+            .prefix = "[\"",
+            .content_dep = false,
+            .forbidden = &.{ 263, 264 }, // ab" / aa", exceed the element bound
+            .must_allow = &.{ 261, 262 }, // a", / "," finish the element and separate
+        },
+        .{
+            .name = "boundary-close-reopen-token",
+            .schema = "{\"type\":\"array\",\"items\":{\"type\":\"string\",\"maxLength\":1}," ++
+                "\"minItems\":1,\"maxItems\":3}",
+            .prefix = "[\"a",
+            .content_dep = false,
+            .forbidden = &.{261}, // a", would extend the element past its bound
+            .must_allow = &.{262}, // "," closes the element and opens the next one
+        },
+    };
+
+    for ([_]u32{ 0, 1 }) |mode| {
+        for (cases) |case| {
+            var on = makeConfig(mode);
+            on.work_limit_ops = 1 << 60;
+            var off = makeConfig(mode);
+            off.work_limit_ops = 1 << 60;
+            off.mask_fast_path = MASK_FAST_PATH_OFF;
+            var w_on: [9]u32 = @splat(0);
+            var w_off: [9]u32 = @splat(0);
+            var ops_on: u64 = 0;
+            var ops_off: u64 = 0;
+            mask_diag.reset();
+            try maskAtPrefixProfile(&on, &desc, "spec-v1", case.schema, case.prefix, &w_on, &ops_on);
+            const used = mask_diag.c.fast_used.load(.monotonic);
+            const refused = mask_diag.c.refuse_content_dep.load(.monotonic);
+            try maskAtPrefixProfile(&off, &desc, "spec-v1", case.schema, case.prefix, &w_off, &ops_off);
+            try std.testing.expectEqualSlices(u32, &w_off, &w_on);
+            if (case.content_dep) {
+                try std.testing.expectEqual(@as(u64, 0), used);
+                try std.testing.expect(refused > 0);
+            } else {
+                try std.testing.expect(used > 0);
+            }
+            for (case.forbidden) |id| {
+                if (maskBit(&w_on, id)) {
+                    std.debug.print("case {s}: id {d} allowed, expected refused\n", .{ case.name, id });
+                    return error.TestUnexpectedResult;
+                }
+            }
+            for (case.must_allow) |id| {
+                if (!maskBit(&w_on, id)) {
+                    std.debug.print("case {s}: id {d} refused, expected allowed\n", .{ case.name, id });
+                    return error.TestUnexpectedResult;
+                }
+            }
+        }
+    }
+}
+
+/// One name-state probe of lemma K1: bit-for-bit mask equality plus the
+/// expected path and refusal counter.
+const NameScopeCase = struct {
+    name: []const u8,
+    schema: []const u8,
+    prefix: []const u8,
+    expect: enum { name_fast, refuse_k1, refuse_enclosure },
+    forbidden: []const u32 = &.{},
+    must_allow: []const u32 = &.{},
+};
+
+test "abi: name-state lemma K1 - scope, boundaries and counters" {
+    var entries: [267]TokenEntry = undefined;
+    var blob: [1024]u8 = undefined;
+    var bufs: [256][1]u8 = undefined;
+    const desc = buildNameDesc(&entries, &blob, &bufs);
+
+    const open = "{\"type\":\"object\"}";
+    // A required declared key plus a count cap makes a free name a dead end
+    // even though the object is open.
+    const cap = "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"}}," ++
+        "\"required\":[\"a\"],\"additionalProperties\":true,\"maxProperties\":1}";
+    const no_cap = "{\"type\":\"object\",\"properties\":{\"a\":{\"type\":\"integer\"}}," ++
+        "\"required\":[\"a\"],\"additionalProperties\":true}";
+    const closed = "{\"type\":\"object\",\"properties\":{\"alpha\":{\"type\":\"integer\"}," ++
+        "\"beta\":{\"type\":\"string\"}},\"additionalProperties\":false}";
+
+    const cases = [_]NameScopeCase{
+        // K1 in scope: an open object with the compiler's unconstrained
+        // undeclared-value node, at the start and mid-name.
+        .{
+            .name = "open-at-start",
+            .schema = open,
+            .prefix = "{\"",
+            .expect = .name_fast,
+            .forbidden = &.{ 0x01, 265 },
+            .must_allow = &.{ 'a', '"', 260, 261, 257 },
+        },
+        .{
+            .name = "open-mid-name",
+            .schema = open,
+            .prefix = "{\"ab",
+            .expect = .name_fast,
+            .forbidden = &.{ 0x01, 265 },
+            .must_allow = &.{ 'a', '"', 256, 260 },
+        },
+        .{
+            .name = "open-required-no-cap",
+            .schema = no_cap,
+            .prefix = "{\"",
+            .expect = .name_fast,
+            .must_allow = &.{ 'a', 'x', '"' },
+        },
+        // Counts and dependencies: a minimum is harmless for a free name
+        // (more keys help), a dependency is not and refuses K1.
+        .{
+            .name = "minProperties",
+            .schema = "{\"type\":\"object\",\"minProperties\":2}",
+            .prefix = "{\"",
+            .expect = .name_fast,
+            .must_allow = &.{ 'a', 'x' },
+        },
+        .{
+            .name = "dependentRequired",
+            .schema = "{\"type\":\"object\",\"dependentRequired\":{\"a\":[\"b\"]}}",
+            .prefix = "{\"",
+            .expect = .refuse_k1,
+        },
+        .{
+            .name = "dependentSchemas-capture",
+            .schema = "{\"type\":\"object\",\"dependentSchemas\":{\"a\":{\"required\":[\"b\"]}}}",
+            .prefix = "{\"",
+            .expect = .refuse_k1,
+        },
+        // Capacity: the exact mask forbids a free name, K1 must stay off.
+        .{
+            .name = "maxProperties-at-start",
+            .schema = cap,
+            .prefix = "{\"",
+            .expect = .refuse_k1,
+            .forbidden = &.{'x'},
+            .must_allow = &.{'a'},
+        },
+        .{
+            .name = "maxProperties-inside",
+            .schema = cap,
+            .prefix = "{\"a",
+            .expect = .refuse_k1,
+            .forbidden = &.{'x'},
+            .must_allow = &.{'"'},
+        },
+        // Closed object: the next declared key only, in order.
+        .{
+            .name = "closed-object",
+            .schema = closed,
+            .prefix = "{\"",
+            .expect = .refuse_k1,
+            .forbidden = &.{'x'},
+            .must_allow = &.{'a'},
+        },
+        // propertyNames and patternProperties constrain the name; the
+        // undeclared value must be read from the compiled node, so a
+        // constrained additionalProperties or unevaluatedProperties refuses
+        // K1 even though nothing else about the frame changes.
+        .{
+            .name = "propertyNames",
+            .schema = "{\"type\":\"object\",\"propertyNames\":{\"maxLength\":3}}",
+            .prefix = "{\"",
+            .expect = .refuse_k1,
+        },
+        .{
+            .name = "patternProperties",
+            .schema = "{\"type\":\"object\",\"patternProperties\":{\"^x$\":" ++
+                "{\"type\":\"integer\"}},\"additionalProperties\":true}",
+            .prefix = "{\"",
+            .expect = .refuse_k1,
+        },
+        .{
+            .name = "additionalProperties-schema",
+            .schema = "{\"type\":\"object\",\"additionalProperties\":{\"type\":\"integer\"}}",
+            .prefix = "{\"",
+            .expect = .refuse_k1,
+            .must_allow = &.{'a'},
+        },
+        .{
+            .name = "unevaluatedProperties",
+            .schema = "{\"type\":\"object\",\"unevaluatedProperties\":{\"type\":\"integer\"}}",
+            .prefix = "{\"",
+            .expect = .refuse_k1,
+            .must_allow = &.{'a'},
+        },
+        // Enclosure boundaries: a parent element capture (uniqueItems) and a
+        // combinator with two live branches keep the exact path even though
+        // every frame would satisfy K1 on its own.
+        .{
+            .name = "parent-capture",
+            .schema = "{\"type\":\"array\",\"items\":{\"type\":\"object\"}," ++
+                "\"uniqueItems\":true,\"minItems\":2,\"maxItems\":2}",
+            .prefix = "[{\"",
+            .expect = .refuse_enclosure,
+        },
+        .{
+            .name = "oneOf-two-live-branches",
+            .schema = "{\"oneOf\":[{\"type\":\"object\",\"properties\":{\"a\":" ++
+                "{\"type\":\"integer\"}},\"required\":[\"a\"]},{\"type\":\"object\"," ++
+                "\"properties\":{\"b\":{\"type\":\"integer\"}},\"required\":[\"b\"]}]}",
+            .prefix = "{\"",
+            .expect = .refuse_enclosure,
+        },
+        // Key machine boundaries: inside an escape and inside a UTF-8
+        // sequence the content class does not apply.
+        .{
+            .name = "inside-escape",
+            .schema = open,
+            .prefix = "{\"a\\",
+            .expect = .refuse_k1,
+        },
+        .{
+            .name = "mid-utf8-2byte",
+            .schema = open,
+            .prefix = "{\"\xc3",
+            .expect = .refuse_k1,
+        },
+        .{
+            .name = "mid-utf8-4byte",
+            .schema = open,
+            .prefix = "{\"\xf0\x9f",
+            .expect = .refuse_k1,
+        },
+    };
+
+    for ([_]u32{ 0, 1 }) |mode| {
+        for (cases) |case| {
+            var on = makeConfig(mode);
+            on.work_limit_ops = 1 << 60;
+            var off = makeConfig(mode);
+            off.work_limit_ops = 1 << 60;
+            off.mask_fast_path = MASK_FAST_PATH_OFF;
+            var w_on: [9]u32 = @splat(0);
+            var w_off: [9]u32 = @splat(0);
+            var ops_on: u64 = 0;
+            var ops_off: u64 = 0;
+            mask_diag.reset();
+            try maskAtPrefixProfile(&on, &desc, "spec-v1", case.schema, case.prefix, &w_on, &ops_on);
+            const name_used = mask_diag.c.name_used.load(.monotonic);
+            const refuse_k1 = mask_diag.c.refuse_name_state.load(.monotonic);
+            const refuse_enc = mask_diag.c.refuse_content_dep.load(.monotonic);
+            const fast_used = mask_diag.c.fast_used.load(.monotonic);
+            try maskAtPrefixProfile(&off, &desc, "spec-v1", case.schema, case.prefix, &w_off, &ops_off);
+            try std.testing.expectEqualSlices(u32, &w_off, &w_on);
+            switch (case.expect) {
+                .name_fast => {
+                    try std.testing.expect(name_used > 0);
+                    try std.testing.expect(refuse_k1 == 0);
+                },
+                .refuse_k1 => {
+                    try std.testing.expectEqual(@as(u64, 0), name_used);
+                    try std.testing.expect(refuse_k1 > 0);
+                    try std.testing.expectEqual(@as(u64, 0), fast_used);
+                },
+                .refuse_enclosure => {
+                    try std.testing.expectEqual(@as(u64, 0), name_used);
+                    try std.testing.expectEqual(@as(u64, 0), refuse_k1);
+                    try std.testing.expect(refuse_enc > 0);
+                    try std.testing.expectEqual(@as(u64, 0), fast_used);
+                },
+            }
+            for (case.forbidden) |id| {
+                if (maskBit(&w_on, id)) {
+                    std.debug.print("case {s}: id {d} allowed, expected refused\n", .{ case.name, id });
+                    return error.TestUnexpectedResult;
+                }
+            }
+            for (case.must_allow) |id| {
+                if (!maskBit(&w_on, id)) {
+                    std.debug.print("case {s}: id {d} refused, expected allowed\n", .{ case.name, id });
+                    return error.TestUnexpectedResult;
+                }
+            }
         }
     }
 }

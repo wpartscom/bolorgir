@@ -24,9 +24,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 
-# ---------------------------------------------------------------------------
 # Reference errors (mirror blg_status from include/bolorgir.h)
-# ---------------------------------------------------------------------------
 
 class ReferenceError(Exception):
     status_name = "INTERNAL"
@@ -56,9 +54,7 @@ class EnumerationCapped(ResourceLimit):
     """Enumeration exceeded cap_docs: the document set is incomplete."""
 
 
-# ---------------------------------------------------------------------------
 # canonical-v1 serialization (DESIGN §1.1, §1.6)
-# ---------------------------------------------------------------------------
 
 _SHORT_ESCAPES = {
     0x22: b'\\"',
@@ -214,9 +210,7 @@ def normalize_number(value) -> bytes:
     return (sign + out).encode("ascii")
 
 
-# ---------------------------------------------------------------------------
 # Reference grammar nodes
-# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class Lit:
@@ -264,9 +258,7 @@ class Language:
     source: object     # source schema (dict) or list of strings
 
 
-# ---------------------------------------------------------------------------
 # JSON Schema -> Language compiler (DESIGN §1.7)
-# ---------------------------------------------------------------------------
 
 SUPPORTED_KEYWORDS = {
     "type", "properties", "required", "additionalProperties", "items",
@@ -553,9 +545,7 @@ def compile_literals(strings, *, max_depth: int = MAX_DEPTH_DEFAULT) -> Language
     return Language(root=root, kind="literals", source=list(strings))
 
 
-# ---------------------------------------------------------------------------
 # Document enumeration (for bounded schemas)
-# ---------------------------------------------------------------------------
 
 DEFAULT_ALPHABET = ("a", "b", '"', "\\", "\n", "\x01", "é", "\x7f")
 NUM_EXTRA_LITERALS = (
@@ -657,9 +647,7 @@ def enumerate_language(lang: Language, *, max_string_len: int = 3,
     return set(docs)
 
 
-# ---------------------------------------------------------------------------
 # Tokenizer (test spec; C ABI conversion lives in blg_ctypes)
-# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class TokenizerSpec:
@@ -711,9 +699,7 @@ def oracle_mask(prefix_valid, can_end: bool, spec: TokenizerSpec) -> set[int]:
     return allowed
 
 
-# ---------------------------------------------------------------------------
 # Oracle over a document set (exact for fully enumerated languages)
-# ---------------------------------------------------------------------------
 
 def _to_bytes(x) -> bytes:
     if isinstance(x, bytes):
@@ -787,9 +773,7 @@ class PrefixOracle:
         return allowed
 
 
-# ---------------------------------------------------------------------------
 # Incremental Matcher (exact oracle for unbounded languages too)
-# ---------------------------------------------------------------------------
 # Independent implementation of DESIGN §1.1-1.5 semantics: threads are frame
 # stacks. Frames: LitF / StrF / NumF / RepF / ObjF. No Seq frame: an object
 # manages the key/value alternation itself (phases open|key|value|sep).
@@ -1298,9 +1282,7 @@ class Matcher:
         return allowed
 
 
-# ---------------------------------------------------------------------------
 # Mini-validator of final documents against a schema (enumeration cross-check)
-# ---------------------------------------------------------------------------
 
 def _num_of(v):
     if isinstance(v, bool):
@@ -1418,13 +1400,11 @@ def canonical_check(doc, lang: Language) -> bool:
     return m.feed(doc) and m.can_end()
 
 
-# ---------------------------------------------------------------------------
 # spec-v1 numeric conjunctions (ADR-0011): completion reachability of a
 # number prefix under range, divisibility, exclusion and const constraints.
 # Exact rational arithmetic over the full prefix string; the reachable
 # values are enumerated per order of magnitude inside a window that covers
 # every constant, plus one representative beyond each end of the window.
-# ---------------------------------------------------------------------------
 
 from fractions import Fraction  # noqa: E402
 

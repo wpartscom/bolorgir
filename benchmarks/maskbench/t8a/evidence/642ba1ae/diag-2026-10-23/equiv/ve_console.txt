@@ -1,0 +1,29 @@
+Slice leg (pkg-prefix, library 642ba1ae...7da4):
+
+$ mask_equiv.py --run ... --files .../equiv/slice.txt --out /tmp/slice_prefix.json
+files 43, calls 684, mask 0.4 s (aborts 0: 0.0 s), wall 0.6 s
+TBM ms: {"p50": 0.005, "p75": 0.118, "p90": 1.416, "p99": 8.522, "share_calls_ge_1s": 0.0, "share_time_ge_1s": 0.0}
+mismatched files: 0, errors: 0, capped: 0
+RC=0
+
+VE leg (pkg-prefix, library 642ba1ae...7da4):
+
+$ mask_equiv.py --run ... --files .../equiv/ve_mask_limit_list.txt --allow-missing-stream --out /tmp/ve_meter_prefix.json
+files 6, calls 1515, mask 1490.4 s (aborts 19: 1103.9 s), wall 1490.6 s
+TBM ms: {"p50": 0.009, "p75": 8.628, "p90": 83.729, "p99": 55371.601, "share_calls_ge_1s": 0.0717, "share_time_ge_1s": 0.9785}
+mismatched files: 0, errors: 2, capped: 0
+  MISMATCH Github_easy---o58839.json - compile failed: ResourceLimitError('grammar exceeds node budget of 100000')
+  MISMATCH Github_hard---o90895.json - compile failed: ResourceLimitError('grammar exceeds node budget of 100000')
+RC=1
+
+The exit code 1 comes from the two expected corpus compile limits only (the
+same two files as in the ORIG leg and in the `7eb8ed01` package); both are
+named apart and accepted by the strict comparator.
+
+Strict comparison against the ORIG leg 9a5baf3e...0c41:
+
+$ compare_ve_meters.py ve_meter_orig.json ve_meter_prefix.json \
+    --out ve_meter_compare_prefix \
+    --expect-orig-lib 9a5baf3e...0c41 --expect-fix-lib 642ba1ae...7da4
+VERDICT: all checks passed
+cmp_exit=0

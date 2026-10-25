@@ -11,7 +11,8 @@ Build and test the core:
 
 ```sh
 zig build -Drelease=true          # -> zig-out/lib/libbolorgir.so
-zig build test --summary all      # core unit tests (Debug and ReleaseSafe)
+zig build test --summary all                 # core unit tests, default (Debug)
+zig build test -Drelease=true --summary all  # same suite, ReleaseSafe
 zig fmt --check build.zig src     # formatting must stay clean
 zig build example-c               # C example
 LD_LIBRARY_PATH=zig-out/lib zig-out/bin/c_client

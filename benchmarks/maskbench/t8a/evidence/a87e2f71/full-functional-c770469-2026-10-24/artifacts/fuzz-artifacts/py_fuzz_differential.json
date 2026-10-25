@@ -1,0 +1,72 @@
+{
+ "seed": 20260914,
+ "n_schemas": 600,
+ "max_steps": 20,
+ "configs": [
+  {
+   "schemas": 600,
+   "both_rejected": 7,
+   "walks": 593,
+   "mask_cmps": 5412,
+   "accepts": 3257,
+   "rejects": 548,
+   "dead_ends": 0,
+   "finishes": 491,
+   "config": "cache_off-fast_on",
+   "mode": 0,
+   "cache_limit_bytes": 0,
+   "mask_fast_path": 1,
+   "max_workers": 0,
+   "trace_sha256": "11133709c850a4a9669b22332255b9fb70e20206c789a8968bac1e1ad2d43d69"
+  },
+  {
+   "schemas": 600,
+   "both_rejected": 7,
+   "walks": 593,
+   "mask_cmps": 5412,
+   "accepts": 3257,
+   "rejects": 548,
+   "dead_ends": 0,
+   "finishes": 491,
+   "config": "cache_off-fast_off",
+   "mode": 0,
+   "cache_limit_bytes": 0,
+   "mask_fast_path": 2,
+   "max_workers": 0,
+   "trace_sha256": "11133709c850a4a9669b22332255b9fb70e20206c789a8968bac1e1ad2d43d69"
+  },
+  {
+   "schemas": 600,
+   "both_rejected": 7,
+   "walks": 593,
+   "mask_cmps": 5412,
+   "accepts": 3257,
+   "rejects": 548,
+   "dead_ends": 0,
+   "finishes": 491,
+   "config": "cache_default-fast_on",
+   "mode": 1,
+   "cache_limit_bytes": 18446744073709551615,
+   "mask_fast_path": 1,
+   "max_workers": 0,
+   "trace_sha256": "11133709c850a4a9669b22332255b9fb70e20206c789a8968bac1e1ad2d43d69"
+  },
+  {
+   "schemas": 600,
+   "both_rejected": 7,
+   "walks": 593,
+   "mask_cmps": 5412,
+   "accepts": 3257,
+   "rejects": 548,
+   "dead_ends": 0,
+   "finishes": 491,
+   "config": "cache_default-fast_off",
+   "mode": 1,
+   "cache_limit_bytes": 18446744073709551615,
+   "mask_fast_path": 2,
+   "max_workers": 0,
+   "trace_sha256": "11133709c850a4a9669b22332255b9fb70e20206c789a8968bac1e1ad2d43d69"
+  }
+ ],
+ "equal_across_configs": true
+}

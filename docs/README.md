@@ -20,6 +20,7 @@ quickstart. The documents below go deeper.
 |---|---|
 | [architecture.md](architecture.md) | Modules, their boundaries, and the memory and threading models. |
 | [DESIGN.md](DESIGN.md) | Implementation notes and the invariants the code relies on. |
+| [mask-fast-path-needs-reachability.md](mask-fast-path-needs-reachability.md) | The mask fast path: why reachability is needed, the scope correction, the `oneOf` refinement, the diagnostics and the measurements. |
 | [adr/](adr/) | Architecture decision records (listed below). |
 | [RUN_HISTORY.md](RUN_HISTORY.md) | Acceptance record: measured builds, outcomes, report links and unresolved limitations. |
 
@@ -46,9 +47,15 @@ published benchmark reports are under [benchmarks/](../benchmarks/).
 | [0010](adr/ADR-0010-dynamic-refs.md) | `content*` annotations, URI resolution, dynamic references | accepted |
 | [0011](adr/ADR-0011-numeric-conjunction.md) | Closed-form certificates for numeric conjunctions | accepted |
 | [0012](adr/ADR-0012-generatability-probe.md) | Compile-time generatability probe | proposed |
+| [0014](adr/ADR-0014-session-rollback.md) | Session rollback and draft-token validation | proposed |
+| [0015](adr/ADR-0015-regex-constraint.md) | Standalone regex constraint | proposed |
+| [0016](adr/ADR-0016-vllm-agent-integration.md) | vLLM structured-output backend and agent integration | proposed |
 
 Two records share the number 0002; other documents cite them as
 "ADR-0002 (literal trie)" and "ADR-0002 (Python bridge)", or by context.
+ADR-0013 (interop numbers) and ADR-0017 (bounded whitespace) belong to a
+later line and do not exist yet (`release/v0.2.0-composition.json`,
+`later_line_paths`).
 
 ## Reading notes
 
@@ -61,12 +68,20 @@ Two records share the number 0002; other documents cite them as
   [ROADMAP.md](../ROADMAP.md). "R1"-"R4" are correctness fixes listed in the
   [CHANGELOG](../CHANGELOG.md). "D1", "D2", ... are numbered decisions inside
   an ADR (for example "ADR-0005 D3").
-- **Follow-up work.** Agent integration and evaluation (T9/T10, A1-A3) are
-  future work; mentions of them do not indicate completed implementation.
+- **Follow-up work.** T9 (session rollback) and the vLLM backend of T10
+  are implemented in this tree; the T10 agent evaluation (A1-A3) and the
+  formal acceptance of those records are not done: ADR-0014 to ADR-0016
+  stay `proposed`, and an implementation does not change that status.
 - **Build names.** "final3", "final4", "fix1", "fix2", "fix3" (with
   sub-runs such as "fix3g") identify successive measured builds; their
   identities and outcomes are in [RUN_HISTORY.md](RUN_HISTORY.md) and
   [dialect-matrix.md section 9](dialect-matrix.md#9-oracle-coverage-results).
+- **Historical revision ids.** Commit ids of preparation stages (`711ad70`,
+  `1f819bc`, `c770469`, ...) identify local historical revisions and are
+  kept as provenance. The public `main` history squashes each publication
+  into one commit, so a clean clone cannot check out those revisions:
+  reproducing them needs the saved snapshots or patches with their
+  checksums, and an id alone is not a reproduction recipe.
 - **Local artifacts.** Some documents cite run outputs that are not
   versioned: oracle reports under `tests/oracle/results/` and raw benchmark
   data under `benchmarks/results/`. Regenerate them with the commands in

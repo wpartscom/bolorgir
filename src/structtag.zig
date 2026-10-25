@@ -592,9 +592,7 @@ pub fn compile(ga: std.mem.Allocator, spec: []const u8, max_depth: u32, strip_le
     };
 }
 
-// ---------------------------------------------------------------------------
 // The byte-level state machine
-// ---------------------------------------------------------------------------
 
 pub const Phase = enum(u8) { text, begin, json, final };
 
@@ -866,10 +864,9 @@ pub fn feedByteInto(p: *const Program, side: *parser.Side, in: *const State, b: 
     out.small = small;
     parser.releaseState(side, &out.json);
     if (json_fed) {
-        out.json = jout.*;
-        jout.n = 0;
+        parser.moveState(&out.json, jout);
     } else if (json_enter != NO_VARIANT) {
-        out.json = parser.initState(&p.variants[json_enter].content, small.mt, side) catch |e| {
+        parser.initStateInto(&out.json, &p.variants[json_enter].content, small.mt, side) catch |e| {
             out.json.n = 0;
             return e;
         };
@@ -878,9 +875,7 @@ pub fn feedByteInto(p: *const Program, side: *parser.Side, in: *const State, b: 
     }
 }
 
-// ---------------------------------------------------------------------------
 // Mask construction
-// ---------------------------------------------------------------------------
 
 const Frame = struct { node: u32, next_edge: u32 };
 
@@ -915,10 +910,13 @@ pub const Pool = struct {
 
     /// The completion cache prepared for the content grammar of variant
     /// `vi` (memoized verdicts are per grammar: switching variants drops
-    /// them; the scratch pool is kept).
+    /// them; the scratch pool is kept). Entry clearing keeps a release in
+    /// force: a fill that had to give the optional certificate memory back
+    /// must not re-enable it by switching variants, or the retry would run
+    /// with exactly the memory it released.
     fn completionFor(self: *Pool, vi: u8) *complete.Cache {
         if (self.completion_variant != vi) {
-            self.completion.reset();
+            self.completion.resetForVariant();
             self.completion_variant = vi;
         }
         return &self.completion;
@@ -941,19 +939,38 @@ fn setBit(out: []u32, id: u32) void {
 }
 
 pub fn fillMask(p: *const Program, tok: *const tokenizer.Tokenizer, st: *const State, out: []u32, w: *work_mod.Work, pool: *Pool, jout: *parser.State, work: *parser.State, side: *parser.Side) MaskError!void {
-    const mw = tok.maskWords();
-    std.debug.assert(out.len >= mw);
-    @memset(out[0..mw], 0);
+    const ops = w.ops;
+    // A fill starts with the certificate cache enabled; see `fillMask` in
+    // mask.zig for the same per-fill reset. The retry must not repeat it.
     if (needsReachability(p)) {
         pool.completion.reset();
         pool.completion.fill_budget = complete.fillBudget();
         pool.completion_variant = NO_VARIANT;
     }
+    return fillMaskImpl(p, tok, st, out, w, pool, jout, work, side) catch |err| {
+        // The pool's state array and the parser feeds are required memory;
+        // the certificate cache of the content grammar is not. A fill that
+        // fits with the cache off must fit with it too: give the optional
+        // memory back and retry once.
+        if (err != error.OutOfMemory or !pool.completion.holdsOptional()) return err;
+        pool.completion.releaseOptional();
+        pool.completion.fill_budget = complete.fillBudget();
+        w.ops = ops;
+        return fillMaskImpl(p, tok, st, out, w, pool, jout, work, side);
+    };
+}
+
+fn fillMaskImpl(p: *const Program, tok: *const tokenizer.Tokenizer, st: *const State, out: []u32, w: *work_mod.Work, pool: *Pool, jout: *parser.State, work: *parser.State, side: *parser.Side) MaskError!void {
+    const mw = tok.maskWords();
+    std.debug.assert(out.len >= mw);
+    @memset(out[0..mw], 0);
     const trie = &tok.trie;
     try pool.ensure(trie.max_stack);
     pool.states.items.len = 0;
     pool.frames.items.len = 0;
-    pool.states.appendAssumeCapacity(st.*);
+    pool.states.items.len = 1;
+    pool.states.items[0].small = st.small;
+    parser.copyState(&pool.states.items[0].json, &st.json);
     if (st.small.phase == .json and !st.small.json_dead)
         parser.retainState(side, &pool.states.items[0].json);
     pool.frames.appendAssumeCapacity(.{ .node = 0, .next_edge = 0 });
@@ -994,8 +1011,8 @@ pub fn fillMask(p: *const Program, tok: *const tokenizer.Tokenizer, st: *const S
             // which can be longer than the branching depth (the real
             // Qwen tokenizer has 61-byte tokens against max_stack 59).
             parser.releaseState(side, &pool.states.items[top].json);
-            pool.states.items[top] = dst.*;
-            dst.json.n = 0;
+            pool.states.items[top].small = dst.small;
+            parser.moveState(&pool.states.items[top].json, &dst.json);
             fr.* = .{ .node = child, .next_edge = 0 };
             cur = &pool.states.items[top];
         } else {
@@ -1035,9 +1052,7 @@ pub fn fillMask(p: *const Program, tok: *const tokenizer.Tokenizer, st: *const S
     if (!any) return error.DeadEnd;
 }
 
-// ---------------------------------------------------------------------------
 // Tests
-// ---------------------------------------------------------------------------
 
 const testing = std.testing;
 
@@ -1397,4 +1412,110 @@ test "structtag: a rejected token mid-way leaves the state byte-identical" {
     try testing.expect(f.feedToken("{\"code\":\"zq-17-wombat\"}"));
     try testing.expect(f.feedToken("}</tool_call>"));
     try testing.expect(f.canEnd());
+}
+
+fn tagTok(a: std.mem.Allocator, toks: []const []const u8) !tokenizer.Tokenizer {
+    var entries: [12]tokenizer.Entry = undefined;
+    for (toks, 0..) |t, i| entries[i] = .{ .id = @intCast(i), .bytes = t };
+    const eos = [_]u32{@intCast(toks.len - 1)};
+    return tokenizer.Tokenizer.create(a, @intCast(toks.len), entries[0..toks.len], &eos, &.{});
+}
+
+const TagFillLeg = struct {
+    ok: bool,
+    err: ?MaskError,
+    peak: u64,
+    word: u32,
+    entries: usize,
+    muted: bool,
+};
+
+/// Memory-boundary regression for the structural-tag builder:
+/// `c_api.zig` calls `structtag.fillMask` directly, so
+/// the `mask.fillMask` wrapper never covered its state pool. The pool's
+/// completion cache is prepopulated with proven content certificates (the
+/// optional memory a previous fill leaves behind: entries are cleared at
+/// the next fill, the table and key buffer are retained), and the fill's
+/// required state array must still fit at the cache-off peak.
+fn tagFillLeg(limit: u64, off: bool) !TagFillLeg {
+    const alloc = testing.allocator;
+    const alloc_mod = @import("alloc.zig");
+    // A pattern string certifies alive without entering the search.
+    const spec = "{\"type\":\"structural_tag\",\"format\":{\"type\":\"tags_with_separator\",\"separator\":\"\",\"at_least_one\":true,\"tags\":[{\"type\":\"tag\",\"begin\":\"<c>\",\"content\":{\"type\":\"json_schema\",\"json_schema\":{\"type\":\"string\",\"pattern\":\"^a*$\"}},\"end\":\"</c>\"}]}}";
+    var sdiag: schema.Diagnostic = .{};
+    var cw = work_mod.Work{};
+    var prog = try compile(alloc, spec, 64, false, &sdiag, &cw);
+    defer prog.deinit();
+    var tk = try tagTok(alloc, &.{ "<", "<c", "<c>", "</", "</c", "1", "0", "9", "" });
+    defer tk.deinit();
+    var acc = alloc_mod.Accounting.init(alloc, limit);
+    var side = parser.Side.init(acc.allocator(.session));
+    defer side.deinit();
+    var pool = Pool.init(acc.allocator(.temp));
+    defer pool.deinit(&side);
+    complete.test_overrides.cert_cache_off = off;
+    defer complete.test_overrides.cert_cache_off = false;
+    var w = work_mod.Work.init(1_000_000, null);
+
+    // Distinct content states certify into distinct keys; with the cache
+    // off the same calls leave no optional memory behind.
+    {
+        const content = &prog.variants[0].content;
+        try testing.expect(content.needs_reachability);
+        var cur = try parser.initState(content, 16, &side);
+        var feed_work: parser.State = undefined;
+        feed_work.n = 0;
+        var next: parser.State = undefined;
+        try parser.feedBytes(content, &side, &cur, "\"", &next, &feed_work);
+        parser.releaseState(&side, &cur);
+        cur = next;
+        var i: usize = 0;
+        while (i < 64) : (i += 1) {
+            _ = try complete.stateAlive(content, &tk, &cur, &pool.completion, &w, &side);
+            // Feed into a fresh slot: `next` still holds a by-value copy
+            // of the previous state, and feeding into it would overwrite a
+            // state whose chunk handles the copy shares.
+            var fresh: parser.State = undefined;
+            try parser.feedBytes(content, &side, &cur, "a", &fresh, &feed_work);
+            parser.releaseState(&side, &cur);
+            cur = fresh;
+        }
+        parser.releaseState(&side, &cur);
+    }
+
+    var st = initState(&prog, 16);
+    defer parser.releaseState(&side, &st.json);
+    var jout: parser.State = undefined;
+    jout.n = 0;
+    var fill_work: parser.State = undefined;
+    fill_work.n = 0;
+    var out = [_]u32{0};
+    var err: ?MaskError = null;
+    fillMask(&prog, &tk, &st, &out, &w, &pool, &jout, &fill_work, &side) catch |e| {
+        err = e;
+    };
+    return .{
+        .ok = err == null,
+        .err = err,
+        .peak = acc.totalPeak(),
+        .word = out[0],
+        .entries = pool.completion.cert_map.count(),
+        .muted = pool.completion.cert_muted,
+    };
+}
+
+test "structtag: the certificate cache cannot fail a mask fill" {
+    const plain = try tagFillLeg(std.math.maxInt(u64), true);
+    const on = try tagFillLeg(std.math.maxInt(u64), false);
+    try testing.expect(plain.ok);
+    try testing.expect(on.ok);
+    try testing.expectEqual(plain.word, on.word);
+    try testing.expect(on.peak > plain.peak); // the certificate really held memory
+    const tight_off = try tagFillLeg(plain.peak, true);
+    const tight_on = try tagFillLeg(plain.peak, false);
+    try testing.expect(tight_off.ok);
+    try testing.expect(tight_on.ok); // OutOfMemory before the wrapper
+    try testing.expectEqual(tight_off.word, tight_on.word);
+    try testing.expect(tight_on.muted); // the release happened
+    try testing.expectEqual(@as(usize, 0), tight_on.entries);
 }

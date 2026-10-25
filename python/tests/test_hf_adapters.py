@@ -53,9 +53,7 @@ def mini_bundle() -> TokenizerBundle:
     return TokenizerBundle.from_token_bytes(tokens, eos_ids=[EOS_ID])
 
 
-# ----------------------------------------------------------------------
 # Fakes
-# ----------------------------------------------------------------------
 
 class _AddedToken:
     def __init__(self, content, special=False):
@@ -131,10 +129,6 @@ def cg():
     return torch, constrained_generate
 
 
-# ----------------------------------------------------------------------
-# A2a: byte fallback <0xNN> decodes to a single byte
-# ----------------------------------------------------------------------
-
 def test_byte_fallback_token_decodes_to_single_byte():
     vocab = {"<0x41>": 0, "a": 1, "<eos>": 2}
     tok = FakeTokenizer(
@@ -160,9 +154,7 @@ def test_byte_fallback_pattern_is_not_a_byte_without_the_decoder():
     assert b.token_bytes(vocab["<0x41>"]) == b"<0x41>"
 
 
-# ----------------------------------------------------------------------
 # A2b: unsupported schemes are rejected; supported families work
-# ----------------------------------------------------------------------
 
 def test_sentencepiece_without_byte_fallback_rejected():
     vocab = {"▁hello": 0, "▁": 1, "<eos>": 2}
@@ -218,11 +210,9 @@ def test_special_token_excluded_from_special_ids_only_if_eos():
     assert b.eos_ids == (vocab["<eos>"],)
 
 
-# ----------------------------------------------------------------------
 # Scheme detection is vocab-level, not per-token (TinyLlama finding of the
 # 2026-09-15 benchmark run: SP pieces with U+00A0..U+00FF chars were
 # mis-decoded through the byte-level BPE table)
-# ----------------------------------------------------------------------
 
 def test_sp_piece_with_latin1_char_decodes_as_literal_utf8():
     # An SP piece like 'iné' must NOT go through the byte-level table
@@ -259,10 +249,8 @@ def test_unrecognized_scheme_rejected_even_if_tokens_look_decodable():
         TokenizerBundle.from_hf(tok, use_cache=False)
 
 
-# ----------------------------------------------------------------------
 # R2(a,c): the real backend decoder drives the byte image; unsupported
 # decoder chains are refused and the decoder is part of the cache identity
-# ----------------------------------------------------------------------
 
 def _real_bytelevel_tokenizer():
     tokenizers = pytest.importorskip("tokenizers")
@@ -524,9 +512,7 @@ def test_tinyllama_decode_equals_modelled_bytes():
     assert bad == []
 
 
-# ----------------------------------------------------------------------
 # A2c: cache key includes the vocab fingerprint
-# ----------------------------------------------------------------------
 
 def test_from_hf_cache_distinguishes_vocab():
     tok1 = FakeTokenizer(
@@ -556,9 +542,7 @@ def test_from_hf_cache_distinguishes_byte_fallback_flag():
     assert b1 is not b2
 
 
-# ----------------------------------------------------------------------
 # A3: completed=True requires an accepted EOS
-# ----------------------------------------------------------------------
 
 @needs_core_masks
 def test_finish_row_without_eos_not_completed(zt):
@@ -585,9 +569,7 @@ def test_finish_row_with_eos_completed(zt):
         c.close()
 
 
-# ----------------------------------------------------------------------
 # A4: invalid scores among allowed candidates are an explicit error
-# ----------------------------------------------------------------------
 
 @needs_core_masks
 @pytest.mark.parametrize("bad_value", [float("nan"), float("inf")])
@@ -624,9 +606,7 @@ def test_nan_at_disallowed_position_is_masked_not_an_error(zt):
         c.close()
 
 
-# ----------------------------------------------------------------------
 # Effective generation config and the EOS union
-# ----------------------------------------------------------------------
 
 @needs_core_masks
 def test_generation_config_conflicts_detected_before_generate(cg):
@@ -758,10 +738,8 @@ def test_eos_ids_accept_single_int_generation_config(cg):
         c.close()
 
 
-# ----------------------------------------------------------------------
 # Added tokens go through the backend decoder; decoder
 # chains are exact (order + multiplicity); real hf.decode is the reference.
-# ----------------------------------------------------------------------
 
 def _modelled_text(bundle, ids):
     """Text the core builds from a token sequence (bytes + rule)."""
@@ -919,9 +897,7 @@ def test_finish_row_matches_decode_for_added_token(zt, added, wrong_literals):
             c.close()
 
 
-# ----------------------------------------------------------------------
 # One final config for preflight, stopping and generate
-# ----------------------------------------------------------------------
 
 def _tiny_gpt2():
     torch = pytest.importorskip("torch")
@@ -1009,10 +985,8 @@ def test_explicit_num_beams_one_wins_over_model_config(cg):
         c.close()
 
 
-# ----------------------------------------------------------------------
 # on_constraint_error: an engine error of one row (here RESOURCE_LIMIT
 # from a context with a tiny work budget) fails that row only.
-# ----------------------------------------------------------------------
 
 def _two_rows(work_limit_ops=50):
     good = Engine(mode="lazy")

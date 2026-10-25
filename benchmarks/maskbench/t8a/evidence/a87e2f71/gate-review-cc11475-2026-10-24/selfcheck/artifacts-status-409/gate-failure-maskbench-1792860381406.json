@@ -1,0 +1,84 @@
+{
+ "file": "(all)",
+ "case": {
+  "states_compared": 410,
+  "instances": 1
+ },
+ "divergences": [
+  {
+   "kind": "status",
+   "index": 409,
+   "case": [
+    "case",
+    1,
+    409
+   ],
+   "off": {
+    "fill": 0,
+    "accept": 0
+   },
+   "on": {
+    "fill": 5,
+    "accept": null
+   },
+   "off_words": [
+    1
+   ],
+   "on_words": []
+  },
+  {
+   "kind": "instance",
+   "off": [
+    "case",
+    1,
+    true,
+    true,
+    true,
+    "completed"
+   ],
+   "on": [
+    "case",
+    1,
+    true,
+    false,
+    null,
+    "error:fill:5"
+   ]
+  },
+  {
+   "kind": "fill",
+   "arm": "on",
+   "count": 1
+  }
+ ],
+ "truncated": false,
+ "stats_off": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 410,
+  "fill_errors": 0,
+  "accept_errors": 0,
+  "terminal_masks": 1,
+  "terminal_fill_errors": 0,
+  "input_errors": 0,
+  "completion_errors": 0,
+  "validation_error": 0
+ },
+ "stats_on": {
+  "files": 1,
+  "compiled": 1,
+  "compile_error": 0,
+  "instances": 1,
+  "masks": 409,
+  "fill_errors": 1,
+  "accept_errors": 0,
+  "terminal_masks": 1,
+  "terminal_fill_errors": 0,
+  "input_errors": 0,
+  "completion_errors": 0,
+  "validation_error": 0
+ },
+ "trace_sha256": "64605f5bdcf32d7abee169d06cc65712e16c221079436113a8b946bcbc626353"
+}

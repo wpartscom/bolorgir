@@ -114,9 +114,7 @@ def gen_literals(rng: random.Random) -> str:
     return "[%s]" % ",".join(vals)
 
 
-# ---------------------------------------------------------------------------
 # spec-v1 generator
-# ---------------------------------------------------------------------------
 
 # Patterns of the src/pattern.zig subset; validated with ECMA-262 semantics
 # by tests/generation_passes.py.

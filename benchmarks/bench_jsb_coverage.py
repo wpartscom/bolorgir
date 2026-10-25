@@ -469,9 +469,7 @@ def engine_commit():
         return "unknown"
 
 
-# ---------------------------------------------------------------------------
 # Semantic mode: session/generation/instance execution checks
-# ---------------------------------------------------------------------------
 
 def byte_tokenizer_spec():
     """Byte-level tokenizer, same as tests/oracle/run_oracle.py
@@ -1331,9 +1329,7 @@ def semantic_check(byte_ctx, data, schema_doc, tests, max_steps, serializer,
         blg.grammar_release(grammar)
 
 
-# ---------------------------------------------------------------------------
 # Generatable mode: K passes per schema and tokenizer, outcome records
-# ---------------------------------------------------------------------------
 
 def _gen_mods():
     """The shared pass driver and outcome rules (tests/generation_passes.py,

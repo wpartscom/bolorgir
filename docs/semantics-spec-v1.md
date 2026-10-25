@@ -222,13 +222,16 @@ admitted) or "no completion is reachable" (token masked / accept refused)
 either in closed form (per-frame certification) or by a bounded
 depth-first search. The search is deliberately bounded so a pathological
 grammar cannot stall generation: iterative-deepening depth tiers (32 /
-256 / 512 tokens; the scratch pool holds at most 256 parser states, ~32
-MB, charged to the context temp budget), per-tier expansion budgets
-(32 / 128 / 128 expansions), and a per-mask-call expansion budget shared
-by all token checks of one `fill_mask` (512 expansions,
-`complete.FILL_SEARCH_BUDGET`; the accept filter gets the same fresh
-budget per call). Any state the search cannot settle within these bounds
-reports `ResourceLimit`, which is UNKNOWN, not alive (ADR-0005 Decision 3,
+256 / 512 tokens; the scratch pool holds at most 256 parser states, each
+about 256 KiB of inline thread and frame arrays, so the pool alone is
+about 64 MiB, charged to the context temp budget), per-tier expansion
+budgets (32 / 512 / 8,192 expansions; each next tier multiplies the
+budget by 16 up to the shared bound), and a per-mask-call expansion
+budget shared by all token checks of one `fill_mask` (65,536 expansions,
+`complete.FILL_SEARCH_BUDGET` = `1 << 16`; the accept filter gets the
+same fresh budget per call). Any state the search cannot settle within
+these bounds reports `ResourceLimit`, which is UNKNOWN, not alive
+(ADR-0005 Decision 3,
 strict form): the mask/accept call sites propagate it, so the whole
 `fill_mask` fails and `blg_accept_token` refuses the token with
 `RESOURCE_LIMIT` - an unproven token is never silently admitted, since an

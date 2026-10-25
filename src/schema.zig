@@ -376,8 +376,24 @@ pub fn compileWith(child_allocator: std.mem.Allocator, schema_bytes: []const u8,
     if (opts.record_pointers) {
         while (c.node_ptrs.items.len < c.builder.nodes.items.len) try c.node_ptrs.append(a, "");
     }
+    // The AnyJSON mark is allocated and filled BEFORE finish: finish takes
+    // the arena by value and allocates its own tables (`pat_len`,
+    // `nonempty`) through that copy, so an allocation through `a` after the
+    // call would be handed the same addresses again and overwrite them.
+    var any_bits: []const u32 = &.{};
+    if (c.any_nodes.count() != 0) {
+        const bits = try a.alloc(u32, (c.builder.nodes.items.len + 31) / 32);
+        @memset(bits, 0);
+        var it = c.any_nodes.keyIterator();
+        while (it.next()) |id_ptr| {
+            const id = id_ptr.*;
+            bits[id / 32] |= @as(u32, 1) << @as(u5, @intCast(id % 32));
+        }
+        any_bits = bits;
+    }
     var g = try c.builder.finish(arena, .json_schema, root_id, ident);
     g.node_ptrs = c.node_ptrs.items;
+    g.any_nodes = any_bits;
     return g;
 }
 
@@ -7241,6 +7257,38 @@ test "string key canonical escaping" {
 fn compileSpec(s: []const u8, diag: *Diagnostic) CompileError!grammar.Grammar {
     var w = work_mod.Work{};
     return compile(std.testing.allocator, s, 64, diag, &w, false, .spec_v1, &.{});
+}
+
+test "spec-v1: any_nodes is allocated before finish and does not alias pat_len" {
+    // Regression for the K1 mark. Builder.finish takes the arena by value
+    // and allocates pat_len through that copy, so allocating the mark
+    // through the original allocator after finish handed out the same
+    // addresses and the bit writes landed in the pat_len table.
+    const depths = [_]u32{ 1, 4, 64 };
+    for (depths) |depth| {
+        var diag: Diagnostic = .{};
+        var w = work_mod.Work{};
+        var g = try compile(std.testing.allocator, "{\"type\":\"object\"}", depth, &diag, &w, false, .spec_v1, &.{});
+        defer g.deinit();
+        // The open object carries the AnyJSON fallback: the mark exists and
+        // names at least one unconstrained node.
+        try std.testing.expect(g.any_nodes.len > 0);
+        var marked = false;
+        for (0..g.nodes.len) |id| {
+            if (g.isAnyNode(@intCast(id))) marked = true;
+        }
+        try std.testing.expect(marked);
+        // No node of this schema carries a pattern descriptor, so every
+        // pat_len entry must still be null; before the fix the mark
+        // overwrote the first words.
+        for (g.pat_len) |pl| try std.testing.expect(pl == null);
+        // The two arena tables are disjoint.
+        const bits_start = @intFromPtr(g.any_nodes.ptr);
+        const bits_end = bits_start + g.any_nodes.len * @sizeOf(u32);
+        const pat_start = @intFromPtr(g.pat_len.ptr);
+        const pat_end = pat_start + g.pat_len.len * @sizeOf(?*const pattern.PatLenDescr);
+        try std.testing.expect(bits_end <= pat_start or pat_end <= bits_start);
+    }
 }
 
 test "spec-v1: type union compiles to a choice of arms" {

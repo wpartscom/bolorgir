@@ -1,0 +1,306 @@
+[
+  {
+    "case": "control",
+    "kind": "synthetic gate fault",
+    "exit": 0,
+    "gate": {
+      "probe_states": 4,
+      "status": "PASS",
+      "maskbench_states": 2,
+      "maskbench_instances": 1,
+      "maskbench_terminal_states": 1,
+      "maskbench_terminal_complete": true,
+      "maskbench_fill_errors": 0,
+      "maskbench_terminal_fill_errors": 0,
+      "maskbench_input_errors": 0,
+      "maskbench_completion_errors": 0,
+      "maskbench_accept_errors": 0,
+      "maskbench_validation_errors": 0,
+      "maskbench_trace_sha256": "7f6ea00f7de9c6a8abae3edc551a495a8e05f5b17f8f22365e1df9d1a29aebaa"
+    },
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "fill",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "fill",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ]
+    ]
+  },
+  {
+    "case": "cannot-end",
+    "kind": "synthetic gate fault",
+    "exit": "GATE FAILURE: maskbench gate failed (completion x1, instance x1, terminal x1; 2 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "gate": {
+      "probe_states": 4,
+      "status": "PASS",
+      "maskbench_states": 2,
+      "maskbench_instances": 1,
+      "maskbench_fill_errors": 0,
+      "maskbench_accept_errors": 0,
+      "maskbench_validation_errors": 0,
+      "maskbench_trace_sha256": "411d8decbe1e83dc7972d7dd54d6b6bd558890aa35631e93cf45beef69339175"
+    },
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "fill",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "fill",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ]
+    ]
+  },
+  {
+    "case": "tail-mask",
+    "kind": "synthetic gate fault",
+    "exit": "GATE FAILURE: maskbench gate failed (terminal x1; 2 state(s), 1 terminal(s), 1 instance(s) compared)",
+    "gate": {
+      "probe_states": 4,
+      "status": "PASS",
+      "maskbench_states": 2,
+      "maskbench_instances": 1,
+      "maskbench_fill_errors": 0,
+      "maskbench_accept_errors": 0,
+      "maskbench_validation_errors": 0,
+      "maskbench_trace_sha256": "411d8decbe1e83dc7972d7dd54d6b6bd558890aa35631e93cf45beef69339175"
+    },
+    "session_calls": [
+      [
+        "fill",
+        2,
+        0
+      ],
+      [
+        "fill",
+        2,
+        1
+      ],
+      [
+        "fill",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "can_end",
+        2,
+        2
+      ],
+      [
+        "fill",
+        0,
+        0
+      ],
+      [
+        "fill",
+        0,
+        1
+      ],
+      [
+        "fill",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ],
+      [
+        "can_end",
+        0,
+        2
+      ]
+    ]
+  },
+  {
+    "case": "warm-control",
+    "kind": "synthetic replay; no timing",
+    "exit": 0,
+    "pass": true,
+    "conditions": {
+      "recorded": true,
+      "ok": true,
+      "problems": []
+    },
+    "matrix_ok": true
+  },
+  {
+    "case": "warm-missing-load",
+    "kind": "synthetic replay; no timing",
+    "exit": 1,
+    "pass": false,
+    "conditions": {
+      "recorded": true,
+      "ok": false,
+      "problems": [
+        "permissive_string_content round 1 off start: missing load snapshot",
+        "permissive_string_content round 1 off end: missing load snapshot",
+        "permissive_string_content round 1 on start: missing load snapshot",
+        "permissive_string_content round 1 on end: missing load snapshot",
+        "permissive_string_content round 2 off start: missing load snapshot",
+        "permissive_string_content round 2 off end: missing load snapshot",
+        "permissive_string_content round 2 on start: missing load snapshot",
+        "permissive_string_content round 2 on end: missing load snapshot",
+        "permissive_string_content round 3 off start: missing load snapshot",
+        "permissive_string_content round 3 off end: missing load snapshot",
+        "permissive_string_content round 3 on start: missing load snapshot",
+        "permissive_string_content round 3 on end: missing load snapshot",
+        "permissive_string_content round 4 off start: missing load snapshot",
+        "permissive_string_content round 4 off end: missing load snapshot",
+        "permissive_string_content round 4 on start: missing load snapshot",
+        "permissive_string_content round 4 on end: missing load snapshot",
+        "permissive_string_content round 5 off start: missing load snapshot",
+        "permissive_string_content round 5 off end: missing load snapshot",
+        "permissive_string_content round 5 on start: missing load snapshot",
+        "permissive_string_content round 5 on end: missing load snapshot",
+        "permissive_string_in_object round 1 off start: missing load snapshot",
+        "permissive_string_in_object round 1 off end: missing load snapshot",
+        "permissive_string_in_object round 1 on start: missing load snapshot",
+        "permissive_string_in_object round 1 on end: missing load snapshot",
+        "permissive_string_in_object round 2 off start: missing load snapshot",
+        "permissive_string_in_object round 2 off end: missing load snapshot",
+        "permissive_string_in_object round 2 on start: missing load snapshot",
+        "permissive_string_in_object round 2 on end: missing load snapshot",
+        "permissive_string_in_object round 3 off start: missing load snapshot",
+        "permissive_string_in_object round 3 off end: missing load snapshot",
+        "permissive_string_in_object round 3 on start: missing load snapshot",
+        "permissive_string_in_object round 3 on end: missing load snapshot",
+        "permissive_string_in_object round 4 off start: missing load snapshot",
+        "permissive_string_in_object round 4 off end: missing load snapshot",
+        "permissive_string_in_object round 4 on start: missing load snapshot",
+        "permissive_string_in_object round 4 on end: missing load snapshot",
+        "permissive_string_in_object round 5 off start: missing load snapshot",
+        "permissive_string_in_object round 5 off end: missing load snapshot",
+        "permissive_string_in_object round 5 on start: missing load snapshot",
+        "permissive_string_in_object round 5 on end: missing load snapshot"
+      ]
+    },
+    "matrix_ok": false
+  },
+  {
+    "case": "warm-end-affinity",
+    "kind": "synthetic replay; no timing",
+    "exit": 1,
+    "pass": false,
+    "conditions": {
+      "recorded": true,
+      "ok": false,
+      "problems": [
+        "permissive_string_content round 1 off end: affinity [1], expected [0]",
+        "permissive_string_content round 1 on end: affinity [1], expected [0]",
+        "permissive_string_content round 2 off end: affinity [1], expected [0]",
+        "permissive_string_content round 2 on end: affinity [1], expected [0]",
+        "permissive_string_content round 3 off end: affinity [1], expected [0]",
+        "permissive_string_content round 3 on end: affinity [1], expected [0]",
+        "permissive_string_content round 4 off end: affinity [1], expected [0]",
+        "permissive_string_content round 4 on end: affinity [1], expected [0]",
+        "permissive_string_content round 5 off end: affinity [1], expected [0]",
+        "permissive_string_content round 5 on end: affinity [1], expected [0]",
+        "permissive_string_in_object round 1 off end: affinity [1], expected [0]",
+        "permissive_string_in_object round 1 on end: affinity [1], expected [0]",
+        "permissive_string_in_object round 2 off end: affinity [1], expected [0]",
+        "permissive_string_in_object round 2 on end: affinity [1], expected [0]",
+        "permissive_string_in_object round 3 off end: affinity [1], expected [0]",
+        "permissive_string_in_object round 3 on end: affinity [1], expected [0]",
+        "permissive_string_in_object round 4 off end: affinity [1], expected [0]",
+        "permissive_string_in_object round 4 on end: affinity [1], expected [0]",
+        "permissive_string_in_object round 5 off end: affinity [1], expected [0]",
+        "permissive_string_in_object round 5 on end: affinity [1], expected [0]"
+      ]
+    },
+    "matrix_ok": false
+  }
+]
