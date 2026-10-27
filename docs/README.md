@@ -1,7 +1,8 @@
 # Bolorgir documentation
 
-Start with the [project README](../README.md) for installation and a
-quickstart. The documents below go deeper.
+Start with the [project README](../README.md) for installation, a
+quickstart and [current measurement status](../README.md#performance).
+The documents below go deeper.
 
 ## Using the library
 
@@ -28,7 +29,9 @@ The repository root also holds [SPEC.md](../SPEC.md) (the engine
 specification), [ROADMAP.md](../ROADMAP.md) (the spec-v1 development plan
 and progress tracking), [CHANGELOG.md](../CHANGELOG.md) and
 [CONTRIBUTING.md](../CONTRIBUTING.md). Measurement methodology and
-published benchmark reports are under [benchmarks/](../benchmarks/).
+benchmark tools are under [benchmarks/](../benchmarks/README.md).
+`RUN_HISTORY.md`, dated reports, CHANGELOG entries and evidence packages
+are archival records of the builds they name, not current-build results.
 
 ## Architecture decision records
 

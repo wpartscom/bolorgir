@@ -7,164 +7,51 @@ and 37,000 instances generated for them, mask computation measured in
 isolation, TTFM (grammar compile) and TBM (per-mask time) reported as
 percentiles.
 
-This folder contains the Bolorgir adapter (`--blg`) for that harness, a
-patch that packages it as an upstream pull request, and the results of
-full-corpus local runs (2026-09-20).
+This folder contains the Bolorgir adapter (`--blg`) and the T8a paired-run
+harness. The current development build has no full-corpus T8a result of
+its own. Its identity and measurement status are in the
+[project README](../../README.md#performance).
 
 ## Contents
 
-- `blg_engine.py` - the adapter implementing the MaskBench `Engine`
-  interface on top of `bolorgir.Engine` / `Constraint` / `Session`.
-- `bolorgir-engine.patch` - the same code as three git commits against
-  `guidance-ai/jsonschemabench` at `ba103c7` (adds the adapter, the
-  engine-agnostic `--compact` flag, README/requirements entries, and the
-  `blg` entry in the results script).
-- `results/` - `entries.txt` / `stats.txt` files produced by the
-  MaskBench `scripts/maskbench_results.py` on this machine, plus the raw
-  combined-table log.
+- `blg_engine.py`: the adapter implementing the MaskBench `Engine`
+  interface using `bolorgir.Engine`, `Constraint` and `Session`.
+- `bolorgir-engine.patch`: the upstream adapter patch for the pinned
+  jsonschemabench revision.
+- `t8a/`: paired runs, stream identity checks, classification and reports.
+- `results/` and `t8a/evidence/`: archived outputs bound to their recorded
+  artifacts. They do not supply current-build performance or coverage.
 
 ## Run conditions
 
-- jsonschemabench commit `ba103c7` (the snapshot of the published
-  tables), full `maskbench/data/` corpus.
-- Tokenizer: `unsloth/Meta-Llama-3.1-8B-Instruct` (the MaskBench
-  default), 128,256 tokens.
-- Engine: `bolorgir` 0.1.0 (`adaptive` mode); llguidance 0.7.10 (the
-  MaskBench pin) for the paired run.
-- This machine: 20 cores, 62 GiB RAM; 20 parallel runner processes;
-  900 s per-schema time limit. No crashes, timeouts or OOM in any run.
-- Bolorgir accepts only the canonical compact JSON form (no whitespace
-  outside strings), so its runs use the new `--compact` flag. The
-  llguidance run was repeated with `--compact` as well, so the paired
-  table compares identical token streams.
+Pin the jsonschemabench revision, tokenizer revision and vocabulary,
+Bolorgir wheel and core hashes, reference-engine versions, profile,
+serializer, input bytes, limits and worker count before a run. T8a keeps
+these in an identity manifest and requires a new work directory when
+identity changes. See [T8a](t8a/README.md) for the full protocol.
+
+Use the same serialized values and token streams for every participant.
+Compilation refusals, runtime errors and timeouts remain visible in the
+full-corpus results. Compare latency on the common set of compiled
+schemas separately; a fast compiler on a smaller supported subset does
+not establish a speed advantage on equivalent work.
 
 ## Results
 
-### Paired run, compact serialization, full corpus
+No current-build full-corpus comparison is available. TTFM measures
+compilation in this harness; TBM measures per-mask work. The tables
+produced by `scripts/maskbench_results.py` use microseconds. Neither
+metric alone is model time to first token or end-to-end serving latency.
 
-All times in microseconds.
-
-| metric             | LLGuidance |  Bolorgir |
-|:-------------------|-----------:|----------:|
-| TBM avg            |         94 |   143,457 |
-| TBM p25            |         37 |        27 |
-| TBM p50            |         55 |       125 |
-| TBM p75            |         74 |     1,767 |
-| TBM p90            |        133 |   609,222 |
-| TBM p95            |        233 |   649,598 |
-| TBM p99            |        924 | 1,393,775 |
-| TBM p99.9          |      3,370 | 1,711,274 |
-| TBM p100           |     22,686 | 1,992,204 |
-| TTFM avg           |      3,446 |       268 |
-| TTFM p25           |      1,301 |       162 |
-| TTFM p50           |      1,790 |       207 |
-| TTFM p75           |      2,661 |       269 |
-| TTFM p90           |      5,337 |       369 |
-| TTFM p95           |      8,998 |       584 |
-| TTFM p99           |     39,826 |     1,599 |
-| TTFM p99.9         |     98,661 |     2,501 |
-| TTFM p100          |    590,451 |     2,501 |
-| tokens             |    917,768 |    15,670 |
-| schemas            |     11,306 |    11,306 |
-| passing            |      4,727 |       624 |
-| compile error      |      2,377 |    10,682 |
-| segmentation fault |          0 |         0 |
-| out of memory      |          0 |         0 |
-| timeout            |          0 |         0 |
-| validation error   |      4,202 |         0 |
-| invalidation error |          0 |         0 |
-
-Reading of the table:
-
-- Compile time (TTFM): Bolorgir is faster at every percentile of this
-  run - p50 207 us vs 1,790 us (8.6x), p99 1.6 ms vs 39.8 ms (25x),
-  worst case 2.5 ms vs 590 ms (236x). The two engines compile different
-  schema sets (624 vs 8,929 files), so the rows are indicative, not a
-  like-for-like intersection.
-- Mask time (TBM): llguidance is faster overall under this protocol.
-  The median (55 us vs 125 us) and especially the tail (p90 133 us vs
-  609 ms) are decided by first-visit states: MaskBench opens a new
-  session per instance and most files carry a single instance, so the
-  engine's adaptive cache almost never serves a repeat. A first visit of
-  a permissive state (string content) walks the whole token trie -
-  0.6 s per state with a 128k-token vocabulary; a cache hit is 1.3 us.
-  p25 (27 us vs 37 us) is the one TBM class where Bolorgir is ahead.
-- Semantics: 0 validation and 0 invalidation errors on the 624 schemas
-  that compiled (633 valid instances accepted, 77 invalid rejected).
-- Coverage: 624 of 11,306 schemas compile (5.5%). BFCL function-call
-  schemas are 586 of the 624; Github_trivial 18, Github_easy 17,
-  Github_medium 2, Glaiveai2K 1. The other 10,682 files use constructs
-  outside the canonical-v1 profile (draft-04/06/07 `$schema`,
-  `definitions`, `$id`, `allOf`/`anyOf`/`oneOf`, `pattern`,
-  `minProperties`, implicit `additionalProperties`, missing `required`,
-  boolean schemas).
-
-### Serializer run (`blg-ser`), post-fix build, full corpus (2026-09-26)
-
-Re-measure of the published compact run with the value-preserving
-serializer ON (`BOLORGIR_SERIALIZER=1`, engine id `blg-ser`), on the
-post-fix build identified by its libbolorgir.so SHA-256
-`d8f936924f4323481abe7e147422843747739d794445529b744eca313285e1c0`
-(originally staged in a temporary build directory, no longer present;
-canonical-v1 profile; includes the mask fast path and the 2026-09-26
-fixes listed in CHANGELOG plus the minLength
-mask-normal-form fixes). Same corpus snapshot, same Llama
-tokenizer, same `--multi --blg --compact` protocol as the paired run
-above. All times in microseconds.
-
-| metric             | Bolorgir (published, serializer off) | Bolorgir `blg-ser` (2026-09-26) |
-|:-------------------|-------------------------------------:|--------------------------------:|
-| TBM avg            |                              143,457 |                             262 |
-| TBM p50            |                                  125 |                              14 |
-| TBM p90            |                              609,222 |                             247 |
-| TBM p95            |                              649,598 |                           3,045 |
-| TBM p99            |                            1,393,775 |                           3,573 |
-| TBM p100           |                            1,992,204 |                           7,107 |
-| TTFM avg           |                                  268 |                              68 |
-| TTFM p50           |                                  207 |                              50 |
-| TTFM p100          |                                2,501 |                           1,106 |
-| tokens             |                               15,670 |                          15,752 |
-| schemas            |                               11,306 |                          11,306 |
-| passing            |                                  624 |                             624 |
-| compile error      |                               10,682 |                          10,682 |
-| validation error   |                                    0 |                               0 |
-| invalidation error |                                    0 |                               0 |
-| serialization incompat |                                n/a |                               0 |
-
-Reading of the table:
-
-- Semantics: identical outcome counts to the published run (624 passing,
-  633 valid instances accepted, 77 invalid rejected, 0 validation and 0
-  invalidation errors) with the serializer in the path - the serializer
-  preserves values exactly, including strings that look like numbers
-  (`"1"` stays a string) and arbitrary text (CHANGELOG; 0 serialization
-  incompatible across the full corpus).
-- TBM: the tail collapse (p90 609 ms -> 247 us) is the ADR-0007 mask
-  fast path plus the follow-up fixes; the remaining p95+ entries are
-  first (cold) visits of normalized states, not cache misses of repeats.
-- tokens differ (+82) because the serializer reorders object keys to the
-  schema declaration order, which retokenizes some instances.
-
-### Default serialization (spaced instances), full corpus
-
-Without `--compact` the instances carry spaces after `,` and `:`, which
-is outside the canonical-v1 language: instances are rejected at the
-first whitespace token. 9 of 11,306 schemas pass; see
-`results/blg-spaced-entries.txt`. The compact form is not a workaround
-for the measurement - the same values are serialized the only way this
-engine accepts them.
-
-### Precompute mode (sampled, not a full run)
-
-A 15-file sample in `precompute` mode moved work into compile time
-(40 ms to 110 s per schema) and still showed the 250 ms first-visit
-spurts, so it is not a viable configuration for this protocol.
+Publish current results only after recording the measured artifact and
+protocol. Include corpus outcomes, the comparison intersection, timing
+sample counts, error counts and report provenance. A diagnostic slice or
+warm-cache run must be labelled with its own workload and scope.
 
 ## Profile selection
 
 The adapter compiles under an explicit JSON Schema profile: `canonical-v1`
-(frozen default) or `spec-v1` (the full JSON Schema profile, implemented
-in current engine builds - support table in
+(frozen default) or the experimental `spec-v1` profile (support table in
 `docs/supported_features.md` section 1a, normative semantics in
 `docs/semantics-spec-v1.md`). Selection, in priority order: the
 `BlgEngine(profile=...)` constructor argument, then the
@@ -181,9 +68,8 @@ adapter probes the installed build at startup
 (`_engine_supports_profile`, once per process, outside every measured
 section): a requested profile the build does not implement falls back to
 canonical-v1 and the fallback is reported on stderr. On current builds
-the probe passes and the requested profile is the effective one; every
-run recorded in this README is canonical-v1. The effective profile is
-recorded in the engine id: a supported non-default profile renames the
+the probe passes and the requested profile is the effective one. The
+effective profile is recorded in the engine id: a supported non-default profile renames the
 run to `blg-<profile>` (output directory and results-table row), so
 MaskBench artifacts carry the profile they measured (ROADMAP A8.4).
 
@@ -200,8 +86,9 @@ hands the hook the already-parsed `test["data"]`, and the value entry
 point never re-parses a string instance as JSON text: the string `"1"`
 stays the string `"1"` and `"hello"` serializes instead of failing. The
 knob is opt-in: the `BlgEngine(serializer=...)` constructor argument,
-then the `BOLORGIR_SERIALIZER=1` environment variable; default OFF, so
-the recorded runs stay comparable bit-for-bit:
+then the `BOLORGIR_SERIALIZER=1` environment variable; default OFF.
+Record this setting in the protocol and preserve identical token streams
+across the compared engines:
 
 ```sh
 BOLORGIR_SERIALIZER=1 python3 -u scripts/run_maskbench.py --blg --compact \
@@ -229,7 +116,8 @@ error).
 `t8a/run_t8a.sh [--smoke N] <work dir> <bolorgir wheel> [threads]` runs,
 one after another, Bolorgir (`BOLORGIR_PROFILE=spec-v1`,
 `BOLORGIR_SERIALIZER=1`, `--compact`), llguidance and XGrammar at the
-MaskBench pins (0.7.10, 0.1.17) and at current releases. Both venvs get
+MaskBench pins and at the versions resolved for that run. Their exact
+versions are recorded in the run identity. Both venvs get
 the same wheel and the same versions of the shared packages
 (transformers, tokenizers, huggingface_hub, numpy, torch). A venv is
 created at its final path (never moved: its scripts hold absolute paths),
@@ -292,9 +180,9 @@ status: `validation_error`, `invalidation_error`,
 `timeout` (a pending marker whose chunk ended with exit -14, the
 runner's SIGALRM, while it ran the file, as `log.txt` shows) or
 `crash:<exit code>`; otherwise the case stays open with the reason in
-the report, and a classified timeout still fails a smoke. The run needs the accepted
-candidate (T3) and has not been made yet; no number here comes from it. The run
-instructions, the evidence rules and the recovery steps live in `t8a/README.md`.
+the report, and a classified timeout still fails a smoke. The current
+build still needs its own T3/R6 acceptance and T8a run. Instructions,
+evidence rules and recovery steps are in [t8a/README.md](t8a/README.md).
 
 ## Reproduction
 
@@ -317,10 +205,9 @@ python3 scripts/maskbench_results.py tmp/out--blg-compact tmp/out--llg-compact
 
 ## Relation to the control series
 
-The control series in `../reports/` measures the engine as deployed
-(cold compile, warm masks, own corpus and protocol), and its Performance
-section in the root README quotes those numbers. MaskBench measures a
-different point of the design space: single-instance files where every
-mask is a first visit. Both matter; the MaskBench run is the independent
-protocol check, and it does not support a "fastest mask" claim on its
-own.
+Own-workload benchmarks and MaskBench exercise different state mixes.
+Record cold compilation, first-visit masks and warm cache hits separately.
+A cache-hit latency does not describe a new parser state, and a per-mask
+measurement does not establish end-to-end model throughput. Use the
+[benchmark methodology](../README.md) to define a comparison before
+collecting results.

@@ -7,24 +7,13 @@ each request. This document is the installation and usage guide; the
 design decisions and the support matrix are in
 [ADR-0016](../adr/ADR-0016-vllm-agent-integration.md).
 
-> Status: the backend is implemented and functionally checked on CPU
-> (request compilation, masks, terminals, rollback, structural tags,
-> the backend trace), including on the tokenizer of the pinned model.
-> The GPU stage of the T10 checks ran the server-side scenarios on the
-> pinned stack for both speculative configurations (request matrix,
-> extra harness, trace qualifications, controlled resource-limit
-> scenarios; local run logs, not tracked) against the candidate core
-> `9a5baf3e...` on 2026-10-12. The review of the first GPU evidence was
-> closed by the round-7 runs: the limit scenarios, the forbidden-candidate
-> probe, the batch row reorder with the mask replay and the run5 manifests
-> with the EngineCore maps records are in place. The XGrammar comparison
-> was published on 2026-10-13
-> ([REPORT-v2.md](../../benchmarks/reports/20261013_xgrammar-compare-a3/compact/REPORT-v2.md));
-> it is a same-language comparison of one measured session set, not a
-> mask-cost proof. The GPU stage and the comparison name that stack and
-> build only: no GPU check or comparison has run on the current tree, and
-> its fresh R6 verdict and T8a run remain outstanding. Each row of the
-> matrix marks "verified", "explicitly refused" or "not verified".
+> Status: the backend is implemented. CPU tests cover request compilation,
+> masks, terminals, rollback, structural tags and the backend trace.
+> GPU verification and an end-to-end comparison have not been run for the
+> current baseline build. Its R6 verdict and full T8a run are also pending.
+> See [current measurement status](../../README.md#performance).
+> The support matrix in ADR-0016 distinguishes verified, explicitly
+> refused and unverified request forms.
 
 ## Pinned stack
 
@@ -100,10 +89,10 @@ work limit, 256 MiB per context). A budget failure is request-local: the
 grammar is marked failed, the request terminates with an error (no
 unconstrained generation), other requests of the batch continue, and
 the session memory returns to the accounting when the request's objects
-are collected. `benchmarks/local/t10-gpu-1/` carries the calibration
-(`calibrate_limits.py`), the scenario harnesses (`limits_checks.py`,
-`forbid_probe.py`, `replay_masks.py`, `maps_probe.py`) and the round-7
-run records.
+are collected. For a new verification run, save the loaded core hash,
+request traces, limit settings and outcomes with its evidence. The
+[qualification tool](../../benchmarks/agent_eval/qualify_stack.py) checks
+whether the recorded backend actually constrained each request.
 
 ## Requests
 

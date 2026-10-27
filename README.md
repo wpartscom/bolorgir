@@ -5,21 +5,12 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python 3.12-3.15](https://img.shields.io/badge/python-3.12--3.15-blue.svg)](https://www.python.org/)
 
-> **Development line; no package is published right now.** The earlier
-> `0.2.0rc1` pre-release was withdrawn on 2026-10-11, and nothing is on
-> PyPI. The `main` line below adds session rollback and draft validation
-> (ADR-0014), a standalone regex constraint (ADR-0015), a vLLM
-> structured-output backend with a pinned source patch
-> (`docs/integrations/vllm.md`) and the Zig 0.17.0 / CPython
-> 3.12-3.15 preparation. These features changed the core, and every
-> acceptance verdict names one build only: the admitted R6 review
-> (`review-2`, 2026-10-13) names the earlier release-line core
-> `9a5baf3e…`, whose T8a MaskBench run finished `T8A_RUN_DONE
-> not_accepted` on 2026-10-18, so that acceptance stays open. The
-> current tree has no R6 verdict or T8a run of its own, and the rc1
-> verdict is not carried over. Read
-> [Preview status and known limits](#preview-status-and-known-limits) and
-> install from source as shown in [Install](#install) until then.
+> **Development line; install from source.** No package is currently
+> published. The current tree includes session rollback, draft validation,
+> standalone regex constraints and a vLLM structured-output backend.
+> Its own R6 acceptance and full T8a MaskBench run are still pending.
+> See [Preview status and known limits](#preview-status-and-known-limits)
+> and [Install](#install).
 
 **Structured-generation engine written in Zig, with a C ABI and Python
 bindings.** Given a JSON Schema (one of two profiles: the frozen
@@ -37,17 +28,9 @@ actual backend decoder.
 Typical uses: tool-call arguments, JSON extraction for programmatic
 processing, classification via fixed value sets, agentic pipelines.
 
-**Historical measurements** (profile `canonical-v1`, September 2026, not
-repeated for 0.2.0rc1; every number cites its report): schema compile time
-(TTFM) on the independent MaskBench suite with engine 0.1.0: p50
-**207 µs** vs **1,790 µs** for llguidance
-(`benchmarks/maskbench/README.md`); warm mask p99 **0.81 µs** on own
-workloads (code before the 0.1.0 release, cache-hit path, GPT-2
-vocabulary) vs 3.04 µs for XGrammar
-(`benchmarks/reports/20260919T033356_v3-run3/REPORT.md`); end-to-end
-constrained generation on par with XGrammar, worst paired-median case
-**+1.7%** (same report). They say nothing about `spec-v1`, whose masks can
-be far slower. Conditions and caveats: [Performance](#performance).
+**Measurement status:** full-corpus coverage, mask latency and end-to-end
+performance have not been measured for the current baseline build. See
+[Performance](#performance) for the build identity and outstanding checks.
 
 ## Features
 
@@ -77,9 +60,9 @@ be far slower. Conditions and caveats: [Performance](#performance).
   backend trace (`BLG_AGENT_TRACE`)
   ([docs/integrations/vllm.md](docs/integrations/vllm.md),
   [ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md)).
-- **Measured.** Performance claims come from a pinned acceptance protocol
-  (three collections, AB/BA pairing, bootstrap CIs); reports are published in
-  `benchmarks/reports/`.
+- **Benchmark tools.** Pinned protocols record build identity, tokenizer,
+  input streams, errors and timing distributions. Results apply only to
+  the artifact and workload they measured; see [Performance](#performance).
 
 ## Build the core (Zig)
 
@@ -95,9 +78,6 @@ zig build -Drelease=true -Dstrip=true -Dtarget=x86_64-linux-gnu.2.28 -Dcpu=basel
 sha256sum zig-out/lib/libbolorgir.so.0.1.0   # the next acceptance names this hash
 ```
 
-The earlier `v0.1.0` tag builds with Zig 0.15.2; the withdrawn `v0.2.0rc1`
-release pair is no longer published.
-
 ## Python bindings
 
 The Python side is an abi3 package for CPython 3.12-3.15 (Linux x86_64,
@@ -107,8 +87,7 @@ source checkout needs a C compiler and Python 3.12 or newer.
 
 ### Install
 
-No package is currently published: the `0.2.0rc1` GitHub pre-release was
-withdrawn and PyPI is not used yet. Install from a checkout; the result
+No package is currently published. Install from a checkout; the result
 is a local candidate, not a published release. The build needs a C
 compiler and Python 3.12 or newer; the extension is abi3
 (`cp312-abi3`), so one `_core` binary loads on CPython 3.12 through
@@ -137,9 +116,8 @@ it builds the Python extension with a C compiler and needs no Zig.
 
 For serving, the vLLM structured-output backend is documented in
 [docs/integrations/vllm.md](docs/integrations/vllm.md); it needs the
-pinned upstream patch (`integrations/vllm/`) and the `[vllm]` extra. Its
-GPU checks ran on the pinned stack for the `9a5baf3e` core (2026-10-12)
-and have not run on the current tree.
+pinned upstream patch (`integrations/vllm/`) and the `[vllm]` extra.
+GPU verification on the current build is pending.
 
 ### Quickstart
 
@@ -242,192 +220,74 @@ A dependency-free C example lives in `examples/c_client.c`
 
 ## Preview status and known limits
 
-The `0.2.0rc1` pre-release was withdrawn on 2026-10-11 (its notes remain
-as a historical document, [docs/release/v0.2.0rc1.md](docs/release/v0.2.0rc1.md));
-no package is currently published. The `main` line adds session rollback
-and draft validation ([ADR-0014](docs/adr/ADR-0014-session-rollback.md)),
-a standalone regex constraint ([ADR-0015](docs/adr/ADR-0015-regex-constraint.md))
-and tool-call framing plus the vLLM backend with its backend trace
-([ADR-0016](docs/adr/ADR-0016-vllm-agent-integration.md));
-the next preview (planned as `0.2.0rc2`) waits for the owner's release
-preparation: the admitted R6 review of 2026-10-13 names the earlier core
-`9a5baf3e...`, the core moved after that review, and the current tree
-still needs its own R6 verdict and its T8a run. What this line has and
-has not passed:
+This source tree is under development. A preview or stable release needs
+its own R6 verdict, a completed and accepted T8a run, and the owner's
+release decision.
 
-- **Profiles.** `canonical-v1` is the default profile, a frozen subset.
-  `spec-v1` is experimental: it covers much more of JSON Schema and is
-  selected with `profile="spec-v1"`
-  ([Schema profiles and limitations](#schema-profiles-and-limitations)).
-- **Acceptance.** Two verdicts are historical, and each names its own
-  build only: the T3/R6 record for the earlier core (sha256 `6e62e0d1...`)
-  and the admitted R6 review of the release-line core `9a5baf3e...`
-  (`benchmarks/coverage/spec-v1/t3-9a5baf3e/review-2/`: 50/50 checks ok,
-  81/81 transition rows approved, 2026-10-13, from the saved T3 data with
-  the owner's D4 decisions). The core changed after that review (masks,
-  state copying, the certificate cache), so the current tree has no R6
-  verdict of its own, and its T8a MaskBench run has not been made: the
-  earlier w12 run ended `T8A_RUN_DONE not_accepted` on 2026-10-18. The
-  final gate stays with the owner.
-- **Slow masks, `RESOURCE_LIMIT`, long runs.** On some `spec-v1` schemas
-  with a large vocabulary (128k tokens) a single mask takes about a
-  second, and a file of a few documents can exceed 900 s. For one MaskBench
-  schema (`Github_easy---o89710`) the first mask did not return within
-  120 s; with a byte-level vocabulary the same schema ends in
-  `RESOURCE_LIMIT` after about 13 s on our test host. A call fails with `RESOURCE_LIMIT`
-  whenever completion cannot be proven within its search or memory budget;
-  a token is never admitted without a proof.
-- **Session rollback overhead.** With `max_rollback_tokens=0` the accept
-  path measured within +2% of the pre-history build (median +0.45%, 95%
-  interval [-0.18%, +1.76%], 100 paired rounds; ADR-0014).
-- **Memory limits are not time limits.** `memory_limit_mb` and the other
-  budgets bound memory, not the duration of a call. To bound time, use your
-  own deadline together with `work_limit_ops` (a call that spends its work
-  budget fails with `RESOURCE_LIMIT`) or a `CancelToken`
-  (`engine.cancel_token()`; the core checks the flag between bounded
-  portions of work and the call fails with `CancelledError`). How quickly
-  either stops the slow cases above was not measured for this line.
-- **Performance figures** in this README are historical (0.1.0 and the
-  code before it, profile `canonical-v1`) and were not re-measured for
-  this line.
-- **Platforms.** Linux x86_64 with glibc 2.28 or newer; the extension is
-  abi3 (`cp312-abi3`) covering CPython 3.12, 3.13, 3.14 and 3.15. No wheel
-  is published right now; the source install above is the supported path.
-  macOS, Windows and Linux aarch64 are not built or tested.
-- **vLLM.** The backend is functionally checked on CPU (request
-  compilation, masks, terminals, rollback, failure policy, structural
-  tags, the backend trace) including on the pinned model tokenizer. The
-  GPU stage of the T10 checks ran the serving scenarios on the pinned
-  vLLM 0.31.0 stack for the `9a5baf3e` core (2026-10-12, rounds 7 and
-  7b), and the XGrammar comparison of 2026-10-13 is published as
-  `benchmarks/reports/20261013_xgrammar-compare-a3/compact/REPORT-v2.md`.
-  Both name that stack and that build; no GPU check has run on the
-  current tree. See [docs/integrations/vllm.md](docs/integrations/vllm.md).
+- **Profiles.** `canonical-v1` is the default, frozen subset. `spec-v1` is
+  experimental and selected with `profile="spec-v1"`; see
+  [Schema profiles and limitations](#schema-profiles-and-limitations).
+- **Acceptance.** The current tree has no R6 verdict or full T8a run of
+  its own. The release manifest's final gate fields remain unset.
+- **Resource limits.** A compiled schema can still fail a mask or token
+  operation with `RESOURCE_LIMIT` when completion cannot be proven
+  within its search or memory budget. Completion search can be expensive;
+  latency on the current build has not been characterized across the
+  full corpus. A token is never admitted without a proof.
+- **Memory limits are not time limits.** To bound work, combine an
+  application deadline with `work_limit_ops` or a `CancelToken`
+  (`engine.cancel_token()`). A spent work budget fails with
+  `RESOURCE_LIMIT`; cancellation fails with `CancelledError`. Cancellation
+  latency on difficult schemas has not been measured for this build.
+- **Sessions and constraints.** Rollback, draft-token validation,
+  standalone regex and structural tags are implemented. ADR-0014 through
+  ADR-0016 remain `proposed`; implementation does not close acceptance.
+- **Platforms.** Linux x86_64 with glibc 2.28 or newer; CPython 3.12-3.15
+  through `cp312-abi3`. Install from source. macOS, Windows and Linux
+  aarch64 are not built or tested.
+- **vLLM.** CPU tests cover request compilation, masks, terminals,
+  rollback, failure handling and structural tags. GPU verification and
+  an end-to-end comparison on the current build are pending. See the
+  [integration guide](docs/integrations/vllm.md).
 
 Problems are welcome: see [Reporting a problem](#reporting-a-problem).
 
-## Comparison with alternatives
-
-Bolorgir is an independent constrained-decoding engine (Zig core, C ABI,
-Python bridge); it does not vendor or wrap the libraries below. Tables reflect
-the state as of 2026-09 - check the linked projects for current data.
-Measured comparison used XGrammar 0.2.6 and llguidance 1.8.0.
-
-### Capabilities
-
-| | **Bolorgir** (0.2.0rc1) | XGrammar | llguidance | Outlines | lm-format-enforcer |
-|---|---|---|---|---|---|
-| Core | Zig, C ABI, no runtime deps | C++ | Rust | Python + Rust core | Python |
-| License | Apache-2.0 | Apache-2.0 | MIT | Apache-2.0 | MIT |
-| Constraints | JSON Schema (profiles `canonical-v1` and `spec-v1`; `spec-v1` experimental), literal sets; no standalone regex or CFG | JSON Schema, regex, EBNF/GBNF, Lark | JSON Schema subset, regex, Lark-like CFG | JSON/Pydantic, regex, grammars | JSON Schema, JSON mode, regex |
-| Unsupported input | rejected at compile time with a JSON Pointer | - | - | - | - |
-| Reachability on incomplete vocabularies | exact (finite languages) or compile-time rejection | - | - | - | - |
-| Hard memory budgets | yes (published defaults) | - | - | - | - |
-| Integrations | HF Transformers adapter; C ABI | vLLM, SGLang, TensorRT-LLM, MLC-LLM, WebLLM | OpenAI Structured Outputs, llama.cpp, Chromium, vLLM, SGLang | vLLM, Ollama, transformers, API providers | vLLM, TensorRT-LLM, ExLlamaV2, LangChain/LlamaIndex/Haystack |
-| Platforms | Linux x86_64 (glibc 2.28+); CPython 3.12-3.15 | Linux/macOS/Windows; CPU/GPU/TPU | Linux/macOS/Windows | cross-platform | cross-platform |
-
 ## Performance
 
-Two measurement series are published in this repository. Both are
-historical: they measured the `canonical-v1` profile of engine 0.1.0 and of
-the code just before it, and were not repeated for 0.2.0rc1; they do not
-cover `spec-v1` (see
-[Preview status and known limits](#preview-status-and-known-limits)).
+The current local baseline build uses `zig build -Drelease=true
+-Dcpu=baseline`. Its core library SHA256 is:
 
-- the pinned control series on own workloads (protocol v3, 2026-09-19,
-  code before the 0.1.0 release, default profile `canonical-v1`,
-  CPU-only, single host, GPT-2 tokenizer, vocab 50,257): report
-  `benchmarks/reports/20260919T033356_v3-run3/REPORT.md`;
-- an independent MaskBench run over the jsonschemabench corpus
-  (2026-09-20, engine 0.1.0, profile `canonical-v1`, tokenizer
-  `unsloth/Meta-Llama-3.1-8B-Instruct`, 128,256 tokens): report `benchmarks/maskbench/README.md`, raw aggregates
-  `benchmarks/maskbench/results/`.
+```text
+372543ce6e2e2768edf1d4edaf734958454a65ee96eb9483fb4d13e5a86522e9
+```
 
-XGrammar/llguidance JSON profiles differ from `canonical-v1`, so latency
-is compared on equivalent schemas, not bitwise mask equality. Methodology:
-`benchmarks/README.md`.
+This identifies the local baseline library, not a release wheel or a
+build made with other flags. Measure and record the library actually
+loaded by each benchmark.
 
-### Schema compile time and mask time on MaskBench (canonical-v1)
+| Check | Status for this baseline build |
+|---|---|
+| Full-corpus MaskBench compile coverage and outcomes | Not measured; a new T8a run is required |
+| Full-corpus compile time (TTFM) and per-mask time (TBM) | Not measured |
+| Warm cache latency under the acceptance protocol | Not measured |
+| GPU serving latency and comparison with other engines | Not measured |
+| R6 acceptance and final release gate | Pending |
 
-Paired compact-serialization run over all 11,306 schemas (engine 0.1.0,
-adaptive mode; llguidance 0.7.10, the MaskBench pin). All times in
-microseconds. Source: `benchmarks/maskbench/README.md`, section "Results";
-raw percentiles: `benchmarks/maskbench/results/blg-compact-entries.txt`
-and `llg-compact-entries.txt`.
+No latency, throughput or coverage advantage over another engine is
+claimed for this build. Regression tests establish behavior on their
+inputs; they do not establish full-corpus coverage or performance.
 
-| metric | llguidance | Bolorgir |
-|---|---:|---:|
-| TBM avg | 94 | 143,457 |
-| TBM p25 | 37 | 27 |
-| TBM p50 | 55 | 125 |
-| TBM p75 | 74 | 1,767 |
-| TBM p90 | 133 | 609,222 |
-| TBM p95 | 233 | 649,598 |
-| TBM p99 | 924 | 1,393,775 |
-| TBM p99.9 | 3,370 | 1,711,274 |
-| TBM p100 | 22,686 | 1,992,204 |
-| TTFM avg | 3,446 | 268 |
-| TTFM p25 | 1,301 | 162 |
-| TTFM p50 | 1,790 | 207 |
-| TTFM p75 | 2,661 | 269 |
-| TTFM p90 | 5,337 | 369 |
-| TTFM p95 | 8,998 | 584 |
-| TTFM p99 | 39,826 | 1,599 |
-| TTFM p99.9 | 98,661 | 2,501 |
-| TTFM p100 | 590,451 | 2,501 |
-| schemas | 11,306 | 11,306 |
-| passing | 4,727 | 624 |
-| compile error | 2,377 | 10,682 |
-| validation error | 4,202 | 0 |
-| invalidation error | 0 | 0 |
+For new measurements, pin the core and wheel hashes, tokenizer, schema
+profile, serializer, corpus, limits, concurrency and machine conditions.
+Publish full-corpus outcomes separately from latency on the common set
+of compiled schemas. First-visit masks, warm cache hits, compilation and
+end-to-end generation are separate measurements.
 
-Reading of the table (per `benchmarks/maskbench/README.md`):
-
-- Compile time (TTFM): Bolorgir is faster at every percentile of this
-  run (p50 207 vs 1,790 µs; p99 1,599 vs 39,826 µs). The two engines
-  compile different schema sets (624 vs 8,929 files), so the rows are
-  indicative, not a like-for-like intersection.
-- Mask time (TBM): llguidance is faster at every TBM percentile except
-  p25 (27 vs 37 µs). MaskBench opens a new session per instance and most
-  files carry a single instance, so the adaptive cache almost never
-  serves a repeat: a first visit of a permissive state walks the whole
-  token trie (0.6 s per state with a 128k-token vocabulary in this run),
-  while a cache hit is 1.3 µs.
-- Semantics: 0 validation and 0 invalidation errors on the 624 schemas
-  that compiled (633 valid instances accepted, 77 invalid rejected).
-- Coverage under canonical-v1: 624 of 11,306 schemas compile (5.5%); the
-  rest use constructs outside that profile (draft-04/06/07 `$schema`,
-  `definitions`, `allOf`/`anyOf`/`oneOf`, `pattern`, boolean schemas).
-  The wider `spec-v1` profile is experimental; see
-  [Schema profiles and limitations](#schema-profiles-and-limitations).
-
-### Warm masks on own workloads (control series)
-
-Primary metric of the pinned control scenario (`benchmarks/manifest.json`,
-`control_scenario`): p99 of `fill_mask` on a repeated trace, >= 10,000
-warm observations per engine, so the adaptive engine serves the cache-hit
-path; GPT-2 vocabulary of 50,257 tokens. Bolorgir 0.81 µs vs XGrammar
-0.2.6 3.04 µs; on the secondary holdout schema 1.02 µs vs llguidance 1.8.0
-358.68 µs. Cold first mask (new engine, empty cache, n = 3000): p95/p99
-586.5/684.1 µs vs XGrammar 965.0/1288.6 µs. Source:
-`benchmarks/reports/20260919T033356_v3-run3/REPORT.md`, sections 1 and 4.
-
-### End-to-end generation
-
-Constrained generation through the Hugging Face adapter is on par with
-XGrammar: all 12 measured configurations stay within the 5% threshold,
-worst paired-median case +1.7%. Source:
-`benchmarks/reports/20260919T033356_v3-run3/REPORT.md`, section 3.
-
-Caveats: these are our workloads under our acceptance protocol plus one
-independent corpus run; competitor-reported figures may differ (for
-example, llguidance documents ~50 µs per token typical for a
-128k-tokenizer JSON workload). The MaskBench protocol measures
-first-visit masks and does not support a "fastest mask" claim on its own
-(`benchmarks/maskbench/README.md`, "Relation to the control series"). For
-neutral cross-checks see
-[MaskBench / JSONSchemaBench](https://github.com/guidance-ai/jsonschemabench).
-Reproduce locally with `python3 benchmarks/run_all.py`.
+The [benchmark guide](benchmarks/README.md) describes the tools;
+[MaskBench](benchmarks/maskbench/README.md) and
+[T8a](benchmarks/maskbench/t8a/README.md) describe paired runs and evidence
+requirements. Build-specific reports remain in the archive for audit and
+reproduction; their results are not current-build measurements.
 
 ## Schema profiles and limitations
 
@@ -476,9 +336,7 @@ Known limitations of spec-v1 (experimental):
   within the search budget; a token is never admitted without a proof.
   Numeric conjunctions (bounds, `multipleOf`, `integer`, excluded
   constants) and numeric `oneOf`/`if` groups are certified in closed form
-  (ADR-0011). The current residual is pinned row by row in
-  `tests/oracle/engine_error_residual_spec_v1.json` (33 oracle rows across
-  the five dialects, 10 of them on 2020-12, 2026-10-05). To handle it:
+  (ADR-0011). Runtime failures must still be handled by the caller:
   `constrained_generate(..., on_constraint_error="fail_row")` ends only the
   affected batch row with EOS and reports the error, and
   `engine.compile(schema, profile="spec-v1", probe="probe")` searches for
@@ -492,43 +350,15 @@ Known limitations of spec-v1 (experimental):
   under `maxContains` the engine accepts any key order, because those
   keywords decide on the value (semantics-spec-v1 section 4.3).
 
-**Accepted and documented deviations (2026-10-13, T3 acceptance line).**
-The project owner accepted the listed deviations of the T3 comparison of
-the core `9a5baf3e…` against the reference lines `dbc5eeb`/`7345490f`,
-with public documentation. The counts below are those of the considered
-deviations of that comparison (81 comparison rows, 67 results), not of
-the entire test corpus, and the recorded outcomes stay negative:
+**Integer semantics.** The engine applies value-based `integer`
+semantics across dialects: `1.0`, `1e2` and `100.00` are integers.
+A draft-04 validator can reject these spellings under a draft-04
+`$schema`. This is a compatibility limit; see
+[the supported-feature notes](docs/supported_features.md#9-operational-notes-and-known-deviations)
+and [spec-v1 semantics](docs/semantics-spec-v1.md).
 
-- **34 `invalid_document` results - the draft-04 integer spelling.** The
-  engine applies the value-based `integer` semantics uniformly across
-  dialects (`1.0`, `1e2`, `100.00` are integers), while a draft-04
-  reference validator applies the draft-04 lexical rule. Minimal
-  example: for
-  `{"$schema": "http://json-schema.org/draft-04/schema#", "type": "integer"}`
-  the engine accepts the instance `1.0` and a draft-04 validator rejects
-  it. Compatibility limit: under a draft-04 `$schema` such instances are
-  a documented deviation, not draft-04-identical validation
-  (`docs/supported_features.md` section 9).
-- **25 `incomplete` results - the check did not finish in its time
-  budget.** These runs ended at the budget before a decision, so the
-  completeness of their semantic check is not confirmed; quiet-core
-  replays completed the same passes on every compared library
-  (`benchmarks/t3/evidence/r11a2_pass1_summary.md`) and the outcome
-  stays `incomplete`.
-- **8 `engine_unavailable` results - resource refusals on listed complex
-  schemas** (`oneOf` groups of open objects, e.g. `bigquery-table`,
-  `cryproj`, `tye-schema`, `o31351`, `Github_hard---o32934`). The call
-  fails with `RESOURCE_LIMIT`/`ResourceLimitError` ("mask computation
-  limit exceeded") instead of admitting a token without a proof
-  (`benchmarks/t3/evidence/r11bc2_summary.md`); recommended handling in
-  an application: `on_constraint_error="fail_row"` or the compile-time
-  probe (ADR-0012).
-
-Per-case lists and evidence:
-`benchmarks/t3/evidence/d4_transitions_9a5baf3e.md`; decision record:
-`benchmarks/t3/d4_proposals.json`; package:
-`benchmarks/t3/evidence/d4_package_9a5baf3e.md`; admitted review:
-`benchmarks/coverage/spec-v1/t3-9a5baf3e/review-2/` (50/50 checks ok).
+Current-build coverage and resource-refusal counts require the new
+R6/T8a runs described under [Performance](#performance).
 
 ### Common limitations
 
